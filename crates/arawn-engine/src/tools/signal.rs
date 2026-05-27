@@ -43,6 +43,33 @@ fn resolve_manager(
         .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))
 }
 
+/// The set of `(lens, store)` a read tool should query (ARAWN-I-0060): an
+/// explicit `lens` narrows to one; otherwise roam every lens. A Fixed handle
+/// (tests / non-routed) yields its single manager's lens tier, labeled `"lens"`.
+fn lens_stores(
+    handle: &MemoryHandle,
+    router: Option<&Arc<LensMemoryRouter>>,
+    explicit: Option<&str>,
+) -> Result<Vec<(String, Arc<MemoryStore>)>, ToolError> {
+    match (explicit, router) {
+        (Some(name), Some(r)) => {
+            let mgr = r
+                .for_lens(name)
+                .map_err(|e| ToolError::ExecutionFailed(format!("lens `{name}`: {e}")))?;
+            Ok(vec![(name.to_string(), Arc::clone(&mgr.lens))])
+        }
+        (None, Some(r)) => Ok(r
+            .all_lens_managers()
+            .into_iter()
+            .map(|(n, m)| (n, Arc::clone(&m.lens)))
+            .collect()),
+        _ => {
+            let mgr = resolve_manager(handle, explicit, router)?;
+            Ok(vec![("lens".to_string(), Arc::clone(&mgr.lens))])
+        }
+    }
+}
+
 fn entity_summary(e: &Entity) -> Value {
     json!({
         "id": e.id,
@@ -154,30 +181,10 @@ impl Tool for SignalSearchTool {
             .unwrap_or(10)
             .min(50) as usize;
 
-        // Build the set of lens stores to search. ARAWN-I-0060: read across
-        // ALL lenses by default; an explicit `lens` narrows to one. Each hit is
-        // labeled with its source lens. signal_* is lens-tier only (the global
-        // tier of preferences/people is `memory_search`'s job).
-        let stores: Vec<(String, Arc<MemoryStore>)> = match (explicit, self.router.as_ref()) {
-            // Narrow to a named lens.
-            (Some(name), Some(router)) => {
-                let mgr = router
-                    .for_lens(name)
-                    .map_err(|e| ToolError::ExecutionFailed(format!("lens `{name}`: {e}")))?;
-                vec![(name.to_string(), Arc::clone(&mgr.lens))]
-            }
-            // Roam: every lens's KB.
-            (None, Some(router)) => router
-                .all_lens_managers()
-                .into_iter()
-                .map(|(name, mgr)| (name, Arc::clone(&mgr.lens)))
-                .collect(),
-            // Fixed handle (tests / non-routed): the single manager's lens tier.
-            _ => {
-                let mgr = resolve_manager(&self.memory, explicit, self.router.as_ref())?;
-                vec![("lens".to_string(), Arc::clone(&mgr.lens))]
-            }
-        };
+        // Read across ALL lenses by default; an explicit `lens` narrows to one.
+        // signal_* is lens-tier only (global preferences/people are
+        // `memory_search`'s job). Each hit is labeled with its source lens.
+        let stores = lens_stores(&self.memory, self.router.as_ref(), explicit)?;
 
         // Embed once (caller-side); the fusion primitive is synchronous.
         let query_embedding = match self.embedder.as_ref() {
@@ -330,40 +337,51 @@ impl Tool for SignalQueryTool {
             .unwrap_or(25)
             .min(200) as usize;
 
-        let mgr = resolve_manager(&self.memory, explicit, self.router.as_ref())?;
-        let store = &mgr.lens;
-
-        // Candidate set: list_by_type when entity_type is specified,
-        // otherwise list_all_ranked. We over-fetch since downstream
-        // filters (tags, since/until) can reduce the set arbitrarily.
+        // Roam every lens by default; `lens` narrows to one. Filter each store's
+        // candidates, then merge, order by recency, and cap.
+        let stores = lens_stores(&self.memory, self.router.as_ref(), explicit)?;
         let fetch = (limit * 4).max(50);
-        let mut candidates: Vec<Entity> = match entity_type {
-            Some(et) => store
-                .list_by_type(et, fetch)
-                .map_err(|e| ToolError::ExecutionFailed(format!("list_by_type: {e}")))?,
-            None => store
-                .list_all_ranked(fetch)
-                .map_err(|e| ToolError::ExecutionFailed(format!("list_all: {e}")))?,
-        };
-
-        if !tags.is_empty() {
-            // ADR-0004: default filter is ontology-only (deterministic).
-            // `include_discovered` widens to LLM-free tags for recall.
-            candidates.retain(|e| {
-                let onto_hit = e.tags_ontology.iter().any(|t| tags.contains(t));
-                let disc_hit = include_discovered && e.tags.iter().any(|t| tags.contains(t));
-                onto_hit || disc_hit
-            });
+        let mut candidates: Vec<(String, Entity)> = Vec::new();
+        for (lens, store) in &stores {
+            let mut ents: Vec<Entity> = match entity_type {
+                Some(et) => store
+                    .list_by_type(et, fetch)
+                    .map_err(|e| ToolError::ExecutionFailed(format!("list_by_type: {e}")))?,
+                None => store
+                    .list_all_ranked(fetch)
+                    .map_err(|e| ToolError::ExecutionFailed(format!("list_all: {e}")))?,
+            };
+            if !tags.is_empty() {
+                // ADR-0004: default filter is ontology-only (deterministic).
+                // `include_discovered` widens to LLM-free tags for recall.
+                ents.retain(|e| {
+                    let onto_hit = e.tags_ontology.iter().any(|t| tags.contains(t));
+                    let disc_hit = include_discovered && e.tags.iter().any(|t| tags.contains(t));
+                    onto_hit || disc_hit
+                });
+            }
+            if let Some(s) = since {
+                ents.retain(|e| e.updated_at >= s);
+            }
+            if let Some(u) = until {
+                ents.retain(|e| e.updated_at <= u);
+            }
+            candidates.extend(ents.into_iter().map(|e| (lens.clone(), e)));
         }
-        if let Some(s) = since {
-            candidates.retain(|e| e.updated_at >= s);
-        }
-        if let Some(u) = until {
-            candidates.retain(|e| e.updated_at <= u);
-        }
+        // Uniform cross-lens ordering: most-recently-updated first.
+        candidates.sort_by(|a, b| b.1.updated_at.cmp(&a.1.updated_at));
         candidates.truncate(limit);
 
-        let results: Vec<Value> = candidates.iter().map(entity_summary).collect();
+        let results: Vec<Value> = candidates
+            .iter()
+            .map(|(lens, e)| {
+                let mut row = entity_summary(e);
+                if let Value::Object(ref mut m) = row {
+                    m.insert("lens".into(), json!(lens));
+                }
+                row
+            })
+            .collect();
         Ok(ToolOutput::success(
             json!({
                 "results": results,
@@ -454,30 +472,33 @@ impl Tool for SignalTimelineTool {
             .unwrap_or(50)
             .min(200) as usize;
 
-        let mgr = resolve_manager(&self.memory, explicit, self.router.as_ref())?;
-        let store = &mgr.lens;
-
-        // No native "list all ordered by created_at" — list_all_ranked
-        // returns the active set, we sort by created_at here. Window
-        // filtering happens before truncate.
-        let mut all = store
-            .list_all_ranked((limit * 4).max(100))
-            .map_err(|e| ToolError::ExecutionFailed(format!("list_all: {e}")))?;
-        if let Some(s) = since {
-            all.retain(|e| e.created_at >= s);
+        // Roam every lens by default; `lens` narrows to one. Merge each store's
+        // entities into one chronological timeline.
+        let stores = lens_stores(&self.memory, self.router.as_ref(), explicit)?;
+        let fetch = (limit * 4).max(100);
+        let mut all: Vec<(String, Entity)> = Vec::new();
+        for (lens, store) in &stores {
+            let mut ents = store
+                .list_all_ranked(fetch)
+                .map_err(|e| ToolError::ExecutionFailed(format!("list_all: {e}")))?;
+            if let Some(s) = since {
+                ents.retain(|e| e.created_at >= s);
+            }
+            if let Some(u) = until {
+                ents.retain(|e| e.created_at <= u);
+            }
+            all.extend(ents.into_iter().map(|e| (lens.clone(), e)));
         }
-        if let Some(u) = until {
-            all.retain(|e| e.created_at <= u);
-        }
-        all.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        all.sort_by(|a, b| b.1.created_at.cmp(&a.1.created_at));
         all.truncate(limit);
 
         let events: Vec<Value> = all
             .iter()
-            .map(|e| {
+            .map(|(lens, e)| {
                 json!({
                     "ts": e.created_at.to_rfc3339(),
                     "kind": "entity_created",
+                    "lens": lens,
                     "entity": entity_summary(e),
                 })
             })

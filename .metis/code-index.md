@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-27T02:44:57Z | 416 files | Python, Rust
+> Generated: 2026-05-27T02:59:09Z | 416 files | Python, Rust
 
 ## Project Structure
 
@@ -2328,18 +2328,19 @@
 - pub `new` function L30-43 — `( data_dir: impl Into<PathBuf>, embedding_dims: Option<usize>, embedder: Option<...` — existing fixed-manager tests continue working unchanged.
 - pub `current` function L47-50 — `(&self) -> Result<Arc<MemoryManager>, MemoryError>` — Resolve the active lens's memory manager.
 - pub `current_name` function L54-56 — `(&self) -> String` — Name of the active lens — useful for tools that need to
-- pub `for_lens` function L58-72 — `(&self, name: &str) -> Result<Arc<MemoryManager>, MemoryError>` — existing fixed-manager tests continue working unchanged.
-- pub `MemoryHandle` enum L79-82 — `Fixed | Routed` — Memory tools depend on one of these.
-- pub `manager` function L87-92 — `(&self) -> Result<Arc<MemoryManager>, MemoryError>` — Resolve the active manager.
--  `LensMemoryRouter` type L29-73 — `= LensMemoryRouter` — existing fixed-manager tests continue working unchanged.
--  `MemoryHandle` type L84-93 — `= MemoryHandle` — existing fixed-manager tests continue working unchanged.
--  `MemoryHandle` type L95-99 — `= MemoryHandle` — existing fixed-manager tests continue working unchanged.
--  `from` function L96-98 — `(m: Arc<MemoryManager>) -> Self` — existing fixed-manager tests continue working unchanged.
--  `MemoryHandle` type L101-105 — `= MemoryHandle` — existing fixed-manager tests continue working unchanged.
--  `from` function L102-104 — `(r: Arc<LensMemoryRouter>) -> Self` — existing fixed-manager tests continue working unchanged.
--  `tests` module L108-139 — `-` — existing fixed-manager tests continue working unchanged.
--  `router_caches_per_lens` function L112-130 — `()` — existing fixed-manager tests continue working unchanged.
--  `fixed_handle_dispatches` function L133-138 — `()` — existing fixed-manager tests continue working unchanged.
+- pub `all_lens_managers` function L65-80 — `(&self) -> Vec<(String, Arc<MemoryManager>)>` — Every lens's memory manager (name → manager), for cross-lens reads
+- pub `for_lens` function L82-96 — `(&self, name: &str) -> Result<Arc<MemoryManager>, MemoryError>` — existing fixed-manager tests continue working unchanged.
+- pub `MemoryHandle` enum L103-106 — `Fixed | Routed` — Memory tools depend on one of these.
+- pub `manager` function L111-116 — `(&self) -> Result<Arc<MemoryManager>, MemoryError>` — Resolve the active manager.
+-  `LensMemoryRouter` type L29-97 — `= LensMemoryRouter` — existing fixed-manager tests continue working unchanged.
+-  `MemoryHandle` type L108-117 — `= MemoryHandle` — existing fixed-manager tests continue working unchanged.
+-  `MemoryHandle` type L119-123 — `= MemoryHandle` — existing fixed-manager tests continue working unchanged.
+-  `from` function L120-122 — `(m: Arc<MemoryManager>) -> Self` — existing fixed-manager tests continue working unchanged.
+-  `MemoryHandle` type L125-129 — `= MemoryHandle` — existing fixed-manager tests continue working unchanged.
+-  `from` function L126-128 — `(r: Arc<LensMemoryRouter>) -> Self` — existing fixed-manager tests continue working unchanged.
+-  `tests` module L132-163 — `-` — existing fixed-manager tests continue working unchanged.
+-  `router_caches_per_lens` function L136-154 — `()` — existing fixed-manager tests continue working unchanged.
+-  `fixed_handle_dispatches` function L157-162 — `()` — existing fixed-manager tests continue working unchanged.
 
 #### crates/arawn-engine/src/lib.rs
 
@@ -3915,27 +3916,27 @@
 
 #### crates/arawn-engine/src/tools/memory_search.rs
 
-- pub `MemorySearchTool` struct L16-19 — `{ memory: MemoryHandle, embedder: Option<Arc<dyn Embedder>> }` — Tool that searches the knowledge base using composite retrieval:
-- pub `new` function L22-27 — `(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self`
--  `MemorySearchTool` type L21-28 — `= MemorySearchTool`
--  `MemorySearchTool` type L31-282 — `impl Tool for MemorySearchTool`
--  `name` function L32-34 — `(&self) -> &str`
--  `description` function L36-40 — `(&self) -> &str`
--  `is_read_only` function L42-44 — `(&self) -> bool`
--  `category` function L46-48 — `(&self) -> ToolCategory`
--  `parameters_schema` function L50-84 — `(&self) -> Value`
--  `execute` function L86-281 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...`
--  `ScoredEntity` struct L284-290 — `{ entity: Entity, fts_score: f32, semantic_score: f32, confidence: f32, related:...`
--  `ScoredEntity` type L292-296 — `= ScoredEntity`
--  `composite` function L293-295 — `(&self) -> f32`
--  `tests` module L299-411 — `-`
--  `setup` function L306-317 — `() -> ( TempDir, Arc<MemoryManager>, crate::context::EngineToolContext, )`
--  `populate` function L319-341 — `(mgr: &MemoryManager)`
--  `search_fts_both_tiers` function L344-354 — `()`
--  `search_with_type_filter` function L357-369 — `()`
--  `search_global_only` function L372-383 — `()`
--  `search_no_results` function L386-396 — `()`
--  `search_with_tags` function L399-410 — `()`
+- pub `MemorySearchTool` struct L16-20 — `{ memory: MemoryHandle, router: Option<Arc<LensMemoryRouter>>, embedder: Option<...` — Tool that searches the knowledge base using composite retrieval:
+- pub `new` function L23-34 — `(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self`
+-  `MemorySearchTool` type L22-35 — `= MemorySearchTool`
+-  `MemorySearchTool` type L38-332 — `impl Tool for MemorySearchTool`
+-  `name` function L39-41 — `(&self) -> &str`
+-  `description` function L43-47 — `(&self) -> &str`
+-  `is_read_only` function L49-51 — `(&self) -> bool`
+-  `category` function L53-55 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L57-92 — `(&self) -> Value`
+-  `execute` function L94-331 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...`
+-  `ScoredEntity` struct L334-342 — `{ entity: Entity, lens: String, fts_score: f32, semantic_score: f32, confidence:...`
+-  `ScoredEntity` type L344-348 — `= ScoredEntity`
+-  `composite` function L345-347 — `(&self) -> f32`
+-  `tests` module L351-463 — `-`
+-  `setup` function L358-369 — `() -> ( TempDir, Arc<MemoryManager>, crate::context::EngineToolContext, )`
+-  `populate` function L371-393 — `(mgr: &MemoryManager)`
+-  `search_fts_both_tiers` function L396-406 — `()`
+-  `search_with_type_filter` function L409-421 — `()`
+-  `search_global_only` function L424-435 — `()`
+-  `search_no_results` function L438-448 — `()`
+-  `search_with_tags` function L451-462 — `()`
 
 #### crates/arawn-engine/src/tools/memory_store.rs
 
@@ -4071,55 +4072,50 @@
 
 #### crates/arawn-engine/src/tools/signal.rs
 
-- pub `SignalSearchTool` struct L82-86 — `{ memory: MemoryHandle, router: Option<Arc<LensMemoryRouter>>, embedder: Option<...` — Person) is reachable via the existing `memory_search` tool.
-- pub `new` function L89-100 — `(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self` — Person) is reachable via the existing `memory_search` tool.
-- pub `SignalQueryTool` struct L246-249 — `{ memory: MemoryHandle, router: Option<Arc<LensMemoryRouter>> }` — Person) is reachable via the existing `memory_search` tool.
-- pub `new` function L252-259 — `(memory: impl Into<MemoryHandle>) -> Self` — Person) is reachable via the existing `memory_search` tool.
-- pub `SignalTimelineTool` struct L401-404 — `{ memory: MemoryHandle, router: Option<Arc<LensMemoryRouter>> }` — Person) is reachable via the existing `memory_search` tool.
-- pub `new` function L407-414 — `(memory: impl Into<MemoryHandle>) -> Self` — Person) is reachable via the existing `memory_search` tool.
--  `RRF_K` variable L29 — `: f32` — RRF constant — same value `feed_search` uses.
--  `rrf` function L31-33 — `(rank: usize) -> f32` — Person) is reachable via the existing `memory_search` tool.
--  `resolve_manager` function L38-53 — `( handle: &MemoryHandle, explicit: Option<&str>, router: Option<&Arc<LensMemoryR...` — Resolve the manager for the active lens, or the explicit
--  `entity_summary` function L55-68 — `(e: &Entity) -> Value` — Person) is reachable via the existing `memory_search` tool.
--  `snippet` function L70-76 — `(s: &str, cap: usize) -> String` — Person) is reachable via the existing `memory_search` tool.
--  `SignalSearchTool` type L88-101 — `= SignalSearchTool` — Person) is reachable via the existing `memory_search` tool.
--  `SignalSearchTool` type L104-229 — `impl Tool for SignalSearchTool` — Person) is reachable via the existing `memory_search` tool.
--  `name` function L105-107 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
--  `description` function L109-118 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
--  `is_read_only` function L120-122 — `(&self) -> bool` — Person) is reachable via the existing `memory_search` tool.
--  `category` function L124-132 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
--  `parameters_schema` function L134-147 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
--  `execute` function L149-228 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
--  `FusedHit` struct L231-234 — `{ entity: Entity, score: f32 }` — Person) is reachable via the existing `memory_search` tool.
--  `FusedHit` type L236-240 — `= FusedHit` — Person) is reachable via the existing `memory_search` tool.
--  `new` function L237-239 — `(entity: Entity) -> Self` — Person) is reachable via the existing `memory_search` tool.
--  `SignalQueryTool` type L251-260 — `= SignalQueryTool` — Person) is reachable via the existing `memory_search` tool.
--  `SignalQueryTool` type L263-395 — `impl Tool for SignalQueryTool` — Person) is reachable via the existing `memory_search` tool.
--  `name` function L264-266 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
--  `description` function L268-273 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
--  `is_read_only` function L275-277 — `(&self) -> bool` — Person) is reachable via the existing `memory_search` tool.
--  `category` function L279-287 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
--  `parameters_schema` function L289-312 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
--  `execute` function L314-394 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
--  `SignalTimelineTool` type L406-415 — `= SignalTimelineTool` — Person) is reachable via the existing `memory_search` tool.
--  `SignalTimelineTool` type L418-513 — `impl Tool for SignalTimelineTool` — Person) is reachable via the existing `memory_search` tool.
--  `name` function L419-421 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
--  `description` function L423-427 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
--  `is_read_only` function L429-431 — `(&self) -> bool` — Person) is reachable via the existing `memory_search` tool.
--  `category` function L433-441 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
--  `parameters_schema` function L443-453 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
--  `execute` function L455-512 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
--  `tests` module L520-705 — `-` — Person) is reachable via the existing `memory_search` tool.
--  `setup` function L526-537 — `() -> ( TempDir, Arc<MemoryManager>, crate::context::EngineToolContext, )` — Person) is reachable via the existing `memory_search` tool.
--  `seed` function L539-562 — `(mgr: &MemoryManager)` — Person) is reachable via the existing `memory_search` tool.
--  `signal_search_finds_decision_by_title` function L565-582 — `()` — Person) is reachable via the existing `memory_search` tool.
--  `signal_search_empty_kb_returns_zero` function L585-594 — `()` — Person) is reachable via the existing `memory_search` tool.
--  `signal_query_filters_by_entity_type` function L597-614 — `()` — Person) is reachable via the existing `memory_search` tool.
--  `signal_query_filters_by_tag_any_of` function L617-626 — `()` — Person) is reachable via the existing `memory_search` tool.
--  `signal_query_no_filters_returns_all_active` function L629-636 — `()` — Person) is reachable via the existing `memory_search` tool.
--  `signal_query_window_filters` function L639-650 — `()` — Person) is reachable via the existing `memory_search` tool.
--  `signal_timeline_orders_desc_and_caps_to_window` function L653-665 — `()` — Person) is reachable via the existing `memory_search` tool.
--  `explicit_lens_arg_routes_via_router` function L668-704 — `()` — Person) is reachable via the existing `memory_search` tool.
+- pub `SignalSearchTool` struct L73-77 — `{ memory: MemoryHandle, router: Option<Arc<LensMemoryRouter>>, embedder: Option<...` — Person) is reachable via the existing `memory_search` tool.
+- pub `new` function L80-91 — `(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self` — Person) is reachable via the existing `memory_search` tool.
+- pub `SignalQueryTool` struct L226-229 — `{ memory: MemoryHandle, router: Option<Arc<LensMemoryRouter>> }` — Person) is reachable via the existing `memory_search` tool.
+- pub `new` function L232-239 — `(memory: impl Into<MemoryHandle>) -> Self` — Person) is reachable via the existing `memory_search` tool.
+- pub `SignalTimelineTool` struct L381-384 — `{ memory: MemoryHandle, router: Option<Arc<LensMemoryRouter>> }` — Person) is reachable via the existing `memory_search` tool.
+- pub `new` function L387-394 — `(memory: impl Into<MemoryHandle>) -> Self` — Person) is reachable via the existing `memory_search` tool.
+-  `resolve_manager` function L29-44 — `( handle: &MemoryHandle, explicit: Option<&str>, router: Option<&Arc<LensMemoryR...` — Resolve the manager for the active lens, or the explicit
+-  `entity_summary` function L46-59 — `(e: &Entity) -> Value` — Person) is reachable via the existing `memory_search` tool.
+-  `snippet` function L61-67 — `(s: &str, cap: usize) -> String` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalSearchTool` type L79-92 — `= SignalSearchTool` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalSearchTool` type L95-220 — `impl Tool for SignalSearchTool` — Person) is reachable via the existing `memory_search` tool.
+-  `name` function L96-98 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `description` function L100-110 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `is_read_only` function L112-114 — `(&self) -> bool` — Person) is reachable via the existing `memory_search` tool.
+-  `category` function L116-124 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
+-  `parameters_schema` function L126-139 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
+-  `execute` function L141-219 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalQueryTool` type L231-240 — `= SignalQueryTool` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalQueryTool` type L243-375 — `impl Tool for SignalQueryTool` — Person) is reachable via the existing `memory_search` tool.
+-  `name` function L244-246 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `description` function L248-253 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `is_read_only` function L255-257 — `(&self) -> bool` — Person) is reachable via the existing `memory_search` tool.
+-  `category` function L259-267 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
+-  `parameters_schema` function L269-292 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
+-  `execute` function L294-374 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalTimelineTool` type L386-395 — `= SignalTimelineTool` — Person) is reachable via the existing `memory_search` tool.
+-  `SignalTimelineTool` type L398-493 — `impl Tool for SignalTimelineTool` — Person) is reachable via the existing `memory_search` tool.
+-  `name` function L399-401 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `description` function L403-407 — `(&self) -> &str` — Person) is reachable via the existing `memory_search` tool.
+-  `is_read_only` function L409-411 — `(&self) -> bool` — Person) is reachable via the existing `memory_search` tool.
+-  `category` function L413-421 — `(&self) -> ToolCategory` — Person) is reachable via the existing `memory_search` tool.
+-  `parameters_schema` function L423-433 — `(&self) -> Value` — Person) is reachable via the existing `memory_search` tool.
+-  `execute` function L435-492 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — Person) is reachable via the existing `memory_search` tool.
+-  `tests` module L500-699 — `-` — Person) is reachable via the existing `memory_search` tool.
+-  `setup` function L507-518 — `() -> ( TempDir, Arc<MemoryManager>, crate::context::EngineToolContext, )` — Person) is reachable via the existing `memory_search` tool.
+-  `seed` function L520-543 — `(mgr: &MemoryManager)` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_search_finds_decision_by_title` function L546-563 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_search_empty_kb_returns_zero` function L566-575 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_query_filters_by_entity_type` function L578-595 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_query_filters_by_tag_any_of` function L598-607 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_query_no_filters_returns_all_active` function L610-617 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_query_window_filters` function L620-631 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `signal_timeline_orders_desc_and_caps_to_window` function L634-646 — `()` — Person) is reachable via the existing `memory_search` tool.
+-  `explicit_lens_arg_routes_via_router` function L649-698 — `()` — Person) is reachable via the existing `memory_search` tool.
 
 #### crates/arawn-engine/src/tools/skill.rs
 

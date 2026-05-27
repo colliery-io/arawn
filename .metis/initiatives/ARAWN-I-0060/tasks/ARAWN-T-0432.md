@@ -11,10 +11,10 @@ archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
-exit_criteria_met: false
+exit_criteria_met: true
 initiative_id: ARAWN-I-0060
 ---
 
@@ -67,4 +67,23 @@ Depends on [[ARAWN-T-0431]] (reads must be off the shim first). Pairs with
 
 ## Status Updates
 
-*To be added during implementation*
+**2026-05-27 — Done.** Branch `feat/lens-agnostic-chat`.
+Audited every shim/router consumer and classified read vs write:
+- **Reads → now roam** (no longer pin the active lens): `signal_search` (T-B),
+  `memory_search` (T-B), and now `signal_query` + `signal_timeline` (T-C) via a
+  shared `lens_stores()` helper — roam all lenses by default, `lens=` narrows,
+  each result labeled with its source lens; cross-lens results ordered by
+  recency.
+- **Writes / management → keep the shim as the write-target** (correct, not a
+  violation): `memory_store` (files into the target), steward curation tools
+  (`workstream_*`→`lens_*` journal/refine/dust/etc. default to the current
+  target), and `lens_list/switch/show/delete` (which surface/manage the
+  "active" = write-target lens). Semantics reframed in T-E.
+- **Ambient injection** (`load_memories_for_injection` in main.rs) preloads the
+  write-target lens + global into the system prompt. Deliberately **left on the
+  write-target** — it's "context for where you're working," not an on-demand
+  search. Roaming every lens here would bloat/dilute the prompt; explicit search
+  tools are the cross-lens recall path.
+
+No on-demand search consults the active-lens shim anymore. `arawn-engine` lib
+702/0; `angreal check workspace` clean.
