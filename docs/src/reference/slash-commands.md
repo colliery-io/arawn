@@ -74,7 +74,7 @@ Manage lenses. The TUI dispatcher accepts three subcommands:
 
 - `/lens create <name>` — create a lens; agent walks through ontology proposal.
 - `/lens list` — list active lenses.
-- `/lens switch <name>` — set the active lens.
+- `/lens switch <name>` — set the write-target lens (where new learnings file). Reads stay cross-lens.
 
 Other lifecycle operations (bind, unbind, show, describe, delete) are exposed as agent tools — ask the agent in chat (e.g. *"bind the `work` lens to feed `gmail-inbox-me`"*) and it calls `lens_bind`, `lens_unbind`, etc. See [lens tools reference](./lens-tools.md) and [lens CLI reference](./lens-cli.md).
 

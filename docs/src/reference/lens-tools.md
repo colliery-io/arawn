@@ -12,7 +12,7 @@ Source: `crates/arawn-engine/src/tools/{signal,lens,steward}.rs`.
 
 ### `signal_search`
 
-Free-text search over the active lens's entities. FTS5 + vector similarity (RRF-fused when an embedder is configured). Both `tags_ontology` and `tags_discovered` participate in the FTS recall side via the indexed content blob.
+Free-text search over your curated entities **across all lenses** (each hit labeled with its source `lens`); pass a `lens` argument to restrict to one. FTS5 + vector similarity (RRF-fused when an embedder is configured). Both `tags_ontology` and `tags_discovered` participate in the FTS recall side via the indexed content blob.
 
 ```text
 signal_search { "query": "postgres", "limit": 10 }
@@ -47,7 +47,7 @@ Useful for "what's been happening in this lens lately."
 
 ### `lens_show`
 
-Returns the active lens's metadata — description, bindings, tag ontology, identity profile.
+Returns a lens's metadata — description, bindings, tag ontology, identity profile. Defaults to the session's write-target lens; pass a name for another.
 
 ```text
 lens_show { } → { name, display_name, description, bindings,
@@ -64,7 +64,7 @@ Source: `crates/arawn-engine/src/tools/lens.rs`.
 |---|---|
 | `lens_new` | Create a lens and walk through ontology proposal. |
 | `lens_list` | List active (non-archived) lenses. |
-| `lens_switch` | Set the active lens. |
+| `lens_switch` | Set the write-target lens (where new learnings file; reads stay cross-lens). |
 | `lens_describe` | Update description, display_name, or `identity_profile`. |
 | `lens_bind` | Bind a feed by id, or `github:repo:owner/name` / `github:org:owner`. |
 | `lens_unbind` | Remove a binding. |

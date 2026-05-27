@@ -57,7 +57,7 @@ Calls `lens_list`. Returns active lenses. To include archived: use `lens_list { 
 /lens switch <slug>
 ```
 
-Sets the active lens. Subsequent sessions, feeds bound to the lens, and signal queries all scope to this lens until you switch again.
+Sets the session's **write-target** lens — where new learnings file — until you switch again. It does **not** scope reads: `signal_*` / `memory_search` always search across every lens (pass `lens=` to narrow). Switching only redirects where future writes land.
 
 ### Show / bind / unbind / describe / delete (agent tools, not slash subcommands)
 

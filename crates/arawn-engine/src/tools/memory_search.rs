@@ -41,8 +41,10 @@ impl Tool for MemorySearchTool {
     }
 
     fn description(&self) -> &str {
-        "Search the knowledge base for stored facts, decisions, conventions, preferences, and notes. \
-         Uses semantic similarity + text search for best recall.\n\n\
+        "Search the knowledge base for stored facts, decisions, conventions, preferences, and notes \
+         **across all your lenses** plus the global tier; each hit shows the lens it came from. \
+         Uses semantic similarity + text search for best recall. Pass `scope` (a lens name, \
+         `global`, or `lens`) to narrow.\n\n\
          Use this when you need to check what's already known before making assumptions."
     }
 

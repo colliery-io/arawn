@@ -40,7 +40,7 @@ You type a message.
 
 The system prompt isn't static. Several pieces change between turns:
 
-- The **active lens** can change with `/lens switch`. Identity prompts switch with it (assistant vs coding — see [identity by lens](./identity-by-lens.md)).
+- The **write-target lens** can change with `/lens switch` — it directs where new learnings file, not what the chat reads (search is always cross-lens). The chat persona is always the default `assistant` and does **not** switch with the lens (see [identity by lens](./identity-by-lens.md)).
 - **Memory entries** that match the current user message get injected as context. If you ask "what did we decide about Postgres?", the memory loader pre-fetches relevant entities so the LLM sees them in-context.
 - **Tools** change as integrations connect/disconnect, plugins load/unload, MCP servers come and go. Hot-reload means the registry can change mid-session.
 - **`arawn.md` files** in the lens root and the data directory carry persistent behavioral directives. They're injected into every turn so the agent stays consistent across sessions.

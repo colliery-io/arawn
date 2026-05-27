@@ -26,9 +26,10 @@ impl Tool for LensSwitchTool {
     }
 
     fn description(&self) -> &str {
-        "Switch the session-active lens. Subsequent memory operations \
-         in this session route to that lens's KB + global. Errors if \
-         the named lens doesn't exist."
+        "Set the session's write-target lens — where new learnings are filed \
+         (memory writes + extraction). Reading is always cross-lens (search sees \
+         every lens regardless), so this only affects where writes land, not what \
+         you can recall. Errors if the named lens doesn't exist."
     }
 
     fn category(&self) -> ToolCategory {
