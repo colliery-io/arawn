@@ -59,6 +59,10 @@ pub struct DiscoveryChoice {
 pub struct FieldState {
     pub spec: FeedParamSpecDto,
     pub value: String,
+    /// Text-input caret as a char index into `value` (0..=char_count). Lets the
+    /// user edit mid-string with ←/→ rather than only at the end. Unused for
+    /// bool/enum fields.
+    pub cursor: usize,
     /// Cached provider choices for a discoverable field. `None` = not fetched
     /// yet; `Some(vec)` = fetched (possibly empty → fall back to free text).
     pub choices: Option<Vec<DiscoveryChoice>>,
@@ -77,14 +81,17 @@ impl FieldState {
             Some(Value::Number(n)) => n.to_string(),
             _ => String::new(),
         };
+        let cursor = value.chars().count();
         Self {
             spec,
             value,
+            cursor,
             choices: None,
         }
     }
 
     fn synthetic(key: &str, label: &str, required: bool, value: String, help: &str) -> Self {
+        let cursor = value.chars().count();
         Self {
             spec: FeedParamSpecDto {
                 key: key.to_string(),
@@ -96,6 +103,7 @@ impl FieldState {
                 discoverable: false,
             },
             value,
+            cursor,
             choices: None,
         }
     }
@@ -109,6 +117,53 @@ impl FieldState {
             FeedParamKindDto::Enum(v) => Some(v),
             _ => None,
         }
+    }
+
+    /// A free-text field (text/path/int/since/list) — i.e. not a bool toggle or
+    /// enum selector. These get caret editing.
+    fn is_text_input(&self) -> bool {
+        !self.is_bool() && self.enum_values().is_none()
+    }
+
+    fn char_len(&self) -> usize {
+        self.value.chars().count()
+    }
+
+    fn insert(&mut self, c: char) {
+        let i = self.cursor.min(self.char_len());
+        let mut chars: Vec<char> = self.value.chars().collect();
+        chars.insert(i, c);
+        self.value = chars.into_iter().collect();
+        self.cursor = i + 1;
+    }
+
+    fn backspace(&mut self) {
+        if self.cursor == 0 {
+            return;
+        }
+        let i = self.cursor - 1;
+        let mut chars: Vec<char> = self.value.chars().collect();
+        if i < chars.len() {
+            chars.remove(i);
+        }
+        self.value = chars.into_iter().collect();
+        self.cursor = i;
+    }
+
+    fn cursor_left(&mut self) {
+        self.cursor = self.cursor.saturating_sub(1);
+    }
+
+    fn cursor_right(&mut self) {
+        if self.cursor < self.char_len() {
+            self.cursor += 1;
+        }
+    }
+
+    /// Reset the caret to the end (after a value is set programmatically, e.g.
+    /// a discovery pick).
+    fn cursor_to_end(&mut self) {
+        self.cursor = self.char_len();
     }
 }
 
@@ -288,37 +343,64 @@ impl WatchModalState {
             // submits the form.
             KeyCode::Enter if self.focused_is_discoverable() => self.open_picker(),
             KeyCode::Enter => self.build_submit(),
-            KeyCode::Left | KeyCode::Right => {
-                self.cycle_focused(key.code == KeyCode::Right);
+            // ← / → : move the caret in a text field, or toggle a bool/enum.
+            KeyCode::Left => {
+                if let Some(f) = self.focused_field() {
+                    if f.is_text_input() {
+                        f.cursor_left();
+                    } else {
+                        self.cycle_focused(false);
+                    }
+                }
+                WatchOutcome::None
+            }
+            KeyCode::Right => {
+                if let Some(f) = self.focused_field() {
+                    if f.is_text_input() {
+                        f.cursor_right();
+                    } else {
+                        self.cycle_focused(true);
+                    }
+                }
+                WatchOutcome::None
+            }
+            KeyCode::Home => {
+                if let Some(f) = self.focused_field() {
+                    f.cursor = 0;
+                }
+                WatchOutcome::None
+            }
+            KeyCode::End => {
+                if let Some(f) = self.focused_field() {
+                    f.cursor_to_end();
+                }
                 WatchOutcome::None
             }
             KeyCode::Char(' ') => {
                 // Space toggles a bool/enum; otherwise it's literal input
-                // (paths, list globs, etc.).
+                // (paths, list globs, etc.) inserted at the caret.
                 if let Some(f) = self.focused_field() {
-                    if f.is_bool() || f.enum_values().is_some() {
-                        self.cycle_focused(true);
+                    if f.is_text_input() {
+                        f.insert(' ');
                     } else {
-                        f.value.push(' ');
+                        self.cycle_focused(true);
                     }
                 }
                 WatchOutcome::None
             }
             KeyCode::Backspace => {
                 if let Some(f) = self.focused_field()
-                    && !f.is_bool()
-                    && f.enum_values().is_none()
+                    && f.is_text_input()
                 {
-                    f.value.pop();
+                    f.backspace();
                 }
                 WatchOutcome::None
             }
             KeyCode::Char(c) if !key.modifiers.contains(KeyModifiers::CONTROL) => {
                 if let Some(f) = self.focused_field()
-                    && !f.is_bool()
-                    && f.enum_values().is_none()
+                    && f.is_text_input()
                 {
-                    f.value.push(c);
+                    f.insert(c);
                 }
                 WatchOutcome::None
             }
@@ -406,6 +488,7 @@ impl WatchModalState {
                     .cloned()
                 {
                     self.fields[field].value = choice.value;
+                    self.fields[field].cursor_to_end();
                 }
                 self.picker = None;
             }
@@ -644,7 +727,7 @@ fn render_form_lines(state: &WatchModalState) -> Vec<Line<'static>> {
         let focused = i == state.focus;
         let indicator = if focused { "▸ " } else { "  " };
         let req = if f.spec.required { "*" } else { "" };
-        let shown = render_field_value(f);
+        let shown = render_field_value(f, focused);
         let value_style = if focused {
             Style::default()
                 .fg(theme::TEXT)
@@ -685,8 +768,9 @@ fn render_form_lines(state: &WatchModalState) -> Vec<Line<'static>> {
     lines
 }
 
-/// How a field's current value reads on screen (with a caret on text fields).
-fn render_field_value(f: &FieldState) -> String {
+/// How a field's current value reads on screen. The focused text field shows a
+/// caret (`‸`) at the cursor position so mid-string editing is visible.
+fn render_field_value(f: &FieldState, focused: bool) -> String {
     match &f.spec.kind {
         FeedParamKindDto::Bool => {
             if f.value == "true" {
@@ -698,8 +782,15 @@ fn render_field_value(f: &FieldState) -> String {
         FeedParamKindDto::Enum(_) => format!("< {} >", f.value),
         // Discoverable + empty: prompt the user to open the pick-list.
         _ if f.spec.discoverable && f.value.is_empty() => "↵ choose…".into(),
+        _ if focused => {
+            let chars: Vec<char> = f.value.chars().collect();
+            let i = f.cursor.min(chars.len());
+            let before: String = chars[..i].iter().collect();
+            let after: String = chars[i..].iter().collect();
+            format!("{before}‸{after}")
+        }
         _ if f.value.is_empty() => "_".into(),
-        _ => format!("{}_", f.value),
+        _ => f.value.clone(),
     }
 }
 
@@ -1031,6 +1122,26 @@ mod tests {
         assert!(s.picker.is_none(), "Esc closes the picker");
         // A second Esc (now in the form) cancels the modal.
         assert_eq!(s.handle_key(key(KeyCode::Esc)), WatchOutcome::Cancel);
+    }
+
+    #[test]
+    fn text_field_supports_midstring_caret_editing() {
+        let mut s = fs_form();
+        s.focus = 1; // root (Path, text input)
+        typ(&mut s, "/abc"); // cursor at end (4)
+        // Move left twice → between 'a' and 'b' (cursor=2), insert 'X'.
+        s.handle_key(key(KeyCode::Left));
+        s.handle_key(key(KeyCode::Left));
+        typ(&mut s, "X");
+        assert_eq!(s.fields[1].value, "/aXbc");
+        // Home → start, type at front.
+        s.handle_key(key(KeyCode::Home));
+        typ(&mut s, "Z");
+        assert_eq!(s.fields[1].value, "Z/aXbc");
+        // End → back to end, backspace removes the last char.
+        s.handle_key(key(KeyCode::End));
+        s.handle_key(key(KeyCode::Backspace));
+        assert_eq!(s.fields[1].value, "Z/aXb");
     }
 
     #[test]

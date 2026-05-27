@@ -37,12 +37,20 @@ pub fn map_key_event(
     if key.modifiers.contains(KeyModifiers::CONTROL) {
         return match key.code {
             KeyCode::Char('c') => Some(Action::Quit),
-            KeyCode::Char('e') => Some(Action::ToggleAllToolResults),
+            // Readline-style line editing — works in every terminal, unlike
+            // Home/End which many macOS terminals don't deliver.
+            KeyCode::Char('a') => Some(Action::CursorHome),
+            KeyCode::Char('e') => Some(Action::CursorEnd),
+            KeyCode::Char('t') => Some(Action::ToggleAllToolResults),
             _ => None,
         };
     }
-    if let KeyCode::Char('\x05') = key.code {
-        return Some(Action::ToggleAllToolResults); // Ctrl+E
+    // Raw control-code forms (most terminals report Ctrl+<key> this way).
+    match key.code {
+        KeyCode::Char('\x01') => return Some(Action::CursorHome), // Ctrl+A
+        KeyCode::Char('\x05') => return Some(Action::CursorEnd),  // Ctrl+E
+        KeyCode::Char('\x14') => return Some(Action::ToggleAllToolResults), // Ctrl+T
+        _ => {}
     }
 
     if key.code == KeyCode::Esc {
@@ -193,17 +201,29 @@ mod tests {
     }
 
     #[test]
-    fn ctrl_e_toggles_tool_results() {
+    fn ctrl_t_toggles_tool_results() {
         // With CONTROL modifier
         assert_eq!(
-            map_key_event(ctrl('e'), Focus::Main, false, false, false),
+            map_key_event(ctrl('t'), Focus::Main, false, false, false),
             Some(Action::ToggleAllToolResults)
         );
         // Raw control code (how most terminals send it)
         assert_eq!(
-            map_key_event(key(KeyCode::Char('\x05')), Focus::Main, false, false, false),
+            map_key_event(key(KeyCode::Char('\x14')), Focus::Main, false, false, false),
             Some(Action::ToggleAllToolResults)
         );
+    }
+
+    #[test]
+    fn ctrl_a_and_ctrl_e_are_line_start_end() {
+        for (k, want) in [
+            (ctrl('a'), Action::CursorHome),
+            (ctrl('e'), Action::CursorEnd),
+            (key(KeyCode::Char('\x01')), Action::CursorHome),
+            (key(KeyCode::Char('\x05')), Action::CursorEnd),
+        ] {
+            assert_eq!(map_key_event(k, Focus::Main, false, false, false), Some(want));
+        }
     }
 
     #[test]

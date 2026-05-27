@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-26T19:51:23Z | 415 files | Python, Rust
+> Generated: 2026-05-27T01:26:48Z | 415 files | Python, Rust
 
 ## Project Structure
 
@@ -5216,53 +5216,60 @@
 
 #### crates/arawn-feeds/src/clients/filesystem.rs
 
-- pub `FilesystemFeedParams` struct L53-61 — `{ root: PathBuf, recursive: bool, include: Vec<String>, exclude: Vec<String> }` — Parameters for the `filesystem/folder` template.
-- pub `FileFingerprint` struct L103-108 — `{ mtime: i64, size: u64 }` — Per-file fingerprint used to detect change without reading contents.
-- pub `FilesystemFeedCursor` struct L114-117 — `{ files: BTreeMap<PathBuf, FileFingerprint> }` — Cursor persisted between runs: the fingerprint map from the previous
-- pub `FilesystemFeedTemplate` struct L120 — `-` — The `filesystem/folder` template.
+- pub `FilesystemFeedParams` struct L53-67 — `{ root: PathBuf, recursive: bool, include: Vec<String>, exclude: Vec<String>, co...` — Parameters for the `filesystem/folder` template.
+- pub `FileFingerprint` struct L119-124 — `{ mtime: i64, size: u64 }` — Per-file fingerprint used to detect change without reading contents.
+- pub `FilesystemFeedCursor` struct L130-133 — `{ files: BTreeMap<PathBuf, FileFingerprint> }` — Cursor persisted between runs: the fingerprint map from the previous
+- pub `FilesystemFeedTemplate` struct L136 — `-` — The `filesystem/folder` template.
 -  `DEFAULT_CADENCE` variable L44 — `: &str` — Default cadence for a filesystem feed.
--  `default_recursive` function L63-65 — `() -> bool` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `default_include` function L67-69 — `() -> Vec<String>` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `default_exclude` function L71-83 — `() -> Vec<String>` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `FilesystemFeedParams` type L85-94 — `impl Default for FilesystemFeedParams` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `default` function L86-93 — `() -> Self` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `FilesystemFeedTemplate` type L123-240 — `impl FeedTemplate for FilesystemFeedTemplate` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `name` function L124-126 — `(&self) -> &'static str` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate` function L128-132 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `param_schema` function L134-173 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `defaults` function L175-180 — `(&self, _params: &TemplateParams) -> FeedDefaults` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `run` function L182-239 — `( &self, _ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &...` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `parse_cursor` function L246-250 — `(cursor: &Value) -> BTreeMap<PathBuf, FileFingerprint>` — Parse a persisted cursor into its fingerprint map.
--  `build_matcher` function L255-266 — `(patterns: &[String]) -> Result<GlobSet, FeedError>` — Compile a list of glob patterns into a [`GlobSet`].
--  `scan` function L271-317 — `( root: &Path, recursive: bool, include: &GlobSet, exclude: &GlobSet, ) -> Resul...` — Walk `root` and build the current fingerprint map for every file
--  `diff` function L323-344 — `( root: &Path, prev: &BTreeMap<PathBuf, FileFingerprint>, curr: &BTreeMap<PathBu...` — Diff the previous fingerprint map against the current one and emit
--  `signal` function L348-363 — `(root: &Path, path: &Path, event: &str, fp: Option<&FileFingerprint>) -> Value` — Build one signal record in the documented shape.
--  `validate_params` function L371-405 — `(p: &FilesystemFeedParams) -> Result<(), FeedError>` — Synchronous, no-IO-beyond-stat validation of filesystem params.
--  `tests` module L408-698 — `-` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `params_for` function L411-416 — `(root: PathBuf) -> FilesystemFeedParams` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `defaults_match_documented_shape` function L419-426 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `params_round_trip_through_serde` function L429-437 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `params_apply_defaults_when_only_root_given` function L440-446 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `cursor_round_trips` function L449-466 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `defaults_use_the_cadence_floor` function L469-473 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate_accepts_a_real_deep_directory` function L476-482 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate_rejects_relative_root` function L485-491 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate_rejects_too_shallow_root` function L494-501 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate_rejects_nonexistent_root` function L504-510 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate_rejects_non_directory_root` function L513-520 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate_rejects_malformed_include_glob` function L523-531 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `validate_rejects_malformed_exclude_glob` function L534-542 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `write_file` function L546-552 — `(dir: &Path, rel: &str, contents: &str)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `matchers` function L554-558 — `(include: &[&str], exclude: &[&str]) -> (GlobSet, GlobSet)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `default_matchers` function L560-565 — `() -> (GlobSet, GlobSet)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `empty_cursor_emits_created_for_each_match` function L568-577 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `unchanged_file_emits_nothing` function L580-587 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `modified_file_emits_modified` function L590-602 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `deleted_file_emits_deleted` function L605-617 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `exclude_glob_skips_matching_files` function L620-628 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `recursive_false_ignores_subdirs` function L631-639 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `cursor_diff_round_trip_through_serde` function L642-653 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
--  `run_writes_signal_jsonl_and_advances_cursor` function L656-697 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `default_recursive` function L69-71 — `() -> bool` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `default_copy_files` function L73-75 — `() -> bool` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `MAX_COPY_BYTES` variable L80 — `: u64` — Files larger than this are not copied (a signal is still emitted).
+-  `default_include` function L82-84 — `() -> Vec<String>` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `default_exclude` function L86-98 — `() -> Vec<String>` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `FilesystemFeedParams` type L100-110 — `impl Default for FilesystemFeedParams` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `default` function L101-109 — `() -> Self` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `FilesystemFeedTemplate` type L139-274 — `impl FeedTemplate for FilesystemFeedTemplate` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `name` function L140-142 — `(&self) -> &'static str` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate` function L144-148 — `(&self, params: &TemplateParams) -> Result<(), FeedError>` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `param_schema` function L150-197 — `(&self) -> Vec<crate::param_schema::ParamSpec>` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `defaults` function L199-204 — `(&self, _params: &TemplateParams) -> FeedDefaults` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `run` function L206-273 — `( &self, _ctx: &TemplateCtx, params: &TemplateParams, feed_dir: &Path, cursor: &...` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `parse_cursor` function L280-284 — `(cursor: &Value) -> BTreeMap<PathBuf, FileFingerprint>` — Parse a persisted cursor into its fingerprint map.
+-  `build_matcher` function L289-300 — `(patterns: &[String]) -> Result<GlobSet, FeedError>` — Compile a list of glob patterns into a [`GlobSet`].
+-  `scan` function L305-351 — `( root: &Path, recursive: bool, include: &GlobSet, exclude: &GlobSet, ) -> Resul...` — Walk `root` and build the current fingerprint map for every file
+-  `diff` function L357-378 — `( root: &Path, prev: &BTreeMap<PathBuf, FileFingerprint>, curr: &BTreeMap<PathBu...` — Diff the previous fingerprint map against the current one and emit
+-  `signal` function L382-397 — `(root: &Path, path: &Path, event: &str, fp: Option<&FileFingerprint>) -> Value` — Build one signal record in the documented shape.
+-  `sync_copy` function L407-449 — `(feed_dir: &Path, signal: &Value) -> u64` — Apply one signal to the durable mirror under `<feed_dir>/files/`.
+-  `validate_params` function L457-491 — `(p: &FilesystemFeedParams) -> Result<(), FeedError>` — Synchronous, no-IO-beyond-stat validation of filesystem params.
+-  `tests` module L494-867 — `-` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `params_for` function L497-502 — `(root: PathBuf) -> FilesystemFeedParams` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `defaults_match_documented_shape` function L505-512 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `params_round_trip_through_serde` function L515-523 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `params_apply_defaults_when_only_root_given` function L526-532 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `cursor_round_trips` function L535-552 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `defaults_use_the_cadence_floor` function L555-559 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_accepts_a_real_deep_directory` function L562-568 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_relative_root` function L571-577 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_too_shallow_root` function L580-587 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_nonexistent_root` function L590-596 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_non_directory_root` function L599-606 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_malformed_include_glob` function L609-617 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `validate_rejects_malformed_exclude_glob` function L620-628 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `write_file` function L632-638 — `(dir: &Path, rel: &str, contents: &str)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `matchers` function L640-644 — `(include: &[&str], exclude: &[&str]) -> (GlobSet, GlobSet)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `default_matchers` function L646-651 — `() -> (GlobSet, GlobSet)` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `empty_cursor_emits_created_for_each_match` function L654-663 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `unchanged_file_emits_nothing` function L666-673 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `modified_file_emits_modified` function L676-688 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `deleted_file_emits_deleted` function L691-703 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `exclude_glob_skips_matching_files` function L706-714 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `recursive_false_ignores_subdirs` function L717-725 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `cursor_diff_round_trip_through_serde` function L728-739 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `run_writes_signal_jsonl_and_advances_cursor` function L742-783 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `run_copies_files_into_feed_dir_by_default` function L786-804 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `run_mirrors_source_deletion` function L807-832 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `run_skips_copy_when_disabled` function L835-853 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+-  `sync_copy_skips_oversize_files` function L856-866 — `()` — - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
 
 #### crates/arawn-feeds/src/clients/github.rs
 
@@ -9733,20 +9740,21 @@
 
 #### crates/arawn-tui/src/event.rs
 
-- pub `map_key_event` function L7-67 — `( key: KeyEvent, focus: Focus, is_generating: bool, has_modal: bool, has_autocom...` — Map a crossterm KeyEvent to an Action, given the current focus.
--  `map_main_key` function L69-85 — `(key: KeyEvent) -> Option<Action>`
--  `map_modal_key` function L87-102 — `(key: KeyEvent) -> Option<Action>`
--  `map_sidebar_key` function L104-112 — `(key: KeyEvent) -> Option<Action>`
--  `tests` module L115-228 — `-`
--  `key` function L117-119 — `(code: KeyCode) -> KeyEvent`
--  `ctrl` function L121-123 — `(c: char) -> KeyEvent`
--  `ctrl_c_quits_from_any_focus` function L126-135 — `()`
--  `tab_toggles_from_any_focus` function L138-147 — `()`
--  `esc_cancels_when_generating` function L150-161 — `()`
--  `main_focus_typing` function L164-177 — `()`
--  `main_focus_scrolling` function L180-193 — `()`
--  `ctrl_e_toggles_tool_results` function L196-207 — `()`
--  `sidebar_focus_navigation` function L210-227 — `()`
+- pub `map_key_event` function L7-75 — `( key: KeyEvent, focus: Focus, is_generating: bool, has_modal: bool, has_autocom...` — Map a crossterm KeyEvent to an Action, given the current focus.
+-  `map_main_key` function L77-93 — `(key: KeyEvent) -> Option<Action>`
+-  `map_modal_key` function L95-110 — `(key: KeyEvent) -> Option<Action>`
+-  `map_sidebar_key` function L112-120 — `(key: KeyEvent) -> Option<Action>`
+-  `tests` module L123-248 — `-`
+-  `key` function L125-127 — `(code: KeyCode) -> KeyEvent`
+-  `ctrl` function L129-131 — `(c: char) -> KeyEvent`
+-  `ctrl_c_quits_from_any_focus` function L134-143 — `()`
+-  `tab_toggles_from_any_focus` function L146-155 — `()`
+-  `esc_cancels_when_generating` function L158-169 — `()`
+-  `main_focus_typing` function L172-185 — `()`
+-  `main_focus_scrolling` function L188-201 — `()`
+-  `ctrl_t_toggles_tool_results` function L204-215 — `()`
+-  `ctrl_a_and_ctrl_e_are_line_start_end` function L218-227 — `()`
+-  `sidebar_focus_navigation` function L230-247 — `()`
 
 #### crates/arawn-tui/src/lib.rs
 
@@ -10007,59 +10015,67 @@
 - pub `TemplateChoice` struct L34-37 — `{ name: String, description: String }` — One template the user can pick in stage 1.
 - pub `WatchStage` enum L41-44 — `PickTemplate | FillForm` — Which stage of the flow the modal is in.
 - pub `DiscoveryChoice` struct L49-53 — `{ label: String, hint: Option<String>, value: String }` — One provider-discovered choice for a discoverable field (T-F).
-- pub `FieldState` struct L59-65 — `{ spec: FeedParamSpecDto, value: String, choices: Option<Vec<DiscoveryChoice>> }` — A single editable form row.
-- pub `PickerState` struct L117-120 — `{ field: usize, index: usize }` — Active discovery sub-screen: which field it's choosing for + cursor.
-- pub `WatchModalState` struct L123-139 — `{ stage: WatchStage, templates: Vec<TemplateChoice>, template_index: usize, temp...` — State for the `/watch` registration modal.
-- pub `WatchOutcome` enum L143-161 — `None | TemplatePicked | Submit | Discover | Cancel` — What the event loop should do after a key press.
-- pub `new` function L165-178 — `(mut templates: Vec<TemplateChoice>) -> Self` — Open at stage 1 with the given template list.
-- pub `enter_form` function L183-213 — `( &mut self, template: &str, params: Vec<FeedParamSpecDto>, default_cadence: &st...` — Transition into the form once the schema has been fetched.
-- pub `set_field_choices` function L218-231 — `(&mut self, field_key: &str, choices: Vec<DiscoveryChoice>)` — Feed provider-discovered rows into a field (called by the event loop
-- pub `handle_key` function L237-242 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
-- pub `render_watch_modal` function L506-545 — `(state: &WatchModalState, frame: &mut Frame)` — `feed_register` RPCs.
+- pub `FieldState` struct L59-69 — `{ spec: FeedParamSpecDto, value: String, cursor: usize, choices: Option<Vec<Disc...` — A single editable form row.
+- pub `PickerState` struct L172-175 — `{ field: usize, index: usize }` — Active discovery sub-screen: which field it's choosing for + cursor.
+- pub `WatchModalState` struct L178-194 — `{ stage: WatchStage, templates: Vec<TemplateChoice>, template_index: usize, temp...` — State for the `/watch` registration modal.
+- pub `WatchOutcome` enum L198-216 — `None | TemplatePicked | Submit | Discover | Cancel` — What the event loop should do after a key press.
+- pub `new` function L220-233 — `(mut templates: Vec<TemplateChoice>) -> Self` — Open at stage 1 with the given template list.
+- pub `enter_form` function L238-268 — `( &mut self, template: &str, params: Vec<FeedParamSpecDto>, default_cadence: &st...` — Transition into the form once the schema has been fetched.
+- pub `set_field_choices` function L273-286 — `(&mut self, field_key: &str, choices: Vec<DiscoveryChoice>)` — Feed provider-discovered rows into a field (called by the event loop
+- pub `handle_key` function L292-297 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
+- pub `render_watch_modal` function L589-628 — `(state: &WatchModalState, frame: &mut Frame)` — `feed_register` RPCs.
 -  `FEED_ID_KEY` variable L29 — `: &str` — Sentinel keys for the two synthetic fields that aren't template params.
 -  `CADENCE_KEY` variable L30 — `: &str` — `feed_register` RPCs.
--  `FieldState` type L67-113 — `= FieldState` — `feed_register` RPCs.
--  `from_spec` function L68-85 — `(spec: FeedParamSpecDto) -> Self` — `feed_register` RPCs.
--  `synthetic` function L87-101 — `(key: &str, label: &str, required: bool, value: String, help: &str) -> Self` — `feed_register` RPCs.
--  `is_bool` function L103-105 — `(&self) -> bool` — `feed_register` RPCs.
--  `enum_values` function L107-112 — `(&self) -> Option<&[String]>` — `feed_register` RPCs.
--  `WatchModalState` type L163-469 — `= WatchModalState` — `feed_register` RPCs.
--  `focused_field` function L233-235 — `(&mut self) -> Option<&mut FieldState>` — `feed_register` RPCs.
--  `handle_pick_key` function L244-263 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
--  `handle_form_key` function L265-327 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
--  `cycle_focused` function L330-349 — `(&mut self, forward: bool)` — Advance a bool toggle or enum selector on the focused field.
--  `focused_is_discoverable` function L351-355 — `(&self) -> bool` — `feed_register` RPCs.
--  `open_picker` function L359-377 — `(&mut self) -> WatchOutcome` — Open the discovery pick-list for the focused field: use cached choices
--  `handle_picker_key` function L380-415 — `(&mut self, key: KeyEvent) -> WatchOutcome` — Keys while the discovery pick-list is open.
--  `build_submit` function L419-468 — `(&mut self) -> WatchOutcome` — Validate + coerce all fields into a `feed_register` payload, or return
--  `coerce_param` function L473-504 — `(spec: &FeedParamSpecDto, raw: &str) -> Result<Option<Value>, String>` — Coerce a raw field value into JSON per its kind.
--  `render_picker_lines` function L548-592 — `(state: &WatchModalState) -> Vec<Line<'static>>` — The discovery pick-list sub-screen (a focused field's provider choices).
--  `render_pick_lines` function L594-624 — `(state: &WatchModalState) -> Vec<Line<'static>>` — `feed_register` RPCs.
--  `render_form_lines` function L626-686 — `(state: &WatchModalState) -> Vec<Line<'static>>` — `feed_register` RPCs.
--  `render_field_value` function L689-704 — `(f: &FieldState) -> String` — How a field's current value reads on screen (with a caret on text fields).
--  `centered_rect` function L706-715 — `(width: u16, height: u16, area: Rect) -> Rect` — `feed_register` RPCs.
--  `tests` module L718-1043 — `-` — `feed_register` RPCs.
--  `key` function L721-723 — `(code: KeyCode) -> KeyEvent` — `feed_register` RPCs.
--  `typ` function L725-729 — `(state: &mut WatchModalState, s: &str)` — `feed_register` RPCs.
--  `spec` function L731-741 — `(key: &str, kind: FeedParamKindDto, required: bool, default: Option<Value>) -> F...` — `feed_register` RPCs.
--  `spec_discoverable` function L743-753 — `(key: &str) -> FeedParamSpecDto` — `feed_register` RPCs.
--  `fs_form` function L755-775 — `() -> WatchModalState` — `feed_register` RPCs.
--  `pick_stage_navigates_and_selects` function L778-789 — `()` — `feed_register` RPCs.
--  `enter_form_seeds_feed_id_params_and_cadence` function L792-803 — `()` — `feed_register` RPCs.
--  `submit_blocked_until_required_filled` function L806-816 — `()` — `feed_register` RPCs.
--  `submit_payload_matches_text_command_shape` function L819-837 — `()` — `feed_register` RPCs.
--  `bool_field_toggles_on_space_and_arrows` function L840-847 — `()` — `feed_register` RPCs.
--  `list_field_splits_on_whitespace_and_commas` function L850-868 — `()` — `feed_register` RPCs.
--  `int_validation_rejects_non_numbers` function L871-886 — `()` — `feed_register` RPCs.
--  `changed_cadence_becomes_override` function L889-905 — `()` — `feed_register` RPCs.
--  `submit_is_wire_compatible_with_feed_register` function L913-960 — `()` — End-to-end shape check (ARAWN-I-0058 T-E): a full modal flow — pick a
--  `discoverable_form` function L962-970 — `() -> WatchModalState` — `feed_register` RPCs.
--  `choices` function L972-977 — `() -> Vec<DiscoveryChoice>` — `feed_register` RPCs.
--  `enter_on_discoverable_field_requests_discovery_then_picks` function L980-999 — `()` — `feed_register` RPCs.
--  `cached_choices_open_picker_without_refetch` function L1002-1010 — `()` — `feed_register` RPCs.
--  `empty_discovery_falls_back_to_free_text` function L1013-1022 — `()` — `feed_register` RPCs.
--  `esc_in_picker_returns_to_form_without_cancelling` function L1025-1034 — `()` — `feed_register` RPCs.
--  `esc_cancels_in_both_stages` function L1037-1042 — `()` — `feed_register` RPCs.
+-  `FieldState` type L71-168 — `= FieldState` — `feed_register` RPCs.
+-  `from_spec` function L72-91 — `(spec: FeedParamSpecDto) -> Self` — `feed_register` RPCs.
+-  `synthetic` function L93-109 — `(key: &str, label: &str, required: bool, value: String, help: &str) -> Self` — `feed_register` RPCs.
+-  `is_bool` function L111-113 — `(&self) -> bool` — `feed_register` RPCs.
+-  `enum_values` function L115-120 — `(&self) -> Option<&[String]>` — `feed_register` RPCs.
+-  `is_text_input` function L124-126 — `(&self) -> bool` — A free-text field (text/path/int/since/list) — i.e.
+-  `char_len` function L128-130 — `(&self) -> usize` — `feed_register` RPCs.
+-  `insert` function L132-138 — `(&mut self, c: char)` — `feed_register` RPCs.
+-  `backspace` function L140-151 — `(&mut self)` — `feed_register` RPCs.
+-  `cursor_left` function L153-155 — `(&mut self)` — `feed_register` RPCs.
+-  `cursor_right` function L157-161 — `(&mut self)` — `feed_register` RPCs.
+-  `cursor_to_end` function L165-167 — `(&mut self)` — Reset the caret to the end (after a value is set programmatically, e.g.
+-  `WatchModalState` type L218-552 — `= WatchModalState` — `feed_register` RPCs.
+-  `focused_field` function L288-290 — `(&mut self) -> Option<&mut FieldState>` — `feed_register` RPCs.
+-  `handle_pick_key` function L299-318 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
+-  `handle_form_key` function L320-409 — `(&mut self, key: KeyEvent) -> WatchOutcome` — `feed_register` RPCs.
+-  `cycle_focused` function L412-431 — `(&mut self, forward: bool)` — Advance a bool toggle or enum selector on the focused field.
+-  `focused_is_discoverable` function L433-437 — `(&self) -> bool` — `feed_register` RPCs.
+-  `open_picker` function L441-459 — `(&mut self) -> WatchOutcome` — Open the discovery pick-list for the focused field: use cached choices
+-  `handle_picker_key` function L462-498 — `(&mut self, key: KeyEvent) -> WatchOutcome` — Keys while the discovery pick-list is open.
+-  `build_submit` function L502-551 — `(&mut self) -> WatchOutcome` — Validate + coerce all fields into a `feed_register` payload, or return
+-  `coerce_param` function L556-587 — `(spec: &FeedParamSpecDto, raw: &str) -> Result<Option<Value>, String>` — Coerce a raw field value into JSON per its kind.
+-  `render_picker_lines` function L631-675 — `(state: &WatchModalState) -> Vec<Line<'static>>` — The discovery pick-list sub-screen (a focused field's provider choices).
+-  `render_pick_lines` function L677-707 — `(state: &WatchModalState) -> Vec<Line<'static>>` — `feed_register` RPCs.
+-  `render_form_lines` function L709-769 — `(state: &WatchModalState) -> Vec<Line<'static>>` — `feed_register` RPCs.
+-  `render_field_value` function L773-795 — `(f: &FieldState, focused: bool) -> String` — How a field's current value reads on screen.
+-  `centered_rect` function L797-806 — `(width: u16, height: u16, area: Rect) -> Rect` — `feed_register` RPCs.
+-  `tests` module L809-1154 — `-` — `feed_register` RPCs.
+-  `key` function L812-814 — `(code: KeyCode) -> KeyEvent` — `feed_register` RPCs.
+-  `typ` function L816-820 — `(state: &mut WatchModalState, s: &str)` — `feed_register` RPCs.
+-  `spec` function L822-832 — `(key: &str, kind: FeedParamKindDto, required: bool, default: Option<Value>) -> F...` — `feed_register` RPCs.
+-  `spec_discoverable` function L834-844 — `(key: &str) -> FeedParamSpecDto` — `feed_register` RPCs.
+-  `fs_form` function L846-866 — `() -> WatchModalState` — `feed_register` RPCs.
+-  `pick_stage_navigates_and_selects` function L869-880 — `()` — `feed_register` RPCs.
+-  `enter_form_seeds_feed_id_params_and_cadence` function L883-894 — `()` — `feed_register` RPCs.
+-  `submit_blocked_until_required_filled` function L897-907 — `()` — `feed_register` RPCs.
+-  `submit_payload_matches_text_command_shape` function L910-928 — `()` — `feed_register` RPCs.
+-  `bool_field_toggles_on_space_and_arrows` function L931-938 — `()` — `feed_register` RPCs.
+-  `list_field_splits_on_whitespace_and_commas` function L941-959 — `()` — `feed_register` RPCs.
+-  `int_validation_rejects_non_numbers` function L962-977 — `()` — `feed_register` RPCs.
+-  `changed_cadence_becomes_override` function L980-996 — `()` — `feed_register` RPCs.
+-  `submit_is_wire_compatible_with_feed_register` function L1004-1051 — `()` — End-to-end shape check (ARAWN-I-0058 T-E): a full modal flow — pick a
+-  `discoverable_form` function L1053-1061 — `() -> WatchModalState` — `feed_register` RPCs.
+-  `choices` function L1063-1068 — `() -> Vec<DiscoveryChoice>` — `feed_register` RPCs.
+-  `enter_on_discoverable_field_requests_discovery_then_picks` function L1071-1090 — `()` — `feed_register` RPCs.
+-  `cached_choices_open_picker_without_refetch` function L1093-1101 — `()` — `feed_register` RPCs.
+-  `empty_discovery_falls_back_to_free_text` function L1104-1113 — `()` — `feed_register` RPCs.
+-  `esc_in_picker_returns_to_form_without_cancelling` function L1116-1125 — `()` — `feed_register` RPCs.
+-  `text_field_supports_midstring_caret_editing` function L1128-1145 — `()` — `feed_register` RPCs.
+-  `esc_cancels_in_both_stages` function L1148-1153 — `()` — `feed_register` RPCs.
 
 #### crates/arawn-tui/src/width.rs
 
