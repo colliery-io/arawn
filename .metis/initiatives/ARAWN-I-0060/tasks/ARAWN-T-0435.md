@@ -4,14 +4,14 @@ level: task
 title: "T-F: TUI — file-into-X framing + cross-lens hit provenance"
 short_code: "ARAWN-T-0435"
 created_at: 2026-05-27T02:35:59.477701+00:00
-updated_at: 2026-05-27T02:35:59.477701+00:00
+updated_at: 2026-05-27T14:28:08.684173+00:00
 parent: ARAWN-I-0060
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -44,6 +44,10 @@ wherever search hits render).
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] Sidebar/status shows the write-target framing, not "scoped to".
 - [ ] Search-result rendering attributes hits to their source lens.
 - [ ] `arawn-tui` snapshot tests updated to the new labels; `angreal check
@@ -55,4 +59,9 @@ Depends on [[ARAWN-T-0431]] (hits carry source lens) and [[ARAWN-T-0432]]
 
 ## Status Updates
 
-*To be added during implementation*
+**2026-05-27 — Done** (commit `9590204`). Status bar shows `✎ <lens>` to convey
+the write-target (where new learnings file), defaulting to `scratch` rather than
+"no lens". Search-hit provenance was already carried in the tools' JSON (the
+`lens` field per hit, shown in expandable tool output), so no extra TUI rendering
+was needed. Regenerated 27 status-bar snapshots (label-only drift). `arawn-tui`
+248/0; full workspace suite 2075/0; `check workspace` clean.

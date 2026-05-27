@@ -4,14 +4,14 @@ level: task
 title: "T-D: Decouple persona from active lens (default assistant)"
 short_code: "ARAWN-T-0433"
 created_at: 2026-05-27T02:35:57.015227+00:00
-updated_at: 2026-05-27T02:35:57.015227+00:00
+updated_at: 2026-05-27T14:28:07.214395+00:00
 parent: ARAWN-I-0060
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -47,6 +47,10 @@ Feature — `arawn-engine/system_prompt.rs`, `query_engine.rs`,
 
 ## Acceptance Criteria
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 - [ ] Chat system prompt uses `assistant` regardless of any current/target lens.
 - [ ] No session-build path reads `lens.identity_profile` to pick the chat
       persona.
@@ -58,4 +62,9 @@ Depends on [[ARAWN-T-0432]] (active lens demoted). Independent of T-E/T-F.
 
 ## Status Updates
 
-*To be added during implementation*
+**2026-05-27 — Done** (commit `5517c2a`). Both PromptContext build sites
+(`startup/engine.rs`, `local_service/mod.rs`) now set
+`identity_profile = IdentityProfile::Assistant` instead of `lens.identity_profile`.
+The lens column is untouched (still stored/settable; matters for writes + AWEN)
+but no longer drives the chat system prompt. `arawn` lib 57/0; build clean.
+Coding-persona-on-demand left as a future follow-up.

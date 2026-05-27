@@ -4,14 +4,14 @@ level: initiative
 title: "Lens-agnostic chat — read across all lenses, file into one"
 short_code: "ARAWN-I-0060"
 created_at: 2026-05-27T02:34:56.579533+00:00
-updated_at: 2026-05-27T02:34:56.579533+00:00
+updated_at: 2026-05-27T14:28:13.813305+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
