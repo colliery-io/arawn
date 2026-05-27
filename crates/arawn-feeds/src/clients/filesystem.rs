@@ -413,9 +413,17 @@ fn sync_copy(feed_dir: &Path, signal: &Value) -> u64 {
     let dest = feed_dir.join("files").join(rel);
     match event {
         "created" | "modified" => {
-            let size = signal.get("size_bytes").and_then(Value::as_u64).unwrap_or(0);
+            let size = signal
+                .get("size_bytes")
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
             if size > MAX_COPY_BYTES {
-                tracing::warn!(rel, size, cap = MAX_COPY_BYTES, "filesystem feed: skipping oversize file copy");
+                tracing::warn!(
+                    rel,
+                    size,
+                    cap = MAX_COPY_BYTES,
+                    "filesystem feed: skipping oversize file copy"
+                );
                 return 0;
             }
             let Some(src) = signal.get("path").and_then(Value::as_str) else {
@@ -473,7 +481,10 @@ fn validate_params(p: &FilesystemFeedParams) -> Result<(), FeedError> {
     }
 
     let meta = std::fs::metadata(&p.root).map_err(|e| {
-        FeedError::InvalidParams(format!("root '{}' is not accessible: {e}", p.root.display()))
+        FeedError::InvalidParams(format!(
+            "root '{}' is not accessible: {e}",
+            p.root.display()
+        ))
     })?;
     if !meta.is_dir() {
         return Err(FeedError::InvalidParams(format!(
@@ -545,10 +556,7 @@ mod tests {
         let v = serde_json::to_value(&cursor).unwrap();
         let back: FilesystemFeedCursor = serde_json::from_value(v).unwrap();
         assert_eq!(back.files.len(), 1);
-        assert_eq!(
-            back.files.get(&PathBuf::from("a.txt")).unwrap().mtime,
-            1234
-        );
+        assert_eq!(back.files.get(&PathBuf::from("a.txt")).unwrap().mtime, 1234);
     }
 
     #[test]
@@ -638,8 +646,10 @@ mod tests {
     }
 
     fn matchers(include: &[&str], exclude: &[&str]) -> (GlobSet, GlobSet) {
-        let inc = build_matcher(&include.iter().map(|s| s.to_string()).collect::<Vec<_>>()).unwrap();
-        let exc = build_matcher(&exclude.iter().map(|s| s.to_string()).collect::<Vec<_>>()).unwrap();
+        let inc =
+            build_matcher(&include.iter().map(|s| s.to_string()).collect::<Vec<_>>()).unwrap();
+        let exc =
+            build_matcher(&exclude.iter().map(|s| s.to_string()).collect::<Vec<_>>()).unwrap();
         (inc, exc)
     }
 

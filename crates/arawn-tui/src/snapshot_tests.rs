@@ -11,7 +11,7 @@ mod tests {
     use crate::render::render;
     use crate::snapshot::{buffer_to_snapshot, buffer_to_styled_snapshot};
 
-    use arawn_service::{SessionInfo, WorkstreamInfo};
+    use arawn_service::{LensInfo, SessionInfo};
 
     fn make_terminal(w: u16, h: u16) -> Terminal<TestBackend> {
         Terminal::new(TestBackend::new(w, h)).unwrap()
@@ -85,17 +85,17 @@ mod tests {
     // --- Sidebar populated ---
 
     #[test]
-    fn snapshot_sidebar_with_workstreams() {
+    fn snapshot_sidebar_with_lenses() {
         let mut app = App::new();
         app.focus = Focus::Sidebar;
-        app.workstreams = vec![
-            WorkstreamInfo {
+        app.lenses = vec![
+            LensInfo {
                 id: Uuid::nil(),
                 name: "scratch".into(),
                 root_dir: PathBuf::from("/tmp"),
                 created_at: Utc.with_ymd_and_hms(2025, 1, 15, 12, 0, 0).unwrap(),
             },
-            WorkstreamInfo {
+            LensInfo {
                 id: Uuid::nil(),
                 name: "home".into(),
                 root_dir: PathBuf::from("/tmp"),
@@ -104,10 +104,10 @@ mod tests {
         ];
         app.sessions = vec![SessionInfo {
             id: Uuid::nil(),
-            workstream_id: None,
+            lens_id: None,
             created_at: Utc.with_ymd_and_hms(2025, 1, 15, 12, 0, 0).unwrap(),
         }];
-        app.current_workstream = app.workstreams.first().cloned();
+        app.current_lens = app.lenses.first().cloned();
         app.current_session = app.sessions.first().cloned();
 
         let mut terminal = make_terminal(100, 30);
@@ -133,7 +133,7 @@ mod tests {
     fn snapshot_focus_sidebar() {
         let mut app = App::new();
         app.focus = Focus::Sidebar;
-        app.workstreams = vec![WorkstreamInfo {
+        app.lenses = vec![LensInfo {
             id: Uuid::nil(),
             name: "scratch".into(),
             root_dir: PathBuf::from("/tmp"),
@@ -226,9 +226,9 @@ mod tests {
                 period_key: "2026-05-19".into(),
                 generated_at: "2026-05-19T07:00:00Z".into(),
                 status: "open".into(),
-                workstreams_scanned: serde_json::json!([]),
+                lenses_scanned: serde_json::json!([]),
                 priorities_confirmed_at: None,
-            recovered: false,
+                recovered: false,
             },
             items: vec![
                 arawn_ceremonies::service::ItemDto {
@@ -297,9 +297,9 @@ mod tests {
                 period_key: "2026-05-19".into(),
                 generated_at: "2026-05-19T07:00:00Z".into(),
                 status: "open".into(),
-                workstreams_scanned: serde_json::json!([]),
+                lenses_scanned: serde_json::json!([]),
                 priorities_confirmed_at: None,
-            recovered: false,
+                recovered: false,
             },
             items: vec![
                 mk_item("attn-1", "attention", 0, "Reply Alice RFC-0042"),

@@ -1,12 +1,9 @@
-
-
 use crate::action::Action;
 use crate::command::{CommandResult, execute_command, parse_command};
 
+use super::DOUBLE_ESC_WINDOW;
 use super::{App, ChatMessage, ChatRole, Focus};
 use super::{default_export_path, render_conversation_markdown, shellexpand_tilde};
-use super::DOUBLE_ESC_WINDOW;
-
 
 impl App {
     /// T-0363: handle `/export [path]` — write the current
@@ -62,14 +59,10 @@ impl App {
     /// — that's acceptable because the toast still tells the user
     /// what we attempted.
     pub(super) fn handle_copy_last_response(&mut self) {
-        let body = self
-            .messages
-            .iter()
-            .rev()
-            .find_map(|m| match &m.role {
-                ChatRole::Assistant => Some(m.content.clone()),
-                _ => None,
-            });
+        let body = self.messages.iter().rev().find_map(|m| match &m.role {
+            ChatRole::Assistant => Some(m.content.clone()),
+            _ => None,
+        });
         match body {
             Some(text) if !text.trim().is_empty() => {
                 crate::toast::write_osc52_clipboard(&text);
@@ -97,11 +90,7 @@ impl App {
     /// I-0035 Phase 4 (T-0359): enqueue a 1-line toast to surface
     /// above the status bar. Renderer drops expired toasts lazily;
     /// callers don't need to think about TTLs.
-    pub fn post_toast(
-        &mut self,
-        message: impl Into<String>,
-        level: crate::toast::ToastLevel,
-    ) {
+    pub fn post_toast(&mut self, message: impl Into<String>, level: crate::toast::ToastLevel) {
         crate::toast::enqueue(
             &mut self.toast_queue,
             crate::toast::Toast::new(message, level),
@@ -236,9 +225,9 @@ impl App {
                             | CommandResult::RememberFact(_)
                             | CommandResult::MemorySummary
                             | CommandResult::ForgetEntity(_)
-                            | CommandResult::WorkstreamCreate(_)
-                            | CommandResult::WorkstreamList
-                            | CommandResult::WorkstreamSwitch(_)
+                            | CommandResult::LensCreate(_)
+                            | CommandResult::LensList
+                            | CommandResult::LensSwitch(_)
                             | CommandResult::SessionNew
                             | CommandResult::SessionList
                             | CommandResult::PromoteSession(_)
@@ -340,7 +329,7 @@ impl App {
             }
             Action::SidebarDown => {
                 if self.focus == Focus::Sidebar {
-                    let max = self.workstreams.len().saturating_sub(1);
+                    let max = self.lenses.len().saturating_sub(1);
                     self.sidebar_ws_index = (self.sidebar_ws_index + 1).min(max);
                 } else {
                     self.dirty = false;
@@ -363,7 +352,7 @@ impl App {
             }
             Action::ClickSidebarItem(index) => {
                 if self.focus == Focus::Sidebar {
-                    if index < self.workstreams.len() {
+                    if index < self.lenses.len() {
                         self.sidebar_ws_index = index;
                     }
                 } else {

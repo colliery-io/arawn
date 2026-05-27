@@ -39,23 +39,23 @@ pub(super) fn render_sidebar(app: &App, frame: &mut Frame, area: ratatui::layout
         theme::BORDER_INACTIVE
     };
 
-    // I-0035 Phase 3 T-A: sidebar is Workstreams-only. The previous
+    // I-0035 Phase 3 T-A: sidebar is Lenses-only. The previous
     // Sessions sub-section was removed; sessions are accessible via
     // `/session list`.
     let ws_items: Vec<ListItem> = app
-        .workstreams
+        .lenses
         .iter()
         .enumerate()
         .map(|(i, ws)| {
             let prefix = if app.focus == Focus::Sidebar
-                && app.sidebar_section == SidebarSection::Workstreams
+                && app.sidebar_section == SidebarSection::Lenses
                 && i == app.sidebar_ws_index
             {
                 "▸ "
             } else {
                 "  "
             };
-            let style = if Some(&ws.id) == app.current_workstream.as_ref().map(|w| &w.id) {
+            let style = if Some(&ws.id) == app.current_lens.as_ref().map(|w| &w.id) {
                 Style::default().add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
@@ -65,10 +65,9 @@ pub(super) fn render_sidebar(app: &App, frame: &mut Frame, area: ratatui::layout
         .collect();
 
     let ws_block = Block::default()
-        .title(" Workstreams ")
+        .title(" Lenses ")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(border_color));
     let ws_list = List::new(ws_items).block(ws_block);
     frame.render_widget(ws_list, area);
 }
-

@@ -7,36 +7,35 @@ use arawn_core::SCRATCH_NAME;
 use arawn_storage::Store;
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
-
-pub struct WorkstreamPromoteTool {
+pub struct LensPromoteTool {
     store: Arc<Mutex<Store>>,
-    router: Arc<crate::workstream_router::WorkstreamMemoryRouter>,
+    router: Arc<crate::lens_router::LensMemoryRouter>,
 }
 
-impl WorkstreamPromoteTool {
+impl LensPromoteTool {
     pub fn new(
         store: Arc<Mutex<Store>>,
-        router: Arc<crate::workstream_router::WorkstreamMemoryRouter>,
+        router: Arc<crate::lens_router::LensMemoryRouter>,
     ) -> Self {
         Self { store, router }
     }
 }
 
 #[async_trait]
-impl Tool for WorkstreamPromoteTool {
+impl Tool for LensPromoteTool {
     fn name(&self) -> &str {
-        "workstream_promote"
+        "lens_promote"
     }
 
     fn description(&self) -> &str {
-        "Move an entity from the scratch workstream into a named workstream's KB. \
+        "Move an entity from the scratch lens into a named lens's KB. \
          The entity is removed from scratch and `store_fact`-merged into the target \
          (so existing duplicates reinforce). Use this to consolidate ad-hoc notes \
-         once you know which workstream they belong to."
+         once you know which lens they belong to."
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
@@ -44,7 +43,7 @@ impl Tool for WorkstreamPromoteTool {
             "type": "object",
             "properties": {
                 "entity_id": {"type": "string", "description": "UUID of the entity to promote"},
-                "target": {"type": "string", "description": "Slug of the target workstream"}
+                "target": {"type": "string", "description": "Slug of the target lens"}
             },
             "required": ["entity_id", "target"]
         })
@@ -71,7 +70,7 @@ impl Tool for WorkstreamPromoteTool {
         }
         if target_name == SCRATCH_NAME {
             return Ok(ToolOutput::error(
-                "target must be a real workstream, not scratch".to_string(),
+                "target must be a real lens, not scratch".to_string(),
             ));
         }
         let entity_id = match uuid::Uuid::parse_str(entity_id_str) {
@@ -83,10 +82,10 @@ impl Tool for WorkstreamPromoteTool {
             }
         };
 
-        // Verify target workstream exists.
+        // Verify target lens exists.
         {
             let store = self.store.lock().unwrap();
-            match store.find_workstream_by_name(&target_name) {
+            match store.find_lens_by_name(&target_name) {
                 Ok(Some(ws)) if ws.archived => {
                     return Ok(ToolOutput::error(format!(
                         "target '{target_name}' is archived"
@@ -95,7 +94,7 @@ impl Tool for WorkstreamPromoteTool {
                 Ok(Some(_)) => {}
                 Ok(None) => {
                     return Ok(ToolOutput::error(format!(
-                        "target workstream '{target_name}' not found"
+                        "target lens '{target_name}' not found"
                     )));
                 }
                 Err(e) => return Ok(ToolOutput::error(format!("lookup failed: {e}"))),
@@ -105,16 +104,16 @@ impl Tool for WorkstreamPromoteTool {
         // Resolve both managers via the router so caching is shared.
         let scratch_mgr = self
             .router
-            .for_workstream(SCRATCH_NAME)
+            .for_lens(SCRATCH_NAME)
             .map_err(|e| ToolError::ExecutionFailed(format!("scratch open: {e}")))?;
         let target_mgr = self
             .router
-            .for_workstream(&target_name)
+            .for_lens(&target_name)
             .map_err(|e| ToolError::ExecutionFailed(format!("target open: {e}")))?;
 
-        // Try workstream tier first, then global. Either source is fine
+        // Try lens tier first, then global. Either source is fine
         // for promotion — both belong to "scratch context."
-        let entity = match scratch_mgr.workstream.get_entity(entity_id) {
+        let entity = match scratch_mgr.lens.get_entity(entity_id) {
             Ok(Some(e)) => e,
             Ok(None) => match scratch_mgr.global.get_entity(entity_id) {
                 Ok(Some(e)) => e,
@@ -125,7 +124,7 @@ impl Tool for WorkstreamPromoteTool {
                 }
                 Err(e) => return Ok(ToolOutput::error(format!("scratch global lookup: {e}"))),
             },
-            Err(e) => return Ok(ToolOutput::error(format!("scratch workstream lookup: {e}"))),
+            Err(e) => return Ok(ToolOutput::error(format!("scratch lens lookup: {e}"))),
         };
         let scope = entity.entity_type.default_scope();
         let target_store = target_mgr.store_for(scope);
@@ -146,7 +145,7 @@ impl Tool for WorkstreamPromoteTool {
                 "to": target_name,
                 "scope": match scope {
                     arawn_memory::Scope::Global => "global",
-                    arawn_memory::Scope::Workstream => "workstream",
+                    arawn_memory::Scope::Lens => "lens",
                 },
                 "result": match result {
                     arawn_memory::StoreFactResult::Inserted { entity_id } =>
@@ -161,4 +160,3 @@ impl Tool for WorkstreamPromoteTool {
         ))
     }
 }
-

@@ -3,9 +3,9 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph};
 
+use super::truncate_to;
 use crate::app::{App, Focus};
 use crate::theme;
-use super::truncate_to;
 
 pub(super) fn render_input(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
     let prompt = "> ";
@@ -134,4 +134,3 @@ pub(super) fn render_autocomplete(
     let paragraph = Paragraph::new(items).block(block);
     frame.render_widget(paragraph, dropdown_area);
 }
-

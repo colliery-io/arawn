@@ -12,9 +12,9 @@ use arawn_feeds::templates::gmail::{
     InboxArchiveTemplate, LabelArchiveTemplate, SenderFilterTemplate,
 };
 use arawn_feeds::{
-    AtlassianFeedClient, GithubFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError,
-    FeedMeta, FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx,
-    TemplateParams,
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError,
+    FeedMeta, FeedTemplate, GithubFeedClient, GmailFeedClient, MetaStore, SlackFeedClient,
+    TemplateCtx, TemplateParams,
 };
 
 /// Minimal Gmail message JSON for tests. Only the fields the template

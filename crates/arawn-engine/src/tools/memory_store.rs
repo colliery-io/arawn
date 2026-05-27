@@ -7,8 +7,8 @@ use tracing::{debug, info};
 use arawn_embed::Embedder;
 use arawn_memory::{ConfidenceSource, Entity, EntityType, RelationType, Scope, StoreFactResult};
 
+use crate::lens_router::MemoryHandle;
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
-use crate::workstream_router::MemoryHandle;
 
 /// Tool that stores knowledge in the KB with search-before-create deduplication.
 pub struct MemoryStoreTool {
@@ -72,8 +72,8 @@ impl Tool for MemoryStoreTool {
                 },
                 "scope": {
                     "type": "string",
-                    "enum": ["global", "workstream"],
-                    "description": "Which KB tier to store in. Defaults based on entity_type: preference/person → global, others → workstream."
+                    "enum": ["global", "lens"],
+                    "description": "Which KB tier to store in. Defaults based on entity_type: preference/person → global, others → lens."
                 }
             },
             "required": ["title", "entity_type"]
@@ -116,7 +116,7 @@ impl Tool for MemoryStoreTool {
             .and_then(|v| v.as_str())
             .and_then(|s| match s {
                 "global" => Some(Scope::Global),
-                "workstream" => Some(Scope::Workstream),
+                "lens" => Some(Scope::Lens),
                 _ => None,
             })
             .unwrap_or_else(|| entity_type.default_scope());
@@ -131,7 +131,7 @@ impl Tool for MemoryStoreTool {
             entity = entity.with_content(c);
         }
 
-        // Route to appropriate store for the active workstream
+        // Route to appropriate store for the active lens
         let manager = self
             .memory
             .manager()
@@ -178,7 +178,7 @@ impl Tool for MemoryStoreTool {
         // Format output
         let scope_label = match scope {
             Scope::Global => "global",
-            Scope::Workstream => "workstream",
+            Scope::Lens => "lens",
         };
 
         match result {
@@ -213,7 +213,7 @@ impl Tool for MemoryStoreTool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use arawn_memory::MemoryManager;
     use tempfile::TempDir;
     use uuid::Uuid;
@@ -224,9 +224,9 @@ mod tests {
         crate::context::EngineToolContext,
     ) {
         let tmp = TempDir::new().unwrap();
-        std::fs::create_dir_all(tmp.path().join("workstreams/test-ws")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("lenses/test-ws")).unwrap();
         let mgr = Arc::new(MemoryManager::open(tmp.path(), "test-ws", None).unwrap());
-        let ws = Workstream::scratch(tmp.path());
+        let ws = Lens::scratch(tmp.path());
         let ctx = crate::context::EngineToolContext::new(&ws, Uuid::new_v4());
         (tmp, mgr, ctx)
     }
@@ -246,7 +246,7 @@ mod tests {
 
         assert!(!result.is_error);
         assert!(result.content.contains("Stored new fact"));
-        assert_eq!(mgr.workstream.count_all().unwrap(), 1);
+        assert_eq!(mgr.lens.count_all().unwrap(), 1);
     }
 
     #[tokio::test]
@@ -262,11 +262,11 @@ mod tests {
         .unwrap();
 
         assert_eq!(mgr.global.count_all().unwrap(), 1);
-        assert_eq!(mgr.workstream.count_all().unwrap(), 0);
+        assert_eq!(mgr.lens.count_all().unwrap(), 0);
     }
 
     #[tokio::test]
-    async fn store_decision_goes_workstream() {
+    async fn store_decision_goes_lens() {
         let (_tmp, mgr, ctx) = setup();
         let tool = MemoryStoreTool::new(mgr.clone(), None);
 
@@ -278,7 +278,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(mgr.global.count_all().unwrap(), 0);
-        assert_eq!(mgr.workstream.count_all().unwrap(), 1);
+        assert_eq!(mgr.lens.count_all().unwrap(), 1);
     }
 
     #[tokio::test]
@@ -302,7 +302,7 @@ mod tests {
             .unwrap();
 
         assert!(result.content.contains("Reinforced"));
-        assert_eq!(mgr.workstream.count_all().unwrap(), 1);
+        assert_eq!(mgr.lens.count_all().unwrap(), 1);
     }
 
     #[tokio::test]
@@ -317,7 +317,7 @@ mod tests {
         .await
         .unwrap();
 
-        let results = mgr.workstream.search_by_tags(&["rust".into()], 10).unwrap();
+        let results = mgr.lens.search_by_tags(&["rust".into()], 10).unwrap();
         assert_eq!(results.len(), 1);
     }
 
@@ -326,7 +326,7 @@ mod tests {
         let (_tmp, mgr, ctx) = setup();
         let tool = MemoryStoreTool::new(mgr.clone(), None);
 
-        // Fact defaults to workstream, but override to global
+        // Fact defaults to lens, but override to global
         tool.execute(
             &ctx,
             json!({"title": "Global fact", "entity_type": "fact", "scope": "global"}),
@@ -335,6 +335,6 @@ mod tests {
         .unwrap();
 
         assert_eq!(mgr.global.count_all().unwrap(), 1);
-        assert_eq!(mgr.workstream.count_all().unwrap(), 0);
+        assert_eq!(mgr.lens.count_all().unwrap(), 0);
     }
 }

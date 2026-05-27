@@ -186,11 +186,7 @@ ask = ["Bash", "Edit"]
             ("plan", PermissionMode::Plan),
         ] {
             let tmp = tempfile::NamedTempFile::new().unwrap();
-            write!(
-                tmp.as_file(),
-                "[permissions]\nautonomy = \"{val}\"\n"
-            )
-            .unwrap();
+            write!(tmp.as_file(), "[permissions]\nautonomy = \"{val}\"\n").unwrap();
             let cfg = load_permissions_from_file(tmp.path());
             assert_eq!(cfg.autonomy, Some(expected), "autonomy = {val}");
         }
@@ -199,11 +195,7 @@ ask = ["Bash", "Edit"]
     #[test]
     fn load_autonomy_absent_is_none() {
         let tmp = tempfile::NamedTempFile::new().unwrap();
-        write!(
-            tmp.as_file(),
-            "[permissions]\nallow = [\"Read\"]\n"
-        )
-        .unwrap();
+        write!(tmp.as_file(), "[permissions]\nallow = [\"Read\"]\n").unwrap();
         let cfg = load_permissions_from_file(tmp.path());
         assert_eq!(cfg.autonomy, None);
     }
@@ -248,5 +240,4 @@ max_iterations = 10
         let config = load_permissions_from_file(tmp.path());
         assert!(config.allow.is_empty());
     }
-
 }

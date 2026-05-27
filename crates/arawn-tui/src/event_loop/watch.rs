@@ -26,7 +26,11 @@ fn discovery_choices(value: &serde_json::Value, field_key: &str) -> Vec<Discover
     dto.rows
         .into_iter()
         .filter_map(|row| {
-            let value = row.params.get(field_key).and_then(|v| v.as_str())?.to_string();
+            let value = row
+                .params
+                .get(field_key)
+                .and_then(|v| v.as_str())?
+                .to_string();
             Some(DiscoveryChoice {
                 label: row.label,
                 hint: row.hint,
@@ -41,8 +45,7 @@ fn discovery_choices(value: &serde_json::Value, field_key: &str) -> Vec<Discover
 pub(super) async fn open_watch_modal(client: &mut WsClient, app: &mut App) {
     match client.feed_templates().await {
         Ok(value) => {
-            let infos: Vec<FeedTemplateInfo> =
-                serde_json::from_value(value).unwrap_or_default();
+            let infos: Vec<FeedTemplateInfo> = serde_json::from_value(value).unwrap_or_default();
             let choices = infos
                 .into_iter()
                 .map(|t| TemplateChoice {
@@ -91,9 +94,7 @@ pub(super) async fn handle_watch_overlay_key(
                     }
                     Err(e) => close_with_message(app, format!("/watch: bad schema payload: {e}")),
                 },
-                Err(e) => {
-                    close_with_message(app, format!("/watch: couldn't load {template}: {e}"))
-                }
+                Err(e) => close_with_message(app, format!("/watch: couldn't load {template}: {e}")),
             }
             app.dirty = true;
         }
@@ -128,8 +129,10 @@ pub(super) async fn handle_watch_overlay_key(
                 Ok(dto) => {
                     // Success: close the modal and report like the text path.
                     app.watch_overlay = None;
-                    app.messages
-                        .push(ChatMessage::new(ChatRole::System, format_feed_registered(&dto)));
+                    app.messages.push(ChatMessage::new(
+                        ChatRole::System,
+                        format_feed_registered(&dto),
+                    ));
                 }
                 Err(e) => {
                     // Keep the form open with the server's error so the user

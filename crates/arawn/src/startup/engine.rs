@@ -4,7 +4,7 @@ use arawn_engine::QueryEngineConfig;
 
 pub fn build_engine_config(
     config: &crate::ArawnConfig,
-    workstream: &arawn_core::Workstream,
+    lens: &arawn_core::Lens,
     data_dir: &str,
 ) -> QueryEngineConfig {
     let engine_llm = config.engine_llm();
@@ -25,20 +25,20 @@ pub fn build_engine_config(
             prompts_dir: Some(config.prompts_dir()),
             os: std::env::consts::OS.to_string(),
             shell: std::env::var("SHELL").unwrap_or_else(|_| "sh".into()),
-            cwd: workstream.root_dir.clone(),
-            workstream_name: workstream.name.clone(),
-            workstream_root: workstream.root_dir.clone(),
+            cwd: lens.root_dir.clone(),
+            lens_name: lens.name.clone(),
+            lens_root: lens.root_dir.clone(),
             context_files: arawn_engine::find_context_files(
-                &workstream.root_dir,
+                &lens.root_dir,
                 &std::path::PathBuf::from(data_dir),
             ),
             memories: vec![],
             session_context: String::new(),
             plugin_prompts: vec![],
             // Overridden per-session in `LocalService` from the active
-            // workstream's column; the template carries the boot workstream's
+            // lens's column; the template carries the boot lens's
             // value so single-shot CLI flows pick the right persona too.
-            identity_profile: workstream.identity_profile,
+            identity_profile: lens.identity_profile,
             // Filled in by LocalService per-query (it has access to the
             // integration registry); the template stays None.
             integration_capabilities: None,

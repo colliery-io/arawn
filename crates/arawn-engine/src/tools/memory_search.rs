@@ -8,8 +8,8 @@ use tracing::debug;
 use arawn_embed::Embedder;
 use arawn_memory::{Entity, EntityType, MemoryStore, RelationType};
 
+use crate::lens_router::MemoryHandle;
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
-use crate::workstream_router::MemoryHandle;
 
 /// Tool that searches the knowledge base using composite retrieval:
 /// semantic similarity + FTS5 text search + tag filtering + graph expansion.
@@ -67,7 +67,7 @@ impl Tool for MemorySearchTool {
                 },
                 "scope": {
                     "type": "string",
-                    "enum": ["global", "workstream", "both"],
+                    "enum": ["global", "lens", "both"],
                     "description": "Which KB tier to search (default: both)"
                 },
                 "limit": {
@@ -116,9 +116,9 @@ impl Tool for MemorySearchTool {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
-        // Resolve the active workstream's memory manager. With a
+        // Resolve the active lens's memory manager. With a
         // `MemoryHandle::Routed`, this picks the manager for the
-        // session's currently-active workstream.
+        // session's currently-active lens.
         let manager = self
             .memory
             .manager()
@@ -129,8 +129,8 @@ impl Tool for MemorySearchTool {
 
         let stores_to_search: Vec<&Arc<MemoryStore>> = match scope {
             "global" => vec![&manager.global],
-            "workstream" => vec![&manager.workstream],
-            _ => vec![&manager.global, &manager.workstream],
+            "lens" => vec![&manager.lens],
+            _ => vec![&manager.global, &manager.lens],
         };
 
         for store in &stores_to_search {
@@ -298,7 +298,7 @@ impl ScoredEntity {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use arawn_memory::{ConfidenceSource, Entity, EntityType, MemoryManager};
     use tempfile::TempDir;
     use uuid::Uuid;
@@ -309,18 +309,18 @@ mod tests {
         crate::context::EngineToolContext,
     ) {
         let tmp = TempDir::new().unwrap();
-        std::fs::create_dir_all(tmp.path().join("workstreams/test-ws")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("lenses/test-ws")).unwrap();
         let mgr = Arc::new(MemoryManager::open(tmp.path(), "test-ws", None).unwrap());
-        let ws = Workstream::scratch(tmp.path());
+        let ws = Lens::scratch(tmp.path());
         let ctx = crate::context::EngineToolContext::new(&ws, Uuid::new_v4());
         (tmp, mgr, ctx)
     }
 
     fn populate(mgr: &MemoryManager) {
-        mgr.workstream
+        mgr.lens
             .insert_entity(&Entity::new(EntityType::Fact, "Rust ownership model"))
             .unwrap();
-        mgr.workstream
+        mgr.lens
             .insert_entity(
                 &Entity::new(EntityType::Decision, "Use Rust for backend")
                     .with_content("Decided in sprint 5"),
@@ -332,7 +332,7 @@ mod tests {
                     .with_confidence(ConfidenceSource::Stated),
             )
             .unwrap();
-        mgr.workstream
+        mgr.lens
             .insert_entity(
                 &Entity::new(EntityType::Fact, "Python GIL limitations")
                     .with_tags(vec!["python".into()]),

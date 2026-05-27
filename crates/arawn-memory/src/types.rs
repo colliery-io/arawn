@@ -45,7 +45,7 @@ impl EntityType {
     pub fn default_scope(&self) -> Scope {
         match self {
             Self::Preference | Self::Person => Scope::Global,
-            Self::Decision | Self::Convention | Self::Note | Self::Fact => Scope::Workstream,
+            Self::Decision | Self::Convention | Self::Note | Self::Fact => Scope::Lens,
         }
     }
 }
@@ -55,7 +55,7 @@ impl EntityType {
 #[serde(rename_all = "lowercase")]
 pub enum Scope {
     Global,
-    Workstream,
+    Lens,
 }
 
 /// Type of relationship between entities.
@@ -176,7 +176,7 @@ pub fn compute_confidence(
 /// A knowledge entity stored in the KB.
 ///
 /// Tag model (ADR-0004):
-/// - `tags_ontology` — drawn exclusively from the owning workstream's
+/// - `tags_ontology` — drawn exclusively from the owning lens's
 ///   declared tag list. Substrate for dust clustering, `signal_query`
 ///   filtering, and other operations that need deterministic grouping.
 /// - `tags` (semantically "discovered") — free-form LLM emission.
@@ -197,11 +197,11 @@ pub struct Entity {
     pub confidence_source: ConfidenceSource,
     pub reinforcement_count: u32,
     pub superseded: bool,
-    /// Free-form LLM-emitted tags. Carries content the workstream's
+    /// Free-form LLM-emitted tags. Carries content the lens's
     /// ontology hasn't yet absorbed. See `tags_ontology` for the
     /// closed-list counterpart.
     pub tags: Vec<String>,
-    /// Closed-list tags drawn from the workstream's declared ontology.
+    /// Closed-list tags drawn from the lens's declared ontology.
     /// Filtered against the ontology at extract time — only in-list
     /// strings survive. This is the field dust clusters on.
     #[serde(default)]
@@ -254,7 +254,7 @@ impl Entity {
     }
 
     /// Set the ontology (closed-list) tags. These must come from the
-    /// workstream's declared ontology; callers that don't filter
+    /// lens's declared ontology; callers that don't filter
     /// upstream are bypassing the contract.
     pub fn with_tags_ontology(mut self, tags: Vec<String>) -> Self {
         self.tags_ontology = tags;
@@ -377,9 +377,9 @@ mod tests {
     fn default_scopes() {
         assert_eq!(EntityType::Preference.default_scope(), Scope::Global);
         assert_eq!(EntityType::Person.default_scope(), Scope::Global);
-        assert_eq!(EntityType::Decision.default_scope(), Scope::Workstream);
-        assert_eq!(EntityType::Convention.default_scope(), Scope::Workstream);
-        assert_eq!(EntityType::Fact.default_scope(), Scope::Workstream);
-        assert_eq!(EntityType::Note.default_scope(), Scope::Workstream);
+        assert_eq!(EntityType::Decision.default_scope(), Scope::Lens);
+        assert_eq!(EntityType::Convention.default_scope(), Scope::Lens);
+        assert_eq!(EntityType::Fact.default_scope(), Scope::Lens);
+        assert_eq!(EntityType::Note.default_scope(), Scope::Lens);
     }
 }

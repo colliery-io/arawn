@@ -193,7 +193,14 @@ impl EngineDispatcher {
     ) -> Result<String, CeremonyError> {
         // 5: insert the tablet.
         let tablet_id = format!("{}-{period_key}", plugin.kind());
-        insert_tablet(&self.conn, &tablet_id, plugin.kind(), period_key, now, recovered)?;
+        insert_tablet(
+            &self.conn,
+            &tablet_id,
+            plugin.kind(),
+            period_key,
+            now,
+            recovered,
+        )?;
 
         // 6: construct ctx. Pin the gather window now so gather/
         // compose see a stable [start, end) regardless of when this
@@ -415,7 +422,7 @@ fn insert_tablet(
         .lock()
         .map_err(|_| CeremonyError::Storage("connection mutex poisoned".to_string()))?;
     conn.execute(
-        "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned, recovered) \
+        "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned, recovered) \
          VALUES (?1, ?2, ?3, ?4, 'open', '[]', ?5)",
         params![tablet_id, kind, period_key, now.to_rfc3339(), recovered as i64],
     )
@@ -738,7 +745,10 @@ mod tests {
                 |row| row.get(0),
             )
             .unwrap();
-        assert_eq!(recovered, 0, "today's dispatch must not be flagged recovered");
+        assert_eq!(
+            recovered, 0,
+            "today's dispatch must not be flagged recovered"
+        );
     }
 
     // A test stub whose period_key is date-sensitive — needed for

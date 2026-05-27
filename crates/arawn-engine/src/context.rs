@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use uuid::Uuid;
 
-use arawn_core::Workstream;
+use arawn_core::Lens;
 use arawn_llm::LlmClient;
 
 use arawn_tool::{LlmPreference, LlmResolution, LlmResolverFn, ModelLimits};
@@ -17,14 +17,14 @@ const MAX_AGENT_DEPTH: u8 = 3;
 /// Implements the `arawn_tool::ToolContext` trait so it can be passed to
 /// tool execute methods as `&dyn arawn_tool::ToolContext`.
 ///
-/// Immutable for the lifetime of a session — workstream binding never changes.
+/// Immutable for the lifetime of a session — lens binding never changes.
 #[derive(Clone)]
 pub struct EngineToolContext {
     pub session_id: Uuid,
     pub working_dir: PathBuf,
-    workstream_name: String,
+    lens_name: String,
     /// Paths outside the sandbox that file tools are allowed to access.
-    /// Used for global and workstream arawn.md context files.
+    /// Used for global and lens arawn.md context files.
     pub allowed_paths: Vec<PathBuf>,
     /// LLM client for tools that need to make sub-queries (e.g. web_fetch summarization).
     llm: Option<Arc<dyn LlmClient>>,
@@ -50,7 +50,7 @@ impl std::fmt::Debug for EngineToolContext {
         f.debug_struct("EngineToolContext")
             .field("session_id", &self.session_id)
             .field("working_dir", &self.working_dir)
-            .field("workstream_name", &self.workstream_name)
+            .field("lens_name", &self.lens_name)
             .field("allowed_paths", &self.allowed_paths)
             .field("has_llm", &self.llm.is_some())
             .field("model", &self.model)
@@ -59,11 +59,11 @@ impl std::fmt::Debug for EngineToolContext {
 }
 
 impl EngineToolContext {
-    pub fn new(workstream: &Workstream, session_id: Uuid) -> Self {
+    pub fn new(lens: &Lens, session_id: Uuid) -> Self {
         Self {
             session_id,
-            working_dir: workstream.root_dir.clone(),
-            workstream_name: workstream.name.clone(),
+            working_dir: lens.root_dir.clone(),
+            lens_name: lens.name.clone(),
             allowed_paths: Vec::new(),
             llm: None,
             model: None,
@@ -129,14 +129,14 @@ impl arawn_tool::ToolContext for EngineToolContext {
         let canonical_root = self
             .working_dir
             .canonicalize()
-            .map_err(|e| format!("cannot resolve workstream root: {e}"))?;
+            .map_err(|e| format!("cannot resolve lens root: {e}"))?;
 
         // Try canonicalize first (works for existing paths)
         if let Ok(canonical) = full_path.canonicalize() {
             if canonical.starts_with(&canonical_root) || self.is_allowed_path(&canonical) {
                 return Ok(canonical);
             }
-            return Err(format!("path '{path_str}' escapes workstream root"));
+            return Err(format!("path '{path_str}' escapes lens root"));
         }
 
         // For non-existent paths (common with glob patterns), use heuristic normalization
@@ -144,7 +144,7 @@ impl arawn_tool::ToolContext for EngineToolContext {
         if normalized.starts_with(&canonical_root) || self.is_allowed_path(&normalized) {
             Ok(normalized)
         } else {
-            Err(format!("path '{path_str}' escapes workstream root"))
+            Err(format!("path '{path_str}' escapes lens root"))
         }
     }
 
@@ -198,8 +198,8 @@ impl arawn_tool::ToolContext for EngineToolContext {
         Box::new(child)
     }
 
-    fn workstream_name(&self) -> &str {
-        &self.workstream_name
+    fn lens_name(&self) -> &str {
+        &self.lens_name
     }
 
     fn allowed_paths(&self) -> &[PathBuf] {
@@ -214,22 +214,22 @@ impl arawn_tool::ToolContext for EngineToolContext {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
 
     #[test]
-    fn context_from_workstream() {
-        let ws = Workstream::new("Test WS", "/tmp/test-ws");
+    fn context_from_lens() {
+        let ws = Lens::new("Test WS", "/tmp/test-ws");
         let session_id = Uuid::new_v4();
         let ctx = EngineToolContext::new(&ws, session_id);
 
         assert_eq!(ctx.session_id, session_id);
         assert_eq!(ctx.working_dir, PathBuf::from("/tmp/test-ws"));
-        assert_eq!(arawn_tool::ToolContext::workstream_name(&ctx), "Test WS");
+        assert_eq!(arawn_tool::ToolContext::lens_name(&ctx), "Test WS");
     }
 
     #[test]
     fn context_is_clone() {
-        let ws = Workstream::new("Clone Test", "/tmp/clone");
+        let ws = Lens::new("Clone Test", "/tmp/clone");
         let ctx = EngineToolContext::new(&ws, Uuid::new_v4());
         let cloned = ctx.clone();
         assert_eq!(ctx.session_id, cloned.session_id);

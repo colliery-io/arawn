@@ -1,6 +1,6 @@
 //! Per-(subroutine, action) "forward" dispatch — the opposite of
 //! `rollback::apply_inverse`. Drives the proposal-accept path
-//! (`workstream_apply <id>`).
+//! (`lens_apply <id>`).
 
 use std::path::Path;
 use std::sync::Arc;
@@ -15,15 +15,15 @@ use crate::error::StewardError;
 use crate::journal::JournalRow;
 
 /// Context handed to the accept dispatch. Some subroutines (notably
-/// `tag-promoter`) need access to the workstream's ontology table,
+/// `tag-promoter`) need access to the lens's ontology table,
 /// which lives next to (not inside) `MemoryManager`. The KB handle
 /// alone isn't enough.
 pub struct AcceptCtx<'a> {
     pub kb: &'a Arc<MemoryManager>,
-    /// Path to the workstream's root directory (e.g.
-    /// `<data_dir>/workstreams/<name>`). Used to open
+    /// Path to the lens's root directory (e.g.
+    /// `<data_dir>/lenses/<name>`). Used to open
     /// `TagOntologyStore` for the promotion accept path.
-    pub workstream_root: &'a Path,
+    pub lens_root: &'a Path,
 }
 
 /// Apply the forward mutation described by `row.outputs_json`.
@@ -31,7 +31,7 @@ pub struct AcceptCtx<'a> {
 /// - `dust/summarize` → insert the proposed summary entity, add a
 ///   SUMMARIZES edge to each source entity.
 /// - `map/propose_relation` → add the relation.
-/// - `tag-promoter/promote_tag` → insert the tag into the workstream's
+/// - `tag-promoter/promote_tag` → insert the tag into the lens's
 ///   ontology with `added_via = 'promotion'`.
 /// - `doorwatch/propose_identity` → no graph change; the journal row's
 ///   `applied = true` flip *is* the acceptance record.
@@ -60,11 +60,11 @@ struct PromoteOutputs {
 fn promote_tag(row: &JournalRow, ctx: &AcceptCtx<'_>) -> Result<(), StewardError> {
     let payload: PromoteOutputs = serde_json::from_str(&row.outputs_json)
         .map_err(|e| StewardError::Parse(format!("tag-promoter/promote_tag payload: {e}")))?;
-    let ontology = TagOntologyStore::open_at(ctx.workstream_root).map_err(StewardError::from)?;
+    let ontology = TagOntologyStore::open_at(ctx.lens_root).map_err(StewardError::from)?;
     ontology.add(&payload.tag, AddedVia::Promotion)?;
     debug!(
         tag = %payload.tag,
-        ws_dir = ?ctx.workstream_root,
+        ws_dir = ?ctx.lens_root,
         "accept: tag promoted into ontology"
     );
     Ok(())
@@ -79,11 +79,11 @@ struct DustOutputs {
 fn dust_summarize(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError> {
     let payload: DustOutputs = serde_json::from_str(&row.outputs_json)
         .map_err(|e| StewardError::Parse(format!("dust/summarize payload: {e}")))?;
-    kb.workstream.insert_entity(&payload.summary)?;
+    kb.lens.insert_entity(&payload.summary)?;
     for src in &payload.source_ids {
-        if let Err(e) =
-            kb.workstream
-                .add_relation(payload.summary.id, RelationType::Summarizes, *src)
+        if let Err(e) = kb
+            .lens
+            .add_relation(payload.summary.id, RelationType::Summarizes, *src)
         {
             // One bad src shouldn't drop the whole apply.
             debug!(error = %e, src = %src, "dust apply: SUMMARIZES edge skipped");
@@ -109,8 +109,7 @@ fn map_propose_relation(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(),
         .map_err(|e| StewardError::Parse(format!("map/propose_relation payload: {e}")))?;
     let rel = RelationType::from_str(payload.rel.to_lowercase().as_str())
         .ok_or_else(|| StewardError::Parse(format!("unknown rel: {}", payload.rel)))?;
-    kb.workstream
-        .add_relation(payload.from_id, rel, payload.to_id)?;
+    kb.lens.add_relation(payload.from_id, rel, payload.to_id)?;
     debug!(
         from = %payload.from_id,
         rel = rel.as_str(),
@@ -134,10 +133,10 @@ mod tests {
     }
 
     /// `MemoryManager::open(data_dir, "ws", _)` actually creates the
-    /// KB at `<data_dir>/workstreams/ws/memory.db`. The matching
-    /// workstream root for the ontology table is that subdirectory.
+    /// KB at `<data_dir>/lenses/ws/memory.db`. The matching
+    /// lens root for the ontology table is that subdirectory.
     fn ws_root(tmp: &tempfile::TempDir) -> std::path::PathBuf {
-        tmp.path().join("workstreams").join("ws")
+        tmp.path().join("lenses").join("ws")
     }
 
     fn row(sub: &str, act: &str, outputs: serde_json::Value) -> JournalRow {
@@ -160,8 +159,8 @@ mod tests {
         let (tmp, kb) = setup_kb();
         let a = Entity::new(EntityType::Fact, "a");
         let b = Entity::new(EntityType::Fact, "b");
-        kb.workstream.insert_entity(&a).unwrap();
-        kb.workstream.insert_entity(&b).unwrap();
+        kb.lens.insert_entity(&a).unwrap();
+        kb.lens.insert_entity(&b).unwrap();
         let r = row(
             "map",
             "propose_relation",
@@ -172,11 +171,11 @@ mod tests {
             &r,
             &AcceptCtx {
                 kb: &kb,
-                workstream_root: &root,
+                lens_root: &root,
             },
         )
         .unwrap();
-        let rels = kb.workstream.get_relations(a.id).unwrap();
+        let rels = kb.lens.get_relations(a.id).unwrap();
         assert!(
             rels.iter()
                 .any(|x| x.target_id == b.id && matches!(x.relation_type, RelationType::RelatesTo))
@@ -188,8 +187,8 @@ mod tests {
         let (tmp, kb) = setup_kb();
         let a = Entity::new(EntityType::Note, "old project a");
         let b = Entity::new(EntityType::Note, "old project b");
-        kb.workstream.insert_entity(&a).unwrap();
-        kb.workstream.insert_entity(&b).unwrap();
+        kb.lens.insert_entity(&a).unwrap();
+        kb.lens.insert_entity(&b).unwrap();
         let summary =
             Entity::new(EntityType::Note, "summary of project x").with_content("compressed gist");
         let r = row(
@@ -202,13 +201,13 @@ mod tests {
             &r,
             &AcceptCtx {
                 kb: &kb,
-                workstream_root: &root,
+                lens_root: &root,
             },
         )
         .unwrap();
-        let fetched = kb.workstream.get_entity(summary.id).unwrap().unwrap();
+        let fetched = kb.lens.get_entity(summary.id).unwrap().unwrap();
         assert_eq!(fetched.title, "summary of project x");
-        let edges = kb.workstream.get_relations(summary.id).unwrap();
+        let edges = kb.lens.get_relations(summary.id).unwrap();
         let summarizes: Vec<_> = edges
             .iter()
             .filter(|e| matches!(e.relation_type, RelationType::Summarizes))
@@ -225,7 +224,7 @@ mod tests {
             &r,
             &AcceptCtx {
                 kb: &kb,
-                workstream_root: &root,
+                lens_root: &root,
             },
         )
         .unwrap();
@@ -248,7 +247,7 @@ mod tests {
             &r,
             &AcceptCtx {
                 kb: &kb,
-                workstream_root: &root,
+                lens_root: &root,
             },
         )
         .unwrap();
@@ -270,7 +269,7 @@ mod tests {
             &r,
             &AcceptCtx {
                 kb: &kb,
-                workstream_root: &root,
+                lens_root: &root,
             },
         )
         .unwrap_err();

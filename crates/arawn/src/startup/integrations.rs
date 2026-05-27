@@ -74,9 +74,8 @@ pub fn wire_integrations(
             client_id,
             client_secret,
         ));
-        service.register_integration(
-            Arc::clone(&gmail) as Arc<dyn arawn_integrations::Integration>
-        );
+        service
+            .register_integration(Arc::clone(&gmail) as Arc<dyn arawn_integrations::Integration>);
         registry.register(Box::new(
             arawn_integrations::gmail::GmailInboxReadTool::new(Arc::clone(&gmail)),
         ));
@@ -174,9 +173,8 @@ pub fn wire_integrations(
             client_id,
             client_secret,
         ));
-        service.register_integration(
-            Arc::clone(&drive) as Arc<dyn arawn_integrations::Integration>
-        );
+        service
+            .register_integration(Arc::clone(&drive) as Arc<dyn arawn_integrations::Integration>);
         registry.register(Box::new(arawn_integrations::drive::DriveSearchTool::new(
             Arc::clone(&drive),
         )));
@@ -252,19 +250,13 @@ pub fn wire_integrations(
             arawn_integrations::atlassian::ConfluenceGetPageTool::new(Arc::clone(&atlassian)),
         ));
         registry.register(Box::new(
-            arawn_integrations::atlassian::ConfluenceCreatePageTool::new(Arc::clone(
-                &atlassian,
-            )),
+            arawn_integrations::atlassian::ConfluenceCreatePageTool::new(Arc::clone(&atlassian)),
         ));
         registry.register(Box::new(
-            arawn_integrations::atlassian::ConfluenceUpdatePageTool::new(Arc::clone(
-                &atlassian,
-            )),
+            arawn_integrations::atlassian::ConfluenceUpdatePageTool::new(Arc::clone(&atlassian)),
         ));
         registry.register(Box::new(
-            arawn_integrations::atlassian::ConfluenceListSpacesTool::new(Arc::clone(
-                &atlassian,
-            )),
+            arawn_integrations::atlassian::ConfluenceListSpacesTool::new(Arc::clone(&atlassian)),
         ));
         info!("Atlassian integration registered (11 tools — 6 Jira, 5 Confluence)");
         // If the persisted token was minted by an older arawn
@@ -293,9 +285,7 @@ pub fn wire_integrations(
     // Register GitHub (I-0045). Read-only v1 — the connect flow
     // captures an installation_id; tools/feed templates downstream
     // mint short-lived access tokens via the cached App config.
-    let github_integration_for_feeds: Option<
-        Arc<arawn_integrations::github::GithubIntegration>,
-    >;
+    let github_integration_for_feeds: Option<Arc<arawn_integrations::github::GithubIntegration>>;
     let resolve_github = || -> Option<arawn_integrations::github::GithubAppConfig> {
         let cfg = &config.integrations.github;
         let app_id = std::env::var("ARAWN_GITHUB_APP_ID")
@@ -313,9 +303,7 @@ pub fn wire_integrations(
                 let path = std::env::var("ARAWN_GITHUB_PRIVATE_KEY_PATH")
                     .ok()
                     .filter(|s| !s.is_empty())
-                    .or_else(|| {
-                        Some(cfg.private_key_path.clone()).filter(|s| !s.is_empty())
-                    })?;
+                    .or_else(|| Some(cfg.private_key_path.clone()).filter(|s| !s.is_empty()))?;
                 match std::fs::read_to_string(&path) {
                     Ok(pem) => Some(pem),
                     Err(e) => {
@@ -336,9 +324,8 @@ pub fn wire_integrations(
             std::path::PathBuf::from(&data_dir),
             app_cfg,
         ));
-        service.register_integration(
-            Arc::clone(&github) as Arc<dyn arawn_integrations::Integration>,
-        );
+        service
+            .register_integration(Arc::clone(&github) as Arc<dyn arawn_integrations::Integration>);
         info!("GitHub integration registered (read-only — no tools yet, feeds land in T-0319+)");
         // I-0050 T-0327 — wire the late-bound cell so the bind hook
         // can run list_org_repos expansion when github:org:owner
@@ -366,9 +353,8 @@ pub fn wire_integrations(
             client_id,
             client_secret,
         ));
-        service.register_integration(
-            Arc::clone(&slack) as Arc<dyn arawn_integrations::Integration>
-        );
+        service
+            .register_integration(Arc::clone(&slack) as Arc<dyn arawn_integrations::Integration>);
         registry.register(Box::new(
             arawn_integrations::slack::SlackListChannelsTool::new(Arc::clone(&slack)),
         ));

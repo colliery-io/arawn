@@ -1,11 +1,11 @@
-//! Door-watch subroutine — proposal-only cross-workstream identity
-//! candidates. For each focus entity in the current workstream
+//! Door-watch subroutine — proposal-only cross-lens identity
+//! candidates. For each focus entity in the current lens
 //! (touched since cursor), look at a sample of entities in *every
-//! other* active workstream and ask the LLM "is any of these the same
+//! other* active lens and ask the LLM "is any of these the same
 //! thing as the focus?".
 //!
 //! Scans *all* entity types (per user direction). Per ARAWN-A-0003
-//! proposals are journaled in the source workstream and never mutate
+//! proposals are journaled in the source lens and never mutate
 //! either side.
 
 use std::sync::{Arc, Mutex};
@@ -15,7 +15,7 @@ use serde::Deserialize;
 use serde_json::json;
 use tracing::{debug, warn};
 
-use arawn_core::Workstream;
+use arawn_core::Lens;
 use arawn_llm::LlmClient;
 use arawn_memory::Entity;
 use arawn_storage::Store;
@@ -33,15 +33,15 @@ const SUBROUTINE_NAME: &str = "doorwatch";
 pub struct DoorWatchConfig {
     /// Recent entities to consider as focus per pass.
     pub focus_batch: usize,
-    /// Per-other-workstream sample size of candidates to compare against.
-    pub neighbors_per_workstream: usize,
+    /// Per-other-lens sample size of candidates to compare against.
+    pub neighbors_per_lens: usize,
 }
 
 impl Default for DoorWatchConfig {
     fn default() -> Self {
         Self {
             focus_batch: 5,
-            neighbors_per_workstream: 10,
+            neighbors_per_lens: 10,
         }
     }
 }
@@ -81,7 +81,7 @@ impl DoorWatchSubroutine {
 
 #[derive(Debug, Deserialize)]
 struct IdentityMatch {
-    to_workstream: String,
+    to_lens: String,
     to_id: String,
     #[serde(default)]
     reason: String,
@@ -98,13 +98,13 @@ impl StewardSubroutine for DoorWatchSubroutine {
     }
 
     async fn run(&self, ctx: &SubroutineCtx) -> Result<SubroutineOutcome, StewardError> {
-        let cursor_store = (self.cursor_factory)(&ctx.workstream.name)?;
+        let cursor_store = (self.cursor_factory)(&ctx.lens.name)?;
         let cursor = cursor_store.get(SUBROUTINE_NAME)?;
 
-        // Focus = entities in *this* workstream touched since cursor.
+        // Focus = entities in *this* lens touched since cursor.
         let mut focus_set: Vec<Entity> = ctx
             .memory
-            .workstream
+            .lens
             .list_all_ranked(500)
             .map_err(StewardError::from)?
             .into_iter()
@@ -116,40 +116,40 @@ impl StewardSubroutine for DoorWatchSubroutine {
             return Ok(SubroutineOutcome::default());
         }
 
-        // Other active workstreams.
-        let others: Vec<Workstream> = {
+        // Other active lenses.
+        let others: Vec<Lens> = {
             let s = self.store.lock().unwrap();
-            s.list_workstreams()
+            s.list_lenses()
                 .map_err(|e| StewardError::Storage(e.to_string()))?
                 .into_iter()
-                .filter(|w| w.name != ctx.workstream.name)
+                .filter(|w| w.name != ctx.lens.name)
                 .collect()
         };
         if others.is_empty() {
             // Cursor still advances so we don't keep scanning the same
-            // focus set if a second workstream is later added.
+            // focus set if a second lens is later added.
             if let Some(latest) = focus_set.last() {
                 cursor_store.advance(SUBROUTINE_NAME, latest.updated_at)?;
             }
             return Ok(SubroutineOutcome::default());
         }
 
-        // Build the comparison roster: one bundle per other workstream
+        // Build the comparison roster: one bundle per other lens
         // with its top-N most-active entities.
         let mut other_buckets: Vec<(String, Vec<Entity>)> = Vec::new();
         for w in &others {
             match (self.memory_resolver)(&w.name) {
                 Ok(mgr) => {
                     let xs = mgr
-                        .workstream
-                        .list_all_ranked(self.config.neighbors_per_workstream)
+                        .lens
+                        .list_all_ranked(self.config.neighbors_per_lens)
                         .unwrap_or_default();
                     if !xs.is_empty() {
                         other_buckets.push((w.name.clone(), xs));
                     }
                 }
                 Err(e) => warn!(
-                    workstream = %w.name,
+                    lens = %w.name,
                     error = %e,
                     "doorwatch: failed to open neighbor KB; skipping"
                 ),
@@ -173,7 +173,7 @@ impl StewardSubroutine for DoorWatchSubroutine {
                 Ok(m) => m,
                 Err(e) => {
                     warn!(
-                        workstream = %ctx.workstream.name,
+                        lens = %ctx.lens.name,
                         focus = %focus.id,
                         error = %e,
                         "doorwatch: LLM call failed; skipping focus"
@@ -188,7 +188,7 @@ impl StewardSubroutine for DoorWatchSubroutine {
                 }
                 if let Err(e) = self.record(focus, &m, ctx, &other_buckets) {
                     warn!(
-                        workstream = %ctx.workstream.name,
+                        lens = %ctx.lens.name,
                         focus = %focus.id,
                         error = %e,
                         "doorwatch: dropped proposal"
@@ -216,18 +216,18 @@ impl DoorWatchSubroutine {
         focus: &Entity,
         buckets: &[(String, Vec<Entity>)],
     ) -> Result<Vec<IdentityMatch>, StewardError> {
-        let system = "You are looking for cross-workstream identity matches. Given a focus \
-                      entity from one workstream and a set of entities from other workstreams, \
+        let system = "You are looking for cross-lens identity matches. Given a focus \
+                      entity from one lens and a set of entities from other lenses, \
                       identify any candidates that refer to the *same underlying thing* \
                       (same person, same project, same external object). Output ONLY a JSON \
-                      array; each item: {\"to_workstream\": string, \"to_id\": uuid, \
+                      array; each item: {\"to_lens\": string, \"to_id\": uuid, \
                       \"reason\": short string}. Be conservative — coincidental similar names \
                       are NOT matches. Empty array is fine.";
         let buckets_json: Vec<serde_json::Value> = buckets
             .iter()
             .map(|(ws, ents)| {
                 json!({
-                    "workstream": ws,
+                    "lens": ws,
                     "entities": ents
                         .iter()
                         .map(brief)
@@ -236,7 +236,7 @@ impl DoorWatchSubroutine {
             })
             .collect();
         let user = serde_json::to_string_pretty(&json!({
-            "focus_workstream": "(this)",
+            "focus_lens": "(this)",
             "focus": brief(focus),
             "buckets": buckets_json,
         }))?;
@@ -255,17 +255,17 @@ impl DoorWatchSubroutine {
     ) -> Result<(), StewardError> {
         let to_id = uuid::Uuid::parse_str(&m.to_id)
             .map_err(|e| StewardError::Parse(format!("to_id: {e}")))?;
-        // Verify the target id actually appeared in the workstream the
+        // Verify the target id actually appeared in the lens the
         // LLM cited — guards against hallucinated ids.
         let valid = buckets
             .iter()
-            .find(|(ws, _)| ws == &m.to_workstream)
+            .find(|(ws, _)| ws == &m.to_lens)
             .map(|(_, ents)| ents.iter().any(|e| e.id == to_id))
             .unwrap_or(false);
         if !valid {
             return Err(StewardError::Parse(format!(
                 "match references unknown ({}, {})",
-                m.to_workstream, m.to_id
+                m.to_lens, m.to_id
             )));
         }
         let record = JournalRecord {
@@ -276,9 +276,9 @@ impl DoorWatchSubroutine {
             })
             .to_string(),
             outputs_json: json!({
-                "from_workstream": ctx.workstream.name,
+                "from_lens": ctx.lens.name,
                 "from_id": focus.id,
-                "to_workstream": m.to_workstream,
+                "to_lens": m.to_lens,
                 "to_id": to_id,
                 "reason": m.reason,
             })
@@ -286,14 +286,14 @@ impl DoorWatchSubroutine {
             model: self.model.clone(),
             prompt_hash: Journal::prompt_hash(format!(
                 "doorwatch/{}/{}/{}",
-                focus.id, m.to_workstream, to_id
+                focus.id, m.to_lens, to_id
             )),
             applied: false,
         };
         ctx.journal.write_ahead(&record)?;
         debug!(
             from = %focus.id,
-            to_ws = %m.to_workstream,
+            to_ws = %m.to_lens,
             to_id = %to_id,
             "doorwatch: identity proposal recorded"
         );
@@ -358,7 +358,7 @@ mod tests {
         }
     }
 
-    fn setup_multi_workstream() -> (
+    fn setup_multi_lens() -> (
         tempfile::TempDir,
         Arc<Mutex<Store>>,
         MemoryResolver,
@@ -366,17 +366,17 @@ mod tests {
     ) {
         let tmp = tempfile::tempdir().unwrap();
         let store = Store::open(tmp.path()).unwrap();
-        store.ensure_scratch_workstream().unwrap();
+        store.ensure_scratch_lens().unwrap();
         store
-            .create_workstream(&Workstream::new("pat", tmp.path().join("pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("pat")))
             .unwrap();
         store
-            .create_workstream(&Workstream::new("dnd", tmp.path().join("dnd")))
+            .create_lens(&Lens::new("dnd", tmp.path().join("dnd")))
             .unwrap();
         let store = Arc::new(Mutex::new(store));
         let dir = tmp.path().to_path_buf();
         let resolver: MemoryResolver = Arc::new(move |name: &str| {
-            MemoryManager::for_workstream(&dir, name, None)
+            MemoryManager::for_lens(&dir, name, None)
                 .map(Arc::new)
                 .map_err(|e| StewardError::Memory(e.to_string()))
         });
@@ -388,17 +388,17 @@ mod tests {
 
     #[tokio::test]
     async fn proposes_identity_when_match_found() {
-        let (tmp, store, resolver, cf) = setup_multi_workstream();
+        let (tmp, store, resolver, cf) = setup_multi_lens();
         // Seed pat with `alice`; seed dnd with `alice the bard` (same person).
         let pat = (resolver)("pat").unwrap();
         let alice_pat = Entity::new(EntityType::Person, "alice cooper");
-        pat.workstream.insert_entity(&alice_pat).unwrap();
+        pat.lens.insert_entity(&alice_pat).unwrap();
         let dnd = (resolver)("dnd").unwrap();
         let alice_dnd = Entity::new(EntityType::Person, "alice the bard");
-        dnd.workstream.insert_entity(&alice_dnd).unwrap();
+        dnd.lens.insert_entity(&alice_dnd).unwrap();
 
         let mock = Arc::new(ScriptedMock::new(vec![json!([
-            {"to_workstream": "dnd", "to_id": alice_dnd.id, "reason": "same person"}
+            {"to_lens": "dnd", "to_id": alice_dnd.id, "reason": "same person"}
         ])]));
         let sub = DoorWatchSubroutine::new(
             mock as Arc<dyn LlmClient>,
@@ -409,7 +409,7 @@ mod tests {
         );
         let journal = Arc::new(Journal::open(tmp.path(), "pat").unwrap());
         let ctx = SubroutineCtx {
-            workstream: Workstream::new("pat", tmp.path().join("pat")),
+            lens: Lens::new("pat", tmp.path().join("pat")),
             memory: Arc::clone(&pat),
             journal: Arc::new(crate::journal::JournalGate::new(
                 Arc::clone(&journal),
@@ -426,18 +426,18 @@ mod tests {
 
     #[tokio::test]
     async fn hallucinated_target_id_is_dropped() {
-        let (tmp, store, resolver, cf) = setup_multi_workstream();
+        let (tmp, store, resolver, cf) = setup_multi_lens();
         let pat = (resolver)("pat").unwrap();
         let alice_pat = Entity::new(EntityType::Person, "alice cooper");
-        pat.workstream.insert_entity(&alice_pat).unwrap();
+        pat.lens.insert_entity(&alice_pat).unwrap();
         let dnd = (resolver)("dnd").unwrap();
         let alice_dnd = Entity::new(EntityType::Person, "alice the bard");
-        dnd.workstream.insert_entity(&alice_dnd).unwrap();
+        dnd.lens.insert_entity(&alice_dnd).unwrap();
 
         // LLM points at a uuid that doesn't exist in the dnd bucket.
         let fake = uuid::Uuid::new_v4();
         let mock = Arc::new(ScriptedMock::new(vec![json!([
-            {"to_workstream": "dnd", "to_id": fake, "reason": "wrong id"}
+            {"to_lens": "dnd", "to_id": fake, "reason": "wrong id"}
         ])]));
         let sub = DoorWatchSubroutine::new(
             mock as Arc<dyn LlmClient>,
@@ -448,7 +448,7 @@ mod tests {
         );
         let journal = Arc::new(Journal::open(tmp.path(), "pat").unwrap());
         let ctx = SubroutineCtx {
-            workstream: Workstream::new("pat", tmp.path().join("pat")),
+            lens: Lens::new("pat", tmp.path().join("pat")),
             memory: Arc::clone(&pat),
             journal: Arc::new(crate::journal::JournalGate::new(
                 Arc::clone(&journal),
@@ -461,14 +461,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn no_other_workstreams_means_zero_proposals() {
+    async fn no_other_lenses_means_zero_proposals() {
         let tmp = tempfile::tempdir().unwrap();
         let store = Store::open(tmp.path()).unwrap();
-        store.ensure_scratch_workstream().unwrap();
+        store.ensure_scratch_lens().unwrap();
         let store = Arc::new(Mutex::new(store));
         let dir = tmp.path().to_path_buf();
         let resolver: MemoryResolver = Arc::new(move |name: &str| {
-            MemoryManager::for_workstream(&dir, name, None)
+            MemoryManager::for_lens(&dir, name, None)
                 .map(Arc::new)
                 .map_err(|e| StewardError::Memory(e.to_string()))
         });
@@ -477,7 +477,7 @@ mod tests {
             Arc::new(move |n: &str| CursorStore::open(&dir2, n));
 
         let mem = (resolver)("scratch").unwrap();
-        mem.workstream
+        mem.lens
             .insert_entity(&Entity::new(EntityType::Fact, "lonely"))
             .unwrap();
 
@@ -492,7 +492,7 @@ mod tests {
         );
         let journal = Arc::new(Journal::open(tmp.path(), "scratch").unwrap());
         let ctx = SubroutineCtx {
-            workstream: Workstream::new("scratch", tmp.path().join("scratch")),
+            lens: Lens::new("scratch", tmp.path().join("scratch")),
             memory: Arc::clone(&mem),
             journal: Arc::new(crate::journal::JournalGate::new(
                 Arc::clone(&journal),

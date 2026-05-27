@@ -1,4 +1,3 @@
-
 /// Push a server-side notice (plugin/config hot-reload outcome) into the
 /// chat history as a system message. Failures get an "✗" prefix; successes
 /// get an info marker. Both stay visible — fade-out is future work.
@@ -54,7 +53,10 @@ pub(super) fn apply_system_notice(notice: &arawn_service::ServerNotice, app: &mu
 /// If a ceremony_event notice targets the tablet the user is currently
 /// viewing in a ceremony overlay, flag the overlay for refresh. Pure
 /// state mutation — the async RPC happens in the event loop after this.
-pub(super) fn ceremony_event_should_refresh(notice: &arawn_service::ServerNotice, app: &mut crate::app::App) {
+pub(super) fn ceremony_event_should_refresh(
+    notice: &arawn_service::ServerNotice,
+    app: &mut crate::app::App,
+) {
     // `message` carries the serialised CeremonyEvent JSON.
     let Ok(payload) = serde_json::from_str::<serde_json::Value>(&notice.message) else {
         return;
@@ -74,4 +76,3 @@ pub(super) fn ceremony_event_should_refresh(notice: &arawn_service::ServerNotice
         app.pending_ceremony_refresh = true;
     }
 }
-

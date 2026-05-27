@@ -9,7 +9,7 @@
 --
 -- `attrs` carries kind-specific JSON payload — tablet_id, ordinal,
 -- confirmed_at, citation_id, origin_tablet_id, last_seen_tablet_id,
--- etc. Not indexed; selection happens by kind + workstream + done_at.
+-- etc. Not indexed; selection happens by kind + lens + done_at.
 --
 -- Backfill from ceremony_priorities + ceremony_todos_rolling ships
 -- in T-0311 (separate migration). Schema cutover that turns ceremony
@@ -20,7 +20,7 @@ CREATE TABLE todos (
     body         TEXT NOT NULL,
     rationale    TEXT,
     kind         TEXT NOT NULL,
-    workstream   TEXT,
+    lens   TEXT,
     created_at   TEXT NOT NULL,
     due_at       TEXT,
     done_at      TEXT,
@@ -30,4 +30,4 @@ CREATE TABLE todos (
 
 CREATE INDEX todos_kind_idx        ON todos(kind);
 CREATE INDEX todos_done_idx        ON todos(done_at);
-CREATE INDEX todos_workstream_idx  ON todos(workstream);
+CREATE INDEX todos_lens_idx  ON todos(lens);

@@ -122,7 +122,13 @@ pub fn projection_id(feed_id: &str, source_id: &str) -> String {
 /// later `modified` of the same path) hash differently, so each gets
 /// its own row; re-reading the same log line hashes identically, so it
 /// dedups.
-fn event_source_id(path: &str, event: &str, ts: &str, mtime: Option<i64>, size: Option<u64>) -> String {
+fn event_source_id(
+    path: &str,
+    event: &str,
+    ts: &str,
+    mtime: Option<i64>,
+    size: Option<u64>,
+) -> String {
     use std::hash::{DefaultHasher, Hash, Hasher};
     let mut h = DefaultHasher::new();
     path.hash(&mut h);
@@ -250,8 +256,18 @@ mod tests {
         write_signals(
             tmp.path(),
             &[
-                signal("/Users/me/notes/a.txt", "a.txt", "created", "2026-05-25T10:00:00+00:00"),
-                signal("/Users/me/notes/b.txt", "b.txt", "created", "2026-05-25T10:00:01+00:00"),
+                signal(
+                    "/Users/me/notes/a.txt",
+                    "a.txt",
+                    "created",
+                    "2026-05-25T10:00:00+00:00",
+                ),
+                signal(
+                    "/Users/me/notes/b.txt",
+                    "b.txt",
+                    "created",
+                    "2026-05-25T10:00:01+00:00",
+                ),
             ],
         );
         let out = walk_feed_dir("fs-feed", tmp.path()).unwrap();
@@ -282,7 +298,12 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         write_signals(
             tmp.path(),
-            &[signal("/r/a.txt", "a.txt", "created", "2026-05-25T10:00:00+00:00")],
+            &[signal(
+                "/r/a.txt",
+                "a.txt",
+                "created",
+                "2026-05-25T10:00:00+00:00",
+            )],
         );
         let first = walk_feed_dir("f", tmp.path()).unwrap();
         let second = walk_feed_dir("f", tmp.path()).unwrap();
@@ -295,7 +316,12 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         write_signals(
             tmp.path(),
-            &[signal("/r/gone.txt", "gone.txt", "deleted", "2026-05-25T10:00:00+00:00")],
+            &[signal(
+                "/r/gone.txt",
+                "gone.txt",
+                "deleted",
+                "2026-05-25T10:00:00+00:00",
+            )],
         );
         let out = walk_feed_dir("f", tmp.path()).unwrap();
         assert_eq!(out[0].event, "deleted");
@@ -332,7 +358,12 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         write_signals(
             tmp.path(),
-            &[signal("/r/gone.txt", "gone.txt", "deleted", "2026-05-25T10:00:00+00:00")],
+            &[signal(
+                "/r/gone.txt",
+                "gone.txt",
+                "deleted",
+                "2026-05-25T10:00:00+00:00",
+            )],
         );
         let out = walk_feed_dir("f", tmp.path()).unwrap();
         assert_eq!(out[0].body_text, "");

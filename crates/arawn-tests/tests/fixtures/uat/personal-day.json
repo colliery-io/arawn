@@ -1,9 +1,9 @@
 {
-  "$comment": "I-0035 / T-0332 synthetic life-assistant fixture. Single workstream (`personal`) seeded with one day in synthetic user pat's life across Gmail / Calendar / Slack / Jira. Date placeholders ({{today}}, {{today-10d}}) are substituted at fixture-load time by `resolve_time_placeholders`, so the fixture remains \"today\" regardless of when the harness runs. Deliberate inclusions: marketing noise (inbox-summary should omit), a thread that needs a reply (draft-with-confirmation), two @mentions in Slack (mention-scan), one Jira assigned to pat untouched 10 days (stale-ticket-surface), one overlapping calendar pair (conflict-call-out), zero rows mentioning a deadline from Bob (no-fabrication).",
-  "workstreams": [
+  "$comment": "I-0035 / T-0332 synthetic life-assistant fixture. Single lens (`personal`) seeded with one day in synthetic user pat's life across Gmail / Calendar / Slack / Jira. Date placeholders ({{today}}, {{today-10d}}) are substituted at fixture-load time by `resolve_time_placeholders`, so the fixture remains \"today\" regardless of when the harness runs. Deliberate inclusions: marketing noise (inbox-summary should omit), a thread that needs a reply (draft-with-confirmation), two @mentions in Slack (mention-scan), one Jira assigned to pat untouched 10 days (stale-ticket-surface), one overlapping calendar pair (conflict-call-out), zero rows mentioning a deadline from Bob (no-fabrication).",
+  "lenses": [
     {
       "name": "personal",
-      "description": "Pat's personal-life workstream — calendar, inbox, mentions, and tickets across pat's tools. Default persona for arawn (assistant).",
+      "description": "Pat's personal-life lens — calendar, inbox, mentions, and tickets across pat's tools. Default persona for arawn (assistant).",
       "identity_profile": "assistant",
       "tags_ontology": [
         "rfc",

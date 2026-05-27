@@ -11,7 +11,10 @@ pub(super) fn current_iso_week() -> String {
 
 /// Fetch the daily tablet for `today`, then list its items, then
 /// render. Single string is the system-message body.
-pub(super) async fn render_ceremony_today(client: &mut crate::ws_client::WsClient, today: &str) -> String {
+pub(super) async fn render_ceremony_today(
+    client: &mut crate::ws_client::WsClient,
+    today: &str,
+) -> String {
     let params = serde_json::json!({"kind": "daily", "period_key": today});
     let resp = match client
         .request_response("ceremonies.get_by_period", params)
@@ -47,7 +50,10 @@ pub(super) async fn render_ceremony_today(client: &mut crate::ws_client::WsClien
 
 /// Fetch the weekly tablet for the current ISO week, then items, then
 /// priorities, then render.
-pub(super) async fn render_ceremony_week(client: &mut crate::ws_client::WsClient, iso_week: &str) -> String {
+pub(super) async fn render_ceremony_week(
+    client: &mut crate::ws_client::WsClient,
+    iso_week: &str,
+) -> String {
     let params = serde_json::json!({"kind": "weekly", "period_key": iso_week});
     let resp = match client
         .request_response("ceremonies.get_by_period", params)
@@ -89,7 +95,10 @@ pub(super) async fn render_ceremony_week(client: &mut crate::ws_client::WsClient
 /// Fetch the retro tablet for the current ISO week, then items, then
 /// render. Diary fetch is a future RPC (T-0290 notes this) — pass
 /// `None` for now so the renderer prints the placeholder.
-pub(super) async fn render_ceremony_retro(client: &mut crate::ws_client::WsClient, iso_week: &str) -> String {
+pub(super) async fn render_ceremony_retro(
+    client: &mut crate::ws_client::WsClient,
+    iso_week: &str,
+) -> String {
     let params = serde_json::json!({"kind": "retro", "period_key": iso_week});
     let resp = match client
         .request_response("ceremonies.get_by_period", params)
@@ -198,7 +207,10 @@ pub(super) async fn fetch_tablet_id_and_status(
 /// Pull any existing diary body from the retro tablet by listing its
 /// Fetch the diary body for a retro tablet via the dedicated
 /// `ceremonies.get_diary` RPC. Returns "" when no diary row exists.
-pub(super) async fn fetch_diary_body(client: &mut crate::ws_client::WsClient, tablet_id: &str) -> String {
+pub(super) async fn fetch_diary_body(
+    client: &mut crate::ws_client::WsClient,
+    tablet_id: &str,
+) -> String {
     let resp = match client
         .request_response(
             "ceremonies.get_diary",
@@ -341,7 +353,10 @@ pub(super) async fn apply_priority_rpc_result(
 /// it picks up server-side mutations (agent runs, other clients,
 /// background sweeps). Called from the event loop after a
 /// `ceremony_event` notice flags `pending_ceremony_refresh`.
-pub(super) async fn refresh_active_ceremony_overlay(client: &mut crate::ws_client::WsClient, app: &mut App) {
+pub(super) async fn refresh_active_ceremony_overlay(
+    client: &mut crate::ws_client::WsClient,
+    app: &mut App,
+) {
     use crate::ceremony_modal::CeremonyOverlay;
     match app.ceremony_overlay.as_ref() {
         Some(CeremonyOverlay::Priority(p)) => {
@@ -405,4 +420,3 @@ pub(super) async fn fetch_priorities(
         .and_then(|r| serde_json::from_value(r.clone()).ok())
         .unwrap_or_default()
 }
-

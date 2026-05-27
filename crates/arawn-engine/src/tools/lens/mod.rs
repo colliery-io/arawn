@@ -1,12 +1,12 @@
-//! Workstream slash commands.
+//! Lens slash commands.
 //!
-//! Eight tools that cover the workstream lifecycle: new, list, switch,
+//! Eight tools that cover the lens lifecycle: new, list, switch,
 //! show, describe, bind, unbind, delete. Each is a `Tool` impl with a
-//! `workstream_*` name so the slash dispatcher routes naturally.
+//! `lens_*` name so the slash dispatcher routes naturally.
 //!
-//! Session-active workstream is held by `SessionWorkstream` (a shared
+//! Session-active lens is held by `SessionLens` (a shared
 //! `Arc<Mutex<String>>`) — T-0250 replaces this with the real
-//! `Session::workstream_name` field once sessions gain it.
+//! `Session::lens_name` field once sessions gain it.
 
 mod bind;
 mod create;
@@ -21,46 +21,41 @@ mod switch;
 mod unbind;
 pub(crate) mod util;
 
-pub use bind::{BindBackfillHook, WorkstreamBindTool};
-pub use create::WorkstreamCreateTool;
-pub use delete::WorkstreamDeleteTool;
-pub use describe::WorkstreamDescribeTool;
-pub use list::WorkstreamListTool;
-pub use promote::WorkstreamPromoteTool;
-pub use propose_ontology::WorkstreamProposeOntologyTool;
-pub use session::SessionWorkstream;
-pub use show::WorkstreamShowTool;
-pub use switch::WorkstreamSwitchTool;
-pub use unbind::{UnbindHook, WorkstreamUnbindTool};
+pub use bind::{BindBackfillHook, LensBindTool};
+pub use create::LensCreateTool;
+pub use delete::LensDeleteTool;
+pub use describe::LensDescribeTool;
+pub use list::LensListTool;
+pub use promote::LensPromoteTool;
+pub use propose_ontology::LensProposeOntologyTool;
+pub use session::SessionLens;
+pub use show::LensShowTool;
+pub use switch::LensSwitchTool;
+pub use unbind::{LensUnbindTool, UnbindHook};
 pub use util::{
     GithubScope, is_github_scope_binding, parse_github_scope, validate_github_scope_scheme,
 };
 
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::util::*;
-    use std::sync::{Arc, Mutex};
-    use arawn_core::{SCRATCH_NAME, Workstream};
+    use super::*;
+    use arawn_core::{Lens, SCRATCH_NAME};
     use arawn_storage::Store;
     use arawn_tool::Tool;
     use serde_json::json;
+    use std::sync::{Arc, Mutex};
     use uuid::Uuid;
 
-    fn setup() -> (tempfile::TempDir, Arc<Mutex<Store>>, SessionWorkstream) {
+    fn setup() -> (tempfile::TempDir, Arc<Mutex<Store>>, SessionLens) {
         let tmp = tempfile::TempDir::new().unwrap();
         let store = Store::open(tmp.path()).unwrap();
-        store.ensure_scratch_workstream().unwrap();
-        (
-            tmp,
-            Arc::new(Mutex::new(store)),
-            SessionWorkstream::scratch(),
-        )
+        store.ensure_scratch_lens().unwrap();
+        (tmp, Arc::new(Mutex::new(store)), SessionLens::scratch())
     }
 
     fn test_ctx(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext {
-        let ws = Workstream::scratch(tmp.path());
+        let ws = Lens::scratch(tmp.path());
         crate::context::EngineToolContext::new(&ws, Uuid::new_v4())
             .with_data_dir(tmp.path().to_path_buf())
     }
@@ -68,7 +63,7 @@ mod tests {
     #[tokio::test]
     async fn create_succeeds_with_valid_slug_description_and_ontology() {
         let (tmp, store, _) = setup();
-        let tool = WorkstreamCreateTool::new(store.clone());
+        let tool = LensCreateTool::new(store.clone());
         let result = tool
             .execute(
                 &test_ctx(&tmp),
@@ -92,7 +87,7 @@ mod tests {
     #[tokio::test]
     async fn create_refuses_scratch() {
         let (tmp, store, _) = setup();
-        let tool = WorkstreamCreateTool::new(store.clone());
+        let tool = LensCreateTool::new(store.clone());
         let result = tool
             .execute(
                 &test_ctx(&tmp),
@@ -110,7 +105,7 @@ mod tests {
     #[tokio::test]
     async fn create_refuses_missing_description() {
         let (tmp, store, _) = setup();
-        let tool = WorkstreamCreateTool::new(store.clone());
+        let tool = LensCreateTool::new(store.clone());
         let result = tool
             .execute(
                 &test_ctx(&tmp),
@@ -125,7 +120,7 @@ mod tests {
     #[tokio::test]
     async fn create_refuses_empty_ontology() {
         let (tmp, store, _) = setup();
-        let tool = WorkstreamCreateTool::new(store.clone());
+        let tool = LensCreateTool::new(store.clone());
         let result = tool
             .execute(
                 &test_ctx(&tmp),
@@ -144,7 +139,7 @@ mod tests {
     #[tokio::test]
     async fn create_dedupes_and_normalizes_ontology() {
         let (tmp, store, _) = setup();
-        let tool = WorkstreamCreateTool::new(store.clone());
+        let tool = LensCreateTool::new(store.clone());
         let result = tool
             .execute(
                 &test_ctx(&tmp),
@@ -169,9 +164,9 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("pat", tmp.path().join("workstreams/pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("lenses/pat")))
             .unwrap();
-        let tool = WorkstreamSwitchTool::new(store.clone(), active.clone());
+        let tool = LensSwitchTool::new(store.clone(), active.clone());
         let result = tool
             .execute(&test_ctx(&tmp), json!({"name": "pat"}))
             .await
@@ -183,7 +178,7 @@ mod tests {
     #[tokio::test]
     async fn switch_unknown_errors() {
         let (tmp, store, active) = setup();
-        let tool = WorkstreamSwitchTool::new(store.clone(), active);
+        let tool = LensSwitchTool::new(store.clone(), active);
         let result = tool
             .execute(&test_ctx(&tmp), json!({"name": "ghost"}))
             .await
@@ -195,7 +190,7 @@ mod tests {
     #[tokio::test]
     async fn show_defaults_to_active() {
         let (tmp, store, active) = setup();
-        let tool = WorkstreamShowTool::new(store.clone(), active);
+        let tool = LensShowTool::new(store.clone(), active);
         let result = tool.execute(&test_ctx(&tmp), json!({})).await.unwrap();
         assert!(!result.is_error);
         assert!(result.content.contains("scratch"));
@@ -207,9 +202,9 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("ws/pat")))
             .unwrap();
-        let tool = WorkstreamDescribeTool::new(store.clone());
+        let tool = LensDescribeTool::new(store.clone());
         let result = tool
             .execute(
                 &test_ctx(&tmp),
@@ -221,7 +216,7 @@ mod tests {
         let fetched = store
             .lock()
             .unwrap()
-            .find_workstream_by_name("pat")
+            .find_lens_by_name("pat")
             .unwrap()
             .unwrap();
         assert_eq!(fetched.description, "skip-level for pat");
@@ -279,9 +274,9 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("ws/pat")))
             .unwrap();
-        let bind = WorkstreamBindTool::new(store.clone());
+        let bind = LensBindTool::new(store.clone());
         let out = bind
             .execute(
                 &test_ctx(&tmp),
@@ -293,7 +288,7 @@ mod tests {
         let fetched = store
             .lock()
             .unwrap()
-            .find_workstream_by_name("pat")
+            .find_lens_by_name("pat")
             .unwrap()
             .unwrap();
         assert_eq!(fetched.bindings, vec!["github:repo:openai/codex"]);
@@ -339,9 +334,9 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("ws/pat")))
             .unwrap();
-        let bind = WorkstreamBindTool::new(store.clone());
+        let bind = LensBindTool::new(store.clone());
         let out = bind
             .execute(
                 &test_ctx(&tmp),
@@ -373,9 +368,9 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("ws/pat")))
             .unwrap();
-        let bind = WorkstreamBindTool::new(store.clone());
+        let bind = LensBindTool::new(store.clone());
         let _ = bind
             .execute(
                 &test_ctx(&tmp),
@@ -399,14 +394,14 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("ws-a", tmp.path().join("ws/a")))
+            .create_lens(&Lens::new("ws-a", tmp.path().join("ws/a")))
             .unwrap();
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("ws-b", tmp.path().join("ws/b")))
+            .create_lens(&Lens::new("ws-b", tmp.path().join("ws/b")))
             .unwrap();
-        let bind = WorkstreamBindTool::new(store.clone());
+        let bind = LensBindTool::new(store.clone());
         // ws-a binds the org.
         bind.execute(
             &test_ctx(&tmp),
@@ -429,7 +424,7 @@ mod tests {
         let ws_b = store
             .lock()
             .unwrap()
-            .find_workstream_by_name("ws-b")
+            .find_lens_by_name("ws-b")
             .unwrap()
             .unwrap();
         assert!(ws_b.bindings.is_empty());
@@ -443,14 +438,14 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("ws-a", tmp.path().join("ws/a")))
+            .create_lens(&Lens::new("ws-a", tmp.path().join("ws/a")))
             .unwrap();
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("ws-b", tmp.path().join("ws/b")))
+            .create_lens(&Lens::new("ws-b", tmp.path().join("ws/b")))
             .unwrap();
-        let bind = WorkstreamBindTool::new(store.clone());
+        let bind = LensBindTool::new(store.clone());
         // ws-a binds two repos under openai.
         bind.execute(
             &test_ctx(&tmp),
@@ -482,7 +477,7 @@ mod tests {
         let ws_a = store
             .lock()
             .unwrap()
-            .find_workstream_by_name("ws-a")
+            .find_lens_by_name("ws-a")
             .unwrap()
             .unwrap();
         assert!(
@@ -503,7 +498,10 @@ mod tests {
     }
     impl UnbindHook for CapturingUnbindHook {
         fn on_unbind(&self, removed_feed_ids: &[String]) {
-            self.captured.lock().unwrap().push(removed_feed_ids.to_vec());
+            self.captured
+                .lock()
+                .unwrap()
+                .push(removed_feed_ids.to_vec());
         }
     }
 
@@ -513,12 +511,13 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("ws/pat")))
             .unwrap();
         // Hand-seed: binding + feed row.
         {
             let s = store.lock().unwrap();
-            s.add_workstream_binding("pat", "github:repo:openai/codex").unwrap();
+            s.add_lens_binding("pat", "github:repo:openai/codex")
+                .unwrap();
             s.database()
                 .conn()
                 .execute(
@@ -531,7 +530,7 @@ mod tests {
         let hook = Arc::new(CapturingUnbindHook {
             captured: Mutex::new(Vec::new()),
         });
-        let unbind = WorkstreamUnbindTool::new(store.clone())
+        let unbind = LensUnbindTool::new(store.clone())
             .with_unbind_hook(hook.clone() as Arc<dyn UnbindHook>);
         let _ = unbind
             .execute(
@@ -551,11 +550,11 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("ws-org", tmp.path().join("ws/o")))
+            .create_lens(&Lens::new("ws-org", tmp.path().join("ws/o")))
             .unwrap();
         {
             let s = store.lock().unwrap();
-            s.add_workstream_binding("ws-org", "github:org:openai").unwrap();
+            s.add_lens_binding("ws-org", "github:org:openai").unwrap();
             let now = "2026-05-18T00:00:00Z";
             for feed_id in ["github-repo:openai/codex", "github-repo:openai/tinker"] {
                 s.database()
@@ -571,7 +570,7 @@ mod tests {
         let hook = Arc::new(CapturingUnbindHook {
             captured: Mutex::new(Vec::new()),
         });
-        let unbind = WorkstreamUnbindTool::new(store.clone())
+        let unbind = LensUnbindTool::new(store.clone())
             .with_unbind_hook(hook.clone() as Arc<dyn UnbindHook>);
         let _ = unbind
             .execute(
@@ -601,17 +600,17 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("ws/pat")))
             .unwrap();
         store
             .lock()
             .unwrap()
-            .add_workstream_binding("pat", "gh-notifs-personal")
+            .add_lens_binding("pat", "gh-notifs-personal")
             .unwrap();
         let hook = Arc::new(CapturingUnbindHook {
             captured: Mutex::new(Vec::new()),
         });
-        let unbind = WorkstreamUnbindTool::new(store.clone())
+        let unbind = LensUnbindTool::new(store.clone())
             .with_unbind_hook(hook.clone() as Arc<dyn UnbindHook>);
         let _ = unbind
             .execute(
@@ -632,7 +631,7 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("ws-org", tmp.path().join("ws/o")))
+            .create_lens(&Lens::new("ws-org", tmp.path().join("ws/o")))
             .unwrap();
         // Hand-seed two child feeds + an unrelated repo feed.
         {
@@ -651,10 +650,10 @@ mod tests {
                 )
                 .unwrap();
             }
-            // The org binding itself on the workstream.
-            s.add_workstream_binding("ws-org", "github:org:openai").unwrap();
+            // The org binding itself on the lens.
+            s.add_lens_binding("ws-org", "github:org:openai").unwrap();
         }
-        let unbind = WorkstreamUnbindTool::new(store.clone());
+        let unbind = LensUnbindTool::new(store.clone());
         let out = unbind
             .execute(
                 &test_ctx(&tmp),
@@ -675,9 +674,9 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("ws/pat")))
             .unwrap();
-        let bind = WorkstreamBindTool::new(store.clone());
+        let bind = LensBindTool::new(store.clone());
         bind.execute(
             &test_ctx(&tmp),
             json!({"name": "pat", "feed_id": "github:repo:openai/codex"}),
@@ -685,7 +684,7 @@ mod tests {
         .await
         .unwrap();
         assert_eq!(count_feeds(&store, "github-repo:openai/codex"), 1);
-        let unbind = WorkstreamUnbindTool::new(store.clone());
+        let unbind = LensUnbindTool::new(store.clone());
         let out = unbind
             .execute(
                 &test_ctx(&tmp),
@@ -703,9 +702,9 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("ws/pat")))
             .unwrap();
-        let bind = WorkstreamBindTool::new(store.clone());
+        let bind = LensBindTool::new(store.clone());
         let out = bind
             .execute(
                 &test_ctx(&tmp),
@@ -723,20 +722,20 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("ws/pat")))
             .unwrap();
-        let bind = WorkstreamBindTool::new(store.clone());
+        let bind = LensBindTool::new(store.clone());
         bind.execute(&test_ctx(&tmp), json!({"name": "pat", "feed_id": "f1"}))
             .await
             .unwrap();
         let fetched = store
             .lock()
             .unwrap()
-            .find_workstream_by_name("pat")
+            .find_lens_by_name("pat")
             .unwrap()
             .unwrap();
         assert_eq!(fetched.bindings, vec!["f1"]);
-        let unbind = WorkstreamUnbindTool::new(store.clone());
+        let unbind = LensUnbindTool::new(store.clone());
         unbind
             .execute(&test_ctx(&tmp), json!({"name": "pat", "feed_id": "f1"}))
             .await
@@ -744,7 +743,7 @@ mod tests {
         let fetched = store
             .lock()
             .unwrap()
-            .find_workstream_by_name("pat")
+            .find_lens_by_name("pat")
             .unwrap()
             .unwrap();
         assert!(fetched.bindings.is_empty());
@@ -753,7 +752,7 @@ mod tests {
     #[tokio::test]
     async fn delete_refuses_scratch() {
         let (tmp, store, active) = setup();
-        let tool = WorkstreamDeleteTool::new(store.clone(), active);
+        let tool = LensDeleteTool::new(store.clone(), active);
         let result = tool
             .execute(&test_ctx(&tmp), json!({"name": "scratch"}))
             .await
@@ -768,10 +767,10 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("ws/pat")))
             .unwrap();
         active.set("pat");
-        let tool = WorkstreamDeleteTool::new(store.clone(), active);
+        let tool = LensDeleteTool::new(store.clone(), active);
         let result = tool
             .execute(&test_ctx(&tmp), json!({"name": "pat"}))
             .await
@@ -786,47 +785,47 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("temp", tmp.path().join("ws/temp")))
+            .create_lens(&Lens::new("temp", tmp.path().join("ws/temp")))
             .unwrap();
-        let tool = WorkstreamDeleteTool::new(store.clone(), active);
+        let tool = LensDeleteTool::new(store.clone(), active);
         let result = tool
             .execute(&test_ctx(&tmp), json!({"name": "temp"}))
             .await
             .unwrap();
         assert!(!result.is_error);
-        // listed via list_all_workstreams should still show it as archived.
-        let all = store.lock().unwrap().list_all_workstreams().unwrap();
+        // listed via list_all_lenses should still show it as archived.
+        let all = store.lock().unwrap().list_all_lenses().unwrap();
         let found = all.iter().find(|w| w.name == "temp").unwrap();
         assert!(found.archived);
     }
 
     #[tokio::test]
     async fn promote_moves_entity_from_scratch_to_target() {
-        use crate::workstream_router::WorkstreamMemoryRouter;
+        use crate::lens_router::LensMemoryRouter;
         use arawn_memory::{Entity, EntityType};
 
         let (tmp, store, _) = setup();
-        // Create the target workstream.
+        // Create the target lens.
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("ws/pat")))
             .unwrap();
 
         // Seed scratch with a fact via the router so the promote tool
         // walks the same surface that prod uses.
-        let scratch_session = SessionWorkstream::scratch();
-        let router = Arc::new(WorkstreamMemoryRouter::new(
+        let scratch_session = SessionLens::scratch();
+        let router = Arc::new(LensMemoryRouter::new(
             tmp.path(),
             None,
             None,
             scratch_session.clone(),
         ));
-        let scratch_mgr = router.for_workstream(SCRATCH_NAME).unwrap();
+        let scratch_mgr = router.for_lens(SCRATCH_NAME).unwrap();
         let entity = Entity::new(EntityType::Fact, "pat 1on1 ran long today");
-        scratch_mgr.workstream.store_fact(&entity).unwrap();
+        scratch_mgr.lens.store_fact(&entity).unwrap();
 
-        let tool = WorkstreamPromoteTool::new(store.clone(), router.clone());
+        let tool = LensPromoteTool::new(store.clone(), router.clone());
         let result = tool
             .execute(
                 &test_ctx(&tmp),
@@ -837,29 +836,23 @@ mod tests {
         assert!(!result.is_error, "got: {}", result.content);
 
         // Target now has it.
-        let pat_mgr = router.for_workstream("pat").unwrap();
-        assert!(pat_mgr.workstream.get_entity(entity.id).unwrap().is_some());
+        let pat_mgr = router.for_lens("pat").unwrap();
+        assert!(pat_mgr.lens.get_entity(entity.id).unwrap().is_some());
         // Scratch no longer.
-        assert!(
-            scratch_mgr
-                .workstream
-                .get_entity(entity.id)
-                .unwrap()
-                .is_none()
-        );
+        assert!(scratch_mgr.lens.get_entity(entity.id).unwrap().is_none());
     }
 
     #[tokio::test]
     async fn promote_refuses_unknown_target() {
-        use crate::workstream_router::WorkstreamMemoryRouter;
+        use crate::lens_router::LensMemoryRouter;
         let (tmp, store, _) = setup();
-        let router = Arc::new(WorkstreamMemoryRouter::new(
+        let router = Arc::new(LensMemoryRouter::new(
             tmp.path(),
             None,
             None,
-            SessionWorkstream::scratch(),
+            SessionLens::scratch(),
         ));
-        let tool = WorkstreamPromoteTool::new(store.clone(), router);
+        let tool = LensPromoteTool::new(store.clone(), router);
         let result = tool
             .execute(
                 &test_ctx(&tmp),
@@ -877,7 +870,7 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("pat", tmp.path().join("workstreams/pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("lenses/pat")))
             .unwrap();
         // Seed the ontology table directly.
         let ont = arawn_memory::TagOntologyStore::open(tmp.path(), "pat").unwrap();
@@ -885,7 +878,7 @@ mod tests {
         ont.add("ledger", arawn_memory::AddedVia::Manual).unwrap();
 
         active.set("pat");
-        let tool = WorkstreamShowTool::new(store.clone(), active);
+        let tool = LensShowTool::new(store.clone(), active);
         let r = tool.execute(&test_ctx(&tmp), json!({})).await.unwrap();
         assert!(!r.is_error, "got: {}", r.content);
         let v: serde_json::Value = serde_json::from_str(&r.content).unwrap();
@@ -905,13 +898,13 @@ mod tests {
         store
             .lock()
             .unwrap()
-            .create_workstream(&Workstream::new("pat", tmp.path().join("ws/pat")))
+            .create_lens(&Lens::new("pat", tmp.path().join("ws/pat")))
             .unwrap();
         active.set("pat");
-        let tool = WorkstreamListTool::new(store.clone()).with_active(active);
+        let tool = LensListTool::new(store.clone()).with_active(active);
         let result = tool.execute(&test_ctx(&tmp), json!({})).await.unwrap();
         assert!(!result.is_error);
-        // Active workstream should be flagged.
+        // Active lens should be flagged.
         assert!(result.content.contains("\"active\":true"));
     }
 }

@@ -16,7 +16,7 @@ impl DataLayout {
     pub fn v1() -> Self {
         Self {
             directories: vec![
-                PathBuf::from("workstreams"),
+                PathBuf::from("lenses"),
                 PathBuf::from("plugins/tools"),
                 PathBuf::from("plugins/build"),
                 PathBuf::from("prompts"),
@@ -55,7 +55,7 @@ mod tests {
 
         layout.ensure(tmp.path()).unwrap();
 
-        assert!(tmp.path().join("workstreams").is_dir());
+        assert!(tmp.path().join("lenses").is_dir());
         assert!(tmp.path().join("plugins/tools").is_dir());
         assert!(tmp.path().join("plugins/build").is_dir());
         assert!(tmp.path().join("prompts").is_dir());
@@ -69,7 +69,7 @@ mod tests {
         layout.ensure(tmp.path()).unwrap();
         layout.ensure(tmp.path()).unwrap();
 
-        assert!(tmp.path().join("workstreams").is_dir());
+        assert!(tmp.path().join("lenses").is_dir());
         assert!(tmp.path().join("plugins/tools").is_dir());
         assert!(tmp.path().join("plugins/build").is_dir());
         assert!(tmp.path().join("prompts").is_dir());
@@ -80,7 +80,7 @@ mod tests {
         let layout = DataLayout::v1();
         let dirs = layout.directories();
         assert_eq!(dirs.len(), 4);
-        assert!(dirs.contains(&PathBuf::from("workstreams")));
+        assert!(dirs.contains(&PathBuf::from("lenses")));
         assert!(dirs.contains(&PathBuf::from("plugins/tools")));
         assert!(dirs.contains(&PathBuf::from("plugins/build")));
     }

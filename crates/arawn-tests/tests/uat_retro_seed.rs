@@ -36,7 +36,7 @@ pub fn apply(data_dir: &Path) -> Result<SeedSummary, String> {
 
     let mut summary = SeedSummary::default();
 
-    seed_workstream_rollup(&conn, &cur_iso, &prior_weeks, &mut summary)?;
+    seed_lens_rollup(&conn, &cur_iso, &prior_weeks, &mut summary)?;
     seed_weekly_tablet_with_priorities(&conn, &cur_iso, &mut summary)?;
     seed_daily_tablets_and_todos(&conn, &cur_iso, monday, sunday, &mut summary)?;
     seed_prior_retro_with_diary(&conn, &prior_weeks[1], &mut summary)?;
@@ -57,23 +57,23 @@ pub struct SeedSummary {
 // Section seeders
 // ─────────────────────────────────────────────────────────────────────────
 
-/// Three workstreams across 3 prior weeks + current week.
+/// Three lenses across 3 prior weeks + current week.
 /// `proj-c` produces no rollup in the current week → triggers
-/// `WorkstreamNeglectDetector`.
-fn seed_workstream_rollup(
+/// `LensNeglectDetector`.
+fn seed_lens_rollup(
     conn: &Connection,
     cur_iso: &str,
     prior_weeks: &[DateTime<Utc>],
     sum: &mut SeedSummary,
 ) -> Result<(), String> {
-    // Prior weeks: all three workstreams active.
+    // Prior weeks: all three lenses active.
     for dt in prior_weeks {
         let iso = iso_week_str(*dt);
         for ws in ["proj-a", "proj-b", "proj-c"] {
             for (metric, value) in [("emails_sent", 8.0), ("slack_threads_participated", 6.0)] {
                 conn.execute(
                     "INSERT OR IGNORE INTO ceremony_activity_rollup \
-                     (iso_week, workstream, metric_key, value) VALUES (?1, ?2, ?3, ?4)",
+                     (iso_week, lens, metric_key, value) VALUES (?1, ?2, ?3, ?4)",
                     params![&iso, ws, metric, value],
                 )
                 .map_err(|e| format!("rollup insert prior: {e}"))?;
@@ -90,7 +90,7 @@ fn seed_workstream_rollup(
         ] {
             conn.execute(
                 "INSERT OR IGNORE INTO ceremony_activity_rollup \
-                 (iso_week, workstream, metric_key, value) VALUES (?1, ?2, ?3, ?4)",
+                 (iso_week, lens, metric_key, value) VALUES (?1, ?2, ?3, ?4)",
                 params![cur_iso, ws, metric, value],
             )
             .map_err(|e| format!("rollup insert current: {e}"))?;
@@ -112,7 +112,7 @@ fn seed_weekly_tablet_with_priorities(
     let confirmed_at = (Utc::now() - Duration::days(4)).to_rfc3339();
     conn.execute(
         "INSERT OR IGNORE INTO ceremony_tablets \
-         (id, kind, period_key, generated_at, status, workstreams_scanned, priorities_confirmed_at) \
+         (id, kind, period_key, generated_at, status, lenses_scanned, priorities_confirmed_at) \
          VALUES (?1, 'weekly', ?2, ?3, 'reviewed', '[\"proj-a\",\"proj-b\",\"proj-c\"]', ?4)",
         params![&weekly_id, cur_iso, &generated, &confirmed_at],
     )
@@ -139,7 +139,7 @@ fn seed_weekly_tablet_with_priorities(
         let todo_id = format!("td-{id}");
         conn.execute(
             "INSERT OR IGNORE INTO todos \
-             (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+             (id, body, rationale, kind, lens, created_at, due_at, done_at, archived_at, attrs) \
              VALUES (?1, ?2, ?3, 'weekly_priority', NULL, ?4, NULL, NULL, NULL, '{}')",
             params![&todo_id, body, rationale, &confirmed_at],
         )
@@ -177,7 +177,7 @@ fn seed_daily_tablets_and_todos(
         let generated = date.and_hms_opt(7, 0, 0).unwrap().and_utc().to_rfc3339();
         conn.execute(
             "INSERT OR IGNORE INTO ceremony_tablets \
-             (id, kind, period_key, generated_at, status, workstreams_scanned) \
+             (id, kind, period_key, generated_at, status, lenses_scanned) \
              VALUES (?1, 'daily', ?2, ?3, 'reviewed', '[\"proj-a\",\"proj-b\"]')",
             params![&id, &date.format("%Y-%m-%d").to_string(), &generated],
         )
@@ -212,7 +212,7 @@ fn seed_daily_tablets_and_todos(
     for (id, body) in todos {
         conn.execute(
             "INSERT OR IGNORE INTO todos \
-             (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+             (id, body, rationale, kind, lens, created_at, due_at, done_at, archived_at, attrs) \
              VALUES (?1, ?2, NULL, 'rollover', NULL, ?3, NULL, NULL, NULL, \
                      json_object('origin_tablet_id', ?4, 'last_seen_tablet_id', ?5))",
             params![id, body, &created_before, &origin_id, &last_seen_id],
@@ -237,7 +237,7 @@ fn seed_prior_retro_with_diary(
     let generated = (*prior_two_weeks).to_rfc3339();
     conn.execute(
         "INSERT OR IGNORE INTO ceremony_tablets \
-         (id, kind, period_key, generated_at, status, workstreams_scanned) \
+         (id, kind, period_key, generated_at, status, lenses_scanned) \
          VALUES (?1, 'retro', ?2, ?3, 'reviewed', '[\"proj-a\",\"proj-b\",\"proj-c\"]')",
         params![&tablet_id, &iso, &generated],
     )

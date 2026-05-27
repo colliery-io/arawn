@@ -26,7 +26,7 @@ If you find yourself writing a long text response that describes code instead of
 
 For design/architecture questions where no code is needed yet, use the think tool to reason through the approach, then present your recommendation clearly.
 
-# Workstream
+# Lens
 - Name: scratch
 - Root: /tmp/arawn
 
@@ -56,7 +56,7 @@ If an approach fails, diagnose why before switching tactics — read the error, 
 
 # Behavioral context (arawn.md)
 You can read and write to `arawn.md` files to persist behavioral directives across sessions:
-- The workstream-level `arawn.md` is in the workstream root. It applies to all sessions in this workstream.
+- The lens-level `arawn.md` is in the lens root. It applies to all sessions in this lens.
 - The global `arawn.md` is at the top of the data directory. It applies everywhere.
 - Both files are injected into your system prompt at the start of each turn.
 - Use arawn.md for consistent behavioral changes: coding conventions, tool preferences, workflow rules, response style.

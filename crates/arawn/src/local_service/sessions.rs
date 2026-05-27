@@ -5,25 +5,23 @@ use std::pin::Pin;
 
 use arawn_core::{Message, Session};
 use arawn_service::{
-    ArawnService, EngineEvent,
-    PromotionResult, ServiceError, SessionDetail, SessionInfo,
+    ArawnService, EngineEvent, PromotionResult, ServiceError, SessionDetail, SessionInfo,
 };
 use arawn_storage::JsonlMessageStore;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, instrument, warn};
 use uuid::Uuid;
 
-
 use super::{LocalService, resolve_ws_dir_from_store};
 
 impl LocalService {
     pub(super) async fn list_sessions_inner(
         &self,
-        workstream_id: Option<Uuid>,
+        lens_id: Option<Uuid>,
     ) -> Result<Vec<SessionInfo>, ServiceError> {
         let store = self.store.lock().unwrap();
-        let metas = match workstream_id {
-            Some(ws_id) => store.list_sessions_for_workstream(ws_id),
+        let metas = match lens_id {
+            Some(ws_id) => store.list_sessions_for_lens(ws_id),
             None => store.list_scratch_sessions(),
         }?;
 
@@ -31,7 +29,7 @@ impl LocalService {
             .into_iter()
             .map(|m| SessionInfo {
                 id: m.id,
-                workstream_id: m.workstream_id,
+                lens_id: m.lens_id,
                 created_at: m.created_at,
             })
             .collect())
@@ -39,9 +37,9 @@ impl LocalService {
 
     pub(super) async fn create_session_inner(
         &self,
-        workstream_id: Option<Uuid>,
+        lens_id: Option<Uuid>,
     ) -> Result<SessionInfo, ServiceError> {
-        let session = match workstream_id {
+        let session = match lens_id {
             Some(ws_id) => Session::new(ws_id),
             None => Session::scratch(),
         };
@@ -69,7 +67,7 @@ impl LocalService {
 
         Ok(SessionInfo {
             id: session.id,
-            workstream_id: session.workstream_id(),
+            lens_id: session.lens_id(),
             created_at: session.created_at,
         })
     }
@@ -82,7 +80,7 @@ impl LocalService {
                 .get_session_meta(id)?
                 .ok_or_else(|| ServiceError::NotFound(format!("session {id}")))?;
 
-            let ws_dir = resolve_ws_dir_from_store(&store, meta.workstream_id)?;
+            let ws_dir = resolve_ws_dir_from_store(&store, meta.lens_id)?;
             (meta, ws_dir)
         };
 
@@ -93,7 +91,7 @@ impl LocalService {
 
         Ok(SessionDetail {
             id: meta.id,
-            workstream_id: meta.workstream_id,
+            lens_id: meta.lens_id,
             created_at: meta.created_at,
             messages,
         })
@@ -120,7 +118,7 @@ impl LocalService {
             let meta = store
                 .get_session_meta(id)?
                 .ok_or_else(|| ServiceError::NotFound(format!("session {id}")))?;
-            let ws_dir = resolve_ws_dir_from_store(&store, meta.workstream_id)?;
+            let ws_dir = resolve_ws_dir_from_store(&store, meta.lens_id)?;
             (meta, ws_dir)
         };
 
@@ -166,15 +164,14 @@ impl LocalService {
         }
 
         // Load session state
-        let (meta, workstream, ws_dir, _) = self.load_session_state(session_id)?;
+        let (meta, lens, ws_dir, _) = self.load_session_state(session_id)?;
 
         // Load messages from JSONL
         let msg_store = JsonlMessageStore::new(&self.data_dir);
         let all_messages = msg_store.load(session_id, &ws_dir).await?;
         let messages = Session::load_compacted(all_messages);
 
-        let mut session =
-            Session::from_parts(meta.id, meta.workstream_id, meta.created_at, messages);
+        let mut session = Session::from_parts(meta.id, meta.lens_id, meta.created_at, messages);
 
         // Add user message and persist
         let user_msg = Message::User {
@@ -186,7 +183,7 @@ impl LocalService {
         message_store.append(session_id, &ws_dir, &user_msg).await?;
 
         // Resolve workspace directory
-        let is_scratch = workstream.name == "scratch";
+        let is_scratch = lens.name == "scratch";
         let workspace_dir = msg_store.sandbox_dir(&ws_dir, session_id, is_scratch);
         tokio::fs::create_dir_all(&workspace_dir)
             .await
@@ -195,7 +192,7 @@ impl LocalService {
         // Build context and engine
         let ws_dir_owned = ws_dir.clone();
         let (ctx, prompt_context) =
-            self.build_session_context(session_id, &workstream, &ws_dir, &workspace_dir, &content);
+            self.build_session_context(session_id, &lens, &ws_dir, &workspace_dir, &content);
 
         let msgs_before = session.messages().len();
         let (tx, rx) = mpsc::channel::<EngineEvent>(64);
@@ -367,15 +364,15 @@ impl LocalService {
     pub(super) async fn promote_session_inner(
         &self,
         session_id: Uuid,
-        workstream_name: &str,
+        lens_name: &str,
     ) -> Result<PromotionResult, ServiceError> {
         let (ws_id, ws_name, ws_dir, scratch_workspace, target_workspace) = {
             let store = self.store.lock().unwrap();
             let ws = store
-                .find_workstream_by_name(workstream_name)?
-                .ok_or_else(|| ServiceError::NotFound(format!("workstream '{workstream_name}'")))?;
+                .find_lens_by_name(lens_name)?
+                .ok_or_else(|| ServiceError::NotFound(format!("lens '{lens_name}'")))?;
 
-            let ws_dir = arawn_storage::workstream_dir_name(&ws.name, ws.id);
+            let ws_dir = arawn_storage::lens_dir_name(&ws.name, ws.id);
             let scratch_ws = store
                 .sandbox_for("scratch", session_id, true)
                 .join("workspace");
@@ -411,8 +408,8 @@ impl LocalService {
         }
 
         Ok(PromotionResult {
-            workstream_id: ws_id.to_string(),
-            workstream_name: ws_name,
+            lens_id: ws_id.to_string(),
+            lens_name: ws_name,
         })
     }
 
@@ -431,5 +428,4 @@ impl LocalService {
             )))
         }
     }
-
 }

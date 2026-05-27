@@ -251,9 +251,7 @@ async fn full_repo_mirror_round_trips_through_projection_store() {
 
     // FTS hits on body content prove the projection picked up the
     // bodies, not just the titles.
-    let hits = store
-        .fts_search(REPO_ISSUES_FEED_TYPE, "panic", 5)
-        .unwrap();
+    let hits = store.fts_search(REPO_ISSUES_FEED_TYPE, "panic", 5).unwrap();
     assert_eq!(hits.len(), 2, "both issues should match `panic`");
     let hits = store.fts_search(REPO_PRS_FEED_TYPE, "ship", 5).unwrap();
     assert_eq!(hits.len(), 1);

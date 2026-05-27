@@ -21,15 +21,15 @@ use arawn_storage::Store;
 pub struct DecisionRequest {
     /// The prompt for the agent to reason about.
     pub prompt: String,
-    /// Workstream context to use (defaults to "scratch").
-    #[serde(default = "default_workstream")]
-    pub workstream: String,
+    /// Lens context to use (defaults to "scratch").
+    #[serde(default = "default_lens")]
+    pub lens: String,
     /// Upstream pipeline data injected as context.
     #[serde(default)]
     pub upstream_data: Value,
 }
 
-fn default_workstream() -> String {
+fn default_lens() -> String {
     "scratch".into()
 }
 
@@ -68,19 +68,17 @@ impl DecisionService {
     /// Execute a decision request — creates a session, runs the QueryEngine,
     /// and returns the agent's response.
     pub async fn execute(&self, req: DecisionRequest) -> Result<DecisionResponse, DecisionError> {
-        // Resolve workstream
-        let workstream = {
+        // Resolve lens
+        let lens = {
             let store = self.store.lock().unwrap();
             store
-                .find_workstream_by_name(&req.workstream)
-                .map_err(|e| DecisionError(format!("find workstream '{}': {e}", req.workstream)))?
-                .ok_or_else(|| {
-                    DecisionError(format!("workstream '{}' not found", req.workstream))
-                })?
+                .find_lens_by_name(&req.lens)
+                .map_err(|e| DecisionError(format!("find lens '{}': {e}", req.lens)))?
+                .ok_or_else(|| DecisionError(format!("lens '{}' not found", req.lens)))?
         };
 
         // Create a fresh session for this decision
-        let mut session = arawn_core::Session::new(workstream.id);
+        let mut session = arawn_core::Session::new(lens.id);
         {
             let store = self.store.lock().unwrap();
             store
@@ -111,7 +109,7 @@ impl DecisionService {
 
         // Build engine and run
         let session_id = session.id;
-        let tool_ctx = EngineToolContext::new(&workstream, session_id);
+        let tool_ctx = EngineToolContext::new(&lens, session_id);
         let mut engine = QueryEngine::with_config(
             Arc::clone(&self.llm),
             Arc::clone(&self.registry),
@@ -124,7 +122,7 @@ impl DecisionService {
             .map_err(|e| DecisionError(format!("engine run: {e}")))?;
 
         info!(
-            workstream = %req.workstream,
+            lens = %req.lens,
             session = %session_id,
             "decision task completed"
         );

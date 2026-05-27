@@ -28,7 +28,6 @@ use crate::ws_client::{
 /// `force_draw`, which renders immediately and resets the clock.
 const MIN_FRAME_INTERVAL: Duration = Duration::from_millis(33);
 
-
 mod brief;
 mod ceremony;
 mod formats;
@@ -38,16 +37,20 @@ mod usage;
 mod watch;
 
 use brief::{refresh_brief_cache, render_brief_combined};
-use ceremony::{current_iso_week, fetch_diary_body, fetch_priorities, fetch_tablet_id_and_status,
-               handle_ceremony_overlay_key, refresh_active_ceremony_overlay,
-               render_ceremony_retro, render_ceremony_today, render_ceremony_week};
-use formats::{OpenAttempt, format_feed_discover, format_feed_list, format_feed_registered,
-              format_integrations_list, format_known_templates, format_permissions_status,
-              human_size, try_open_url};
+use ceremony::{
+    current_iso_week, fetch_diary_body, fetch_priorities, fetch_tablet_id_and_status,
+    handle_ceremony_overlay_key, refresh_active_ceremony_overlay, render_ceremony_retro,
+    render_ceremony_today, render_ceremony_week,
+};
+use formats::{
+    OpenAttempt, format_feed_discover, format_feed_list, format_feed_registered,
+    format_integrations_list, format_known_templates, format_permissions_status, human_size,
+    try_open_url,
+};
 use notices::apply_system_notice;
 use todo::{fetch_open_todos, handle_todo_overlay_key};
-use watch::{handle_watch_overlay_key, open_watch_modal};
 use usage::render_usage;
+use watch::{handle_watch_overlay_key, open_watch_modal};
 
 /// Render if enough time has elapsed since the last draw. Otherwise mark
 /// the app dirty so the next tick (or next force draw) flushes the change.
@@ -89,15 +92,15 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
     info!("connected");
 
     // Load initial state
-    debug!("loading initial workstreams");
-    let workstreams = client.list_workstreams().await?;
-    debug!(count = workstreams.len(), "workstreams loaded");
-    let current_ws = workstreams.first().cloned();
+    debug!("loading initial lenses");
+    let lenses = client.list_lenses().await?;
+    debug!(count = lenses.len(), "lenses loaded");
+    let current_ws = lenses.first().cloned();
     let sessions = if let Some(ref ws) = current_ws {
-        debug!(ws_id = %ws.id, "loading sessions for workstream");
+        debug!(ws_id = %ws.id, "loading sessions for lens");
         client.list_sessions(Some(ws.id)).await?
     } else {
-        debug!("no workstreams found, skipping session load");
+        debug!("no lenses found, skipping session load");
         vec![]
     };
     debug!(count = sessions.len(), "sessions loaded");
@@ -110,8 +113,8 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
 
     // Initialize app
     let mut app = App::new();
-    app.workstreams = workstreams;
-    app.current_workstream = current_ws;
+    app.lenses = lenses;
+    app.current_lens = current_ws;
     app.sessions = sessions;
     app.current_session = Some(session.clone());
     app.model_name = model_name.to_string();
@@ -424,7 +427,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 if let Ok(resp) = client.request_response("get_memory_summary", serde_json::json!({})).await
                                     && let Some(result) = resp.get("result") {
                                             let mut output = String::from("**Knowledge Base**\n\n");
-                                            for (label, key) in [("Global", "global"), ("Workstream", "workstream")] {
+                                            for (label, key) in [("Global", "global"), ("Lens", "lens")] {
                                                 if let Some(tier) = result.get(key) {
                                                     let total = tier.get("total").and_then(|t| t.as_u64()).unwrap_or(0);
                                                     output.push_str(&format!("| {label} | {total} entities |\n|---|---|\n"));
@@ -461,15 +464,15 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 }
                                 app.dirty = true;
                             }
-                            crate::command::CommandResult::WorkstreamCreate(name) => {
+                            crate::command::CommandResult::LensCreate(name) => {
                                 let params = serde_json::json!({"name": name});
-                                if let Ok(resp) = client.request_response("create_workstream", params).await {
+                                if let Ok(resp) = client.request_response("create_lens", params).await {
                                         if resp.get("result").is_some() {
-                                            // Refresh workstream list and switch to new one
-                                            if let Ok(workstreams) = client.list_workstreams().await {
-                                                app.workstreams = workstreams;
-                                                if let Some(ws) = app.workstreams.iter().find(|w| w.name == name).cloned() {
-                                                    app.current_workstream = Some(ws.clone());
+                                            // Refresh lens list and switch to new one
+                                            if let Ok(lenses) = client.list_lenses().await {
+                                                app.lenses = lenses;
+                                                if let Some(ws) = app.lenses.iter().find(|w| w.name == name).cloned() {
+                                                    app.current_lens = Some(ws.clone());
                                                     if let Ok(sessions) = client.list_sessions(Some(ws.id)).await {
                                                         app.sessions = sessions;
                                                     }
@@ -481,7 +484,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                                             app.messages.clear();
                                                             app.streaming_text.clear();
                                                         }
-                                                    app.messages.push(ChatMessage::new(ChatRole::System, format!("Switched to workstream '{name}'")));
+                                                    app.messages.push(ChatMessage::new(ChatRole::System, format!("Switched to lens '{name}'")));
                                                 }
                                             }
                                         } else if let Some(err) = resp.get("error").and_then(|e| e.get("message")).and_then(|m| m.as_str()) {
@@ -490,11 +493,11 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                     }
                                 app.dirty = true;
                             }
-                            crate::command::CommandResult::WorkstreamList => {
-                                if let Ok(workstreams) = client.list_workstreams().await {
-                                    let mut output = String::from("Workstreams:\n\n");
-                                    for ws in &workstreams {
-                                        let current = app.current_workstream.as_ref().map(|c| c.id) == Some(ws.id);
+                            crate::command::CommandResult::LensList => {
+                                if let Ok(lenses) = client.list_lenses().await {
+                                    let mut output = String::from("Lenses:\n\n");
+                                    for ws in &lenses {
+                                        let current = app.current_lens.as_ref().map(|c| c.id) == Some(ws.id);
                                         let marker = if current { "▸ " } else { "  " };
                                         let sessions = client.list_sessions(Some(ws.id)).await.map(|s| s.len()).unwrap_or(0);
                                         output.push_str(&format!("{marker}{} ({} sessions)\n", ws.name, sessions));
@@ -503,12 +506,12 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 }
                                 app.dirty = true;
                             }
-                            crate::command::CommandResult::WorkstreamSwitch(name) => {
-                                // Refresh workstream list and find by name
-                                if let Ok(workstreams) = client.list_workstreams().await {
-                                    app.workstreams = workstreams;
-                                    if let Some(ws) = app.workstreams.iter().find(|w| w.name == name).cloned() {
-                                        app.current_workstream = Some(ws.clone());
+                            crate::command::CommandResult::LensSwitch(name) => {
+                                // Refresh lens list and find by name
+                                if let Ok(lenses) = client.list_lenses().await {
+                                    app.lenses = lenses;
+                                    if let Some(ws) = app.lenses.iter().find(|w| w.name == name).cloned() {
+                                        app.current_lens = Some(ws.clone());
                                         if let Ok(sessions) = client.list_sessions(Some(ws.id)).await {
                                             app.sessions = sessions;
                                         }
@@ -526,15 +529,15 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                                 app.load_session_messages(&detail);
                                             }
                                         }
-                                        app.messages.push(ChatMessage::new(ChatRole::System, format!("Switched to workstream '{name}'")));
+                                        app.messages.push(ChatMessage::new(ChatRole::System, format!("Switched to lens '{name}'")));
                                     } else {
-                                        app.messages.push(ChatMessage::new(ChatRole::System, format!("Workstream '{name}' not found")));
+                                        app.messages.push(ChatMessage::new(ChatRole::System, format!("Lens '{name}' not found")));
                                     }
                                 }
                                 app.dirty = true;
                             }
                             crate::command::CommandResult::SessionNew => {
-                                let ws_id = app.current_workstream.as_ref().map(|ws| ws.id);
+                                let ws_id = app.current_lens.as_ref().map(|ws| ws.id);
                                 if let Ok(session) = client.create_session(ws_id).await {
                                     app.current_session = Some(session.clone());
                                     app.messages.clear();
@@ -561,21 +564,21 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 if let Some(ref session) = app.current_session {
                                     let params = serde_json::json!({
                                         "session_id": session.id.to_string(),
-                                        "workstream_name": ws_name,
+                                        "lens_name": ws_name,
                                     });
                                     if let Ok(resp) = client.request_response("promote_session", params).await {
                                             if resp.get("result").and_then(|r| r.get("status")).and_then(|s| s.as_str()) == Some("promoted") {
                                                 // Refresh state
-                                                if let Ok(workstreams) = client.list_workstreams().await {
-                                                    app.workstreams = workstreams;
-                                                    if let Some(ws) = app.workstreams.iter().find(|w| w.name == ws_name).cloned() {
-                                                        app.current_workstream = Some(ws.clone());
+                                                if let Ok(lenses) = client.list_lenses().await {
+                                                    app.lenses = lenses;
+                                                    if let Some(ws) = app.lenses.iter().find(|w| w.name == ws_name).cloned() {
+                                                        app.current_lens = Some(ws.clone());
                                                         if let Ok(sessions) = client.list_sessions(Some(ws.id)).await {
                                                             app.sessions = sessions;
                                                         }
                                                     }
                                                 }
-                                                app.messages.push(ChatMessage::new(ChatRole::System, format!("Session promoted to workstream '{ws_name}'")));
+                                                app.messages.push(ChatMessage::new(ChatRole::System, format!("Session promoted to lens '{ws_name}'")));
                                             } else if let Some(err) = resp.get("error").and_then(|e| e.get("message")).and_then(|m| m.as_str()) {
                                                 app.messages.push(ChatMessage::new(ChatRole::System, format!("Error: {err}")));
                                             }
@@ -911,20 +914,20 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                         }
                     }
 
-                    // Handle sidebar select — load workstream sessions and
+                    // Handle sidebar select — load lens sessions and
                     // resume / create one. I-0035 Phase 3 T-A removed the
                     // Sessions sub-section; sessions are managed via
                     // `/session list` and `/session new` slash commands.
                     if action == crate::action::Action::SidebarSelect
-                        && let Some(ws) = app.workstreams.get(app.sidebar_ws_index).cloned()
+                        && let Some(ws) = app.lenses.get(app.sidebar_ws_index).cloned()
                     {
-                        app.current_workstream = Some(ws.clone());
+                        app.current_lens = Some(ws.clone());
                         if let Ok(sessions) = client.list_sessions(Some(ws.id)).await {
                             app.sessions = sessions;
                             app.sidebar_session_index = 0;
                         }
 
-                        // Auto-create a session if the workstream has none,
+                        // Auto-create a session if the lens has none,
                         // or resume the most recent one.
                         if app.sessions.is_empty() {
                             if let Ok(session) = client.create_session(Some(ws.id)).await {
@@ -947,7 +950,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
 
                     // Handle new session
                     if action == crate::action::Action::NewSession {
-                        let ws_id = app.current_workstream.as_ref().map(|ws| ws.id);
+                        let ws_id = app.current_lens.as_ref().map(|ws| ws.id);
                         if let Ok(session) = client.create_session(ws_id).await {
                             app.current_session = Some(session.clone());
                             app.messages.clear();
@@ -989,7 +992,7 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                     app.dirty = true;
                                 }
 
-                            // Sidebar panel (workstreams only post-T-0356).
+                            // Sidebar panel (lenses only post-T-0356).
                             if let Some(sidebar_rect) = app.layout.sidebar
                                 && rect_contains(sidebar_rect, col, row)
                             {
@@ -998,10 +1001,10 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                     && rect_contains(ws_rect, col, row)
                                 {
                                     app.sidebar_section =
-                                        crate::app::SidebarSection::Workstreams;
+                                        crate::app::SidebarSection::Lenses;
                                     let item_row =
                                         row.saturating_sub(ws_rect.y + 1) as usize;
-                                    if item_row < app.workstreams.len() {
+                                    if item_row < app.lenses.len() {
                                         app.sidebar_ws_index = item_row;
                                     }
                                 }
@@ -1273,36 +1276,9 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
     Ok(())
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // -----------------------------------------------------------------------------
 // /todo overlay (I-0049 T-0314)
 // -----------------------------------------------------------------------------
-
-
 
 #[cfg(test)]
 mod ceremony_refresh_tests {
@@ -1411,5 +1387,3 @@ mod ceremony_refresh_tests {
         assert!(!app.pending_todo_refresh);
     }
 }
-
-

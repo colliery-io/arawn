@@ -125,9 +125,8 @@ impl FeedTemplate for NotificationsTemplate {
         let notifs = github.list_notifications(since, per_page, true).await?;
 
         let dir = feed_dir.join("notifications");
-        std::fs::create_dir_all(&dir).map_err(|e| {
-            FeedError::Storage(format!("create {}: {e}", dir.display()))
-        })?;
+        std::fs::create_dir_all(&dir)
+            .map_err(|e| FeedError::Storage(format!("create {}: {e}", dir.display())))?;
 
         let mut total_items: u64 = 0;
         let mut total_bytes: u64 = 0;
@@ -164,7 +163,10 @@ impl FeedTemplate for NotificationsTemplate {
                 }
             }
             if let Some(ts) = updated_at
-                && new_latest.as_deref().map(|n| ts.as_str() > n).unwrap_or(true)
+                && new_latest
+                    .as_deref()
+                    .map(|n| ts.as_str() > n)
+                    .unwrap_or(true)
             {
                 new_latest = Some(ts);
             }
@@ -198,13 +200,19 @@ impl FeedTemplate for NotificationsTemplate {
 
 fn sanitize_for_path(s: &str) -> String {
     s.chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
 fn write_json(path: &PathBuf, v: &Value) -> Result<u64, FeedError> {
-    let body = serde_json::to_vec_pretty(v)
-        .map_err(|e| FeedError::Storage(format!("serialize: {e}")))?;
+    let body =
+        serde_json::to_vec_pretty(v).map_err(|e| FeedError::Storage(format!("serialize: {e}")))?;
     let len = body.len() as u64;
     let tmp = path.with_extension("json.tmp");
     std::fs::write(&tmp, &body)

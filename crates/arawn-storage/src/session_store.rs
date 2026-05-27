@@ -18,11 +18,11 @@ impl<'a> SessionStore<'a> {
 
     pub fn create(&self, session: &Session) -> Result<(), StorageError> {
         self.db.conn().execute(
-            "INSERT INTO sessions (id, workstream_id, workstream_name, created_at) VALUES (?1, ?2, ?3, ?4)",
+            "INSERT INTO sessions (id, lens_id, lens_name, created_at) VALUES (?1, ?2, ?3, ?4)",
             (
                 session.id.to_string(),
-                session.workstream_id().map(|id| id.to_string()),
-                session.workstream_name(),
+                session.lens_id().map(|id| id.to_string()),
+                session.lens_name(),
                 session.created_at.to_rfc3339(),
             ),
         )?;
@@ -31,14 +31,14 @@ impl<'a> SessionStore<'a> {
 
     pub fn get(&self, id: Uuid) -> Result<Option<SessionMeta>, StorageError> {
         let mut stmt = self.db.conn().prepare(
-            "SELECT id, workstream_id, workstream_name, created_at, input_tokens, output_tokens, turns, tool_calls FROM sessions WHERE id = ?1",
+            "SELECT id, lens_id, lens_name, created_at, input_tokens, output_tokens, turns, tool_calls FROM sessions WHERE id = ?1",
         )?;
 
         let result = stmt.query_row([id.to_string()], |row| {
             Ok(SessionRow {
                 id: row.get(0)?,
-                workstream_id: row.get(1)?,
-                workstream_name: row.get(2)?,
+                lens_id: row.get(1)?,
+                lens_name: row.get(2)?,
                 created_at: row.get(3)?,
                 input_tokens: row.get(4)?,
                 output_tokens: row.get(5)?,
@@ -54,16 +54,16 @@ impl<'a> SessionStore<'a> {
         }
     }
 
-    pub fn list_for_workstream(&self, ws_id: Uuid) -> Result<Vec<SessionMeta>, StorageError> {
+    pub fn list_for_lens(&self, ws_id: Uuid) -> Result<Vec<SessionMeta>, StorageError> {
         let mut stmt = self.db.conn().prepare(
-            "SELECT id, workstream_id, workstream_name, created_at, input_tokens, output_tokens, turns, tool_calls FROM sessions WHERE workstream_id = ?1 ORDER BY created_at",
+            "SELECT id, lens_id, lens_name, created_at, input_tokens, output_tokens, turns, tool_calls FROM sessions WHERE lens_id = ?1 ORDER BY created_at",
         )?;
 
         let rows = stmt.query_map([ws_id.to_string()], |row| {
             Ok(SessionRow {
                 id: row.get(0)?,
-                workstream_id: row.get(1)?,
-                workstream_name: row.get(2)?,
+                lens_id: row.get(1)?,
+                lens_name: row.get(2)?,
                 created_at: row.get(3)?,
                 input_tokens: row.get(4)?,
                 output_tokens: row.get(5)?,
@@ -81,14 +81,14 @@ impl<'a> SessionStore<'a> {
 
     pub fn list_scratch(&self) -> Result<Vec<SessionMeta>, StorageError> {
         let mut stmt = self.db.conn().prepare(
-            "SELECT id, workstream_id, workstream_name, created_at, input_tokens, output_tokens, turns, tool_calls FROM sessions WHERE workstream_id IS NULL ORDER BY created_at",
+            "SELECT id, lens_id, lens_name, created_at, input_tokens, output_tokens, turns, tool_calls FROM sessions WHERE lens_id IS NULL ORDER BY created_at",
         )?;
 
         let rows = stmt.query_map([], |row| {
             Ok(SessionRow {
                 id: row.get(0)?,
-                workstream_id: row.get(1)?,
-                workstream_name: row.get(2)?,
+                lens_id: row.get(1)?,
+                lens_name: row.get(2)?,
                 created_at: row.get(3)?,
                 input_tokens: row.get(4)?,
                 output_tokens: row.get(5)?,
@@ -128,28 +128,20 @@ impl<'a> SessionStore<'a> {
         Ok(())
     }
 
-    pub fn update_workstream_id(
-        &self,
-        session_id: Uuid,
-        new_ws_id: Uuid,
-    ) -> Result<bool, StorageError> {
+    pub fn update_lens_id(&self, session_id: Uuid, new_ws_id: Uuid) -> Result<bool, StorageError> {
         let affected = self.db.conn().execute(
-            "UPDATE sessions SET workstream_id = ?1 WHERE id = ?2 AND workstream_id IS NULL",
+            "UPDATE sessions SET lens_id = ?1 WHERE id = ?2 AND lens_id IS NULL",
             (new_ws_id.to_string(), session_id.to_string()),
         )?;
         Ok(affected > 0)
     }
 
-    /// Update the persisted workstream slug for a session. Called when
-    /// `/workstream switch` lands in a new workstream so resumption
-    /// can re-establish the active workstream without a JOIN.
-    pub fn update_workstream_name(
-        &self,
-        session_id: Uuid,
-        new_name: &str,
-    ) -> Result<bool, StorageError> {
+    /// Update the persisted lens slug for a session. Called when
+    /// `/lens switch` lands in a new lens so resumption
+    /// can re-establish the active lens without a JOIN.
+    pub fn update_lens_name(&self, session_id: Uuid, new_name: &str) -> Result<bool, StorageError> {
         let affected = self.db.conn().execute(
-            "UPDATE sessions SET workstream_name = ?1 WHERE id = ?2",
+            "UPDATE sessions SET lens_name = ?1 WHERE id = ?2",
             (new_name, session_id.to_string()),
         )?;
         Ok(affected > 0)
@@ -160,8 +152,8 @@ impl<'a> SessionStore<'a> {
 #[derive(Debug, Clone)]
 pub struct SessionMeta {
     pub id: Uuid,
-    pub workstream_id: Option<Uuid>,
-    pub workstream_name: String,
+    pub lens_id: Option<Uuid>,
+    pub lens_name: String,
     pub created_at: DateTime<Utc>,
     pub stats: SessionStats,
 }
@@ -169,15 +161,15 @@ pub struct SessionMeta {
 impl SessionMeta {
     /// Convert to an arawn_core::Session (without messages — load those separately).
     pub fn into_session(self) -> Session {
-        let mut s = match self.workstream_id {
+        let mut s = match self.lens_id {
             Some(ws_id) => Session::new(ws_id),
             None => Session::scratch(),
         };
-        if !self.workstream_name.is_empty() {
+        if !self.lens_name.is_empty() {
             // Preserve the persisted slug without clobbering the id
             // (the FK is already correct or stays None for scratch).
-            if let Some(ws_id) = self.workstream_id {
-                s.set_workstream(self.workstream_name, ws_id);
+            if let Some(ws_id) = self.lens_id {
+                s.set_lens(self.lens_name, ws_id);
             }
         }
         s
@@ -186,8 +178,8 @@ impl SessionMeta {
 
 struct SessionRow {
     id: String,
-    workstream_id: Option<String>,
-    workstream_name: String,
+    lens_id: Option<String>,
+    lens_name: String,
     created_at: String,
     input_tokens: i64,
     output_tokens: i64,
@@ -199,8 +191,8 @@ impl SessionRow {
     fn into_meta(self) -> Result<SessionMeta, StorageError> {
         let id = Uuid::parse_str(&self.id)
             .map_err(|e| StorageError::InvalidOperation(format!("invalid UUID: {e}")))?;
-        let workstream_id = self
-            .workstream_id
+        let lens_id = self
+            .lens_id
             .map(|s| {
                 Uuid::parse_str(&s)
                     .map_err(|e| StorageError::InvalidOperation(format!("invalid UUID: {e}")))
@@ -212,8 +204,8 @@ impl SessionRow {
 
         Ok(SessionMeta {
             id,
-            workstream_id,
-            workstream_name: self.workstream_name,
+            lens_id,
+            lens_name: self.lens_name,
             created_at,
             stats: SessionStats {
                 input_tokens: self.input_tokens as u64,
@@ -228,7 +220,7 @@ impl SessionRow {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workstream_store::WorkstreamStore;
+    use crate::lens_store::LensStore;
 
     fn setup() -> Database {
         Database::in_memory().unwrap()
@@ -238,16 +230,16 @@ mod tests {
     fn create_and_get_session() {
         let db = setup();
         let store = SessionStore::new(&db);
-        // Need a workstream first (foreign key)
-        let ws = arawn_core::Workstream::new("test", "/tmp/test");
-        WorkstreamStore::new(&db).create(&ws).unwrap();
+        // Need a lens first (foreign key)
+        let ws = arawn_core::Lens::new("test", "/tmp/test");
+        LensStore::new(&db).create(&ws).unwrap();
 
         let session = Session::new(ws.id);
         store.create(&session).unwrap();
 
         let meta = store.get(session.id).unwrap().unwrap();
         assert_eq!(meta.id, session.id);
-        assert_eq!(meta.workstream_id, Some(ws.id));
+        assert_eq!(meta.lens_id, Some(ws.id));
     }
 
     #[test]
@@ -260,7 +252,7 @@ mod tests {
 
         let meta = store.get(session.id).unwrap().unwrap();
         assert_eq!(meta.id, session.id);
-        assert!(meta.workstream_id.is_none());
+        assert!(meta.lens_id.is_none());
     }
 
     #[test]
@@ -271,13 +263,13 @@ mod tests {
     }
 
     #[test]
-    fn list_for_workstream() {
+    fn list_for_lens() {
         let db = setup();
         let ss = SessionStore::new(&db);
-        let ws_store = WorkstreamStore::new(&db);
+        let ws_store = LensStore::new(&db);
 
-        let ws1 = arawn_core::Workstream::new("ws1", "/tmp/ws1");
-        let ws2 = arawn_core::Workstream::new("ws2", "/tmp/ws2");
+        let ws1 = arawn_core::Lens::new("ws1", "/tmp/ws1");
+        let ws2 = arawn_core::Lens::new("ws2", "/tmp/ws2");
         ws_store.create(&ws1).unwrap();
         ws_store.create(&ws2).unwrap();
 
@@ -288,10 +280,10 @@ mod tests {
         ss.create(&s2).unwrap();
         ss.create(&s3).unwrap();
 
-        let ws1_sessions = ss.list_for_workstream(ws1.id).unwrap();
+        let ws1_sessions = ss.list_for_lens(ws1.id).unwrap();
         assert_eq!(ws1_sessions.len(), 2);
 
-        let ws2_sessions = ss.list_for_workstream(ws2.id).unwrap();
+        let ws2_sessions = ss.list_for_lens(ws2.id).unwrap();
         assert_eq!(ws2_sessions.len(), 1);
     }
 
@@ -299,9 +291,9 @@ mod tests {
     fn list_scratch_sessions() {
         let db = setup();
         let ss = SessionStore::new(&db);
-        let ws_store = WorkstreamStore::new(&db);
+        let ws_store = LensStore::new(&db);
 
-        let ws = arawn_core::Workstream::new("ws", "/tmp/ws");
+        let ws = arawn_core::Lens::new("ws", "/tmp/ws");
         ws_store.create(&ws).unwrap();
 
         let bound = Session::new(ws.id);
@@ -313,42 +305,42 @@ mod tests {
 
         let scratches = ss.list_scratch().unwrap();
         assert_eq!(scratches.len(), 2);
-        assert!(scratches.iter().all(|s| s.workstream_id.is_none()));
+        assert!(scratches.iter().all(|s| s.lens_id.is_none()));
     }
 
     #[test]
-    fn update_workstream_id_promotes_scratch() {
+    fn update_lens_id_promotes_scratch() {
         let db = setup();
         let ss = SessionStore::new(&db);
-        let ws_store = WorkstreamStore::new(&db);
+        let ws_store = LensStore::new(&db);
 
-        let ws = arawn_core::Workstream::new("target", "/tmp/target");
+        let ws = arawn_core::Lens::new("target", "/tmp/target");
         ws_store.create(&ws).unwrap();
 
         let session = Session::scratch();
         ss.create(&session).unwrap();
 
-        assert!(ss.update_workstream_id(session.id, ws.id).unwrap());
+        assert!(ss.update_lens_id(session.id, ws.id).unwrap());
 
         let meta = ss.get(session.id).unwrap().unwrap();
-        assert_eq!(meta.workstream_id, Some(ws.id));
+        assert_eq!(meta.lens_id, Some(ws.id));
     }
 
     #[test]
-    fn update_workstream_id_on_bound_session_returns_false() {
+    fn update_lens_id_on_bound_session_returns_false() {
         let db = setup();
         let ss = SessionStore::new(&db);
-        let ws_store = WorkstreamStore::new(&db);
+        let ws_store = LensStore::new(&db);
 
-        let ws = arawn_core::Workstream::new("ws", "/tmp/ws");
+        let ws = arawn_core::Lens::new("ws", "/tmp/ws");
         ws_store.create(&ws).unwrap();
 
         let session = Session::new(ws.id);
         ss.create(&session).unwrap();
 
         // Already bound — should not update
-        let new_ws = arawn_core::Workstream::new("new", "/tmp/new");
+        let new_ws = arawn_core::Lens::new("new", "/tmp/new");
         ws_store.create(&new_ws).unwrap();
-        assert!(!ss.update_workstream_id(session.id, new_ws.id).unwrap());
+        assert!(!ss.update_lens_id(session.id, new_ws.id).unwrap());
     }
 }

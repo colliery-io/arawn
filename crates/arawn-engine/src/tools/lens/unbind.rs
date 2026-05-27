@@ -6,21 +6,18 @@ use serde_json::{Value, json};
 use arawn_storage::Store;
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
-use super::util::{
-    GithubScope, delete_feed,
-    parse_github_scope,
-};
+use super::util::{GithubScope, delete_feed, parse_github_scope};
 
 pub trait UnbindHook: Send + Sync {
     fn on_unbind(&self, removed_feed_ids: &[String]);
 }
 
-pub struct WorkstreamUnbindTool {
+pub struct LensUnbindTool {
     store: Arc<Mutex<Store>>,
     hook: Option<Arc<dyn UnbindHook>>,
 }
 
-impl WorkstreamUnbindTool {
+impl LensUnbindTool {
     pub fn new(store: Arc<Mutex<Store>>) -> Self {
         Self { store, hook: None }
     }
@@ -32,17 +29,17 @@ impl WorkstreamUnbindTool {
 }
 
 #[async_trait]
-impl Tool for WorkstreamUnbindTool {
+impl Tool for LensUnbindTool {
     fn name(&self) -> &str {
-        "workstream_unbind"
+        "lens_unbind"
     }
 
     fn description(&self) -> &str {
-        "Remove a feed binding from a workstream. Silent no-op if not bound."
+        "Remove a feed binding from a lens. Silent no-op if not bound."
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
@@ -78,7 +75,7 @@ impl Tool for WorkstreamUnbindTool {
         }
         let removed_feed_ids = {
             let store = self.store.lock().unwrap();
-            match store.remove_workstream_binding(&name, &feed_id) {
+            match store.remove_lens_binding(&name, &feed_id) {
                 Ok(()) => {
                     // I-0050 T-0326/0327 — sweep child feeds for github
                     // scope unbinds. Repo unbind drops a single feed;
@@ -141,4 +138,3 @@ fn collect_child_feed_ids(conn: &rusqlite::Connection, pattern: &str) -> Vec<Str
     };
     rows.flatten().collect()
 }
-

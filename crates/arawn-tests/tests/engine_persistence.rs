@@ -5,9 +5,10 @@ use std::sync::Arc;
 
 use tempfile::TempDir;
 
-use arawn_core::{Message, Session, Workstream};
+use arawn_core::{Lens, Message, Session};
 use arawn_engine::{
-    FileReadTool, QueryEngine, QueryEngineConfig, ShellTool, ThinkTool, EngineToolContext, ToolRegistry,
+    EngineToolContext, FileReadTool, QueryEngine, QueryEngineConfig, ShellTool, ThinkTool,
+    ToolRegistry,
 };
 use arawn_llm::{MockLlmClient, MockResponse};
 use arawn_storage::Store;
@@ -16,7 +17,7 @@ use arawn_storage::Store;
 struct Fixture {
     _tmp: TempDir,
     store: Store,
-    workstream: Workstream,
+    lens: Lens,
     ws_dir: String,
 }
 
@@ -24,19 +25,19 @@ impl Fixture {
     fn new() -> Self {
         let tmp = TempDir::new().unwrap();
         let store = Store::open(tmp.path()).unwrap();
-        let ws = Workstream::new("test-ws", tmp.path().join("workspace"));
-        store.create_workstream(&ws).unwrap();
+        let ws = Lens::new("test-ws", tmp.path().join("workspace"));
+        store.create_lens(&ws).unwrap();
         std::fs::create_dir_all(&ws.root_dir).unwrap();
         Self {
             _tmp: tmp,
             store,
             ws_dir: "test-ws".to_string(),
-            workstream: ws,
+            lens: ws,
         }
     }
 
     fn new_session(&self) -> Session {
-        let session = Session::new(self.workstream.id);
+        let session = Session::new(self.lens.id);
         self.store.create_session(&session).unwrap();
         session
     }
@@ -48,7 +49,7 @@ impl Fixture {
     }
 
     fn context(&self, session: &Session) -> EngineToolContext {
-        EngineToolContext::new(&self.workstream, session.id)
+        EngineToolContext::new(&self.lens, session.id)
     }
 
     fn registry(&self) -> Arc<ToolRegistry> {
@@ -189,7 +190,7 @@ async fn session_resume_continues_conversation() {
 async fn tool_results_persisted_with_content() {
     let fix = Fixture::new();
 
-    let test_file = fix.workstream.root_dir.join("data.txt");
+    let test_file = fix.lens.root_dir.join("data.txt");
     std::fs::write(&test_file, "important data\n").unwrap();
 
     let mut session = fix.new_session();
@@ -278,7 +279,7 @@ async fn scratch_session_promotion_preserves_messages() {
     assert_eq!(before_promote.len(), 2);
 
     fix.store
-        .promote_session(session.id, fix.workstream.id)
+        .promote_session(session.id, fix.lens.id)
         .await
         .unwrap();
 

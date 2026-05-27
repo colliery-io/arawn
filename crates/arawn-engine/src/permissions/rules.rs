@@ -325,8 +325,8 @@ mod tests {
 
     #[test]
     fn rule_extracts_web_fetch_url() {
-        let rule = PermissionRule::new(RuleKind::Allow, "web_fetch")
-            .with_content("https://example.com/*");
+        let rule =
+            PermissionRule::new(RuleKind::Allow, "web_fetch").with_content("https://example.com/*");
         assert!(rule.matches("web_fetch", r#"{"url":"https://example.com/foo"}"#));
         assert!(!rule.matches("web_fetch", r#"{"url":"https://evil.example/x"}"#));
     }
@@ -337,8 +337,7 @@ mod tests {
         // the raw JSON — preserves previous behavior so nothing
         // crashes; pattern authors get a debug log telling them
         // their pattern is matching against JSON.
-        let rule =
-            PermissionRule::new(RuleKind::Allow, "custom_tool").with_content("*hello*");
+        let rule = PermissionRule::new(RuleKind::Allow, "custom_tool").with_content("*hello*");
         assert!(rule.matches("custom_tool", r#"{"thing":"hello world"}"#));
     }
 

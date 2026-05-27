@@ -2,7 +2,9 @@ use crate::app::App;
 
 /// Fetch all open todos for the overlay. Filters out done + archived,
 /// which is the default behaviour of `todos.list` with no filter.
-pub(super) async fn fetch_open_todos(client: &mut crate::ws_client::WsClient) -> Vec<crate::todo_modal::TodoRow> {
+pub(super) async fn fetch_open_todos(
+    client: &mut crate::ws_client::WsClient,
+) -> Vec<crate::todo_modal::TodoRow> {
     let params = serde_json::json!({"open_only": true});
     let payload = match client.request_response("todos.list", params).await {
         Ok(v) => v,
@@ -18,8 +20,8 @@ pub(super) async fn fetch_open_todos(client: &mut crate::ws_client::WsClient) ->
                 id: row.get("id")?.as_str()?.to_string(),
                 body: row.get("body")?.as_str()?.to_string(),
                 kind: row.get("kind")?.as_str()?.to_string(),
-                workstream: row
-                    .get("workstream")
+                lens: row
+                    .get("lens")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string()),
                 done_at: row
@@ -50,7 +52,11 @@ pub(super) async fn handle_todo_overlay_key(
             app.dirty = true;
         }
         TodoOutcome::Toggle { id, mark_done } => {
-            let method = if mark_done { "todos.done" } else { "todos.undo" };
+            let method = if mark_done {
+                "todos.done"
+            } else {
+                "todos.undo"
+            };
             let err = match client
                 .request_response(method, serde_json::json!({"id": id}))
                 .await
@@ -116,4 +122,3 @@ pub(super) async fn handle_todo_overlay_key(
         }
     }
 }
-

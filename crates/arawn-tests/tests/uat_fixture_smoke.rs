@@ -11,17 +11,17 @@ fn signal_extraction_e2e_fixture_parses() {
         .join("uat")
         .join("signal-extraction-e2e.json");
     let fx = uat_fixture::load(&path).expect("fixture parses");
-    assert_eq!(fx.workstreams.len(), 2);
+    assert_eq!(fx.lenses.len(), 2);
     let work = fx
-        .workstreams
+        .lenses
         .iter()
         .find(|w| w.name == "work")
-        .expect("work workstream");
+        .expect("work lens");
     let dnd = fx
-        .workstreams
+        .lenses
         .iter()
         .find(|w| w.name == "dnd")
-        .expect("dnd workstream");
+        .expect("dnd lens");
     assert!(
         work.rows.len() >= 10,
         "work has {} rows (want >=10)",
@@ -35,7 +35,7 @@ fn signal_extraction_e2e_fixture_parses() {
 }
 
 /// T-0332: the synthetic life-assistant fixture must parse, have a
-/// single `personal` workstream pinned to the assistant persona, and
+/// single `personal` lens pinned to the assistant persona, and
 /// carry rows across all four sources (gmail, slack, calendar, jira).
 #[test]
 fn personal_day_fixture_parses() {
@@ -45,8 +45,8 @@ fn personal_day_fixture_parses() {
         .join("uat")
         .join("personal-day.json");
     let fx = uat_fixture::load(&path).expect("personal-day fixture parses");
-    assert_eq!(fx.workstreams.len(), 1);
-    let ws = &fx.workstreams[0];
+    assert_eq!(fx.lenses.len(), 1);
+    let ws = &fx.lenses[0];
     assert_eq!(ws.name, "personal");
     assert_eq!(ws.identity_profile.as_deref(), Some("assistant"));
 

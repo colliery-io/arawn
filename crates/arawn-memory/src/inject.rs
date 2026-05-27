@@ -5,7 +5,7 @@ use crate::types::EntityType;
 
 /// Default limits for entities injected per tier.
 const DEFAULT_GLOBAL_LIMIT: usize = 20;
-const DEFAULT_WORKSTREAM_LIMIT: usize = 30;
+const DEFAULT_LENS_LIMIT: usize = 30;
 
 /// Load relevant entities from both KB tiers and format as strings
 /// suitable for system prompt injection.
@@ -15,10 +15,10 @@ const DEFAULT_WORKSTREAM_LIMIT: usize = 30;
 pub fn load_memories_for_injection(
     memory: &MemoryManager,
     global_limit: Option<usize>,
-    workstream_limit: Option<usize>,
+    lens_limit: Option<usize>,
 ) -> Vec<String> {
     let global_limit = global_limit.unwrap_or(DEFAULT_GLOBAL_LIMIT);
-    let workstream_limit = workstream_limit.unwrap_or(DEFAULT_WORKSTREAM_LIMIT);
+    let lens_limit = lens_limit.unwrap_or(DEFAULT_LENS_LIMIT);
 
     let mut memories = Vec::new();
 
@@ -58,7 +58,7 @@ pub fn load_memories_for_injection(
         memories.push(global_entries.join("\n"));
     }
 
-    // Workstream KB: all Conventions/Decisions, recent Facts/Notes
+    // Lens KB: all Conventions/Decisions, recent Facts/Notes
     let ws_sections = [
         ("Project Conventions", EntityType::Convention),
         ("Project Decisions", EntityType::Decision),
@@ -69,11 +69,11 @@ pub fn load_memories_for_injection(
     let mut ws_entries = Vec::new();
     let mut ws_count = 0;
     for (label, et) in &ws_sections {
-        if ws_count >= workstream_limit {
+        if ws_count >= lens_limit {
             break;
         }
-        let remaining = workstream_limit - ws_count;
-        match memory.workstream.list_by_type(*et, remaining) {
+        let remaining = lens_limit - ws_count;
+        match memory.lens.list_by_type(*et, remaining) {
             Ok(entities) if !entities.is_empty() => {
                 ws_entries.push(format!("**{}:**", label));
                 for e in &entities {
@@ -124,7 +124,7 @@ mod tests {
 
     fn setup() -> (TempDir, MemoryManager) {
         let tmp = TempDir::new().unwrap();
-        std::fs::create_dir_all(tmp.path().join("workstreams/test-ws")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("lenses/test-ws")).unwrap();
         let mgr = MemoryManager::open(tmp.path(), "test-ws", None).unwrap();
         (tmp, mgr)
     }
@@ -154,12 +154,12 @@ mod tests {
     }
 
     #[test]
-    fn injects_workstream_conventions() {
+    fn injects_lens_conventions() {
         let (_tmp, mgr) = setup();
-        mgr.workstream
+        mgr.lens
             .insert_entity(&Entity::new(EntityType::Convention, "Tests go inline"))
             .unwrap();
-        mgr.workstream
+        mgr.lens
             .insert_entity(&Entity::new(EntityType::Decision, "Use microservices"))
             .unwrap();
 
@@ -177,12 +177,12 @@ mod tests {
         mgr.global
             .insert_entity(&Entity::new(EntityType::Preference, "Likes Rust"))
             .unwrap();
-        mgr.workstream
+        mgr.lens
             .insert_entity(&Entity::new(EntityType::Decision, "Use PostgreSQL"))
             .unwrap();
 
         let memories = load_memories_for_injection(&mgr, None, None);
-        assert_eq!(memories.len(), 2); // one global block, one workstream block
+        assert_eq!(memories.len(), 2); // one global block, one lens block
     }
 
     #[test]
@@ -190,7 +190,7 @@ mod tests {
         let (_tmp, mgr) = setup();
         let mut entity = Entity::new(EntityType::Fact, "Rust is fast");
         entity.reinforcement_count = 3;
-        mgr.workstream.insert_entity(&entity).unwrap();
+        mgr.lens.insert_entity(&entity).unwrap();
 
         let memories = load_memories_for_injection(&mgr, None, None);
         let joined = memories.join("\n");

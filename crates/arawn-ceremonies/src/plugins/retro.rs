@@ -280,7 +280,9 @@ fn biweekly_window(
     let n: i64 = period_key
         .strip_prefix('B')
         .ok_or_else(|| {
-            CeremonyError::Other(format!("biweekly period_key '{period_key}' missing 'B' prefix"))
+            CeremonyError::Other(format!(
+                "biweekly period_key '{period_key}' missing 'B' prefix"
+            ))
         })?
         .parse()
         .map_err(|e| CeremonyError::Other(format!("biweekly period_key index: {e}")))?;
@@ -355,7 +357,7 @@ struct PrioritySummary {
 
 #[derive(Debug, Clone, Serialize)]
 struct RollupRow {
-    workstream: String,
+    lens: String,
     metric_key: String,
     value: f64,
 }
@@ -503,14 +505,14 @@ impl Ceremony for RetroCeremony {
         // 3. this week's rollup rows.
         let mut stmt = conn
             .prepare(
-                "SELECT workstream, metric_key, value FROM ceremony_activity_rollup \
-                 WHERE iso_week = ?1 ORDER BY workstream, metric_key",
+                "SELECT lens, metric_key, value FROM ceremony_activity_rollup \
+                 WHERE iso_week = ?1 ORDER BY lens, metric_key",
             )
             .map_err(|e| CeremonyError::Storage(format!("rollup prepare: {e}")))?;
         let rollup_rows = stmt
             .query_map(params![&iso_week], |row| {
                 Ok(RollupRow {
-                    workstream: row.get(0)?,
+                    lens: row.get(0)?,
                     metric_key: row.get(1)?,
                     value: row.get(2)?,
                 })
@@ -733,7 +735,7 @@ mod tests {
         let c = conn.0.lock().unwrap();
         // A daily tablet within this week.
         c.execute(
-            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
              VALUES (?1, 'daily', ?2, ?3, 'reviewed', '[]')",
             params!["daily-day1", mon, "2026-05-18T07:00:00Z"],
         )
@@ -752,14 +754,14 @@ mod tests {
         .unwrap();
         // Rollup rows.
         c.execute(
-            "INSERT INTO ceremony_activity_rollup (iso_week, workstream, metric_key, value) \
+            "INSERT INTO ceremony_activity_rollup (iso_week, lens, metric_key, value) \
              VALUES (?1, ?2, ?3, ?4)",
             params![iso_week, "proj-a", "emails_sent", 12.0],
         )
         .unwrap();
         // A weekly tablet + a confirmed priority.
         c.execute(
-            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
              VALUES (?1, 'weekly', ?2, ?3, 'reviewed', '[]')",
             params!["weekly-W20", iso_week, "2026-05-11T07:00:00Z"],
         )
@@ -767,7 +769,7 @@ mod tests {
         // Post-V9: priorities are thin links to todos. Insert the
         // todo first, then the priority row.
         c.execute(
-            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+            "INSERT INTO todos (id, body, rationale, kind, lens, created_at, \
                                 due_at, done_at, archived_at, attrs) \
              VALUES ('td-prio-1', 'Ship retro plugin', 'carry-over', 'weekly_priority', \
                      NULL, '2026-05-11T08:00:00Z', NULL, NULL, NULL, '{}')",
@@ -953,7 +955,10 @@ Hope that helps."#;
     #[test]
     fn cadence_parse_accepts_aliases() {
         assert_eq!(RetroCadence::parse("weekly"), Some(RetroCadence::Weekly));
-        assert_eq!(RetroCadence::parse("BIWEEKLY"), Some(RetroCadence::Biweekly));
+        assert_eq!(
+            RetroCadence::parse("BIWEEKLY"),
+            Some(RetroCadence::Biweekly)
+        );
         assert_eq!(
             RetroCadence::parse("fortnightly"),
             Some(RetroCadence::Biweekly)
@@ -1069,8 +1074,7 @@ Hope that helps."#;
 
         let anchor = NaiveDate::from_ymd_opt(2026, 5, 18).unwrap();
         RetroCeremony::save_cadence(&handle, RetroCadence::Biweekly, Some(anchor)).unwrap();
-        let (loaded_cadence, loaded_anchor) =
-            RetroCeremony::load_persisted_cadence(&handle, None);
+        let (loaded_cadence, loaded_anchor) = RetroCeremony::load_persisted_cadence(&handle, None);
         assert_eq!(loaded_cadence, RetroCadence::Biweekly);
         assert_eq!(loaded_anchor, Some(anchor));
 
@@ -1096,8 +1100,7 @@ Hope that helps."#;
         assert_eq!(c1, RetroCadence::Weekly);
 
         // Empty DB + config default → use the default.
-        let (c2, _) =
-            RetroCeremony::load_persisted_cadence(&handle, Some(RetroCadence::Monthly));
+        let (c2, _) = RetroCeremony::load_persisted_cadence(&handle, Some(RetroCadence::Monthly));
         assert_eq!(c2, RetroCadence::Monthly);
     }
 }

@@ -39,7 +39,7 @@ pub struct Scenario {
     /// pollute scenarios whose turns expect *only* dust proposals on
     /// the journal — UAT 23:31's signal-extraction-e2e regression
     /// surfaced exactly this when the agent flaked on its dust retry
-    /// and then `workstream_refine` returned only the tag-promoter
+    /// and then `lens_refine` returned only the tag-promoter
     /// proposal as a confused fallback target.
     #[serde(default)]
     pub seed_tag_promoter: bool,
@@ -430,7 +430,7 @@ network_tools = ["gh", "curl"]
         >,
     ) -> Uuid {
         use futures_util::SinkExt;
-        let req = json!({"id": 1, "method": "create_session", "params": {"workstream_id": null}});
+        let req = json!({"id": 1, "method": "create_session", "params": {"lens_id": null}});
         write
             .send(WsMessage::Text(req.to_string().into()))
             .await
@@ -513,7 +513,7 @@ network_tools = ["gh", "curl"]
     }
 
     fn list_workspace_files(&self) -> Vec<String> {
-        let ws_dir = self.data_dir.join("workstreams");
+        let ws_dir = self.data_dir.join("lenses");
         let mut files = Vec::new();
         if let Ok(entries) = walkdir(&ws_dir) {
             for entry in entries {
@@ -576,7 +576,7 @@ network_tools = ["gh", "curl"]
         // workspace/ snapshot
         let ws_snapshot_dir = results_dir.join("workspace");
         std::fs::create_dir_all(&ws_snapshot_dir).ok();
-        let ws_dir = self.data_dir.join("workstreams");
+        let ws_dir = self.data_dir.join("lenses");
         if let Ok(entries) = walkdir(&ws_dir) {
             for entry in entries {
                 if entry.is_file() {
@@ -634,7 +634,7 @@ fn walkdir(dir: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
 
 // github_monitor_scenario removed in T-0332. The pattern it exercised
 // — agent writes its own monitoring scripts — was supplanted by
-// I-0045 / I-0050 (`workstream bind github:org:...` plus the cloacina
+// I-0045 / I-0050 (`lens bind github:org:...` plus the cloacina
 // scheduler). Filing a replacement that exercises the bind flow is
 // out of scope here; file separately if useful.
 
@@ -685,59 +685,59 @@ mod uat_retro_seed;
 mod uat_weekly_seed;
 
 /// I-0040 end-to-end UAT: synthetic gmail + slack feed rows for two
-/// workstreams, extractor runs during seed so the KB is warm, agent
+/// lenses, extractor runs during seed so the KB is warm, agent
 /// then drives signal_search / signal_query / signal_timeline /
-/// workstream_journal / workstream_dust / workstream_refine /
-/// workstream_apply / workstream_rollback against real data.
+/// lens_journal / lens_dust / lens_refine /
+/// lens_apply / lens_rollback against real data.
 fn signal_extraction_e2e_scenario() -> Scenario {
     Scenario {
         name: "signal-extraction-e2e".to_string(),
-        objective: "Drive the I-0040 read + curation surface against two seeded workstreams. The seed loader pre-populates projections.db with synthetic gmail + slack rows for `work` and `dnd` workstreams, then runs the extractor synchronously so the agent sees a warm KB on turn 1.".to_string(),
+        objective: "Drive the I-0040 read + curation surface against two seeded lenses. The seed loader pre-populates projections.db with synthetic gmail + slack rows for `work` and `dnd` lenses, then runs the extractor synchronously so the agent sees a warm KB on turn 1.".to_string(),
         turns: vec![
             ScenarioTurn {
-                user_message: "Switch to the `work` workstream, then use signal_search to find what we decided about Postgres. Quote the decision title and any key rationale.".to_string(),
-                judge_expectation: "Agent should call workstream_switch (or workstream_show) then signal_search with a query like \"postgres\". Should surface the ledger/postgres decision extracted from the seeded gmail rows.".to_string(),
+                user_message: "Switch to the `work` lens, then use signal_search to find what we decided about Postgres. Quote the decision title and any key rationale.".to_string(),
+                judge_expectation: "Agent should call lens_switch (or lens_show) then signal_search with a query like \"postgres\". Should surface the ledger/postgres decision extracted from the seeded gmail rows.".to_string(),
             },
             ScenarioTurn {
-                user_message: "Use signal_query to list every Convention in this workstream — I want to see what process rules are codified.".to_string(),
+                user_message: "Use signal_query to list every Convention in this lens — I want to see what process rules are codified.".to_string(),
                 judge_expectation: "Agent should call signal_query with entity_type=\"convention\". Should return at least the on-call and code-review conventions extracted from the seeded rows.".to_string(),
             },
             ScenarioTurn {
-                user_message: "First call workstream_switch to move into the `dnd` workstream — wait for the switch to confirm before doing anything else. Then call signal_timeline once to see the latest plot thread. Don't issue these as parallel tool calls; signal_timeline reads the active workstream's KB and will return the wrong data if it runs before the switch lands.".to_string(),
-                judge_expectation: "Agent should call workstream_switch and signal_timeline as two SEQUENTIAL calls (not parallel). Should mention the Calidor / cult tracking arc as a recent plot thread.".to_string(),
+                user_message: "First call lens_switch to move into the `dnd` lens — wait for the switch to confirm before doing anything else. Then call signal_timeline once to see the latest plot thread. Don't issue these as parallel tool calls; signal_timeline reads the active lens's KB and will return the wrong data if it runs before the switch lands.".to_string(),
+                judge_expectation: "Agent should call lens_switch and signal_timeline as two SEQUENTIAL calls (not parallel). Should mention the Calidor / cult tracking arc as a recent plot thread.".to_string(),
             },
             ScenarioTurn {
-                user_message: "We have a couple of old falcon-project entries in the `work` workstream that are stale. Switch back to `work` and run workstream_dust on the falcon cluster — preview the proposed summary before we commit anything.".to_string(),
-                judge_expectation: "Agent should switch workstreams and call workstream_dust with tags=[\"falcon\"] (or similar). Returns dust proposals with a summary entity. Should report the proposal id(s) but NOT auto-apply.".to_string(),
+                user_message: "We have a couple of old falcon-project entries in the `work` lens that are stale. Switch back to `work` and run lens_dust on the falcon cluster — preview the proposed summary before we commit anything.".to_string(),
+                judge_expectation: "Agent should switch lenses and call lens_dust with tags=[\"falcon\"] (or similar). Returns dust proposals with a summary entity. Should report the proposal id(s) but NOT auto-apply.".to_string(),
             },
             ScenarioTurn {
-                user_message: "List all pending steward proposals via workstream_refine so I can see what map / dust / doorwatch have suggested.".to_string(),
-                judge_expectation: "Agent should call workstream_refine. Output should include the dust proposal from the previous turn (applied=false).".to_string(),
+                user_message: "List all pending steward proposals via lens_refine so I can see what map / dust / doorwatch have suggested.".to_string(),
+                judge_expectation: "Agent should call lens_refine. Output should include the dust proposal from the previous turn (applied=false).".to_string(),
             },
             ScenarioTurn {
-                user_message: "Apply the falcon dust proposal — pass the id you saw in refine to workstream_apply.".to_string(),
-                judge_expectation: "Agent should call workstream_apply with the dust proposal's id. Status should be \"applied\". A new summary entity now exists in the work KB.".to_string(),
+                user_message: "Apply the falcon dust proposal — pass the id you saw in refine to lens_apply.".to_string(),
+                judge_expectation: "Agent should call lens_apply with the dust proposal's id. Status should be \"applied\". A new summary entity now exists in the work KB.".to_string(),
             },
             ScenarioTurn {
                 user_message: "Confirm the apply worked: signal_search for \"falcon\" — you should see the new summary entity.".to_string(),
                 judge_expectation: "signal_search should return the dust summary among the hits. Confirms apply mutated the KB as expected.".to_string(),
             },
             ScenarioTurn {
-                user_message: "Actually, roll that apply back — I want to double-check the originals are still there. Use workstream_rollback with the same id.".to_string(),
-                judge_expectation: "Agent calls workstream_rollback. Status: \"reverted\". A subsequent signal_search for \"falcon\" should show the originals but not the summary (the summary's SUMMARIZES edges are gone and the summary entity is removed from the KB).".to_string(),
+                user_message: "Actually, roll that apply back — I want to double-check the originals are still there. Use lens_rollback with the same id.".to_string(),
+                judge_expectation: "Agent calls lens_rollback. Status: \"reverted\". A subsequent signal_search for \"falcon\" should show the originals but not the summary (the summary's SUMMARIZES edges are gone and the summary entity is removed from the KB).".to_string(),
             },
         ],
         mechanical: MechanicalThresholds {
             min_files_created: 0,
             min_workflows_created: 0,
             // Seed runs the extractor; even modestly stingy classification
-            // should produce >= 6 entities across the two workstreams.
+            // should produce >= 6 entities across the two lenses.
             min_memory_entities: 6,
             max_tool_errors: 3,
         },
         seed_fixture: Some("tests/fixtures/uat/signal-extraction-e2e.json".to_string()),
         // Dust scenario: don't pre-seed promotion proposals. A stray
-        // tag-promoter row would confuse turn 5's workstream_refine
+        // tag-promoter row would confuse turn 5's lens_refine
         // when the dust path itself stalls (UAT 23:31 regression).
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
@@ -749,7 +749,7 @@ fn signal_extraction_e2e_scenario() -> Scenario {
 /// I-0040 T-0268: tag-promoter Extract→Suggest→Add cycle UAT.
 /// Reuses the signal-extraction-e2e fixture, but exercises the
 /// ontology growth path:
-///   1. Inspect the active workstream's ontology.
+///   1. Inspect the active lens's ontology.
 ///   2. Review pending steward proposals (tag-promoter should have
 ///      surfaced multiple promotion candidates after seed).
 ///   3. Apply one promotion.
@@ -762,20 +762,20 @@ fn tag_promoter_cycle_scenario() -> Scenario {
         objective: "Drive the I-0040 Extract→Suggest→Add cycle for tag promotion. The seed loader runs the tag-promoter subroutine after extraction so pending promotion proposals exist before turn 1.".to_string(),
         turns: vec![
             ScenarioTurn {
-                user_message: "Switch to the `work` workstream, then use workstream_show to tell me what's currently in this workstream's tag ontology.".to_string(),
-                judge_expectation: "Agent calls workstream_switch then workstream_show; reports the seeded ontology tags (falcon, ledger, postgres, on-call, code-review, rfc, team, infrastructure, migration, process).".to_string(),
+                user_message: "Switch to the `work` lens, then use lens_show to tell me what's currently in this lens's tag ontology.".to_string(),
+                judge_expectation: "Agent calls lens_switch then lens_show; reports the seeded ontology tags (falcon, ledger, postgres, on-call, code-review, rfc, team, infrastructure, migration, process).".to_string(),
             },
             ScenarioTurn {
-                user_message: "Use workstream_refine to list any pending steward proposals — especially tag-promotion proposals. Summarize what each one would do if I applied it.".to_string(),
-                judge_expectation: "Agent calls workstream_refine and reports at least one tag-promoter proposal with a tag name and a count. May explain each proposal would add the proposed tag to the ontology.".to_string(),
+                user_message: "Use lens_refine to list any pending steward proposals — especially tag-promotion proposals. Summarize what each one would do if I applied it.".to_string(),
+                judge_expectation: "Agent calls lens_refine and reports at least one tag-promoter proposal with a tag name and a count. May explain each proposal would add the proposed tag to the ontology.".to_string(),
             },
             ScenarioTurn {
-                user_message: "Pick the most useful-looking tag-promotion proposal. **First** call workstream_apply with the proposal id — wait for the response (status will be `applied`). **Only after** that call returns, call workstream_show to read the updated ontology. Do NOT issue workstream_apply and workstream_show as parallel tool calls in one response — they must be sequential or workstream_show will see the pre-apply ontology. Then report the updated tags_ontology list from workstream_show.".to_string(),
-                judge_expectation: "Agent issues workstream_apply and workstream_show as SEQUENTIAL tool calls (apply finishes before show starts). The show response's `tags_ontology` array should contain the newly-promoted tag.".to_string(),
+                user_message: "Pick the most useful-looking tag-promotion proposal. **First** call lens_apply with the proposal id — wait for the response (status will be `applied`). **Only after** that call returns, call lens_show to read the updated ontology. Do NOT issue lens_apply and lens_show as parallel tool calls in one response — they must be sequential or lens_show will see the pre-apply ontology. Then report the updated tags_ontology list from lens_show.".to_string(),
+                judge_expectation: "Agent issues lens_apply and lens_show as SEQUENTIAL tool calls (apply finishes before show starts). The show response's `tags_ontology` array should contain the newly-promoted tag.".to_string(),
             },
             ScenarioTurn {
-                user_message: "Roll it back with workstream_rollback. The `status` field in the response confirms whether it worked — don't double-check with workstream_show or workstream_tag. Just report the rollback status.".to_string(),
-                judge_expectation: "Agent calls workstream_rollback exactly once (status=reverted) and reports the status. No additional verification tool calls.".to_string(),
+                user_message: "Roll it back with lens_rollback. The `status` field in the response confirms whether it worked — don't double-check with lens_show or lens_tag. Just report the rollback status.".to_string(),
+                judge_expectation: "Agent calls lens_rollback exactly once (status=reverted) and reports the status. No additional verification tool calls.".to_string(),
             },
         ],
         mechanical: MechanicalThresholds {
@@ -794,7 +794,7 @@ fn tag_promoter_cycle_scenario() -> Scenario {
     }
 }
 
-/// I-0043 retro ceremony end-to-end: seed three workstreams + prior
+/// I-0043 retro ceremony end-to-end: seed three lenses + prior
 /// rollup/priority/todo/diary state, drive the agent through
 /// retro_run → retro_list_items → retro_save_diary against a real
 /// LLM. Judge verifies the agent (a) calls retro_run and reports a
@@ -804,7 +804,7 @@ fn tag_promoter_cycle_scenario() -> Scenario {
 fn retro_ceremony_scenario() -> Scenario {
     Scenario {
         name: "retro-ceremony".to_string(),
-        objective: "Drive the I-0043 retro ceremony end-to-end. Three workstreams are seeded (proj-a, proj-b, proj-c) with 3 prior weeks of rollup activity. The current ISO week has 3 confirmed priorities all not-done (priority_completion_ratio fires), 4 rolling todos with last_seen this week (rollover_heat fires), and no rollup for proj-c in the current week (workstream_neglect fires). One prior retro tablet from 2 weeks ago seeds a diary the gather payload surfaces.".to_string(),
+        objective: "Drive the I-0043 retro ceremony end-to-end. Three lenses are seeded (proj-a, proj-b, proj-c) with 3 prior weeks of rollup activity. The current ISO week has 3 confirmed priorities all not-done (priority_completion_ratio fires), 4 rolling todos with last_seen this week (rollover_heat fires), and no rollup for proj-c in the current week (lens_neglect fires). One prior retro tablet from 2 weeks ago seeds a diary the gather payload surfaces.".to_string(),
         turns: vec![
             ScenarioTurn {
                 user_message: "Run this week's retro and tell me the tablet id you get back.".to_string(),
@@ -833,7 +833,7 @@ fn retro_ceremony_scenario() -> Scenario {
     }
 }
 
-/// I-0041 daily ceremony end-to-end: seed three workstreams +
+/// I-0041 daily ceremony end-to-end: seed three lenses +
 /// rolling todos, a weekly tablet with confirmed priorities, and
 /// today's calendar events. Drive the agent through daily_run →
 /// daily_list_items → daily_add_todo → daily_list_items against a
@@ -844,7 +844,7 @@ fn retro_ceremony_scenario() -> Scenario {
 fn daily_ceremony_scenario() -> Scenario {
     Scenario {
         name: "daily-ceremony".to_string(),
-        objective: "Drive the I-0041 daily ceremony end-to-end. Three workstreams (proj-a, proj-b, proj-c) are seeded with recent gmail rows so the attention adapter has signals to surface. The ceremony seeder writes 4 rolling todos (open), 2 confirmed weekly priorities, a placeholder daily tablet for yesterday, and 6 calendar events for today. The daily plugin's gather should populate all four sections (calendar, todos, attention, alignment).".to_string(),
+        objective: "Drive the I-0041 daily ceremony end-to-end. Three lenses (proj-a, proj-b, proj-c) are seeded with recent gmail rows so the attention adapter has signals to surface. The ceremony seeder writes 4 rolling todos (open), 2 confirmed weekly priorities, a placeholder daily tablet for yesterday, and 6 calendar events for today. The daily plugin's gather should populate all four sections (calendar, todos, attention, alignment).".to_string(),
         turns: vec![
             ScenarioTurn {
                 user_message: "Run today's daily brief and tell me the tablet id you get back.".to_string(),
@@ -873,7 +873,7 @@ fn daily_ceremony_scenario() -> Scenario {
     }
 }
 
-/// I-0042 weekly ceremony end-to-end: seed three workstreams + a
+/// I-0042 weekly ceremony end-to-end: seed three lenses + a
 /// week's worth of calendar events, a prior weekly tablet with open
 /// inbound items, a prior retro with diary + patterns, and 4 hot
 /// rolling todos. Drive the agent through weekly_run →
@@ -886,7 +886,7 @@ fn daily_ceremony_scenario() -> Scenario {
 fn weekly_ceremony_scenario() -> Scenario {
     Scenario {
         name: "weekly-ceremony".to_string(),
-        objective: "Drive the I-0042 weekly ceremony end-to-end. Three workstreams (proj-a, proj-b, proj-c) are seeded with recent gmail + slack rows so the attention adapter surfaces deadline candidates. The weekly seeder writes the current week's calendar (~10 events across Mon–Sun), a prior weekly tablet with 2 open inbound items, a prior retro (2 weeks ago) with diary + patterns, and 4 hot rolling todos (created > 7 days ago). The weekly plugin's gather should populate all five sections (priorities, calendar_shape, deadlines, from_last_retro, inbound).".to_string(),
+        objective: "Drive the I-0042 weekly ceremony end-to-end. Three lenses (proj-a, proj-b, proj-c) are seeded with recent gmail + slack rows so the attention adapter surfaces deadline candidates. The weekly seeder writes the current week's calendar (~10 events across Mon–Sun), a prior weekly tablet with 2 open inbound items, a prior retro (2 weeks ago) with diary + patterns, and 4 hot rolling todos (created > 7 days ago). The weekly plugin's gather should populate all five sections (priorities, calendar_shape, deadlines, from_last_retro, inbound).".to_string(),
         turns: vec![
             ScenarioTurn {
                 user_message: "Run this week's prep ceremony and report the tablet id you get back.".to_string(),
@@ -962,7 +962,7 @@ fn priority_completion_feedback_scenario() -> Scenario {
 // ============================================================================
 // T-0332 — Assistant-persona scenarios (I-0035 Phase 1 validation)
 //
-// All six scenarios bind to the `personal` workstream defined in
+// All six scenarios bind to the `personal` lens defined in
 // `tests/fixtures/uat/personal-day.json`, which sets
 // `identity_profile: "assistant"`. The fixture pre-seeds gmail / slack
 // / calendar / jira rows for one synthetic day (2026-04-15). The seeder
@@ -982,8 +982,8 @@ fn morning_briefing_scenario() -> Scenario {
         objective: "Assistant surfaces today's schedule, awaiting-me items, and notable Slack/mail across pat's connected tools when asked for an open-ended briefing. Tests proactive-surface behavior without the user naming specific tools.".to_string(),
         turns: vec![
             ScenarioTurn {
-                user_message: "First switch to the `personal` workstream. Then give me a quick morning briefing — what should I know about today across my calendar, inbox, and Slack? Don't bury the lede.".to_string(),
-                judge_expectation: "Agent should call workstream_switch then use signal_search / signal_query / signal_timeline (or the relevant integration read tools) to gather state across calendar + inbox + slack. Summary should mention: today's standup, the architecture review at 1pm-ish (a calendar conflict — both at 20:00 UTC), the RFC-0042 thread from Alice asking for sign-off, and the @mention from Jamie about the ledger dashboard. FAIL if the agent invents details not present in the fixture.".to_string(),
+                user_message: "First switch to the `personal` lens. Then give me a quick morning briefing — what should I know about today across my calendar, inbox, and Slack? Don't bury the lede.".to_string(),
+                judge_expectation: "Agent should call lens_switch then use signal_search / signal_query / signal_timeline (or the relevant integration read tools) to gather state across calendar + inbox + slack. Summary should mention: today's standup, the architecture review at 1pm-ish (a calendar conflict — both at 20:00 UTC), the RFC-0042 thread from Alice asking for sign-off, and the @mention from Jamie about the ledger dashboard. FAIL if the agent invents details not present in the fixture.".to_string(),
             },
         ],
         mechanical: MechanicalThresholds {
@@ -1007,7 +1007,7 @@ fn inbox_summary_scenario() -> Scenario {
         turns: vec![
             ScenarioTurn {
                 user_message: "Switch to `personal` then summarize my inbox today. Skip the marketing junk — automated promos from vendors (meal-kit, anything with an 'Unsubscribe' link or a discount code) and routine billing invoices are noise, not substance. I only want the messages that need my attention or that I'd want to know about.".to_string(),
-                judge_expectation: "Agent should switch workstream and use signal_search / signal_query (or gmail tools) to read inbox rows. The summary MUST omit the meal-kit promo (mentions SAVE10, 'Unsubscribe') and the cloud-provider billing-notification rows (vendor invoice). It should mention: Alice's RFC-0042 sign-off request, Mei's coffee invitation, Jamie's standup notes, mom's Sunday dinner, the github PR review request, and the catch-up reply from Bob. FAIL if either marketing row is summarized as substantive; FAIL if any inbox content not present in the fixture is described.".to_string(),
+                judge_expectation: "Agent should switch lens and use signal_search / signal_query (or gmail tools) to read inbox rows. The summary MUST omit the meal-kit promo (mentions SAVE10, 'Unsubscribe') and the cloud-provider billing-notification rows (vendor invoice). It should mention: Alice's RFC-0042 sign-off request, Mei's coffee invitation, Jamie's standup notes, mom's Sunday dinner, the github PR review request, and the catch-up reply from Bob. FAIL if either marketing row is summarized as substantive; FAIL if any inbox content not present in the fixture is described.".to_string(),
             },
         ],
         mechanical: MechanicalThresholds {
@@ -1130,7 +1130,7 @@ fn no_fabrication_scenario() -> Scenario {
 fn filesystem_watch_roundtrip_scenario() -> Scenario {
     Scenario {
         name: "filesystem-watch-roundtrip".to_string(),
-        objective: "Drive the I-0057 filesystem feed read path. The seed loader writes `filesystem_signals` projection rows from synthetic meeting transcripts into a watched-notes folder mirror, so feed_search should surface their content with no workstream required.".to_string(),
+        objective: "Drive the I-0057 filesystem feed read path. The seed loader writes `filesystem_signals` projection rows from synthetic meeting transcripts into a watched-notes folder mirror, so feed_search should surface their content with no lens required.".to_string(),
         turns: vec![
             ScenarioTurn {
                 user_message: "Use feed_search to dig up my Project Falcon meeting notes. What did we decide about the database migration, and what's the codename for the dual-write phase?".to_string(),
@@ -1243,7 +1243,7 @@ async fn uat_run() {
 
             // Build a transient LLM client matching the server config
             // and drive the extractor synchronously across each
-            // (workstream, feed_type). Skipping this would leave the KB
+            // (lens, feed_type). Skipping this would leave the KB
             // empty — extraction is part of the pipeline under test.
             let client = uat_fixture::build_seed_llm_client(&provider, &model, &api_key_env)
                 .expect("build seed llm");
@@ -1253,9 +1253,9 @@ async fn uat_run() {
                     .await
                     .expect("drive extraction");
             println!(
-                "    Seed extraction complete: {} projection rows processed across {} workstreams",
+                "    Seed extraction complete: {} projection rows processed across {} lenses",
                 processed,
-                applied.per_workstream.len()
+                applied.per_lens.len()
             );
 
             // Drive tag-promoter only when the scenario opts in.

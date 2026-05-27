@@ -39,9 +39,9 @@ pub use plugin::{
     UserItem,
 };
 pub use plugins::{
-    AttentionSource, CalEvent, CalendarSource, DailyCeremony, NoopCalendarSource,
-    PriorityCompletionDetector, RetroCadence, RetroCeremony, RolloverHeatDetector, SignalRow,
-    StaticAttentionSource, StaticCalendarSource, WeeklyCeremony, WorkstreamNeglectDetector,
+    AttentionSource, CalEvent, CalendarSource, DailyCeremony, LensNeglectDetector,
+    NoopCalendarSource, PriorityCompletionDetector, RetroCadence, RetroCeremony,
+    RolloverHeatDetector, SignalRow, StaticAttentionSource, StaticCalendarSource, WeeklyCeremony,
     retro_v1_catalog,
 };
 pub use registry::PluginRegistry;
@@ -49,9 +49,7 @@ pub use render::{
     BriefView, DailyView, RetroView, WeeklyView, render_brief, render_daily, render_retro,
     render_weekly,
 };
-pub use rollup::{
-    CentralDbWorkstreams, RollupSource, WorkstreamList, compute_for_week, read_rollup_value,
-};
+pub use rollup::{CentralDbLenses, LensList, RollupSource, compute_for_week, read_rollup_value};
 pub use runner::{CeremonyDispatchTask, CeremonyDispatcher, CeremonyRunner, DispatchOutcome};
 pub use service::{
     AddItemRequest, AddPriorityRequest, CeremonyService, ItemDto, ItemPatch, NotificationDto,

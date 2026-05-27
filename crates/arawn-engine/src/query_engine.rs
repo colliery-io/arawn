@@ -13,8 +13,8 @@ use crate::hooks::{HookInput, HookRunner};
 use crate::permissions::{PermissionChecker, PermissionDecision};
 use crate::plan::PlanModeState;
 use crate::token_estimator::{ModelLimits, TokenEstimator};
-use arawn_tool::ToolRegistry;
 use crate::tool_timeout;
+use arawn_tool::ToolRegistry;
 
 const DEFAULT_MAX_ITERATIONS: usize = 200;
 const MAX_COMPACT_FAILURES: u32 = 3;
@@ -74,14 +74,14 @@ pub struct PromptContext {
     pub os: String,
     pub shell: String,
     pub cwd: std::path::PathBuf,
-    pub workstream_name: String,
-    pub workstream_root: std::path::PathBuf,
+    pub lens_name: String,
+    pub lens_root: std::path::PathBuf,
     pub context_files: Vec<crate::system_prompt::ContextFile>,
     pub memories: Vec<String>,
     pub session_context: String,
     pub plugin_prompts: Vec<String>,
     /// Persona to load into the static sections (identity / doing_tasks /
-    /// work_protocol). Sourced from the active workstream's
+    /// work_protocol). Sourced from the active lens's
     /// `identity_profile` at session-build time. Defaults to
     /// [`IdentityProfile::Assistant`].
     pub identity_profile: arawn_core::IdentityProfile,
@@ -736,7 +736,7 @@ impl QueryEngine {
                     &prompt_ctx.cwd,
                     &self.config.model,
                 )
-                .workstream(&prompt_ctx.workstream_name, &prompt_ctx.workstream_root)
+                .lens(&prompt_ctx.lens_name, &prompt_ctx.lens_root)
                 .tools(&tools)
                 .context_files(&prompt_ctx.context_files)
                 .memories(&prompt_ctx.memories)
@@ -1160,13 +1160,13 @@ fn filter_tools_for_context(
     let mut active_categories = std::collections::HashSet::new();
 
     // Always include Core and Utility, plus the two ambient categories
-    // (Workstream + Memory) promoted in I-0055 T-D. Both have small
+    // (Lens + Memory) promoted in I-0055 T-D. Both have small
     // surface area (~5 + ~3 tools), high frequency of legitimate use,
     // and no semantic reason to keyword-gate — the agent should never
     // lose access to context-switching or recall mid-turn.
     active_categories.insert(ToolCategory::Core);
     active_categories.insert(ToolCategory::Utility);
-    active_categories.insert(ToolCategory::Workstream);
+    active_categories.insert(ToolCategory::Lens);
     active_categories.insert(ToolCategory::Memory);
 
     // Per-service integration categories — capability-gated, not keyword-gated.
@@ -1242,7 +1242,7 @@ fn filter_tools_for_context(
         active_categories.insert(ToolCategory::Agent);
     }
 
-    // Workstream: promoted to always-on in I-0055 T-D — see the
+    // Lens: promoted to always-on in I-0055 T-D — see the
     // unconditional insert at the top of the function. Keyword branch
     // removed.
 
@@ -1307,7 +1307,7 @@ mod tests {
     use super::*;
     use crate::context::EngineToolContext;
     use crate::tools::ThinkTool;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use arawn_llm::LlmError;
     use arawn_tool::{Tool, ToolOutput};
     use async_trait::async_trait;
@@ -1371,8 +1371,8 @@ mod tests {
         }
     }
 
-    fn setup() -> (Workstream, Session, EngineToolContext) {
-        let ws = Workstream::scratch("/tmp/test-engine");
+    fn setup() -> (Lens, Session, EngineToolContext) {
+        let ws = Lens::scratch("/tmp/test-engine");
         let session = Session::new(ws.id);
         let ctx = EngineToolContext::new(&ws, session.id);
         (ws, session, ctx)
@@ -1735,7 +1735,8 @@ mod tests {
         // User message contains zero calendar/web/scheduling keywords.
         let session = session_past_iter_1("Bob is free Tue mornings");
         let connected = vec!["google_calendar".to_string()];
-        let filtered = filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
+        let filtered =
+            filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
         assert!(
             filtered.iter().any(|t| t.name == "calendar_upcoming"),
             "calendar_upcoming should be visible when google_calendar capability is connected"
@@ -1752,7 +1753,8 @@ mod tests {
         let all = vec![tool_def("calendar_upcoming")];
         let session = session_past_iter_1("Bob is free Tue mornings");
         let connected: Vec<String> = vec![]; // capability absent
-        let filtered = filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
+        let filtered =
+            filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
         assert!(
             filtered.iter().all(|t| t.name != "calendar_upcoming"),
             "calendar_upcoming should be dropped when google_calendar capability is absent"
@@ -1769,7 +1771,8 @@ mod tests {
         let all = vec![tool_def("slack_post")];
         let session = session_past_iter_1("Tell Pat we're shipping");
         let connected = vec!["slack".to_string()];
-        let filtered = filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
+        let filtered =
+            filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
         assert!(
             filtered.iter().any(|t| t.name == "slack_post"),
             "slack_post should be visible when slack capability is connected"
@@ -1786,7 +1789,8 @@ mod tests {
         let all = vec![tool_def("slack_post")];
         let session = session_past_iter_1("Tell Pat we're shipping");
         let connected: Vec<String> = vec![];
-        let filtered = filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
+        let filtered =
+            filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
         assert!(
             filtered.iter().all(|t| t.name != "slack_post"),
             "slack_post should be dropped when slack capability is absent"
@@ -1796,14 +1800,10 @@ mod tests {
     // ─── I-0055 T-C — non-integration keyword routing tests ──────────────
     //
     // One positive + one negative per non-integration category that's still
-    // keyword-gated. Memory + Workstream are slated for always-on promotion
+    // keyword-gated. Memory + Lens are slated for always-on promotion
     // in T-D, so only their CURRENT keyword behavior is asserted here.
 
-    fn assert_tool_visible(
-        cat: arawn_tool::ToolCategory,
-        tool_name: &'static str,
-        user_msg: &str,
-    ) {
+    fn assert_tool_visible(cat: arawn_tool::ToolCategory, tool_name: &'static str, user_msg: &str) {
         let registry = ToolRegistry::new();
         registry.register(Box::new(CategorizedStub {
             name_: tool_name,
@@ -1811,18 +1811,15 @@ mod tests {
         }));
         let all = vec![tool_def(tool_name)];
         let session = session_past_iter_1(user_msg);
-        let filtered = filter_tools_for_context(&all, &session, &registry, &[], &small_model_limits());
+        let filtered =
+            filter_tools_for_context(&all, &session, &registry, &[], &small_model_limits());
         assert!(
             filtered.iter().any(|t| t.name == tool_name),
             "{tool_name} should be visible for category {cat:?} given user_msg = {user_msg:?}",
         );
     }
 
-    fn assert_tool_hidden(
-        cat: arawn_tool::ToolCategory,
-        tool_name: &'static str,
-        user_msg: &str,
-    ) {
+    fn assert_tool_hidden(cat: arawn_tool::ToolCategory, tool_name: &'static str, user_msg: &str) {
         let registry = ToolRegistry::new();
         registry.register(Box::new(CategorizedStub {
             name_: tool_name,
@@ -1830,7 +1827,8 @@ mod tests {
         }));
         let all = vec![tool_def(tool_name)];
         let session = session_past_iter_1(user_msg);
-        let filtered = filter_tools_for_context(&all, &session, &registry, &[], &small_model_limits());
+        let filtered =
+            filter_tools_for_context(&all, &session, &registry, &[], &small_model_limits());
         assert!(
             filtered.iter().all(|t| t.name != tool_name),
             "{tool_name} should be hidden for category {cat:?} given user_msg = {user_msg:?}",
@@ -1930,22 +1928,18 @@ mod tests {
         assert_tool_hidden(arawn_tool::ToolCategory::Agent, "agent", "hello");
     }
 
-    // Workstream — promoted to always-on in T-D. Tools must surface even
-    // when the user message contains no workstream keywords.
+    // Lens — promoted to always-on in T-D. Tools must surface even
+    // when the user message contains no lens keywords.
     #[test]
-    fn workstream_tools_visible_with_empty_user_message() {
-        assert_tool_visible(
-            arawn_tool::ToolCategory::Workstream,
-            "workstream_switch",
-            "x",
-        );
+    fn lens_tools_visible_with_empty_user_message() {
+        assert_tool_visible(arawn_tool::ToolCategory::Lens, "lens_switch", "x");
     }
     #[test]
-    fn workstream_tools_visible_with_unrelated_user_message() {
+    fn lens_tools_visible_with_unrelated_user_message() {
         assert_tool_visible(
-            arawn_tool::ToolCategory::Workstream,
-            "workstream_switch",
-            "what's on my agenda", // Ceremony-keyword prompt — Workstream still surfaces
+            arawn_tool::ToolCategory::Lens,
+            "lens_switch",
+            "what's on my agenda", // Ceremony-keyword prompt — Lens still surfaces
         );
     }
 

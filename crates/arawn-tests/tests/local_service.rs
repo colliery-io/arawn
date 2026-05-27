@@ -5,7 +5,7 @@ use std::sync::Arc;
 use futures_util::StreamExt;
 use tempfile::TempDir;
 
-use arawn_core::Workstream;
+use arawn_core::Lens;
 use arawn_engine::{QueryEngineConfig, ThinkTool, ToolRegistry};
 use arawn_llm::{MockLlmClient, MockResponse};
 use arawn_service::{ArawnService, EngineEvent};
@@ -15,9 +15,9 @@ fn setup_service(responses: Vec<MockResponse>) -> (TempDir, arawn_bin::LocalServ
     let tmp = TempDir::new().unwrap();
     let store = Store::open(tmp.path()).unwrap();
 
-    // Create scratch workstream
-    let ws = Workstream::scratch(tmp.path());
-    store.create_workstream(&ws).unwrap();
+    // Create scratch lens
+    let ws = Lens::scratch(tmp.path());
+    store.create_lens(&ws).unwrap();
 
     let llm: Arc<dyn arawn_llm::LlmClient> = Arc::new(MockLlmClient::new(responses));
     let registry = Arc::new(ToolRegistry::new());
@@ -92,22 +92,22 @@ async fn separate_engine_and_compactor_llms_are_stored_distinctly() {
 }
 
 #[tokio::test]
-async fn list_workstreams_returns_scratch() {
+async fn list_lenses_returns_scratch() {
     let (_tmp, service) = setup_service(vec![]);
-    let workstreams = service.list_workstreams().await.unwrap();
-    assert!(!workstreams.is_empty());
-    assert_eq!(workstreams[0].name, "scratch");
+    let lenses = service.list_lenses().await.unwrap();
+    assert!(!lenses.is_empty());
+    assert_eq!(lenses[0].name, "scratch");
 }
 
 #[tokio::test]
 async fn create_and_load_session_roundtrip() {
     let (_tmp, service) = setup_service(vec![]);
 
-    let workstreams = service.list_workstreams().await.unwrap();
-    let ws_id = workstreams[0].id;
+    let lenses = service.list_lenses().await.unwrap();
+    let ws_id = lenses[0].id;
 
     let session = service.create_session(Some(ws_id)).await.unwrap();
-    assert_eq!(session.workstream_id, Some(ws_id));
+    assert_eq!(session.lens_id, Some(ws_id));
 
     let loaded = service.load_session(session.id).await.unwrap();
     assert_eq!(loaded.id, session.id);
@@ -178,8 +178,8 @@ async fn send_message_with_tool_call_returns_events() {
 async fn send_message_persists_to_jsonl() {
     let (_tmp, service) = setup_service(vec![MockResponse::text("Persisted reply")]);
 
-    let workstreams = service.list_workstreams().await.unwrap();
-    let ws_id = workstreams[0].id;
+    let lenses = service.list_lenses().await.unwrap();
+    let ws_id = lenses[0].id;
     let session = service.create_session(Some(ws_id)).await.unwrap();
 
     let mut stream = service
@@ -200,13 +200,13 @@ async fn send_message_persists_to_jsonl() {
 }
 
 #[tokio::test]
-async fn create_workstream_with_default_root_dir() {
+async fn create_lens_with_default_root_dir() {
     let (tmp, service) = setup_service(vec![]);
 
     let ws = service
-        .create_workstream(
+        .create_lens(
             "test-project".into(),
-            tmp.path().join("workstreams/test-project"),
+            tmp.path().join("lenses/test-project"),
         )
         .await
         .unwrap();
@@ -214,24 +214,24 @@ async fn create_workstream_with_default_root_dir() {
     assert_eq!(ws.name, "test-project");
 
     // Directory should exist
-    let ws_dir = tmp.path().join("workstreams/test-project");
-    assert!(ws_dir.exists(), "workstream directory should be created");
+    let ws_dir = tmp.path().join("lenses/test-project");
+    assert!(ws_dir.exists(), "lens directory should be created");
 
     // Should appear in list
-    let all = service.list_workstreams().await.unwrap();
+    let all = service.list_lenses().await.unwrap();
     assert!(
         all.iter().any(|w| w.name == "test-project"),
-        "new workstream should appear in list"
+        "new lens should appear in list"
     );
 }
 
 #[tokio::test]
-async fn promote_scratch_session_to_workstream() {
+async fn promote_scratch_session_to_lens() {
     let (tmp, service) = setup_service(vec![MockResponse::text("Reply in scratch")]);
 
-    // Create a target workstream
+    // Create a target lens
     service
-        .create_workstream("finances".into(), tmp.path().join("workstreams/finances"))
+        .create_lens("finances".into(), tmp.path().join("lenses/finances"))
         .await
         .unwrap();
 
@@ -250,12 +250,12 @@ async fn promote_scratch_session_to_workstream() {
         "scratch session should have messages"
     );
 
-    // Promote to finances workstream
+    // Promote to finances lens
     let result = service
         .promote_session(session.id, "finances")
         .await
         .unwrap();
-    assert_eq!(result.workstream_name, "finances");
+    assert_eq!(result.lens_name, "finances");
 
     // Session should still load with its messages from the new location
     let loaded_after = service.load_session(session.id).await.unwrap();
@@ -265,14 +265,14 @@ async fn promote_scratch_session_to_workstream() {
         "messages should survive promotion"
     );
 
-    // JSONL should exist in the workstream dir, not scratch
-    let ws_id: uuid::Uuid = result.workstream_id.parse().unwrap();
-    let ws_dir = arawn_storage::workstream_dir_name("finances", ws_id);
+    // JSONL should exist in the lens dir, not scratch
+    let ws_id: uuid::Uuid = result.lens_id.parse().unwrap();
+    let ws_dir = arawn_storage::lens_dir_name("finances", ws_id);
     let msg_store = JsonlMessageStore::new(tmp.path());
     let messages = msg_store.load(session.id, &ws_dir).await.unwrap();
     assert!(
         !messages.is_empty(),
-        "JSONL should exist in workstream dir after promotion"
+        "JSONL should exist in lens dir after promotion"
     );
 }
 
@@ -280,16 +280,16 @@ async fn promote_scratch_session_to_workstream() {
 async fn promote_non_scratch_session_fails() {
     let (tmp, service) = setup_service(vec![]);
 
-    // Create a workstream and a session bound to it
+    // Create a lens and a session bound to it
     let ws = service
-        .create_workstream("project-a".into(), tmp.path().join("workstreams/project-a"))
+        .create_lens("project-a".into(), tmp.path().join("lenses/project-a"))
         .await
         .unwrap();
     let session = service.create_session(Some(ws.id)).await.unwrap();
 
-    // Create another workstream
+    // Create another lens
     service
-        .create_workstream("project-b".into(), tmp.path().join("workstreams/project-b"))
+        .create_lens("project-b".into(), tmp.path().join("lenses/project-b"))
         .await
         .unwrap();
 
@@ -337,8 +337,8 @@ async fn multi_turn_conversation_accumulates_history() {
 async fn list_sessions_returns_multiple() {
     let (_tmp, service) = setup_service(vec![]);
 
-    let workstreams = service.list_workstreams().await.unwrap();
-    let ws_id = workstreams[0].id;
+    let lenses = service.list_lenses().await.unwrap();
+    let ws_id = lenses[0].id;
 
     // Create 2 sessions
     let s1 = service.create_session(Some(ws_id)).await.unwrap();

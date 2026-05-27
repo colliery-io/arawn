@@ -2,7 +2,7 @@
 //!
 //! Subroutines own their own LLM call (or none, for the identity stub),
 //! their own cap enforcement, and their own write-ahead journaling.
-//! They receive a `SubroutineCtx` that bundles the workstream record,
+//! They receive a `SubroutineCtx` that bundles the lens record,
 //! its `MemoryManager`, its `Journal`, and the configured cap for this
 //! subroutine on this pass.
 
@@ -12,7 +12,7 @@ use async_trait::async_trait;
 #[cfg(test)]
 use tracing::debug;
 
-use arawn_core::Workstream;
+use arawn_core::Lens;
 use arawn_memory::MemoryManager;
 
 use crate::error::StewardError;
@@ -21,7 +21,7 @@ use crate::journal::JournalGate;
 /// Per-pass context handed to a subroutine. The runner constructs one
 /// before each subroutine run.
 pub struct SubroutineCtx {
-    pub workstream: Workstream,
+    pub lens: Lens,
     pub memory: Arc<MemoryManager>,
     /// Gated journal handle — `applied=true` writes are rejected at
     /// the gate when the runner has flagged this subroutine as non-
@@ -58,7 +58,7 @@ pub trait StewardSubroutine: Send + Sync {
     /// concrete impls.
     fn is_mutating(&self) -> bool;
 
-    /// Run one pass against the workstream's KB.
+    /// Run one pass against the lens's KB.
     async fn run(&self, ctx: &SubroutineCtx) -> Result<SubroutineOutcome, StewardError>;
 }
 
@@ -100,7 +100,7 @@ impl StewardSubroutine for IdentitySubroutine {
 
     async fn run(&self, ctx: &SubroutineCtx) -> Result<SubroutineOutcome, StewardError> {
         debug!(
-            workstream = %ctx.workstream.name,
+            lens = %ctx.lens.name,
             subroutine = %self.name,
             cap = ctx.cap,
             "identity steward subroutine running"

@@ -186,10 +186,7 @@ mod tests {
             kind: &str,
             target: NaiveDate,
         ) -> Result<DispatchOutcome, CeremonyError> {
-            self.calls
-                .lock()
-                .unwrap()
-                .push((kind.to_string(), target));
+            self.calls.lock().unwrap().push((kind.to_string(), target));
             if self.fail_on.iter().any(|(k, d)| k == kind && *d == target) {
                 return Err(CeremonyError::Other("synthetic test failure".into()));
             }
@@ -299,8 +296,7 @@ mod tests {
     async fn iteration_failure_does_not_abort_loop() {
         let reg = registry_with(&["daily"]);
         let today = Utc::now().date_naive();
-        let disp =
-            RecordingDispatcher::new().with_failure("daily", today - Duration::days(5));
+        let disp = RecordingDispatcher::new().with_failure("daily", today - Duration::days(5));
         let report = run(&reg, &disp, 14).await.unwrap();
         assert_eq!(report.composed, 13);
         assert_eq!(report.failed, 1);

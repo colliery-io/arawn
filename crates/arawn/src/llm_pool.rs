@@ -580,5 +580,4 @@ medium = "nonexistent"
         let (_, model) = pool.resolve_hint("hint:medium");
         assert_eq!(model, "engine-model");
     }
-
 }

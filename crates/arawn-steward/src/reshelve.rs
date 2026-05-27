@@ -48,7 +48,7 @@ pub struct ReshelveSubroutine {
     client: Arc<dyn LlmClient>,
     model: String,
     config: ReshelveConfig,
-    /// Resolves the workstream's cursor store. Returning a fresh handle
+    /// Resolves the lens's cursor store. Returning a fresh handle
     /// per call is fine — `Connection::open` is cheap on the same path.
     cursor_factory: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync>,
 }
@@ -108,7 +108,7 @@ impl StewardSubroutine for ReshelveSubroutine {
     }
 
     async fn run(&self, ctx: &SubroutineCtx) -> Result<SubroutineOutcome, StewardError> {
-        let cursor_store = (self.cursor_factory)(&ctx.workstream.name)?;
+        let cursor_store = (self.cursor_factory)(&ctx.lens.name)?;
         let cursor = cursor_store.get(SUBROUTINE_NAME)?;
 
         // Pull a candidate batch of recently-touched entities. We
@@ -117,7 +117,7 @@ impl StewardSubroutine for ReshelveSubroutine {
         // updated_at so we always advance the cursor monotonically.
         let mut all = ctx
             .memory
-            .workstream
+            .lens
             .list_all_ranked(1_000)
             .map_err(StewardError::from)?;
         if let Some(c) = cursor {
@@ -136,7 +136,7 @@ impl StewardSubroutine for ReshelveSubroutine {
             // this entity stale — re-check current state in the KB.
             let current = ctx
                 .memory
-                .workstream
+                .lens
                 .get_entity(focus.id)
                 .map_err(StewardError::from)?;
             let Some(current) = current else {
@@ -150,7 +150,7 @@ impl StewardSubroutine for ReshelveSubroutine {
             if outcome.mutations_applied >= ctx.cap {
                 outcome.cap_hit = true;
                 debug!(
-                    workstream = %ctx.workstream.name,
+                    lens = %ctx.lens.name,
                     cap = ctx.cap,
                     "reshelve cap hit; stopping pass"
                 );
@@ -158,7 +158,7 @@ impl StewardSubroutine for ReshelveSubroutine {
             }
             if let Err(e) = self.process_focus(focus, ctx, &mut outcome).await {
                 warn!(
-                    workstream = %ctx.workstream.name,
+                    lens = %ctx.lens.name,
                     focus_id = %focus.id,
                     error = %e,
                     "reshelve: per-entity error; continuing"
@@ -190,7 +190,7 @@ impl ReshelveSubroutine {
         // FTS-find similar entities by title. Skip self + superseded.
         let raw = ctx
             .memory
-            .workstream
+            .lens
             .search(
                 &fts_quote(&focus.title),
                 self.config.candidates_per_focus * 2,
@@ -365,15 +365,15 @@ impl ReshelveSubroutine {
         //  2. update deprecated with superseded=true.
         //  3. add Supersedes relation: survivor -> deprecated.
         ctx.memory
-            .workstream
+            .lens
             .update_entity(&merged)
             .map_err(StewardError::from)?;
         ctx.memory
-            .workstream
+            .lens
             .update_entity(&dep_after)
             .map_err(StewardError::from)?;
         ctx.memory
-            .workstream
+            .lens
             .add_relation(survivor.id, RelationType::Supersedes, deprecated.id)
             .map_err(StewardError::from)?;
 
@@ -410,7 +410,7 @@ impl ReshelveSubroutine {
         };
         ctx.journal.write_ahead(&record)?;
         ctx.memory
-            .workstream
+            .lens
             .delete_entity(focus.id)
             .map_err(StewardError::from)?;
         outcome.actions_journaled += 1;
@@ -434,7 +434,7 @@ mod tests {
     use std::pin::Pin;
     use std::sync::Mutex;
 
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use arawn_llm::{
         LlmError,
         types::{ChatChunk, ChatRequest},
@@ -512,7 +512,7 @@ mod tests {
             true,
         ));
         SubroutineCtx {
-            workstream: Workstream::new("ws-pat", fx.tmp.path().join("ws-pat")),
+            lens: Lens::new("ws-pat", fx.tmp.path().join("ws-pat")),
             memory: Arc::clone(&fx.memory),
             journal: gate,
             cap,
@@ -537,8 +537,8 @@ mod tests {
         // Newer, weakly-reinforced entity = focus (just touched)
         let newer = fact("postgres is the db", "we use postgres", 0);
 
-        fx.memory.workstream.insert_entity(&older).unwrap();
-        fx.memory.workstream.insert_entity(&newer).unwrap();
+        fx.memory.lens.insert_entity(&older).unwrap();
+        fx.memory.lens.insert_entity(&newer).unwrap();
 
         let mock = Arc::new(ScriptedMock::new(vec![json!({
             "action": "duplicate",
@@ -560,8 +560,8 @@ mod tests {
         assert_eq!(out.actions_journaled, 1);
 
         // Older should still be active; newer should be superseded.
-        let survivor = fx.memory.workstream.get_entity(older.id).unwrap().unwrap();
-        let deprecated = fx.memory.workstream.get_entity(newer.id).unwrap().unwrap();
+        let survivor = fx.memory.lens.get_entity(older.id).unwrap().unwrap();
+        let deprecated = fx.memory.lens.get_entity(newer.id).unwrap().unwrap();
         assert!(!survivor.superseded, "older (reinforced) must survive");
         assert!(deprecated.superseded, "newer must be marked superseded");
         assert_eq!(
@@ -577,8 +577,8 @@ mod tests {
         let fx = setup();
         let trustworthy = fact("alice is on parental leave", "until june", 2);
         let bogus = fact("alice is on parental leave", "bogus claim", 0);
-        fx.memory.workstream.insert_entity(&trustworthy).unwrap();
-        fx.memory.workstream.insert_entity(&bogus).unwrap();
+        fx.memory.lens.insert_entity(&trustworthy).unwrap();
+        fx.memory.lens.insert_entity(&bogus).unwrap();
 
         let mock = Arc::new(ScriptedMock::new(vec![json!({
             "action": "erroneous",
@@ -596,15 +596,9 @@ mod tests {
         let out = sub.run(&ctx(&fx, 10)).await.unwrap();
         assert!(out.mutations_applied >= 1);
         // bogus must be gone
-        assert!(fx.memory.workstream.get_entity(bogus.id).unwrap().is_none());
+        assert!(fx.memory.lens.get_entity(bogus.id).unwrap().is_none());
         // trustworthy still there
-        assert!(
-            fx.memory
-                .workstream
-                .get_entity(trustworthy.id)
-                .unwrap()
-                .is_some()
-        );
+        assert!(fx.memory.lens.get_entity(trustworthy.id).unwrap().is_some());
     }
 
     #[tokio::test]
@@ -612,8 +606,8 @@ mod tests {
         let fx = setup();
         let a = fact("rust async runtime", "tokio", 0);
         let b = fact("rust ownership model", "borrow checker", 0);
-        fx.memory.workstream.insert_entity(&a).unwrap();
-        fx.memory.workstream.insert_entity(&b).unwrap();
+        fx.memory.lens.insert_entity(&a).unwrap();
+        fx.memory.lens.insert_entity(&b).unwrap();
 
         // Two candidates (each entity is the focus once, candidate of
         // the other), so worst case we need 2 LLM calls — script both.
@@ -639,8 +633,8 @@ mod tests {
         let fx = setup();
         let a = fact("postgres is the db", "v1", 0);
         let b = fact("postgres is the db", "v2", 0);
-        fx.memory.workstream.insert_entity(&a).unwrap();
-        fx.memory.workstream.insert_entity(&b).unwrap();
+        fx.memory.lens.insert_entity(&a).unwrap();
+        fx.memory.lens.insert_entity(&b).unwrap();
 
         let mock = Arc::new(ScriptedMock::new(vec![
             json!({"action": "none", "reason": "first pass"}),
@@ -668,7 +662,7 @@ mod tests {
             // stagger created_at so most-reinforced tie-break is stable
             e.created_at = chrono::Utc::now() - chrono::Duration::seconds(60 - i as i64);
             e.updated_at = e.created_at;
-            fx.memory.workstream.insert_entity(&e).unwrap();
+            fx.memory.lens.insert_entity(&e).unwrap();
         }
         // Script enough "duplicate" verdicts that cap is the only thing
         // stopping us.

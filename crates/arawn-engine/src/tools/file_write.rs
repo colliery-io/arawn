@@ -1,10 +1,10 @@
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use arawn_tool::{Tool, ToolError, ToolOutput};
 use crate::tools::sensitive_paths::{is_secret_file, is_token_path};
+use arawn_tool::{Tool, ToolError, ToolOutput};
 
-/// Write content to a file within the workstream's working directory.
+/// Write content to a file within the lens's working directory.
 /// Creates parent directories if needed. Path traversal protection.
 pub struct FileWriteTool;
 
@@ -35,7 +35,7 @@ impl Tool for FileWriteTool {
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "File path relative to the workstream root"
+                    "description": "File path relative to the lens root"
                 },
                 "content": {
                     "type": "string",
@@ -66,9 +66,7 @@ impl Tool for FileWriteTool {
         let canonical_root = match ctx.working_dir().canonicalize() {
             Ok(p) => p,
             Err(e) => {
-                return Ok(ToolOutput::error(format!(
-                    "cannot resolve workstream root: {e}"
-                )));
+                return Ok(ToolOutput::error(format!("cannot resolve lens root: {e}")));
             }
         };
 
@@ -77,7 +75,7 @@ impl Tool for FileWriteTool {
 
         if !normalized.starts_with(&canonical_root) && !ctx.is_allowed_path(&normalized) {
             return Ok(ToolOutput::error(format!(
-                "path '{path_str}' escapes workstream root"
+                "path '{path_str}' escapes lens root"
             )));
         }
 
@@ -170,13 +168,13 @@ fn normalize_path(path: &std::path::Path) -> std::path::PathBuf {
 mod tests {
     use super::*;
     use crate::context::EngineToolContext;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use arawn_tool::ToolContext as _;
     use tempfile::TempDir;
     use uuid::Uuid;
 
     fn test_ctx(dir: &std::path::Path) -> EngineToolContext {
-        let ws = Workstream::new("test", dir);
+        let ws = Lens::new("test", dir);
         EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
@@ -258,7 +256,7 @@ mod tests {
             .unwrap();
 
         assert!(result.is_error);
-        assert!(result.content.contains("escapes workstream root"));
+        assert!(result.content.contains("escapes lens root"));
     }
 
     #[tokio::test]

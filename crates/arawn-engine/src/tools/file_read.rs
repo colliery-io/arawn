@@ -1,11 +1,11 @@
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use arawn_tool::{Tool, ToolError, ToolOutput};
 use crate::tools::sensitive_paths::{is_secret_file, is_token_path};
+use arawn_tool::{Tool, ToolError, ToolOutput};
 
-/// Read a file within the workstream's working directory.
-/// Rejects paths that escape the workstream root (path traversal protection).
+/// Read a file within the lens's working directory.
+/// Rejects paths that escape the lens root (path traversal protection).
 pub struct FileReadTool;
 
 #[async_trait]
@@ -35,7 +35,7 @@ impl Tool for FileReadTool {
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "File path relative to the workstream root"
+                    "description": "File path relative to the lens root"
                 },
                 "offset": {
                     "type": "integer",
@@ -85,15 +85,13 @@ impl Tool for FileReadTool {
         let canonical_root = match ctx.working_dir().canonicalize() {
             Ok(p) => p,
             Err(e) => {
-                return Ok(ToolOutput::error(format!(
-                    "cannot resolve workstream root: {e}"
-                )));
+                return Ok(ToolOutput::error(format!("cannot resolve lens root: {e}")));
             }
         };
 
         if !canonical.starts_with(&canonical_root) && !ctx.is_allowed_path(&canonical) {
             return Ok(ToolOutput::error(format!(
-                "path '{path_str}' escapes workstream root"
+                "path '{path_str}' escapes lens root"
             )));
         }
 
@@ -144,14 +142,14 @@ impl Tool for FileReadTool {
 mod tests {
     use super::*;
     use crate::context::EngineToolContext;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use std::io::Write;
     use std::path::Path;
     use tempfile::TempDir;
     use uuid::Uuid;
 
     fn test_ctx_with_dir(dir: &Path) -> EngineToolContext {
-        let ws = Workstream::new("test", dir);
+        let ws = Lens::new("test", dir);
         EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
@@ -207,7 +205,7 @@ mod tests {
     #[tokio::test]
     async fn path_traversal_rejected() {
         let dir = TempDir::new().unwrap();
-        // Create a file outside the workstream root to attempt traversal against
+        // Create a file outside the lens root to attempt traversal against
         let parent = dir.path().parent().unwrap();
         let outside_file = parent.join("outside.txt");
         let mut f = std::fs::File::create(&outside_file).unwrap();
@@ -221,7 +219,7 @@ mod tests {
             .unwrap();
 
         assert!(result.is_error);
-        assert!(result.content.contains("escapes workstream root"));
+        assert!(result.content.contains("escapes lens root"));
 
         // Cleanup
         let _ = std::fs::remove_file(outside_file);
@@ -246,14 +244,14 @@ mod tests {
 
     #[tokio::test]
     async fn refuses_token_dir_path() {
-        // Workstream root doubles as data_dir; tokens/ lives inside it.
+        // Lens root doubles as data_dir; tokens/ lives inside it.
         let dir = TempDir::new().unwrap();
         let tokens = dir.path().join("tokens");
         std::fs::create_dir_all(&tokens).unwrap();
         std::fs::write(tokens.join("google.json.enc"), b"encrypted").unwrap();
 
         let tool = FileReadTool;
-        let ws = Workstream::new("test", dir.path());
+        let ws = Lens::new("test", dir.path());
         let ctx =
             EngineToolContext::new(&ws, Uuid::new_v4()).with_data_dir(dir.path().to_path_buf());
 
@@ -271,7 +269,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn refuses_dotenv_in_workstream() {
+    async fn refuses_dotenv_in_lens() {
         let dir = TempDir::new().unwrap();
         std::fs::write(dir.path().join(".env"), "API_KEY=secret").unwrap();
 

@@ -1,9 +1,9 @@
 {
-  "$comment": "T-0300 UAT fixture for the daily ceremony. Three workstreams with seeded gmail rows whose source_ts is recent (relative to today=2026-05-16 pinned via MEMORY) — the attention adapter's cursor logic (24h fallback, or since prior daily tablet) will surface them via ProjectionsAttentionSource. Ceremony-side state (rolling todos, weekly priorities, calendar events, placeholder daily tablet) is seeded by uat_daily_seed::apply after this fixture lands; it computes times from chrono::Utc::now() so dates stay synced with the test run.",
-  "workstreams": [
+  "$comment": "T-0300 UAT fixture for the daily ceremony. Three lenses with seeded gmail rows whose source_ts is recent (relative to today=2026-05-16 pinned via MEMORY) — the attention adapter's cursor logic (24h fallback, or since prior daily tablet) will surface them via ProjectionsAttentionSource. Ceremony-side state (rolling todos, weekly priorities, calendar events, placeholder daily tablet) is seeded by uat_daily_seed::apply after this fixture lands; it computes times from chrono::Utc::now() so dates stay synced with the test run.",
+  "lenses": [
     {
       "name": "proj-a",
-      "description": "Postgres migration workstream — active this week.",
+      "description": "Postgres migration lens — active this week.",
       "tags_ontology": ["postgres", "migration"],
       "rows": [
         {

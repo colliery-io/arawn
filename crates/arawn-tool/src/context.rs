@@ -115,8 +115,8 @@ pub trait ToolContext: Send + Sync {
     /// Create a child context for a sub-agent (increments depth).
     fn for_sub_agent(&self) -> Box<dyn ToolContext>;
 
-    /// Get the workstream name.
-    fn workstream_name(&self) -> &str;
+    /// Get the lens name.
+    fn lens_name(&self) -> &str;
 
     /// Paths outside the sandbox that file tools are allowed to access.
     fn allowed_paths(&self) -> &[PathBuf];

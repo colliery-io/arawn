@@ -1,4 +1,4 @@
-//! `StewardRunner` — walks the active workstream set and runs the
+//! `StewardRunner` — walks the active lens set and runs the
 //! configured subroutines against each. T-0256 scope: scaffolding only,
 //! exercised end-to-end via `IdentitySubroutine`.
 
@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 
 use tracing::{debug, info, warn};
 
-use arawn_core::Workstream;
+use arawn_core::Lens;
 use arawn_memory::MemoryManager;
 use arawn_storage::Store;
 
@@ -66,10 +66,10 @@ impl SubroutineCaps {
 }
 
 /// Aggregate stats for one `run_pass` invocation across all
-/// workstreams + subroutines.
+/// lenses + subroutines.
 #[derive(Debug, Default, Clone)]
 pub struct StewardStats {
-    pub workstreams_visited: usize,
+    pub lenses_visited: usize,
     pub subroutine_runs: usize,
     pub actions_journaled: usize,
     pub mutations_applied: usize,
@@ -78,8 +78,8 @@ pub struct StewardStats {
     pub errors: usize,
 }
 
-/// Function that materializes the `MemoryManager` for a workstream.
-/// In production this is `WorkstreamMemoryRouter::for_workstream`; in
+/// Function that materializes the `MemoryManager` for a lens.
+/// In production this is `LensMemoryRouter::for_lens`; in
 /// tests an inline closure works.
 pub type MemoryResolver =
     Arc<dyn Fn(&str) -> Result<Arc<MemoryManager>, StewardError> + Send + Sync>;
@@ -90,7 +90,7 @@ pub struct StewardRunner {
     memory: MemoryResolver,
     subroutines: Vec<Arc<dyn StewardSubroutine>>,
     caps: SubroutineCaps,
-    /// Cache of opened journals so each workstream's sqlite handle
+    /// Cache of opened journals so each lens's sqlite handle
     /// stays warm across passes.
     journals: Arc<Mutex<HashMap<String, Arc<Journal>>>>,
 }
@@ -117,33 +117,30 @@ impl StewardRunner {
         self
     }
 
-    /// Open / fetch the cached journal for a workstream.
-    pub fn journal_for(&self, workstream_name: &str) -> Result<Arc<Journal>, StewardError> {
-        if let Some(existing) = self.journals.lock().unwrap().get(workstream_name).cloned() {
+    /// Open / fetch the cached journal for a lens.
+    pub fn journal_for(&self, lens_name: &str) -> Result<Arc<Journal>, StewardError> {
+        if let Some(existing) = self.journals.lock().unwrap().get(lens_name).cloned() {
             return Ok(existing);
         }
-        let j = Arc::new(Journal::open(&self.data_dir, workstream_name)?);
+        let j = Arc::new(Journal::open(&self.data_dir, lens_name)?);
         self.journals
             .lock()
             .unwrap()
-            .insert(workstream_name.to_string(), Arc::clone(&j));
+            .insert(lens_name.to_string(), Arc::clone(&j));
         Ok(j)
     }
 
-    /// Run one pass over `workstream`: every subroutine, in declared
+    /// Run one pass over `lens`: every subroutine, in declared
     /// order, sequentially. A subroutine error is logged and surfaces
     /// in `stats.errors` but does not abort the remaining subroutines.
-    pub async fn run_pass_for_workstream(
-        &self,
-        workstream: &Workstream,
-    ) -> Result<StewardStats, StewardError> {
+    pub async fn run_pass_for_lens(&self, lens: &Lens) -> Result<StewardStats, StewardError> {
         let mut stats = StewardStats {
-            workstreams_visited: 1,
+            lenses_visited: 1,
             ..Default::default()
         };
 
-        let memory = (self.memory)(&workstream.name)?;
-        let journal = self.journal_for(&workstream.name)?;
+        let memory = (self.memory)(&lens.name)?;
+        let journal = self.journal_for(&lens.name)?;
 
         for sub in &self.subroutines {
             stats.subroutine_runs += 1;
@@ -152,7 +149,7 @@ impl StewardRunner {
             // subroutines may only emit proposals.
             let gate = Arc::new(JournalGate::new(Arc::clone(&journal), sub.is_mutating()));
             let ctx = SubroutineCtx {
-                workstream: workstream.clone(),
+                lens: lens.clone(),
                 memory: Arc::clone(&memory),
                 journal: gate,
                 cap,
@@ -166,7 +163,7 @@ impl StewardRunner {
                         stats.caps_hit += 1;
                     }
                     debug!(
-                        workstream = %workstream.name,
+                        lens = %lens.name,
                         subroutine = sub.name(),
                         journaled = out.actions_journaled,
                         applied = out.mutations_applied,
@@ -177,7 +174,7 @@ impl StewardRunner {
                 Err(e) => {
                     stats.errors += 1;
                     warn!(
-                        workstream = %workstream.name,
+                        lens = %lens.name,
                         subroutine = sub.name(),
                         error = %e,
                         "steward subroutine failed; continuing"
@@ -188,18 +185,18 @@ impl StewardRunner {
         Ok(stats)
     }
 
-    /// Run one pass across every active (non-archived) workstream.
+    /// Run one pass across every active (non-archived) lens.
     pub async fn run_pass_for_all(&self) -> Result<StewardStats, StewardError> {
-        let workstreams: Vec<Workstream> = {
+        let lenses: Vec<Lens> = {
             let s = self.store.lock().unwrap();
-            s.list_workstreams()
+            s.list_lenses()
                 .map_err(|e| StewardError::Storage(e.to_string()))?
         };
         let mut agg = StewardStats::default();
-        for ws in workstreams {
-            match self.run_pass_for_workstream(&ws).await {
+        for ws in lenses {
+            match self.run_pass_for_lens(&ws).await {
                 Ok(s) => {
-                    agg.workstreams_visited += s.workstreams_visited;
+                    agg.lenses_visited += s.lenses_visited;
                     agg.subroutine_runs += s.subroutine_runs;
                     agg.actions_journaled += s.actions_journaled;
                     agg.mutations_applied += s.mutations_applied;
@@ -210,16 +207,16 @@ impl StewardRunner {
                 Err(e) => {
                     agg.errors += 1;
                     warn!(
-                        workstream = %ws.name,
+                        lens = %ws.name,
                         error = %e,
-                        "steward pass failed; continuing with next workstream"
+                        "steward pass failed; continuing with next lens"
                     );
                 }
             }
         }
-        if agg.workstreams_visited > 0 {
+        if agg.lenses_visited > 0 {
             info!(
-                workstreams = agg.workstreams_visited,
+                lenses = agg.lenses_visited,
                 actions = agg.actions_journaled,
                 applied = agg.mutations_applied,
                 proposals = agg.proposals_recorded,
@@ -239,11 +236,11 @@ mod tests {
     fn setup() -> (tempfile::TempDir, Arc<Mutex<Store>>, MemoryResolver) {
         let tmp = tempfile::tempdir().unwrap();
         let store = Store::open(tmp.path()).unwrap();
-        store.ensure_scratch_workstream().unwrap();
+        store.ensure_scratch_lens().unwrap();
         let store = Arc::new(Mutex::new(store));
         let data_dir = tmp.path().to_path_buf();
         let resolver: MemoryResolver = Arc::new(move |name: &str| {
-            MemoryManager::for_workstream(&data_dir, name, None)
+            MemoryManager::for_lens(&data_dir, name, None)
                 .map(Arc::new)
                 .map_err(|e| StewardError::Memory(e.to_string()))
         });
@@ -251,15 +248,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn pass_visits_every_active_workstream() {
+    async fn pass_visits_every_active_lens() {
         let (_tmp, store, resolver) = setup();
         {
             let s = store.lock().unwrap();
-            s.create_workstream(&Workstream::new("pat", std::env::temp_dir().join("pat")))
+            s.create_lens(&Lens::new("pat", std::env::temp_dir().join("pat")))
                 .unwrap();
-            s.create_workstream(&Workstream::new("old", std::env::temp_dir().join("old")))
+            s.create_lens(&Lens::new("old", std::env::temp_dir().join("old")))
                 .unwrap();
-            s.soft_delete_workstream("old").unwrap();
+            s.soft_delete_lens("old").unwrap();
         }
         let runner = StewardRunner::new(
             store,
@@ -269,7 +266,7 @@ mod tests {
         );
         let stats = runner.run_pass_for_all().await.unwrap();
         // scratch + pat = 2; old is archived.
-        assert_eq!(stats.workstreams_visited, 2);
+        assert_eq!(stats.lenses_visited, 2);
         assert_eq!(stats.subroutine_runs, 2);
         assert_eq!(stats.actions_journaled, 2);
         assert_eq!(stats.proposals_recorded, 2);

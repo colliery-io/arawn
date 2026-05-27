@@ -11,10 +11,10 @@
 //! day-range / time-range read API on the store yet (one would be a
 //! reasonable follow-up, but we don't need it for the daily plugin).
 //!
-//! Workstream-tagging for attention signals routes each row's
-//! `feed_id` through `arawn_storage::Store::find_workstream_for_feed`
-//! (a thin wrapper over the `workstreams.bindings` registry). Results
-//! are cached per adapter instance — workstreams change rarely and
+//! Lens-tagging for attention signals routes each row's
+//! `feed_id` through `arawn_storage::Store::find_lens_for_feed`
+//! (a thin wrapper over the `lenses.bindings` registry). Results
+//! are cached per adapter instance — lenses change rarely and
 //! re-querying per row would be wasteful. Cached `None` (no owner)
 //! and stale name values are acceptable until process restart.
 
@@ -188,15 +188,15 @@ impl CalendarSource for ProjectionsCalendarSource {
 /// Production `AttentionSource` backed by `gmail_messages` +
 /// `slack_messages` projection tables.
 ///
-/// `store` resolves each row's `feed_id` to a workstream name (via
-/// `Store::find_workstream_for_feed`). Results are cached in
-/// `feed_workstream_cache` keyed by feed_id, with both `Some(name)`
+/// `store` resolves each row's `feed_id` to a lens name (via
+/// `Store::find_lens_for_feed`). Results are cached in
+/// `feed_lens_cache` keyed by feed_id, with both `Some(name)`
 /// and `None` (no owner) memoised — see module docs on the cache
 /// invalidation policy.
 pub struct ProjectionsAttentionSource {
     projections: Arc<ProjectionStore>,
     store: Arc<Mutex<Store>>,
-    feed_workstream_cache: Arc<Mutex<HashMap<String, Option<String>>>>,
+    feed_lens_cache: Arc<Mutex<HashMap<String, Option<String>>>>,
 }
 
 impl ProjectionsAttentionSource {
@@ -204,20 +204,20 @@ impl ProjectionsAttentionSource {
         Self {
             projections,
             store,
-            feed_workstream_cache: Arc::new(Mutex::new(HashMap::new())),
+            feed_lens_cache: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
-    /// Cached `feed_id → workstream name` lookup. Cache misses query
-    /// `Store::find_workstream_for_feed` and memoise both `Some` and
+    /// Cached `feed_id → lens name` lookup. Cache misses query
+    /// `Store::find_lens_for_feed` and memoise both `Some` and
     /// `None` results. Storage errors surface to the caller; the
     /// attention adapter then maps them into a `CeremonyError`.
-    fn workstream_for_feed(&self, feed_id: &str) -> Result<Option<String>, CeremonyError> {
+    fn lens_for_feed(&self, feed_id: &str) -> Result<Option<String>, CeremonyError> {
         {
             let cache = self
-                .feed_workstream_cache
+                .feed_lens_cache
                 .lock()
-                .map_err(|_| storage_err("feed_workstream_cache mutex poisoned"))?;
+                .map_err(|_| storage_err("feed_lens_cache mutex poisoned"))?;
             if let Some(hit) = cache.get(feed_id) {
                 return Ok(hit.clone());
             }
@@ -227,13 +227,13 @@ impl ProjectionsAttentionSource {
             .lock()
             .map_err(|_| storage_err("store mutex poisoned"))?;
         let resolved = store
-            .find_workstream_for_feed(feed_id)
-            .map_err(|e| storage_err(format!("find_workstream_for_feed({feed_id}): {e}")))?;
+            .find_lens_for_feed(feed_id)
+            .map_err(|e| storage_err(format!("find_lens_for_feed({feed_id}): {e}")))?;
         drop(store);
         let mut cache = self
-            .feed_workstream_cache
+            .feed_lens_cache
             .lock()
-            .map_err(|_| storage_err("feed_workstream_cache mutex poisoned"))?;
+            .map_err(|_| storage_err("feed_lens_cache mutex poisoned"))?;
         cache.insert(feed_id.to_string(), resolved.clone());
         Ok(resolved)
     }
@@ -338,14 +338,14 @@ impl AttentionSource for ProjectionsAttentionSource {
 
         let mut out = Vec::with_capacity(raws.len());
         for r in raws {
-            let workstream = self.workstream_for_feed(&r.feed_id)?;
+            let lens = self.lens_for_feed(&r.feed_id)?;
             out.push(SignalRow {
                 id: r.id,
                 source_kind: r.kind,
                 source_id: r.source_id,
                 ts: r.ts,
                 summary: r.summary,
-                workstream,
+                lens,
             });
         }
         Ok(out)
@@ -366,7 +366,7 @@ mod tests {
         let tmp = tempdir().unwrap();
         let proj_path = tmp.path().join("projections.db");
         let projections = Arc::new(ProjectionStore::open(&proj_path).unwrap());
-        // The attention source carries a Store for future workstream
+        // The attention source carries a Store for future lens
         // joins. We don't exercise it in v1 tests, but the type has to
         // be valid. Use a fresh data root rooted in the same tmp dir.
         let store = Arc::new(Mutex::new(Store::open(tmp.path().join("data")).unwrap()));
@@ -539,22 +539,22 @@ mod tests {
         );
     }
 
-    /// Rows whose `feed_id` is bound to a workstream tag with that
-    /// workstream's name; rows with an unregistered `feed_id` stay
+    /// Rows whose `feed_id` is bound to a lens tag with that
+    /// lens's name; rows with an unregistered `feed_id` stay
     /// `None`.
     #[tokio::test(flavor = "current_thread")]
-    async fn attention_tags_workstream_from_feed_registry() {
+    async fn attention_tags_lens_from_feed_registry() {
         let (projections, store, tmp) = make_store_pair();
 
-        // Register a workstream that owns "gmail-feed" but not
+        // Register a lens that owns "gmail-feed" but not
         // "slack-feed".
         {
             let s = store.lock().unwrap();
-            let ws_root = tmp.path().join("data/workstreams/work");
+            let ws_root = tmp.path().join("data/lenses/work");
             std::fs::create_dir_all(&ws_root).unwrap();
-            let ws = arawn_core::Workstream::new("work", &ws_root);
-            s.create_workstream(&ws).unwrap();
-            s.add_workstream_binding("work", "gmail-feed").unwrap();
+            let ws = arawn_core::Lens::new("work", &ws_root);
+            s.create_lens(&ws).unwrap();
+            s.add_lens_binding("work", "gmail-feed").unwrap();
         }
 
         let now = Utc::now();
@@ -574,7 +574,7 @@ mod tests {
             .find(|r| r.id == g.id)
             .expect("gmail row present");
         assert_eq!(
-            g_row.workstream.as_deref(),
+            g_row.lens.as_deref(),
             Some("work"),
             "expected gmail-feed → work tag; got {g_row:?}"
         );
@@ -583,7 +583,7 @@ mod tests {
             .find(|r| r.id == s.id)
             .expect("slack row present");
         assert!(
-            s_row.workstream.is_none(),
+            s_row.lens.is_none(),
             "expected unbound slack-feed → None; got {s_row:?}"
         );
     }

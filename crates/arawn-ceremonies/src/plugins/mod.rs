@@ -18,7 +18,7 @@ pub use gather_sources::{
 };
 pub use retro::{RetroCadence, RetroCeremony};
 pub use retro_detectors::{
-    PriorityCompletionDetector, RolloverHeatDetector, WorkstreamNeglectDetector,
+    LensNeglectDetector, PriorityCompletionDetector, RolloverHeatDetector,
     v1_catalog as retro_v1_catalog,
 };
 pub use weekly::WeeklyCeremony;

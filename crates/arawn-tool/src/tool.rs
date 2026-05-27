@@ -21,8 +21,8 @@ pub enum ToolCategory {
     Memory,
     /// Planning tools (enter_plan_mode, exit_plan_mode)
     Plan,
-    /// Workstream management tools
-    Workstream,
+    /// Lens management tools
+    Lens,
     /// Always-included utility tools (ask_user, sleep)
     Utility,
     /// Background task management (task_output, task_stop)
@@ -116,5 +116,4 @@ pub trait Tool: Send + Sync {
             PermissionCategory::Other
         }
     }
-
 }

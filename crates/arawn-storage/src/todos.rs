@@ -74,7 +74,7 @@ pub struct Todo {
     pub body: String,
     pub rationale: Option<String>,
     pub kind: String,
-    pub workstream: Option<String>,
+    pub lens: Option<String>,
     pub created_at: DateTime<Utc>,
     pub due_at: Option<DateTime<Utc>>,
     pub done_at: Option<DateTime<Utc>>,
@@ -91,7 +91,7 @@ pub struct NewTodo {
     pub body: String,
     pub rationale: Option<String>,
     pub kind: String,
-    pub workstream: Option<String>,
+    pub lens: Option<String>,
     pub due_at: Option<DateTime<Utc>>,
     pub attrs: Option<serde_json::Value>,
 }
@@ -101,7 +101,7 @@ pub struct NewTodo {
 pub struct TodoPatch {
     pub body: Option<String>,
     pub rationale: Option<String>,
-    pub workstream: Option<String>,
+    pub lens: Option<String>,
     pub due_at: Option<DateTime<Utc>>,
     pub attrs: Option<serde_json::Value>,
 }
@@ -110,7 +110,7 @@ pub struct TodoPatch {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ListFilter {
     pub kind: Option<String>,
-    pub workstream: Option<String>,
+    pub lens: Option<String>,
     /// When `Some(true)`: only `done_at IS NULL`. When `Some(false)`:
     /// only `done_at IS NOT NULL`. When `None`: no filter.
     pub open_only: Option<bool>,
@@ -158,14 +158,14 @@ impl<'a> TodoService<'a> {
         let attrs_str = serde_json::to_string(&attrs)?;
         self.db.conn().execute(
             "INSERT INTO todos \
-                 (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+                 (id, body, rationale, kind, lens, created_at, due_at, done_at, archived_at, attrs) \
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL, NULL, ?8)",
             (
                 &id,
                 &req.body,
                 &req.rationale,
                 &req.kind,
-                &req.workstream,
+                &req.lens,
                 now.to_rfc3339(),
                 req.due_at.map(|d| d.to_rfc3339()),
                 attrs_str,
@@ -189,7 +189,7 @@ impl<'a> TodoService<'a> {
             .db
             .conn()
             .query_row(
-                "SELECT id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs \
+                "SELECT id, body, rationale, kind, lens, created_at, due_at, done_at, archived_at, attrs \
                  FROM todos WHERE id = ?1",
                 [id],
                 row_to_todo,
@@ -273,9 +273,9 @@ impl<'a> TodoService<'a> {
             sets.push("rationale = ?");
             params.push(Value::Text(rationale));
         }
-        if let Some(workstream) = patch.workstream {
-            sets.push("workstream = ?");
-            params.push(Value::Text(workstream));
+        if let Some(lens) = patch.lens {
+            sets.push("lens = ?");
+            params.push(Value::Text(lens));
         }
         if let Some(due_at) = patch.due_at {
             sets.push("due_at = ?");
@@ -339,9 +339,9 @@ impl<'a> TodoService<'a> {
             clauses.push("kind = ?");
             params.push(Value::Text(kind));
         }
-        if let Some(workstream) = filter.workstream {
-            clauses.push("workstream = ?");
-            params.push(Value::Text(workstream));
+        if let Some(lens) = filter.lens {
+            clauses.push("lens = ?");
+            params.push(Value::Text(lens));
         }
         match filter.open_only {
             Some(true) => clauses.push("done_at IS NULL"),
@@ -365,7 +365,7 @@ impl<'a> TodoService<'a> {
             format!("WHERE {}", clauses.join(" AND "))
         };
         let sql = format!(
-            "SELECT id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs \
+            "SELECT id, body, rationale, kind, lens, created_at, due_at, done_at, archived_at, attrs \
              FROM todos {where_sql} \
              ORDER BY \
                  CASE WHEN due_at IS NULL THEN 1 ELSE 0 END, \
@@ -384,7 +384,7 @@ impl<'a> TodoService<'a> {
     pub fn search(&self, query: &str) -> Result<Vec<Todo>, StorageError> {
         let pattern = format!("%{}%", query.replace('%', r"\%").replace('_', r"\_"));
         let mut stmt = self.db.conn().prepare(
-            "SELECT id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs \
+            "SELECT id, body, rationale, kind, lens, created_at, due_at, done_at, archived_at, attrs \
              FROM todos \
              WHERE archived_at IS NULL AND body LIKE ?1 ESCAPE '\\' \
              ORDER BY created_at DESC",
@@ -403,7 +403,7 @@ fn row_to_todo(row: &rusqlite::Row<'_>) -> rusqlite::Result<Todo> {
         body: row.get(1)?,
         rationale: row.get(2)?,
         kind: row.get(3)?,
-        workstream: row.get(4)?,
+        lens: row.get(4)?,
         created_at: parse_dt_row(row, 5)?,
         due_at: parse_dt_row_opt(row, 6)?,
         done_at: parse_dt_row_opt(row, 7)?,
@@ -471,7 +471,7 @@ mod tests {
         let idx_count: i64 = db
             .conn()
             .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND tbl_name='todos' AND name IN ('todos_kind_idx','todos_done_idx','todos_workstream_idx')",
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND tbl_name='todos' AND name IN ('todos_kind_idx','todos_done_idx','todos_lens_idx')",
                 [],
                 |row| row.get(0),
             )
@@ -553,13 +553,13 @@ mod tests {
                 &t.id,
                 TodoPatch {
                     body: Some("revised".into()),
-                    workstream: Some("auth-migration".into()),
+                    lens: Some("auth-migration".into()),
                     ..Default::default()
                 },
             )
             .unwrap();
         assert_eq!(patched.body, "revised");
-        assert_eq!(patched.workstream.as_deref(), Some("auth-migration"));
+        assert_eq!(patched.lens.as_deref(), Some("auth-migration"));
         assert!(patched.rationale.is_none());
     }
 
@@ -592,7 +592,7 @@ mod tests {
     }
 
     #[test]
-    fn list_filters_by_kind_workstream_and_open_only() {
+    fn list_filters_by_kind_lens_and_open_only() {
         let db = db();
         let svc = TodoService::new(&db);
         let user = svc.create(new_user("alpha")).unwrap();
@@ -600,7 +600,7 @@ mod tests {
             .create(NewTodo {
                 body: "priority".into(),
                 kind: "weekly_priority".into(),
-                workstream: Some("ws-a".into()),
+                lens: Some("ws-a".into()),
                 ..Default::default()
             })
             .unwrap();
@@ -617,7 +617,7 @@ mod tests {
 
         let only_ws_a = svc
             .list(ListFilter {
-                workstream: Some("ws-a".into()),
+                lens: Some("ws-a".into()),
                 ..Default::default()
             })
             .unwrap();
@@ -681,12 +681,12 @@ mod tests {
             // Seed two tablets — a weekly with two priorities, a daily
             // with two rollover todos.
             conn.execute(
-                "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+                "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
                 ["weekly-2026-W20", "weekly", "2026-W20", "2026-05-11T08:00:00Z", "reviewed", "[]"],
             ).unwrap();
             conn.execute(
-                "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+                "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
                 ["daily-2026-05-15", "daily", "2026-05-15", "2026-05-15T07:00:00Z", "open", "[]"],
             ).unwrap();

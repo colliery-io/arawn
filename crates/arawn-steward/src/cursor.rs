@@ -1,5 +1,5 @@
 //! Per-subroutine cursor — the latest `updated_at` of an entity the
-//! subroutine has already considered in this workstream. Used by
+//! subroutine has already considered in this lens. Used by
 //! re-shelve so a pass only touches entities created/updated since
 //! the last pass.
 
@@ -16,9 +16,9 @@ pub struct CursorStore {
 }
 
 impl CursorStore {
-    /// Open (or create) the cursor table inside `<data_dir>/workstreams/<name>/memory.db`.
-    pub fn open(data_dir: &Path, workstream_name: &str) -> Result<Self, StewardError> {
-        let ws_dir = data_dir.join("workstreams").join(workstream_name);
+    /// Open (or create) the cursor table inside `<data_dir>/lenses/<name>/memory.db`.
+    pub fn open(data_dir: &Path, lens_name: &str) -> Result<Self, StewardError> {
+        let ws_dir = data_dir.join("lenses").join(lens_name);
         std::fs::create_dir_all(&ws_dir)
             .map_err(|e| StewardError::Storage(format!("create ws dir: {e}")))?;
         let conn = Connection::open(ws_dir.join("memory.db"))?;

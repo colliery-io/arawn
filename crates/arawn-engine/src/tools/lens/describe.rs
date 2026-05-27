@@ -6,30 +6,29 @@ use serde_json::{Value, json};
 use arawn_storage::Store;
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
-
-pub struct WorkstreamDescribeTool {
+pub struct LensDescribeTool {
     store: Arc<Mutex<Store>>,
 }
 
-impl WorkstreamDescribeTool {
+impl LensDescribeTool {
     pub fn new(store: Arc<Mutex<Store>>) -> Self {
         Self { store }
     }
 }
 
 #[async_trait]
-impl Tool for WorkstreamDescribeTool {
+impl Tool for LensDescribeTool {
     fn name(&self) -> &str {
-        "workstream_describe"
+        "lens_describe"
     }
 
     fn description(&self) -> &str {
-        "Set or update a workstream's description. The description feeds the \
-         per-workstream extractor in Phase 4."
+        "Set or update a lens's description. The description feeds the \
+         per-lens extractor in Phase 4."
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
@@ -58,7 +57,7 @@ impl Tool for WorkstreamDescribeTool {
             .unwrap_or_default()
             .to_string();
         let store = self.store.lock().unwrap();
-        match store.update_workstream_description(&name, &description) {
+        match store.update_lens_description(&name, &description) {
             Ok(()) => Ok(ToolOutput::success(
                 json!({"name": name, "description": description}).to_string(),
             )),
@@ -66,4 +65,3 @@ impl Tool for WorkstreamDescribeTool {
         }
     }
 }
-

@@ -1,6 +1,6 @@
 //! Layered memory stack — generates token-budgeted context from the KB.
 //!
-//! L0: Identity (~100 tokens) — workstream metadata, people, conventions
+//! L0: Identity (~100 tokens) — lens metadata, people, conventions
 //! L1: Essential facts (~500-800 tokens) — top-ranked entities grouped by type
 //! L2: On-demand — topic-triggered retrieval (separate method)
 
@@ -15,14 +15,14 @@ fn estimate_tokens(text: &str) -> usize {
 /// Layered memory stack. Call `wake_up()` per-message to get fresh L0+L1 context.
 pub struct MemoryStack<'a> {
     manager: &'a MemoryManager,
-    workstream_name: String,
+    lens_name: String,
 }
 
 impl<'a> MemoryStack<'a> {
-    pub fn new(manager: &'a MemoryManager, workstream_name: &str) -> Self {
+    pub fn new(manager: &'a MemoryManager, lens_name: &str) -> Self {
         Self {
             manager,
-            workstream_name: workstream_name.to_string(),
+            lens_name: lens_name.to_string(),
         }
     }
 
@@ -51,9 +51,9 @@ impl<'a> MemoryStack<'a> {
         }
     }
 
-    /// L0: Identity layer — workstream name + Person/Convention entities.
+    /// L0: Identity layer — lens name + Person/Convention entities.
     fn render_l0(&self) -> String {
-        let mut out = format!("[L0 — IDENTITY] workstream: {}\n", self.workstream_name);
+        let mut out = format!("[L0 — IDENTITY] lens: {}\n", self.lens_name);
 
         // People from global KB
         if let Ok(people) = self.manager.global.list_by_type(EntityType::Person, 5)
@@ -63,12 +63,8 @@ impl<'a> MemoryStack<'a> {
             out.push_str(&format!("people: {}\n", names.join(", ")));
         }
 
-        // Core conventions from workstream KB
-        if let Ok(conventions) = self
-            .manager
-            .workstream
-            .list_by_type(EntityType::Convention, 3)
-        {
+        // Core conventions from lens KB
+        if let Ok(conventions) = self.manager.lens.list_by_type(EntityType::Convention, 3) {
             for c in &conventions {
                 out.push_str(&format!("convention: {}\n", c.title));
             }
@@ -82,14 +78,10 @@ impl<'a> MemoryStack<'a> {
     fn render_l1_with_names(&self, budget_tokens: usize) -> (String, Vec<String>) {
         // Gather ranked entities from both tiers
         let global = self.manager.global.list_all_ranked(30).unwrap_or_default();
-        let workstream = self
-            .manager
-            .workstream
-            .list_all_ranked(50)
-            .unwrap_or_default();
+        let lens = self.manager.lens.list_all_ranked(50).unwrap_or_default();
 
         // Merge and re-sort by confidence score (descending)
-        let mut all: Vec<Entity> = global.into_iter().chain(workstream).collect();
+        let mut all: Vec<Entity> = global.into_iter().chain(lens).collect();
         all.sort_by(|a, b| {
             b.confidence_score()
                 .partial_cmp(&a.confidence_score())
@@ -141,13 +133,9 @@ impl<'a> MemoryStack<'a> {
     /// Get the entity titles included in L1 (for L2 deduplication).
     pub fn l1_entity_titles(&self) -> Vec<String> {
         let global = self.manager.global.list_all_ranked(30).unwrap_or_default();
-        let workstream = self
-            .manager
-            .workstream
-            .list_all_ranked(50)
-            .unwrap_or_default();
+        let lens = self.manager.lens.list_all_ranked(50).unwrap_or_default();
 
-        let mut all: Vec<Entity> = global.into_iter().chain(workstream).collect();
+        let mut all: Vec<Entity> = global.into_iter().chain(lens).collect();
         all.sort_by(|a, b| {
             b.confidence_score()
                 .partial_cmp(&a.confidence_score())
@@ -215,7 +203,7 @@ mod tests {
 
     fn setup() -> (TempDir, MemoryManager) {
         let tmp = TempDir::new().unwrap();
-        std::fs::create_dir_all(tmp.path().join("workstreams/test-ws")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("lenses/test-ws")).unwrap();
         let mgr = MemoryManager::open(tmp.path(), "test-ws", None).unwrap();
         (tmp, mgr)
     }
@@ -232,7 +220,7 @@ mod tests {
             e.content = Some(format!(
                 "Content for fact {i} that adds more tokens to the output"
             ));
-            mgr.workstream.insert_entity(&e).unwrap();
+            mgr.lens.insert_entity(&e).unwrap();
         }
 
         let stack = MemoryStack::new(&mgr, "test-ws");
@@ -257,11 +245,11 @@ mod tests {
 
         let mut inferred = Entity::new(EntityType::Fact, "Inferred fact");
         inferred.confidence_source = ConfidenceSource::Inferred;
-        mgr.workstream.insert_entity(&inferred).unwrap();
+        mgr.lens.insert_entity(&inferred).unwrap();
 
         let mut stated = Entity::new(EntityType::Fact, "Stated fact");
         stated.confidence_source = ConfidenceSource::Stated;
-        mgr.workstream.insert_entity(&stated).unwrap();
+        mgr.lens.insert_entity(&stated).unwrap();
 
         let stack = MemoryStack::new(&mgr, "test-ws");
         let output = stack.wake_up(900);
@@ -278,7 +266,7 @@ mod tests {
     #[test]
     fn tiny_budget_does_not_panic() {
         let (_tmp, mgr) = setup();
-        mgr.workstream
+        mgr.lens
             .insert_entity(&Entity::new(EntityType::Fact, "Some fact"))
             .unwrap();
 

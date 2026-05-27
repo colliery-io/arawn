@@ -6,32 +6,32 @@ use serde_json::{Value, json};
 use arawn_storage::Store;
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
-use super::SessionWorkstream;
+use super::SessionLens;
 
-pub struct WorkstreamDeleteTool {
+pub struct LensDeleteTool {
     store: Arc<Mutex<Store>>,
-    active: SessionWorkstream,
+    active: SessionLens,
 }
 
-impl WorkstreamDeleteTool {
-    pub fn new(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self {
+impl LensDeleteTool {
+    pub fn new(store: Arc<Mutex<Store>>, active: SessionLens) -> Self {
         Self { store, active }
     }
 }
 
 #[async_trait]
-impl Tool for WorkstreamDeleteTool {
+impl Tool for LensDeleteTool {
     fn name(&self) -> &str {
-        "workstream_delete"
+        "lens_delete"
     }
 
     fn description(&self) -> &str {
-        "Soft-delete a workstream (sets archived = 1). On-disk KB is left intact. \
-         Refuses 'scratch' and refuses the currently-active workstream."
+        "Soft-delete a lens (sets archived = 1). On-disk KB is left intact. \
+         Refuses 'scratch' and refuses the currently-active lens."
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
@@ -53,11 +53,11 @@ impl Tool for WorkstreamDeleteTool {
         };
         if name == self.active.current() {
             return Ok(ToolOutput::error(format!(
-                "workstream '{name}' is currently active; switch away before deleting"
+                "lens '{name}' is currently active; switch away before deleting"
             )));
         }
         let store = self.store.lock().unwrap();
-        match store.soft_delete_workstream(&name) {
+        match store.soft_delete_lens(&name) {
             Ok(()) => Ok(ToolOutput::success(
                 json!({
                     "deleted": name,
@@ -69,4 +69,3 @@ impl Tool for WorkstreamDeleteTool {
         }
     }
 }
-

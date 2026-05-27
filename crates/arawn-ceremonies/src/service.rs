@@ -37,7 +37,7 @@ pub struct TabletDto {
     pub period_key: String,
     pub generated_at: String,
     pub status: String,
-    pub workstreams_scanned: serde_json::Value,
+    pub lenses_scanned: serde_json::Value,
     pub priorities_confirmed_at: Option<String>,
     /// True when the tablet was composed for a historical date
     /// (back-fill on boot, manual dispatch_for), rather than by
@@ -196,7 +196,7 @@ impl CeremonyService {
             .lock()
             .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
         conn.query_row(
-            "SELECT id, kind, period_key, generated_at, status, workstreams_scanned, priorities_confirmed_at, recovered \
+            "SELECT id, kind, period_key, generated_at, status, lenses_scanned, priorities_confirmed_at, recovered \
              FROM ceremony_tablets WHERE kind = ?1 AND period_key = ?2",
             params![kind, period_key],
             row_to_tablet,
@@ -375,7 +375,7 @@ impl CeremonyService {
         // `todos` directly with the rollover-shaped attrs.
         conn.execute(
             "INSERT INTO todos \
-                 (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+                 (id, body, rationale, kind, lens, created_at, due_at, done_at, archived_at, attrs) \
              VALUES (?1, ?2, NULL, 'rollover', NULL, ?3, NULL, NULL, NULL, ?4)",
             params![&todo_id, body, &created_at, &attrs],
         )
@@ -430,7 +430,14 @@ impl CeremonyService {
 
         // Idempotency: if a priority row already cites this item via
         // its linked todo's attrs.citation_id, return it.
-        let existing: Option<(String, Option<String>, Option<String>, Option<String>, i32, String)> = conn
+        let existing: Option<(
+            String,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            i32,
+            String,
+        )> = conn
             .query_row(
                 "SELECT cp.id, t.rationale, cp.confirmed_at, t.done_at, cp.ordinal, t.body \
                  FROM ceremony_priorities cp \
@@ -493,7 +500,7 @@ impl CeremonyService {
         .to_string();
         conn.execute(
             "INSERT INTO todos \
-                 (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+                 (id, body, rationale, kind, lens, created_at, due_at, done_at, archived_at, attrs) \
              VALUES (?1, ?2, ?3, 'weekly_priority', NULL, ?4, NULL, NULL, NULL, ?5)",
             params![&new_todo_id, &body_str, &rationale, &confirmed_at, &attrs],
         )
@@ -603,7 +610,7 @@ impl CeremonyService {
         .to_string();
         conn.execute(
             "INSERT INTO todos \
-                 (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+                 (id, body, rationale, kind, lens, created_at, due_at, done_at, archived_at, attrs) \
              VALUES (?1, ?2, ?3, 'weekly_priority', NULL, ?4, NULL, NULL, NULL, ?5)",
             params![&new_todo_id, &body_str, &req.rationale, &confirmed_at, &attrs],
         )
@@ -612,7 +619,13 @@ impl CeremonyService {
             "INSERT INTO ceremony_priorities \
                  (id, tablet_id, todo_id, confirmed_at, ordinal) \
              VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![&id, &req.tablet_id, &new_todo_id, &confirmed_at, next_ordinal],
+            params![
+                &id,
+                &req.tablet_id,
+                &new_todo_id,
+                &confirmed_at,
+                next_ordinal
+            ],
         )
         .map_err(|e| CeremonyError::Storage(format!("add_priority insert: {e}")))?;
         Ok(PriorityDto {
@@ -860,9 +873,9 @@ impl CeremonyService {
 // --- Row mappers ---
 
 fn row_to_tablet(row: &rusqlite::Row<'_>) -> rusqlite::Result<TabletDto> {
-    let workstreams_str: String = row.get(5)?;
-    let workstreams_scanned = serde_json::from_str(&workstreams_str)
-        .unwrap_or_else(|_| serde_json::Value::Array(Vec::new()));
+    let lenses_str: String = row.get(5)?;
+    let lenses_scanned =
+        serde_json::from_str(&lenses_str).unwrap_or_else(|_| serde_json::Value::Array(Vec::new()));
     let recovered_i: i64 = row.get(7)?;
     Ok(TabletDto {
         id: row.get(0)?,
@@ -870,7 +883,7 @@ fn row_to_tablet(row: &rusqlite::Row<'_>) -> rusqlite::Result<TabletDto> {
         period_key: row.get(2)?,
         generated_at: row.get(3)?,
         status: row.get(4)?,
-        workstreams_scanned,
+        lenses_scanned,
         priorities_confirmed_at: row.get(6)?,
         recovered: recovered_i != 0,
     })
@@ -1187,7 +1200,7 @@ mod tests {
         // Hand-roll a daily tablet so we can prove the kind check.
         let c = conn.0.lock().unwrap();
         c.execute(
-            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
              VALUES ('daily-1', 'daily', '2026-05-15', '2026-05-15T07:00:00Z', 'open', '[]')",
             [],
         )
@@ -1253,7 +1266,7 @@ mod tests {
             let c = conn.0.lock().unwrap();
             c.execute(
                 "INSERT INTO ceremony_tablets \
-                 (id, kind, period_key, generated_at, status, workstreams_scanned) \
+                 (id, kind, period_key, generated_at, status, lenses_scanned) \
                  VALUES (?1, 'weekly', '2026-W20', '2026-05-11T07:00:00Z', 'open', '[]')",
                 rusqlite::params![&tablet_id],
             )
@@ -1314,7 +1327,7 @@ mod tests {
             let c = conn.0.lock().unwrap();
             c.execute(
                 "INSERT INTO ceremony_tablets \
-                 (id, kind, period_key, generated_at, status, workstreams_scanned) \
+                 (id, kind, period_key, generated_at, status, lenses_scanned) \
                  VALUES (?1, 'weekly', '2026-W20', '2026-05-11T07:00:00Z', 'open', '[]')",
                 rusqlite::params![&tablet_id],
             )
@@ -1398,7 +1411,7 @@ mod tests {
             let c = conn.0.lock().unwrap();
             c.execute(
                 "INSERT INTO ceremony_tablets \
-                 (id, kind, period_key, generated_at, status, workstreams_scanned) \
+                 (id, kind, period_key, generated_at, status, lenses_scanned) \
                  VALUES ('weekly-1', 'weekly', '2026-W20', '2026-05-11T07:00:00Z', 'open', '[]')",
                 [],
             )

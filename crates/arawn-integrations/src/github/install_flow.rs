@@ -72,9 +72,7 @@ pub async fn run_install_flow(
             )
         })?
         .parse::<u64>()
-        .map_err(|e| {
-            IntegrationError::Provider(format!("installation_id is not a u64: {e}"))
-        })?;
+        .map_err(|e| IntegrationError::Provider(format!("installation_id is not a u64: {e}")))?;
 
     let setup_action = raw
         .params

@@ -19,7 +19,7 @@
 -- adds a proper FK column.
 
 INSERT INTO todos (
-    id, body, rationale, kind, workstream, created_at,
+    id, body, rationale, kind, lens, created_at,
     due_at, done_at, archived_at, attrs
 )
 SELECT
@@ -42,7 +42,7 @@ FROM ceremony_priorities cp
 JOIN ceremony_tablets ct ON ct.id = cp.tablet_id;
 
 INSERT INTO todos (
-    id, body, rationale, kind, workstream, created_at,
+    id, body, rationale, kind, lens, created_at,
     due_at, done_at, archived_at, attrs
 )
 SELECT

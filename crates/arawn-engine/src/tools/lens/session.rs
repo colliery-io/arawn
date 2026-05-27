@@ -2,15 +2,15 @@ use std::sync::{Arc, Mutex};
 
 use arawn_core::SCRATCH_NAME;
 
-/// Holder for the session-active workstream name. Cheap to clone
+/// Holder for the session-active lens name. Cheap to clone
 /// (`Arc<Mutex<String>>`). T-0250 will retire this in favor of the
-/// `Session::workstream_name` field.
+/// `Session::lens_name` field.
 #[derive(Clone, Debug)]
-pub struct SessionWorkstream {
+pub struct SessionLens {
     inner: Arc<Mutex<String>>,
 }
 
-impl SessionWorkstream {
+impl SessionLens {
     pub fn new(initial: impl Into<String>) -> Self {
         Self {
             inner: Arc::new(Mutex::new(initial.into())),
@@ -30,9 +30,8 @@ impl SessionWorkstream {
     }
 }
 
-impl Default for SessionWorkstream {
+impl Default for SessionLens {
     fn default() -> Self {
         Self::scratch()
     }
 }
-

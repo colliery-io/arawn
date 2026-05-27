@@ -11,9 +11,9 @@
 //!   current week and are still being seen in this week's daily
 //!   tablets. Signal: "this matters but never finds time". Fires
 //!   when count ≥ 3. Lookback: 0.
-//! - **workstream_neglect** — workstreams with non-zero activity in
+//! - **lens_neglect** — lenses with non-zero activity in
 //!   any of the prior 3 weeks but zero (or absent) in this week.
-//!   Fires once per neglected workstream. Lookback: 3.
+//!   Fires once per neglected lens. Lookback: 3.
 
 use std::sync::Arc;
 
@@ -168,17 +168,17 @@ impl Detector for RolloverHeatDetector {
     }
 }
 
-// --- workstream_neglect ---
+// --- lens_neglect ---
 
-/// Workstreams that produced rollup activity in any of the prior 3
+/// Lenses that produced rollup activity in any of the prior 3
 /// weeks but zero (or no row) this week. Fires once per neglected
-/// workstream.
-pub struct WorkstreamNeglectDetector;
+/// lens.
+pub struct LensNeglectDetector;
 
 #[async_trait]
-impl Detector for WorkstreamNeglectDetector {
+impl Detector for LensNeglectDetector {
     fn key(&self) -> &'static str {
-        "workstream_neglect"
+        "lens_neglect"
     }
 
     fn require_history_weeks(&self) -> u32 {
@@ -191,11 +191,11 @@ impl Detector for WorkstreamNeglectDetector {
             .0
             .lock()
             .map_err(|_| CeremonyError::Storage("connection mutex poisoned".into()))?;
-        // workstreams with sum(value) > 0 in the trailing 3 weeks
+        // lenses with sum(value) > 0 in the trailing 3 weeks
         // strictly before current iso_week.
         let mut stmt = conn
             .prepare(
-                "SELECT DISTINCT workstream FROM ceremony_activity_rollup \
+                "SELECT DISTINCT lens FROM ceremony_activity_rollup \
                  WHERE iso_week < ?1 AND iso_week >= ( \
                      SELECT iso_week FROM ( \
                          SELECT DISTINCT iso_week FROM ceremony_activity_rollup \
@@ -215,14 +215,14 @@ impl Detector for WorkstreamNeglectDetector {
                 .push(r.map_err(|e| CeremonyError::Storage(format!("neglect prior row: {e}")))?);
         }
 
-        // for each active_prior workstream, check if any current-week
+        // for each active_prior lens, check if any current-week
         // row exists with non-zero value.
         let mut current_active: std::collections::HashSet<String> =
             std::collections::HashSet::new();
         {
             let mut stmt2 = conn
                 .prepare(
-                    "SELECT DISTINCT workstream FROM ceremony_activity_rollup \
+                    "SELECT DISTINCT lens FROM ceremony_activity_rollup \
                      WHERE iso_week = ?1 AND value > 0",
                 )
                 .map_err(|e| CeremonyError::Storage(format!("neglect current prepare: {e}")))?;
@@ -243,10 +243,10 @@ impl Detector for WorkstreamNeglectDetector {
             if !current_active.contains(ws) {
                 out.push(DetectedPattern {
                     iso_week: ctx.current_iso_week.clone(),
-                    pattern_key: "workstream_neglect".into(),
+                    pattern_key: "lens_neglect".into(),
                     magnitude: 1.0,
                     payload: json!({
-                        "workstream": ws,
+                        "lens": ws,
                         "comparison_window_weeks": 3,
                     }),
                 });
@@ -264,7 +264,7 @@ pub fn v1_catalog() -> DetectorRegistry {
     DetectorRegistry::new()
         .with(Arc::new(PriorityCompletionDetector))
         .with(Arc::new(RolloverHeatDetector))
-        .with(Arc::new(WorkstreamNeglectDetector))
+        .with(Arc::new(LensNeglectDetector))
 }
 
 #[cfg(test)]
@@ -293,7 +293,7 @@ mod tests {
     ) {
         let c = conn.0.lock().unwrap();
         c.execute(
-            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
              VALUES (?1, ?2, ?3, ?4, 'reviewed', '[]')",
             params![id, kind, period_key, generated_at],
         )
@@ -308,10 +308,10 @@ mod tests {
         } else {
             None
         };
-        let attrs =
-            serde_json::json!({"tablet_id": tablet_id, "ordinal": 0, "citation_id": null}).to_string();
+        let attrs = serde_json::json!({"tablet_id": tablet_id, "ordinal": 0, "citation_id": null})
+            .to_string();
         c.execute(
-            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+            "INSERT INTO todos (id, body, rationale, kind, lens, created_at, \
                                 due_at, done_at, archived_at, attrs) \
              VALUES (?1, 'x', 'y', 'weekly_priority', NULL, '2026-05-11T07:00:00Z', \
                      NULL, ?2, NULL, ?3)",
@@ -404,7 +404,7 @@ mod tests {
         })
         .to_string();
         c.execute(
-            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+            "INSERT INTO todos (id, body, rationale, kind, lens, created_at, \
                                 due_at, done_at, archived_at, attrs) \
              VALUES (?1, 'x', NULL, 'rollover', NULL, ?2, NULL, ?3, NULL, ?4)",
             params![
@@ -481,28 +481,22 @@ mod tests {
         assert!(rows.is_empty());
     }
 
-    // --- workstream_neglect ---
+    // --- lens_neglect ---
 
-    fn insert_rollup(
-        conn: &ConnHandle,
-        iso_week: &str,
-        workstream: &str,
-        metric: &str,
-        value: f64,
-    ) {
+    fn insert_rollup(conn: &ConnHandle, iso_week: &str, lens: &str, metric: &str, value: f64) {
         let c = conn.0.lock().unwrap();
         c.execute(
-            "INSERT INTO ceremony_activity_rollup (iso_week, workstream, metric_key, value) \
+            "INSERT INTO ceremony_activity_rollup (iso_week, lens, metric_key, value) \
              VALUES (?1, ?2, ?3, ?4)",
-            params![iso_week, workstream, metric, value],
+            params![iso_week, lens, metric, value],
         )
         .unwrap();
     }
 
     #[tokio::test]
-    async fn workstream_neglect_fires_per_neglected_workstream() {
+    async fn lens_neglect_fires_per_neglected_lens() {
         let (_tmp, conn) = open_test_db();
-        // Prior 3 weeks: two workstreams active.
+        // Prior 3 weeks: two lenses active.
         insert_rollup(&conn, "2026-W17", "proj-a", "emails", 5.0);
         insert_rollup(&conn, "2026-W18", "proj-a", "emails", 5.0);
         insert_rollup(&conn, "2026-W19", "proj-a", "emails", 5.0);
@@ -512,34 +506,31 @@ mod tests {
         // This week: only proj-a is active.
         insert_rollup(&conn, "2026-W20", "proj-a", "emails", 5.0);
         let dctx = DetectorCtx::new("2026-W20".into(), &conn);
-        let rows = WorkstreamNeglectDetector.detect(&dctx).await.unwrap();
+        let rows = LensNeglectDetector.detect(&dctx).await.unwrap();
         assert_eq!(rows.len(), 1);
-        assert_eq!(rows[0].pattern_key, "workstream_neglect");
+        assert_eq!(rows[0].pattern_key, "lens_neglect");
         let payload = rows[0].payload.clone();
-        assert_eq!(
-            payload.get("workstream").unwrap().as_str().unwrap(),
-            "proj-b"
-        );
+        assert_eq!(payload.get("lens").unwrap().as_str().unwrap(), "proj-b");
     }
 
     #[tokio::test]
-    async fn workstream_neglect_quiet_when_all_active() {
+    async fn lens_neglect_quiet_when_all_active() {
         let (_tmp, conn) = open_test_db();
         insert_rollup(&conn, "2026-W17", "proj-a", "emails", 5.0);
         insert_rollup(&conn, "2026-W18", "proj-a", "emails", 5.0);
         insert_rollup(&conn, "2026-W19", "proj-a", "emails", 5.0);
         insert_rollup(&conn, "2026-W20", "proj-a", "emails", 5.0);
         let dctx = DetectorCtx::new("2026-W20".into(), &conn);
-        let rows = WorkstreamNeglectDetector.detect(&dctx).await.unwrap();
+        let rows = LensNeglectDetector.detect(&dctx).await.unwrap();
         assert!(rows.is_empty());
     }
 
     #[tokio::test]
-    async fn workstream_neglect_requires_three_weeks_history() {
+    async fn lens_neglect_requires_three_weeks_history() {
         // Only 2 weeks of prior history → DetectorRegistry should
         // skip this detector. We test the require_history_weeks
         // contract directly here.
-        assert_eq!(WorkstreamNeglectDetector.require_history_weeks(), 3);
+        assert_eq!(LensNeglectDetector.require_history_weeks(), 3);
     }
 
     // --- catalog assembly ---
@@ -547,7 +538,7 @@ mod tests {
     #[tokio::test]
     async fn v1_catalog_runs_all_three_when_history_sufficient() {
         let (_tmp, conn) = open_test_db();
-        // Seed prior 3 weeks of rollup so workstream_neglect's
+        // Seed prior 3 weeks of rollup so lens_neglect's
         // require_history_weeks passes.
         insert_rollup(&conn, "2026-W17", "proj-a", "emails", 5.0);
         insert_rollup(&conn, "2026-W18", "proj-a", "emails", 5.0);
@@ -557,7 +548,7 @@ mod tests {
         let ctx = EngineCtx::for_test(conn.clone(), "retro-2026-W20".into(), "2026-W20".into());
         let registry = v1_catalog();
         // No priorities, no rollover todos → only priority+rollover
-        // detectors run + return empty. workstream_neglect runs + returns
+        // detectors run + return empty. lens_neglect runs + returns
         // empty (proj-a active in both windows). Result: no rows
         // but no errors.
         let rows = registry.detect(&ctx).await.unwrap();
@@ -565,9 +556,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn v1_catalog_skips_workstream_neglect_when_history_short() {
+    async fn v1_catalog_skips_lens_neglect_when_history_short() {
         let (_tmp, conn) = open_test_db();
-        // No prior weeks of rollup → workstream_neglect skipped.
+        // No prior weeks of rollup → lens_neglect skipped.
         // priority_completion_ratio and rollover_heat have
         // require_history_weeks=0 so they still run (and return
         // empty).

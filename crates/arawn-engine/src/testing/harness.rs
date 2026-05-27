@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use arawn_core::{Message, Session, Workstream};
+use arawn_core::{Lens, Message, Session};
 use arawn_llm::MockLlmClient;
 use arawn_tool::ToolRegistry;
 use tempfile::TempDir;
@@ -17,7 +17,7 @@ use super::{HarnessResult, TestHarnessBuilder};
 /// Builder for assembling a full engine test fixture.
 pub struct TestHarness {
     pub(super) _temp_dir: TempDir,
-    pub(super) workstream: Workstream,
+    pub(super) lens: Lens,
     pub(super) registry: Arc<ToolRegistry>,
     pub(super) mock_llm: Arc<MockLlmClient>,
     pub(super) config: QueryEngineConfig,
@@ -46,8 +46,8 @@ impl TestHarness {
 
     /// Run the engine with the given user input and return results.
     pub async fn run(&self, user_input: impl Into<String>) -> HarnessResult {
-        let mut session = Session::new(self.workstream.id);
-        let ctx = EngineToolContext::new(&self.workstream, session.id);
+        let mut session = Session::new(self.lens.id);
+        let ctx = EngineToolContext::new(&self.lens, session.id);
 
         session.add_message(Message::User {
             content: user_input.into(),
@@ -71,8 +71,8 @@ impl TestHarness {
         &self,
         user_input: impl Into<String>,
     ) -> crate::error::EngineError {
-        let mut session = Session::new(self.workstream.id);
-        let ctx = EngineToolContext::new(&self.workstream, session.id);
+        let mut session = Session::new(self.lens.id);
+        let ctx = EngineToolContext::new(&self.lens, session.id);
 
         session.add_message(Message::User {
             content: user_input.into(),
@@ -137,7 +137,7 @@ mod tests {
     #[tokio::test]
     async fn harness_single_tool_call() {
         let harness = TestHarness::builder()
-            .with_workstream_file("notes.txt", "hello world")
+            .with_lens_file("notes.txt", "hello world")
             .with_tool(Box::new(FileReadTool))
             .with_script(vec![
                 MockResponse::tool_call("call_1", "file_read", r#"{"path":"notes.txt"}"#),
@@ -391,7 +391,7 @@ mod tests {
     #[tokio::test]
     async fn harness_file_read_with_real_filesystem() {
         let harness = TestHarness::builder()
-            .with_workstream_file("data/config.toml", "[server]\nport = 8080\n")
+            .with_lens_file("data/config.toml", "[server]\nport = 8080\n")
             .with_tool(Box::new(FileReadTool))
             .with_script(vec![
                 MockResponse::tool_call("c1", "file_read", r#"{"path":"data/config.toml"}"#),
@@ -420,8 +420,8 @@ mod tests {
         use arawn_llm::ChatChunk;
 
         let harness = TestHarness::builder()
-            .with_workstream_file("a.txt", "content A")
-            .with_workstream_file("b.txt", "content B")
+            .with_lens_file("a.txt", "content A")
+            .with_lens_file("b.txt", "content B")
             .with_tool(Box::new(FileReadTool))
             .with_script(vec![
                 // Two tool calls in a single LLM response
@@ -1238,8 +1238,8 @@ mod tests {
     #[tokio::test]
     async fn harness_long_tool_chain_five_steps() {
         let harness = TestHarness::builder()
-            .with_workstream_file("config.toml", "port = 8080")
-            .with_workstream_file("data.json", r#"{"key": "value"}"#)
+            .with_lens_file("config.toml", "port = 8080")
+            .with_lens_file("data.json", r#"{"key": "value"}"#)
             .with_tool(Box::new(ThinkTool))
             .with_tool(Box::new(FileReadTool))
             .with_script(vec![
@@ -1285,7 +1285,7 @@ mod tests {
     #[tokio::test]
     async fn harness_tool_error_recovery_mid_chain() {
         let harness = TestHarness::builder()
-            .with_workstream_file("real.txt", "real content here")
+            .with_lens_file("real.txt", "real content here")
             .with_tool(Box::new(FileReadTool))
             .with_tool(Box::new(ThinkTool))
             .with_script(vec![
@@ -1341,8 +1341,8 @@ mod tests {
     #[tokio::test]
     async fn harness_parallel_reads_then_sequential_think() {
         let harness = TestHarness::builder()
-            .with_workstream_file("a.txt", "alpha")
-            .with_workstream_file("b.txt", "bravo")
+            .with_lens_file("a.txt", "alpha")
+            .with_lens_file("b.txt", "bravo")
             .with_tool(Box::new(FileReadTool))
             .with_tool(Box::new(ThinkTool))
             .with_script(vec![
@@ -1547,7 +1547,7 @@ mod tests {
     #[tokio::test]
     async fn harness_alternating_success_and_failure_chain() {
         let harness = TestHarness::builder()
-            .with_workstream_file("exists.txt", "hello")
+            .with_lens_file("exists.txt", "hello")
             .with_tool(Box::new(ThinkTool))
             .with_tool(Box::new(FileReadTool))
             .with_script(vec![
@@ -1642,7 +1642,7 @@ mod tests {
     #[tokio::test]
     async fn harness_plan_mode_parallel_mixed_tools() {
         let harness = TestHarness::builder()
-            .with_workstream_file("info.txt", "plan info")
+            .with_lens_file("info.txt", "plan info")
             .with_tool(Box::new(ThinkTool))
             .with_tool(Box::new(FileReadTool))
             .with_tool(Box::new(ShellTool::default()))

@@ -29,8 +29,8 @@ const PROTOCOL_VERSION: &str = "0.1.0";
 /// Canonical RPC method names (returned by `hello`).
 const RPC_METHODS: &[&str] = &[
     "hello",
-    "list_workstreams",
-    "create_workstream",
+    "list_lenses",
+    "create_lens",
     "list_sessions",
     "create_session",
     "load_session",
@@ -259,11 +259,7 @@ pub fn read_token_file() -> Option<String> {
 }
 
 /// Start the WebSocket server on the given port.
-pub async fn run_server(
-    service: LocalService,
-    host: &str,
-    port: u16,
-) -> anyhow::Result<()> {
+pub async fn run_server(service: LocalService, host: &str, port: u16) -> anyhow::Result<()> {
     let data_dir = service.data_dir.clone();
 
     // Generate auth token and write to disk for clients
@@ -506,14 +502,14 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .await;
             }
 
-            "list_workstreams" => {
-                let resp = match service.list_workstreams().await {
+            "list_lenses" => {
+                let resp = match service.list_lenses().await {
                     Ok(ws) => {
-                        debug!(id, count = ws.len(), "list_workstreams ok");
+                        debug!(id, count = ws.len(), "list_lenses ok");
                         Response::success(id, serde_json::to_value(&ws).unwrap())
                     }
                     Err(e) => {
-                        warn!(id, error = %e, "list_workstreams failed");
+                        warn!(id, error = %e, "list_lenses failed");
                         Response::from_service_error(id, &e)
                     }
                 };
@@ -529,29 +525,29 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                 }
             }
 
-            "create_workstream" => {
+            "create_lens" => {
                 let name = request
                     .params
                     .get("name")
                     .and_then(|v| v.as_str())
                     .unwrap_or("")
                     .to_string();
-                // Default root_dir to {data_dir}/workstreams/{name}/ when not provided
+                // Default root_dir to {data_dir}/lenses/{name}/ when not provided
                 let root_dir: std::path::PathBuf = request
                     .params
                     .get("root_dir")
                     .and_then(|v| v.as_str())
                     .filter(|s| !s.is_empty())
                     .map(std::path::PathBuf::from)
-                    .unwrap_or_else(|| service.data_dir.join("workstreams").join(&name));
-                debug!(id, %name, root_dir = %root_dir.display(), "create_workstream");
-                let resp = match service.create_workstream(name, root_dir).await {
+                    .unwrap_or_else(|| service.data_dir.join("lenses").join(&name));
+                debug!(id, %name, root_dir = %root_dir.display(), "create_lens");
+                let resp = match service.create_lens(name, root_dir).await {
                     Ok(ws) => {
-                        debug!(id, ws_id = %ws.id, "create_workstream ok");
+                        debug!(id, ws_id = %ws.id, "create_lens ok");
                         Response::success(id, serde_json::to_value(&ws).unwrap())
                     }
                     Err(e) => {
-                        warn!(id, error = %e, "create_workstream failed");
+                        warn!(id, error = %e, "create_lens failed");
                         Response::from_service_error(id, &e)
                     }
                 };
@@ -570,7 +566,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
             "list_sessions" => {
                 let ws_id = request
                     .params
-                    .get("workstream_id")
+                    .get("lens_id")
                     .and_then(|v| v.as_str())
                     .and_then(|s| uuid::Uuid::parse_str(s).ok());
                 debug!(id, ws_id = ?ws_id, "list_sessions");
@@ -599,7 +595,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
             "create_session" => {
                 let ws_id = request
                     .params
-                    .get("workstream_id")
+                    .get("lens_id")
                     .and_then(|v| v.as_str())
                     .and_then(|s| uuid::Uuid::parse_str(s).ok());
                 debug!(id, ws_id = ?ws_id, "create_session");
@@ -921,16 +917,16 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .get("session_id")
                     .and_then(|v| v.as_str())
                     .and_then(|s| uuid::Uuid::parse_str(s).ok());
-                let workstream_name = request
+                let lens_name = request
                     .params
-                    .get("workstream_name")
+                    .get("lens_name")
                     .and_then(|v| v.as_str())
                     .unwrap_or("")
                     .to_string();
-                debug!(id, session_id = ?session_id, %workstream_name, "promote_session");
+                debug!(id, session_id = ?session_id, %lens_name, "promote_session");
 
                 let resp = match session_id {
-                    Some(sid) => match service.promote_session(sid, &workstream_name).await {
+                    Some(sid) => match service.promote_session(sid, &lens_name).await {
                         Ok(result) => {
                             debug!(id, "promote_session ok");
                             Response::success(id, serde_json::to_value(&result).unwrap())
@@ -1051,9 +1047,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                         let resp = Response::error(
                             id,
                             "invalid_params",
-                            format!(
-                                "unknown period `{other}` — expected day|week|month|all"
-                            ),
+                            format!("unknown period `{other}` — expected day|week|month|all"),
                         );
                         let _ = sender
                             .send(WsMessage::Text(
@@ -1068,10 +1062,7 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .get("by_site")
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
-                let model = request
-                    .params
-                    .get("model")
-                    .and_then(|v| v.as_str());
+                let model = request.params.get("model").and_then(|v| v.as_str());
                 let resp = match arawn_llm::usage::global() {
                     Some(tracker) => {
                         let summary = tracker.summary(parsed, model, by_site);
@@ -1397,7 +1388,6 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
     }
     info!("WebSocket connection handler exiting");
 }
-
 
 #[cfg(test)]
 mod tests {

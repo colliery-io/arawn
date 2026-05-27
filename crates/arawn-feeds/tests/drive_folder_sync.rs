@@ -10,9 +10,9 @@ use serde_json::json;
 
 use arawn_feeds::templates::drive::FolderSyncTemplate;
 use arawn_feeds::{
-    AtlassianFeedClient, GithubFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, DriveFile, FeedClients,
-    FeedError, FeedMeta, FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx,
-    TemplateParams,
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, DriveFile, FeedClients,
+    FeedError, FeedMeta, FeedTemplate, GithubFeedClient, GmailFeedClient, MetaStore,
+    SlackFeedClient, TemplateCtx, TemplateParams,
 };
 
 /// In-memory Drive emulator. Tests build a tree (folder_id ->

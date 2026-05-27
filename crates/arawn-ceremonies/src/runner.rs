@@ -521,7 +521,10 @@ mod tests {
             "America/Los_Angeles"
         );
         // Trims whitespace.
-        assert_eq!(super::resolve_cron_timezone("  Europe/Berlin  "), "Europe/Berlin");
+        assert_eq!(
+            super::resolve_cron_timezone("  Europe/Berlin  "),
+            "Europe/Berlin"
+        );
     }
 
     #[test]

@@ -1,7 +1,7 @@
 //! Tag-promoter steward subroutine — Suggest stage of the
 //! Extract→Suggest→Add cycle from ADR-0004.
 //!
-//! Walks the active entities in a workstream's KB, counts
+//! Walks the active entities in a lens's KB, counts
 //! `tags_discovered` frequencies, and proposes promotion when a
 //! discovered tag crosses a threshold AND is not already in the
 //! ontology AND doesn't already have a pending proposal.
@@ -87,7 +87,7 @@ impl StewardSubroutine for TagPromoterSubroutine {
         }
         let entities = ctx
             .memory
-            .workstream
+            .lens
             .list_all_ranked(self.config.max_entities_scanned)
             .map_err(StewardError::from)?;
         let mut tally: HashMap<String, TagStats> = HashMap::new();
@@ -115,8 +115,7 @@ impl StewardSubroutine for TagPromoterSubroutine {
 
         // Filter out tags that are already in the ontology — promoting
         // again is meaningless.
-        let ontology =
-            TagOntologyStore::open_at(&ctx.workstream.root_dir).map_err(StewardError::from)?;
+        let ontology = TagOntologyStore::open_at(&ctx.lens.root_dir).map_err(StewardError::from)?;
         tally.retain(|tag, _| !ontology.contains(tag).unwrap_or(false));
 
         // Filter out tags with a pending tag-promoter proposal still
@@ -152,13 +151,13 @@ impl StewardSubroutine for TagPromoterSubroutine {
                 break;
             }
             if let Err(e) = record_proposal(ctx, &tag, &stats.samples, stats.count) {
-                warn!(workstream = %ctx.workstream.name, tag = %tag, error = %e, "tag-promoter: dropped proposal");
+                warn!(lens = %ctx.lens.name, tag = %tag, error = %e, "tag-promoter: dropped proposal");
                 continue;
             }
             outcome.proposals_recorded += 1;
             outcome.actions_journaled += 1;
             debug!(
-                workstream = %ctx.workstream.name,
+                lens = %ctx.lens.name,
                 tag = %tag,
                 count = stats.count,
                 "tag-promoter: proposal recorded"
@@ -196,7 +195,7 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use arawn_memory::{AddedVia, Entity, EntityType, MemoryManager};
 
     use crate::journal::{Journal, JournalGate};
@@ -206,7 +205,7 @@ mod tests {
         tempfile::TempDir,
         Arc<MemoryManager>,
         Arc<JournalGate>,
-        Workstream,
+        Lens,
     ) {
         let tmp = tempfile::tempdir().unwrap();
         let mgr = Arc::new(MemoryManager::open(tmp.path(), "ws", None).unwrap());
@@ -216,7 +215,7 @@ mod tests {
         let ont = TagOntologyStore::open(tmp.path(), "ws").unwrap();
         ont.add("preseeded", AddedVia::Manual).unwrap();
 
-        let mut ws = Workstream::new("ws", tmp.path().join("workstreams/ws"));
+        let mut ws = Lens::new("ws", tmp.path().join("lenses/ws"));
         ws.description = "test".into();
         (tmp, mgr, gate, ws)
     }
@@ -228,11 +227,11 @@ mod tests {
     fn ctx(
         mem: &Arc<MemoryManager>,
         gate: &Arc<JournalGate>,
-        workstream: &Workstream,
+        lens: &Lens,
         cap: usize,
     ) -> SubroutineCtx {
         SubroutineCtx {
-            workstream: workstream.clone(),
+            lens: lens.clone(),
             memory: Arc::clone(mem),
             journal: Arc::clone(gate),
             cap,
@@ -243,7 +242,7 @@ mod tests {
     async fn promotes_tag_at_threshold() {
         let (_tmp, mem, gate, ws) = setup();
         for i in 0..3 {
-            mem.workstream
+            mem.lens
                 .insert_entity(&entity_with_discovered(&format!("e{i}"), &["calidor"]))
                 .unwrap();
         }
@@ -266,7 +265,7 @@ mod tests {
     async fn below_threshold_no_proposal() {
         let (_tmp, mem, gate, ws) = setup();
         for i in 0..2 {
-            mem.workstream
+            mem.lens
                 .insert_entity(&entity_with_discovered(&format!("e{i}"), &["barely"]))
                 .unwrap();
         }
@@ -279,7 +278,7 @@ mod tests {
     async fn skips_tags_already_in_ontology() {
         let (_tmp, mem, gate, ws) = setup();
         for i in 0..5 {
-            mem.workstream
+            mem.lens
                 .insert_entity(&entity_with_discovered(&format!("e{i}"), &["preseeded"]))
                 .unwrap();
         }
@@ -292,7 +291,7 @@ mod tests {
     async fn skips_steward_internal_markers() {
         let (_tmp, mem, gate, ws) = setup();
         for i in 0..5 {
-            mem.workstream
+            mem.lens
                 .insert_entity(&entity_with_discovered(&format!("e{i}"), &["steward:dust"]))
                 .unwrap();
         }
@@ -305,7 +304,7 @@ mod tests {
     async fn dedupes_against_pending_proposals() {
         let (_tmp, mem, gate, ws) = setup();
         for i in 0..3 {
-            mem.workstream
+            mem.lens
                 .insert_entity(&entity_with_discovered(&format!("e{i}"), &["recur"]))
                 .unwrap();
         }
@@ -324,7 +323,7 @@ mod tests {
         // Three different tags, each hitting threshold.
         for tag in ["alpha", "beta", "gamma"] {
             for i in 0..3 {
-                mem.workstream
+                mem.lens
                     .insert_entity(&entity_with_discovered(&format!("{tag}-{i}"), &[tag]))
                     .unwrap();
             }
@@ -341,13 +340,13 @@ mod tests {
         let (_tmp, mem, gate, ws) = setup();
         // Same tag emitted in three case/whitespace variants — should
         // tally as one tag.
-        mem.workstream
+        mem.lens
             .insert_entity(&entity_with_discovered("a", &["Falcon"]))
             .unwrap();
-        mem.workstream
+        mem.lens
             .insert_entity(&entity_with_discovered("b", &["falcon "]))
             .unwrap();
-        mem.workstream
+        mem.lens
             .insert_entity(&entity_with_discovered("c", &["FALCON"]))
             .unwrap();
         let sub = TagPromoterSubroutine::default();

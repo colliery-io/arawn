@@ -106,8 +106,7 @@ fn render_constraints(skill: &crate::skills::SkillDefinition) -> Option<String> 
     if skill.allowed_tools.is_none() && skill.model.is_none() {
         return None;
     }
-    let mut out =
-        String::from("---\nSkill constraints (advisory — the agent should self-comply):");
+    let mut out = String::from("---\nSkill constraints (advisory — the agent should self-comply):");
     if let Some(tools) = &skill.allowed_tools {
         out.push_str(&format!("\n- allowed-tools: {}", tools.join(", ")));
     }
@@ -158,11 +157,8 @@ mod tests {
     }
 
     fn ctx() -> crate::context::EngineToolContext {
-        use arawn_core::Workstream;
-        crate::context::EngineToolContext::new(
-            &Workstream::new("test", "/tmp"),
-            uuid::Uuid::new_v4(),
-        )
+        use arawn_core::Lens;
+        crate::context::EngineToolContext::new(&Lens::new("test", "/tmp"), uuid::Uuid::new_v4())
     }
 
     #[tokio::test]
@@ -207,7 +203,10 @@ mod tests {
             .unwrap();
         assert!(!result.is_error);
         assert!(!result.content.contains("Skill constraints"));
-        assert_eq!(result.content, "Review the code for bugs, performance, and style.");
+        assert_eq!(
+            result.content,
+            "Review the code for bugs, performance, and style."
+        );
     }
 
     #[tokio::test]
@@ -252,7 +251,11 @@ mod tests {
             .await
             .unwrap();
         assert!(result.content.contains("allowed-tools: Read"));
-        assert!(result.content.contains("recommended model: claude-sonnet-4-6"));
+        assert!(
+            result
+                .content
+                .contains("recommended model: claude-sonnet-4-6")
+        );
     }
 
     #[tokio::test]

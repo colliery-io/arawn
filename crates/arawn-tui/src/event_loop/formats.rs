@@ -1,4 +1,3 @@
-
 /// Render a `list_integrations` response as a markdown table the user can scan.
 pub(super) fn format_integrations_list(items: &[serde_json::Value]) -> String {
     use std::fmt::Write;
@@ -254,4 +253,3 @@ pub(super) fn format_known_templates() -> String {
      <feed_id> key=value` for the rest."
         .into()
 }
-

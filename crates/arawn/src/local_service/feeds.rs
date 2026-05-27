@@ -1,9 +1,7 @@
 //! `LocalService` inherent methods backing the `feeds.*` portion of
 //! `ArawnService`. The trait shell in `super::mod` delegates to these.
 
-
 use arawn_service::ServiceError;
-
 
 use super::{LocalService, current_summary, feed_err, feed_summary_to_dto};
 
@@ -43,7 +41,9 @@ impl LocalService {
         Ok(dto)
     }
 
-    pub(super) async fn feed_list_inner(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError> {
+    pub(super) async fn feed_list_inner(
+        &self,
+    ) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError> {
         let runtime = self.feed_runtime_or_err()?;
         let summaries = runtime.list_summaries().await.map_err(feed_err)?;
         Ok(summaries.into_iter().map(feed_summary_to_dto).collect())
@@ -81,7 +81,10 @@ impl LocalService {
         Ok(dto)
     }
 
-    pub(super) async fn feed_run_inner(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError> {
+    pub(super) async fn feed_run_inner(
+        &self,
+        feed_id: &str,
+    ) -> Result<arawn_service::FeedSummaryDto, ServiceError> {
         let runtime = self.feed_runtime_or_err()?;
         runtime.run_feed_once(feed_id).await.map_err(feed_err)?;
         let dto = current_summary(&runtime, feed_id).await?;
@@ -231,7 +234,10 @@ mod tests {
             .map(param_spec_to_dto)
             .collect();
         let keys: Vec<&str> = params.iter().map(|p| p.key.as_str()).collect();
-        assert_eq!(keys, ["root", "recursive", "include", "exclude", "copy_files"]);
+        assert_eq!(
+            keys,
+            ["root", "recursive", "include", "exclude", "copy_files"]
+        );
         assert!(params[0].required && matches!(params[0].kind, K::Path));
 
         let cadence = tpl

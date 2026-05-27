@@ -3,8 +3,8 @@ use std::time::Instant;
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use arawn_tool::{Tool, ToolError, ToolOutput};
 use crate::tools::sensitive_paths::{is_sensitive_path, is_token_path};
+use arawn_tool::{Tool, ToolError, ToolOutput};
 
 /// Maximum number of files to return before truncating.
 const MAX_RESULTS: usize = 100;
@@ -59,7 +59,7 @@ impl Tool for GlobTool {
             .ok_or_else(|| ToolError::ExecutionFailed("missing 'pattern' parameter".into()))?;
 
         let base_dir = if let Some(path) = params.get("path").and_then(|v| v.as_str()) {
-            // Validate path stays within workstream root
+            // Validate path stays within lens root
             let resolved = match ctx.validate_path(path) {
                 Ok(p) => p,
                 Err(e) => return Ok(ToolOutput::error(e)),
@@ -152,12 +152,12 @@ impl Tool for GlobTool {
 mod tests {
     use super::*;
     use crate::context::EngineToolContext;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use serde_json::json;
     use uuid::Uuid;
 
     fn test_ctx(dir: &std::path::Path) -> EngineToolContext {
-        let ws = Workstream::new("test", dir);
+        let ws = Lens::new("test", dir);
         EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
@@ -184,7 +184,7 @@ mod tests {
         std::fs::create_dir_all(dir.path().join("sub")).unwrap();
         std::fs::write(dir.path().join("sub/baz.rs"), "mod baz;").unwrap();
 
-        let ws = Workstream::scratch(dir.path());
+        let ws = Lens::scratch(dir.path());
         let ctx = EngineToolContext::new(&ws, Uuid::new_v4());
 
         let result = GlobTool
@@ -201,7 +201,7 @@ mod tests {
     #[tokio::test]
     async fn glob_no_matches() {
         let dir = tempfile::tempdir().unwrap();
-        let ws = Workstream::scratch(dir.path());
+        let ws = Lens::scratch(dir.path());
         let ctx = EngineToolContext::new(&ws, Uuid::new_v4());
 
         let result = GlobTool
@@ -222,7 +222,7 @@ mod tests {
         std::fs::write(dir.path().join("build/out.rs"), "").unwrap();
         std::fs::write(dir.path().join("src.rs"), "fn main() {}").unwrap();
 
-        let ws = Workstream::scratch(dir.path());
+        let ws = Lens::scratch(dir.path());
         let ctx = EngineToolContext::new(&ws, Uuid::new_v4());
 
         let result = GlobTool
@@ -248,7 +248,7 @@ mod tests {
             .unwrap();
 
         assert!(result.is_error, "traversal path should be rejected");
-        assert!(result.content.contains("escapes workstream root"));
+        assert!(result.content.contains("escapes lens root"));
     }
 
     #[tokio::test]
@@ -266,6 +266,6 @@ mod tests {
             result.is_error,
             "absolute path outside root should be rejected"
         );
-        assert!(result.content.contains("escapes workstream root"));
+        assert!(result.content.contains("escapes lens root"));
     }
 }

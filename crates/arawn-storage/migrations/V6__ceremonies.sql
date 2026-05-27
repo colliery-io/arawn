@@ -17,7 +17,7 @@ CREATE TABLE ceremony_tablets (
     period_key               TEXT NOT NULL,
     generated_at             TEXT NOT NULL,               -- RFC3339
     status                   TEXT NOT NULL,               -- open | reviewed | unreviewed | archived
-    workstreams_scanned      TEXT NOT NULL,               -- JSON array of workstream names
+    lenses_scanned      TEXT NOT NULL,               -- JSON array of lens names
     priorities_confirmed_at  TEXT,                        -- weekly only; null on daily/retro
     UNIQUE(kind, period_key)
 );
@@ -93,14 +93,14 @@ CREATE INDEX ceremony_priorities_confirmed_idx  ON ceremony_priorities(confirmed
 
 -- End-of-week aggregation across feeds/calendar/tablets. Generic —
 -- consumed by retro's pattern detectors today; any future ceremony
--- can read it. (workstream, metric_key) is the slicing dimension;
+-- can read it. (lens, metric_key) is the slicing dimension;
 -- value is whatever numeric form the metric needs.
 CREATE TABLE ceremony_activity_rollup (
     iso_week    TEXT NOT NULL,
-    workstream  TEXT NOT NULL,
+    lens  TEXT NOT NULL,
     metric_key  TEXT NOT NULL,           -- emails_sent | slack_threads_participated | meetings_attended | deep_work_hours | signals_extracted_count | steward_proposals_accepted | steward_proposals_rejected | ...
     value       REAL NOT NULL,
-    PRIMARY KEY (iso_week, workstream, metric_key)
+    PRIMARY KEY (iso_week, lens, metric_key)
 );
 
 CREATE INDEX ceremony_activity_rollup_week_idx  ON ceremony_activity_rollup(iso_week);

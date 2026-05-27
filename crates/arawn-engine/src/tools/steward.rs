@@ -1,9 +1,9 @@
-//! `/workstream journal`, `/workstream refine`, `/workstream rollback`
+//! `/lens journal`, `/lens refine`, `/lens rollback`
 //! — agent-facing surface over the steward's journal. Phase 5 of I-0040
 //! (T-0259).
 //!
-//! All three operate on the active workstream by default and accept an
-//! optional `workstream` arg to target a named one. Rollback is the
+//! All three operate on the active lens by default and accept an
+//! optional `lens` arg to target a named one. Rollback is the
 //! only one that mutates state; it dispatches per-subroutine inverse
 //! via `arawn_steward::rollback::apply_inverse`.
 
@@ -16,12 +16,12 @@ use serde_json::{Value, json};
 use arawn_llm::LlmClient;
 use arawn_steward::{ClusterMode, DustEngine, DustOpts, Journal, accept, rollback};
 
+use crate::lens_router::LensMemoryRouter;
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
-use crate::workstream_router::WorkstreamMemoryRouter;
 
 /// Return the closest tag in `candidates` to `needle` if any candidate
 /// is within edit distance 4 OR shares a common prefix/suffix of length ≥4.
-/// Used by `workstream_dust` to nudge the agent toward the right ontology
+/// Used by `lens_dust` to nudge the agent toward the right ontology
 /// tag when the user-supplied wording diverges (e.g. `falcon-project`
 /// vs ontology `falcon`).
 fn closest_tag(needle: &str, candidates: &[String]) -> Option<String> {
@@ -67,20 +67,17 @@ fn edit_distance(a: &str, b: &str) -> usize {
         curr[0] = i + 1;
         for (j, cb) in b.iter().enumerate() {
             let cost = if ca == cb { 0 } else { 1 };
-            curr[j + 1] = (curr[j] + 1)
-                .min(prev[j + 1] + 1)
-                .min(prev[j] + cost);
+            curr[j + 1] = (curr[j] + 1).min(prev[j + 1] + 1).min(prev[j] + cost);
         }
         std::mem::swap(&mut prev, &mut curr);
     }
     prev[b.len()]
 }
 
-fn open_journal(data_dir: &PathBuf, workstream: &str) -> Result<Journal, ToolError> {
-    Journal::open(data_dir, workstream)
-        .map_err(|e| ToolError::ExecutionFailed(format!("open journal `{workstream}`: {e}")))
+fn open_journal(data_dir: &PathBuf, lens: &str) -> Result<Journal, ToolError> {
+    Journal::open(data_dir, lens)
+        .map_err(|e| ToolError::ExecutionFailed(format!("open journal `{lens}`: {e}")))
 }
-
 
 /// Lightweight summary of one journal row for tool output.
 fn row_summary(row: &arawn_steward::JournalRow) -> Value {
@@ -98,16 +95,16 @@ fn row_summary(row: &arawn_steward::JournalRow) -> Value {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// /workstream journal
+// /lens journal
 // ─────────────────────────────────────────────────────────────────────────
 
-pub struct WorkstreamJournalTool {
+pub struct LensJournalTool {
     data_dir: PathBuf,
-    router: Arc<WorkstreamMemoryRouter>,
+    router: Arc<LensMemoryRouter>,
 }
 
-impl WorkstreamJournalTool {
-    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self {
+impl LensJournalTool {
+    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self {
         Self {
             data_dir: data_dir.into(),
             router,
@@ -116,13 +113,13 @@ impl WorkstreamJournalTool {
 }
 
 #[async_trait]
-impl Tool for WorkstreamJournalTool {
+impl Tool for LensJournalTool {
     fn name(&self) -> &str {
-        "workstream_journal"
+        "lens_journal"
     }
 
     fn description(&self) -> &str {
-        "List recent steward actions for the active workstream (or one passed via `workstream`). \
+        "List recent steward actions for the active lens (or one passed via `lens`). \
          Shows merges, deletes, and pending proposals with enough payload to inspect what the \
          steward did."
     }
@@ -132,19 +129,19 @@ impl Tool for WorkstreamJournalTool {
     }
 
     fn category(&self) -> ToolCategory {
-        // Workstream-scoped curation tools (journal/refine/rollback/
-        // dust/apply) belong to the Workstream category. Memory used
+        // Lens-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Lens category. Memory used
         // to be the home which caused the query-engine's keyword
         // filter to drop them from the tool list whenever the user
         // didn't say "remember"/"recall"/etc. See signal.rs comment.
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
         json!({
             "type": "object",
             "properties": {
-                "workstream": { "type": "string" },
+                "lens": { "type": "string" },
                 "limit": { "type": "integer", "description": "Default 20, max 200" }
             }
         })
@@ -155,7 +152,7 @@ impl Tool for WorkstreamJournalTool {
         _ctx: &dyn arawn_tool::ToolContext,
         params: Value,
     ) -> Result<ToolOutput, ToolError> {
-        let workstream = match params.get("workstream").and_then(|v| v.as_str()) {
+        let lens = match params.get("lens").and_then(|v| v.as_str()) {
             Some(s) => s.to_string(),
             None => self.router.current_name(),
         };
@@ -164,12 +161,12 @@ impl Tool for WorkstreamJournalTool {
             .and_then(|v| v.as_u64())
             .unwrap_or(20)
             .min(200) as usize;
-        let j = open_journal(&self.data_dir, &workstream)?;
+        let j = open_journal(&self.data_dir, &lens)?;
         let rows = j
             .recent(limit)
             .map_err(|e| ToolError::ExecutionFailed(format!("journal recent: {e}")))?;
         let payload = json!({
-            "workstream": workstream,
+            "lens": lens,
             "count": rows.len(),
             "rows": rows.iter().map(row_summary).collect::<Vec<_>>(),
         });
@@ -178,16 +175,16 @@ impl Tool for WorkstreamJournalTool {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// /workstream refine — pending proposals only
+// /lens refine — pending proposals only
 // ─────────────────────────────────────────────────────────────────────────
 
-pub struct WorkstreamRefineTool {
+pub struct LensRefineTool {
     data_dir: PathBuf,
-    router: Arc<WorkstreamMemoryRouter>,
+    router: Arc<LensMemoryRouter>,
 }
 
-impl WorkstreamRefineTool {
-    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self {
+impl LensRefineTool {
+    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self {
         Self {
             data_dir: data_dir.into(),
             router,
@@ -196,15 +193,15 @@ impl WorkstreamRefineTool {
 }
 
 #[async_trait]
-impl Tool for WorkstreamRefineTool {
+impl Tool for LensRefineTool {
     fn name(&self) -> &str {
-        "workstream_refine"
+        "lens_refine"
     }
 
     fn description(&self) -> &str {
-        "List pending steward proposals (map + door-watch) for the active workstream. \
+        "List pending steward proposals (map + door-watch) for the active lens. \
          Proposals are not applied automatically — the user reviews them. Reject via \
-         `workstream_rollback <id>`. Accept/apply is a future v2."
+         `lens_rollback <id>`. Accept/apply is a future v2."
     }
 
     fn is_read_only(&self) -> bool {
@@ -212,19 +209,19 @@ impl Tool for WorkstreamRefineTool {
     }
 
     fn category(&self) -> ToolCategory {
-        // Workstream-scoped curation tools (journal/refine/rollback/
-        // dust/apply) belong to the Workstream category. Memory used
+        // Lens-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Lens category. Memory used
         // to be the home which caused the query-engine's keyword
         // filter to drop them from the tool list whenever the user
         // didn't say "remember"/"recall"/etc. See signal.rs comment.
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
         json!({
             "type": "object",
             "properties": {
-                "workstream": { "type": "string" },
+                "lens": { "type": "string" },
                 "limit": { "type": "integer", "description": "Default 20, max 200" }
             }
         })
@@ -235,7 +232,7 @@ impl Tool for WorkstreamRefineTool {
         _ctx: &dyn arawn_tool::ToolContext,
         params: Value,
     ) -> Result<ToolOutput, ToolError> {
-        let workstream = match params.get("workstream").and_then(|v| v.as_str()) {
+        let lens = match params.get("lens").and_then(|v| v.as_str()) {
             Some(s) => s.to_string(),
             None => self.router.current_name(),
         };
@@ -244,12 +241,12 @@ impl Tool for WorkstreamRefineTool {
             .and_then(|v| v.as_u64())
             .unwrap_or(20)
             .min(200) as usize;
-        let j = open_journal(&self.data_dir, &workstream)?;
+        let j = open_journal(&self.data_dir, &lens)?;
         let rows = j
             .pending_proposals(limit)
             .map_err(|e| ToolError::ExecutionFailed(format!("journal pending: {e}")))?;
         let payload = json!({
-            "workstream": workstream,
+            "lens": lens,
             "count": rows.len(),
             "proposals": rows.iter().map(row_summary).collect::<Vec<_>>(),
         });
@@ -258,16 +255,16 @@ impl Tool for WorkstreamRefineTool {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// /workstream rollback ID
+// /lens rollback ID
 // ─────────────────────────────────────────────────────────────────────────
 
-pub struct WorkstreamRollbackTool {
+pub struct LensRollbackTool {
     data_dir: PathBuf,
-    router: Arc<WorkstreamMemoryRouter>,
+    router: Arc<LensMemoryRouter>,
 }
 
-impl WorkstreamRollbackTool {
-    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self {
+impl LensRollbackTool {
+    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self {
         Self {
             data_dir: data_dir.into(),
             router,
@@ -276,9 +273,9 @@ impl WorkstreamRollbackTool {
 }
 
 #[async_trait]
-impl Tool for WorkstreamRollbackTool {
+impl Tool for LensRollbackTool {
     fn name(&self) -> &str {
-        "workstream_rollback"
+        "lens_rollback"
     }
 
     fn description(&self) -> &str {
@@ -292,12 +289,12 @@ impl Tool for WorkstreamRollbackTool {
     }
 
     fn category(&self) -> ToolCategory {
-        // Workstream-scoped curation tools (journal/refine/rollback/
-        // dust/apply) belong to the Workstream category. Memory used
+        // Lens-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Lens category. Memory used
         // to be the home which caused the query-engine's keyword
         // filter to drop them from the tool list whenever the user
         // didn't say "remember"/"recall"/etc. See signal.rs comment.
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
@@ -305,7 +302,7 @@ impl Tool for WorkstreamRollbackTool {
             "type": "object",
             "properties": {
                 "id": { "type": "integer", "description": "Journal row id" },
-                "workstream": { "type": "string" }
+                "lens": { "type": "string" }
             },
             "required": ["id"]
         })
@@ -320,11 +317,11 @@ impl Tool for WorkstreamRollbackTool {
             .get("id")
             .and_then(|v| v.as_i64())
             .ok_or_else(|| ToolError::ExecutionFailed("missing 'id'".into()))?;
-        let workstream = match params.get("workstream").and_then(|v| v.as_str()) {
+        let lens = match params.get("lens").and_then(|v| v.as_str()) {
             Some(s) => s.to_string(),
             None => self.router.current_name(),
         };
-        let j = open_journal(&self.data_dir, &workstream)?;
+        let j = open_journal(&self.data_dir, &lens)?;
         let row = j
             .get(id)
             .map_err(|e| ToolError::ExecutionFailed(format!("journal get: {e}")))?
@@ -335,18 +332,18 @@ impl Tool for WorkstreamRollbackTool {
             ));
         }
         // Apply the per-subroutine inverse mutation against the
-        // workstream's KB, then flip the metadata. Pass the workstream
+        // lens's KB, then flip the metadata. Pass the lens
         // root so tag-promoter reversals can reach the ontology table.
         let kb = self
             .router
-            .for_workstream(&workstream)
+            .for_lens(&lens)
             .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?;
-        let ws_root = self.data_dir.join("workstreams").join(&workstream);
+        let ws_root = self.data_dir.join("lenses").join(&lens);
         rollback::apply_inverse(
             &row,
             &arawn_steward::RollbackCtx {
                 kb: &kb,
-                workstream_root: &ws_root,
+                lens_root: &ws_root,
             },
         )
         .map_err(|e| ToolError::ExecutionFailed(format!("rollback: {e}")))?;
@@ -360,20 +357,20 @@ impl Tool for WorkstreamRollbackTool {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// /workstream dust — manual trigger; writes proposals only
+// /lens dust — manual trigger; writes proposals only
 // ─────────────────────────────────────────────────────────────────────────
 
-pub struct WorkstreamDustTool {
+pub struct LensDustTool {
     data_dir: PathBuf,
-    router: Arc<WorkstreamMemoryRouter>,
+    router: Arc<LensMemoryRouter>,
     client: Arc<dyn LlmClient>,
     model: String,
 }
 
-impl WorkstreamDustTool {
+impl LensDustTool {
     pub fn new(
         data_dir: impl Into<PathBuf>,
-        router: Arc<WorkstreamMemoryRouter>,
+        router: Arc<LensMemoryRouter>,
         client: Arc<dyn LlmClient>,
         model: impl Into<String>,
     ) -> Self {
@@ -387,17 +384,17 @@ impl WorkstreamDustTool {
 }
 
 #[async_trait]
-impl Tool for WorkstreamDustTool {
+impl Tool for LensDustTool {
     fn name(&self) -> &str {
-        "workstream_dust"
+        "lens_dust"
     }
 
     fn description(&self) -> &str {
-        "Manually trigger the steward's `dust` subroutine on the active workstream — \
+        "Manually trigger the steward's `dust` subroutine on the active lens — \
          clusters cold entities (default by shared tag) and proposes a summary entity \
          per cluster. Proposals are journaled with `applied=false`; review with \
-         `workstream_refine`, commit with `workstream_apply <id>`, reject with \
-         `workstream_rollback <id>`."
+         `lens_refine`, commit with `lens_apply <id>`, reject with \
+         `lens_rollback <id>`."
     }
 
     fn is_read_only(&self) -> bool {
@@ -406,19 +403,19 @@ impl Tool for WorkstreamDustTool {
     }
 
     fn category(&self) -> ToolCategory {
-        // Workstream-scoped curation tools (journal/refine/rollback/
-        // dust/apply) belong to the Workstream category. Memory used
+        // Lens-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Lens category. Memory used
         // to be the home which caused the query-engine's keyword
         // filter to drop them from the tool list whenever the user
         // didn't say "remember"/"recall"/etc. See signal.rs comment.
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
         json!({
             "type": "object",
             "properties": {
-                "workstream": { "type": "string" },
+                "lens": { "type": "string" },
                 "cluster_by": {
                     "type": "string",
                     "enum": ["tag", "provenance"],
@@ -441,7 +438,7 @@ impl Tool for WorkstreamDustTool {
         _ctx: &dyn arawn_tool::ToolContext,
         params: Value,
     ) -> Result<ToolOutput, ToolError> {
-        let workstream = match params.get("workstream").and_then(|v| v.as_str()) {
+        let lens = match params.get("lens").and_then(|v| v.as_str()) {
             Some(s) => s.to_string(),
             None => self.router.current_name(),
         };
@@ -473,9 +470,9 @@ impl Tool for WorkstreamDustTool {
 
         let kb = self
             .router
-            .for_workstream(&workstream)
+            .for_lens(&lens)
             .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?;
-        let journal = open_journal(&self.data_dir, &workstream)?;
+        let journal = open_journal(&self.data_dir, &lens)?;
         let engine = DustEngine::new(Arc::clone(&self.client), self.model.clone());
         let outcome = engine
             .run(&kb, &journal, &opts)
@@ -492,12 +489,12 @@ impl Tool for WorkstreamDustTool {
         }
 
         // When we found zero clusters, give the agent a self-recovery
-        // hint: surface the workstream's available ontology tags and a
+        // hint: surface the lens's available ontology tags and a
         // small set of suggested retry parameters. Most "I picked the
         // wrong tag string" failures resolve on the very next call once
         // the agent can see what tags actually exist.
         let mut payload = json!({
-            "workstream": workstream,
+            "lens": lens,
             "clusters_found": outcome.clusters_found,
             "proposals_written": outcome.proposals_written,
             "limit_hit": outcome.limit_hit,
@@ -505,7 +502,7 @@ impl Tool for WorkstreamDustTool {
         });
         if outcome.clusters_found == 0 {
             let available_tags: Vec<String> =
-                arawn_memory::TagOntologyStore::open(&self.data_dir, &workstream)
+                arawn_memory::TagOntologyStore::open(&self.data_dir, &lens)
                     .and_then(|s| s.tags())
                     .unwrap_or_default();
             let mut suggestions = Vec::new();
@@ -560,9 +557,9 @@ impl Tool for WorkstreamDustTool {
                 m.insert("available_tags".into(), json!(available_tags));
                 m.insert("suggestions".into(), json!(suggestions));
                 let hint = if !did_you_mean.is_empty() {
-                    "no clusters formed — your `tags` filter contains values that aren't in the workstream's declared ontology. **Retry now** with the `did_you_mean` value(s) below, do not stop to ask the user.".to_string()
+                    "no clusters formed — your `tags` filter contains values that aren't in the lens's declared ontology. **Retry now** with the `did_you_mean` value(s) below, do not stop to ask the user.".to_string()
                 } else {
-                    "no clusters formed — pick a tag from `available_tags` (these are the workstream's declared ontology), or retry without a `tags` filter. The literal string you passed must match exactly.".to_string()
+                    "no clusters formed — pick a tag from `available_tags` (these are the lens's declared ontology), or retry without a `tags` filter. The literal string you passed must match exactly.".to_string()
                 };
                 m.insert("hint".into(), json!(hint));
                 if !did_you_mean.is_empty() {
@@ -575,16 +572,16 @@ impl Tool for WorkstreamDustTool {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// /workstream apply — commit a pending proposal
+// /lens apply — commit a pending proposal
 // ─────────────────────────────────────────────────────────────────────────
 
-pub struct WorkstreamApplyTool {
+pub struct LensApplyTool {
     data_dir: PathBuf,
-    router: Arc<WorkstreamMemoryRouter>,
+    router: Arc<LensMemoryRouter>,
 }
 
-impl WorkstreamApplyTool {
-    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self {
+impl LensApplyTool {
+    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self {
         Self {
             data_dir: data_dir.into(),
             router,
@@ -593,9 +590,9 @@ impl WorkstreamApplyTool {
 }
 
 #[async_trait]
-impl Tool for WorkstreamApplyTool {
+impl Tool for LensApplyTool {
     fn name(&self) -> &str {
-        "workstream_apply"
+        "lens_apply"
     }
 
     fn description(&self) -> &str {
@@ -610,12 +607,12 @@ impl Tool for WorkstreamApplyTool {
     }
 
     fn category(&self) -> ToolCategory {
-        // Workstream-scoped curation tools (journal/refine/rollback/
-        // dust/apply) belong to the Workstream category. Memory used
+        // Lens-scoped curation tools (journal/refine/rollback/
+        // dust/apply) belong to the Lens category. Memory used
         // to be the home which caused the query-engine's keyword
         // filter to drop them from the tool list whenever the user
         // didn't say "remember"/"recall"/etc. See signal.rs comment.
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
@@ -623,7 +620,7 @@ impl Tool for WorkstreamApplyTool {
             "type": "object",
             "properties": {
                 "id": { "type": "integer", "description": "Journal row id" },
-                "workstream": { "type": "string" }
+                "lens": { "type": "string" }
             },
             "required": ["id"]
         })
@@ -638,11 +635,11 @@ impl Tool for WorkstreamApplyTool {
             .get("id")
             .and_then(|v| v.as_i64())
             .ok_or_else(|| ToolError::ExecutionFailed("missing 'id'".into()))?;
-        let workstream = match params.get("workstream").and_then(|v| v.as_str()) {
+        let lens = match params.get("lens").and_then(|v| v.as_str()) {
             Some(s) => s.to_string(),
             None => self.router.current_name(),
         };
-        let j = open_journal(&self.data_dir, &workstream)?;
+        let j = open_journal(&self.data_dir, &lens)?;
         let row = j
             .get(id)
             .map_err(|e| ToolError::ExecutionFailed(format!("journal get: {e}")))?
@@ -659,14 +656,14 @@ impl Tool for WorkstreamApplyTool {
         }
         let kb = self
             .router
-            .for_workstream(&workstream)
+            .for_lens(&lens)
             .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?;
-        let ws_root = self.data_dir.join("workstreams").join(&workstream);
+        let ws_root = self.data_dir.join("lenses").join(&lens);
         accept::apply_forward(
             &row,
             &arawn_steward::AcceptCtx {
                 kb: &kb,
-                workstream_root: &ws_root,
+                lens_root: &ws_root,
             },
         )
         .map_err(|e| ToolError::ExecutionFailed(format!("apply: {e}")))?;
@@ -679,21 +676,21 @@ impl Tool for WorkstreamApplyTool {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// workstream_tag — manual ontology management
+// lens_tag — manual ontology management
 // ─────────────────────────────────────────────────────────────────────────
 
-/// Direct CRUD on the workstream's tag ontology. The agent reaches for
+/// Direct CRUD on the lens's tag ontology. The agent reaches for
 /// this when the user wants to add or remove tags outside the propose-
 /// accept cycle (or to inspect the current vocabulary). For automated
-/// growth, the `tag-promoter` steward subroutine + `workstream_apply`
+/// growth, the `tag-promoter` steward subroutine + `lens_apply`
 /// is the preferred path.
-pub struct WorkstreamTagTool {
+pub struct LensTagTool {
     data_dir: PathBuf,
-    router: Arc<WorkstreamMemoryRouter>,
+    router: Arc<LensMemoryRouter>,
 }
 
-impl WorkstreamTagTool {
-    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<WorkstreamMemoryRouter>) -> Self {
+impl LensTagTool {
+    pub fn new(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self {
         Self {
             data_dir: data_dir.into(),
             router,
@@ -702,17 +699,17 @@ impl WorkstreamTagTool {
 }
 
 #[async_trait]
-impl Tool for WorkstreamTagTool {
+impl Tool for LensTagTool {
     fn name(&self) -> &str {
-        "workstream_tag"
+        "lens_tag"
     }
 
     fn description(&self) -> &str {
-        "Manage the active workstream's tag ontology directly. `op: list` \
+        "Manage the active lens's tag ontology directly. `op: list` \
          returns every tag with `added_via` provenance. `op: add` inserts a \
          new tag (idempotent). `op: remove` deletes a tag. Use this for \
          curation outside the propose-accept cycle — for organic growth, \
-         let `tag-promoter` propose and `workstream_apply` commit."
+         let `tag-promoter` propose and `lens_apply` commit."
     }
 
     fn is_read_only(&self) -> bool {
@@ -720,7 +717,7 @@ impl Tool for WorkstreamTagTool {
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
@@ -736,9 +733,9 @@ impl Tool for WorkstreamTagTool {
                     "type": "string",
                     "description": "Required for add / remove."
                 },
-                "workstream": {
+                "lens": {
                     "type": "string",
-                    "description": "Override the active workstream."
+                    "description": "Override the active lens."
                 }
             },
             "required": ["op"]
@@ -756,11 +753,11 @@ impl Tool for WorkstreamTagTool {
                 return Ok(ToolOutput::error("op is required".to_string()));
             }
         };
-        let workstream = match params.get("workstream").and_then(|v| v.as_str()) {
+        let lens = match params.get("lens").and_then(|v| v.as_str()) {
             Some(s) => s.to_string(),
             None => self.router.current_name(),
         };
-        let ws_root = self.data_dir.join("workstreams").join(&workstream);
+        let ws_root = self.data_dir.join("lenses").join(&lens);
         let ontology = arawn_memory::TagOntologyStore::open_at(&ws_root)
             .map_err(|e| ToolError::ExecutionFailed(format!("open ontology: {e}")))?;
 
@@ -781,7 +778,7 @@ impl Tool for WorkstreamTagTool {
                     .collect();
                 Ok(ToolOutput::success(
                     json!({
-                        "workstream": workstream,
+                        "lens": lens,
                         "count": rows.len(),
                         "tags": rows,
                     })
@@ -800,7 +797,7 @@ impl Tool for WorkstreamTagTool {
                     .map_err(|e| ToolError::ExecutionFailed(format!("add: {e}")))?;
                 Ok(ToolOutput::success(
                     json!({
-                        "workstream": workstream,
+                        "lens": lens,
                         "tag": arawn_memory::normalize_tag(&tag),
                         "status": "added",
                     })
@@ -821,7 +818,7 @@ impl Tool for WorkstreamTagTool {
                     .map_err(|e| ToolError::ExecutionFailed(format!("remove: {e}")))?;
                 Ok(ToolOutput::success(
                     json!({
-                        "workstream": workstream,
+                        "lens": lens,
                         "tag": arawn_memory::normalize_tag(&tag),
                         "status": if removed { "removed" } else { "not_found" },
                     })
@@ -838,7 +835,7 @@ impl Tool for WorkstreamTagTool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use arawn_memory::{Entity, EntityType};
     use arawn_steward::{Journal, JournalRecord};
     use tempfile::TempDir;
@@ -846,13 +843,13 @@ mod tests {
 
     fn setup() -> (
         TempDir,
-        Arc<WorkstreamMemoryRouter>,
+        Arc<LensMemoryRouter>,
         crate::context::EngineToolContext,
     ) {
         let tmp = TempDir::new().unwrap();
-        let session = crate::tools::SessionWorkstream::new("ws-pat");
-        let router = Arc::new(WorkstreamMemoryRouter::new(tmp.path(), None, None, session));
-        let ws = Workstream::scratch(tmp.path());
+        let session = crate::tools::SessionLens::new("ws-pat");
+        let router = Arc::new(LensMemoryRouter::new(tmp.path(), None, None, session));
+        let ws = Lens::scratch(tmp.path());
         let ctx = crate::context::EngineToolContext::new(&ws, Uuid::new_v4());
         (tmp, router, ctx)
     }
@@ -891,11 +888,11 @@ mod tests {
         let j = Journal::open(tmp.path(), "ws-pat").unwrap();
         let _ = write_proposal_row(&j);
         let _ = write_proposal_row(&j);
-        let tool = WorkstreamJournalTool::new(tmp.path(), Arc::clone(&router));
+        let tool = LensJournalTool::new(tmp.path(), Arc::clone(&router));
         let r = tool.execute(&ctx, json!({})).await.unwrap();
         let v: Value = serde_json::from_str(&r.content).unwrap();
         assert_eq!(v["count"], 2);
-        assert_eq!(v["workstream"], "ws-pat");
+        assert_eq!(v["lens"], "ws-pat");
     }
 
     #[tokio::test]
@@ -915,7 +912,7 @@ mod tests {
         };
         j.write_ahead(&rec).unwrap();
 
-        let tool = WorkstreamRefineTool::new(tmp.path(), Arc::clone(&router));
+        let tool = LensRefineTool::new(tmp.path(), Arc::clone(&router));
         let r = tool.execute(&ctx, json!({})).await.unwrap();
         let v: Value = serde_json::from_str(&r.content).unwrap();
         assert_eq!(v["count"], 1);
@@ -927,19 +924,19 @@ mod tests {
         let (tmp, router, ctx) = setup();
         // Open the KB through the router so the entity lives in the
         // same db the tool will reach.
-        let kb = router.for_workstream("ws-pat").unwrap();
+        let kb = router.for_lens("ws-pat").unwrap();
         let e = Entity::new(EntityType::Fact, "important fact").with_content("v1");
         // Pretend reshelve already deleted this entity — we journal the
         // delete with the full snapshot and remove it from the KB.
         let j = Journal::open(tmp.path(), "ws-pat").unwrap();
         let id = write_delete_row(&j, &e);
 
-        let tool = WorkstreamRollbackTool::new(tmp.path(), Arc::clone(&router));
+        let tool = LensRollbackTool::new(tmp.path(), Arc::clone(&router));
         let r = tool.execute(&ctx, json!({"id": id})).await.unwrap();
         let v: Value = serde_json::from_str(&r.content).unwrap();
         assert_eq!(v["status"], "reverted");
         // Entity restored
-        let restored = kb.workstream.get_entity(e.id).unwrap().unwrap();
+        let restored = kb.lens.get_entity(e.id).unwrap().unwrap();
         assert_eq!(restored.title, "important fact");
     }
 
@@ -948,7 +945,7 @@ mod tests {
         let (tmp, router, ctx) = setup();
         let j = Journal::open(tmp.path(), "ws-pat").unwrap();
         let id = write_proposal_row(&j);
-        let tool = WorkstreamRollbackTool::new(tmp.path(), Arc::clone(&router));
+        let tool = LensRollbackTool::new(tmp.path(), Arc::clone(&router));
         let r1: Value =
             serde_json::from_str(&tool.execute(&ctx, json!({"id": id})).await.unwrap().content)
                 .unwrap();
@@ -963,11 +960,11 @@ mod tests {
     async fn apply_then_rollback_round_trip_for_map_proposal() {
         let (tmp, router, ctx) = setup();
         // Seed two entities and a map-style proposal between them.
-        let kb = router.for_workstream("ws-pat").unwrap();
+        let kb = router.for_lens("ws-pat").unwrap();
         let a = Entity::new(EntityType::Fact, "a");
         let b = Entity::new(EntityType::Fact, "b");
-        kb.workstream.insert_entity(&a).unwrap();
-        kb.workstream.insert_entity(&b).unwrap();
+        kb.lens.insert_entity(&a).unwrap();
+        kb.lens.insert_entity(&b).unwrap();
         let j = Journal::open(tmp.path(), "ws-pat").unwrap();
         let rec = JournalRecord {
             subroutine: "map".into(),
@@ -981,7 +978,7 @@ mod tests {
         let id = j.write_ahead(&rec).unwrap();
 
         // Apply → relation should now exist.
-        let apply_tool = WorkstreamApplyTool::new(tmp.path(), Arc::clone(&router));
+        let apply_tool = LensApplyTool::new(tmp.path(), Arc::clone(&router));
         let r: Value = serde_json::from_str(
             &apply_tool
                 .execute(&ctx, json!({"id": id}))
@@ -991,7 +988,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(r["status"], "applied");
-        let rels = kb.workstream.get_relations(a.id).unwrap();
+        let rels = kb.lens.get_relations(a.id).unwrap();
         assert!(rels.iter().any(|x| x.target_id == b.id));
 
         // Idempotency: second apply returns already_applied.
@@ -1021,18 +1018,18 @@ mod tests {
         };
         let id = j.write_ahead(&rec).unwrap();
         // Reject first
-        let rollback = WorkstreamRollbackTool::new(tmp.path(), Arc::clone(&router));
+        let rollback = LensRollbackTool::new(tmp.path(), Arc::clone(&router));
         let _ = rollback.execute(&ctx, json!({"id": id})).await.unwrap();
         // Apply must now refuse
-        let apply_tool = WorkstreamApplyTool::new(tmp.path(), Arc::clone(&router));
+        let apply_tool = LensApplyTool::new(tmp.path(), Arc::clone(&router));
         let err = apply_tool.execute(&ctx, json!({"id": id})).await;
         assert!(err.is_err());
     }
 
     #[tokio::test]
-    async fn workstream_tag_list_add_remove_round_trip() {
+    async fn lens_tag_list_add_remove_round_trip() {
         let (tmp, router, ctx) = setup();
-        let tool = WorkstreamTagTool::new(tmp.path(), Arc::clone(&router));
+        let tool = LensTagTool::new(tmp.path(), Arc::clone(&router));
 
         // list on empty ontology
         let r: Value = serde_json::from_str(
@@ -1095,7 +1092,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn workstream_apply_promotes_tag_into_ontology() {
+    async fn lens_apply_promotes_tag_into_ontology() {
         let (tmp, router, ctx) = setup();
         // Write a pending tag-promoter proposal.
         let j = Journal::open(tmp.path(), "ws-pat").unwrap();
@@ -1110,7 +1107,7 @@ mod tests {
         };
         let id = j.write_ahead(&rec).unwrap();
 
-        let apply_tool = WorkstreamApplyTool::new(tmp.path(), Arc::clone(&router));
+        let apply_tool = LensApplyTool::new(tmp.path(), Arc::clone(&router));
         let r: Value = serde_json::from_str(
             &apply_tool
                 .execute(&ctx, json!({"id": id}))
@@ -1122,13 +1119,13 @@ mod tests {
         assert_eq!(r["status"], "applied");
 
         // Ontology now has `calidor` with added_via=promotion.
-        let ws_root = tmp.path().join("workstreams").join("ws-pat");
+        let ws_root = tmp.path().join("lenses").join("ws-pat");
         let ont = arawn_memory::TagOntologyStore::open_at(&ws_root).unwrap();
         let entry = ont.get("calidor").unwrap().unwrap();
         assert_eq!(entry.added_via, arawn_memory::AddedVia::Promotion);
 
         // Rollback removes it.
-        let rollback = WorkstreamRollbackTool::new(tmp.path(), Arc::clone(&router));
+        let rollback = LensRollbackTool::new(tmp.path(), Arc::clone(&router));
         let r: Value = serde_json::from_str(
             &rollback
                 .execute(&ctx, json!({"id": id}))
@@ -1145,7 +1142,7 @@ mod tests {
     #[tokio::test]
     async fn rollback_unknown_id_errors() {
         let (tmp, router, ctx) = setup();
-        let tool = WorkstreamRollbackTool::new(tmp.path(), Arc::clone(&router));
+        let tool = LensRollbackTool::new(tmp.path(), Arc::clone(&router));
         let r = tool.execute(&ctx, json!({"id": 9999})).await;
         assert!(r.is_err());
     }
@@ -1185,10 +1182,7 @@ mod tests {
 
     #[test]
     fn closest_tag_picks_shortest_distance() {
-        let candidates = vec![
-            "falcon".to_string(),
-            "falcon-project-archive".to_string(),
-        ];
+        let candidates = vec!["falcon".to_string(), "falcon-project-archive".to_string()];
         // "falcon-prj" is closer to "falcon" (4 edits) than to the long form (12+).
         assert_eq!(
             super::closest_tag("falcon-prj", &candidates),

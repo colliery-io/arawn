@@ -1,7 +1,7 @@
 //! Map subroutine — proposal-only. Looks at recent entities in a
-//! workstream and asks the LLM to suggest relations that *should* exist
+//! lens and asks the LLM to suggest relations that *should* exist
 //! between them but don't. Proposals are journaled with `applied=false`
-//! and surface through `/workstream refine`.
+//! and surface through `/lens refine`.
 //!
 //! Per ARAWN-A-0003 map never mutates the KB graph.
 
@@ -101,12 +101,12 @@ impl StewardSubroutine for MapSubroutine {
     }
 
     async fn run(&self, ctx: &SubroutineCtx) -> Result<SubroutineOutcome, StewardError> {
-        let cursor_store = (self.cursor_factory)(&ctx.workstream.name)?;
+        let cursor_store = (self.cursor_factory)(&ctx.lens.name)?;
         let cursor = cursor_store.get(SUBROUTINE_NAME)?;
 
         let mut all = ctx
             .memory
-            .workstream
+            .lens
             .list_all_ranked(500)
             .map_err(StewardError::from)?;
         let mut focus_set: Vec<Entity> = all
@@ -146,7 +146,7 @@ impl StewardSubroutine for MapSubroutine {
                 Ok(p) => p,
                 Err(e) => {
                     warn!(
-                        workstream = %ctx.workstream.name,
+                        lens = %ctx.lens.name,
                         focus = %focus.id,
                         error = %e,
                         "map: per-focus LLM call failed; skipping"
@@ -162,7 +162,7 @@ impl StewardSubroutine for MapSubroutine {
                 }
                 if let Err(e) = self.record_proposal(focus, &prop, ctx) {
                     warn!(
-                        workstream = %ctx.workstream.name,
+                        lens = %ctx.lens.name,
                         focus = %focus.id,
                         error = %e,
                         "map: dropped proposal"
@@ -192,7 +192,7 @@ impl MapSubroutine {
         _ctx: &SubroutineCtx,
     ) -> Result<Vec<ProposedEdge>, StewardError> {
         let system = "Given a focus entity and a set of neighboring entities from the same \
-                      workstream knowledge base, propose typed relations that would belong \
+                      lens knowledge base, propose typed relations that would belong \
                       between them but do not yet exist. Output ONLY a JSON array; each item: \
                       {\"from_id\": uuid, \"rel\": one of \
                       [relates_to, supports, contradicts, mentions, belongs_to], \
@@ -261,7 +261,7 @@ impl MapSubroutine {
         };
         ctx.journal.write_ahead(&record)?;
         debug!(
-            workstream = %ctx.workstream.name,
+            lens = %ctx.lens.name,
             from = %from,
             rel = rel.as_str(),
             to = %to,
@@ -287,7 +287,7 @@ mod tests {
     use std::pin::Pin;
     use std::sync::Mutex;
 
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use arawn_llm::{
         LlmError,
         types::{ChatChunk, ChatRequest},
@@ -353,7 +353,7 @@ mod tests {
         // Map is proposal-only.
         let gate = Arc::new(crate::journal::JournalGate::new(Arc::clone(j), false));
         SubroutineCtx {
-            workstream: Workstream::new("ws", tmp.path().join("ws")),
+            lens: Lens::new("ws", tmp.path().join("ws")),
             memory: Arc::clone(mem),
             journal: gate,
             cap,
@@ -367,9 +367,9 @@ mod tests {
             .with_confidence(ConfidenceSource::Stated);
         let b = Entity::new(EntityType::Fact, "postgres supports jsonb");
         let c = Entity::new(EntityType::Fact, "team prefers typed schemas");
-        mem.workstream.insert_entity(&a).unwrap();
-        mem.workstream.insert_entity(&b).unwrap();
-        mem.workstream.insert_entity(&c).unwrap();
+        mem.lens.insert_entity(&a).unwrap();
+        mem.lens.insert_entity(&b).unwrap();
+        mem.lens.insert_entity(&c).unwrap();
 
         // Script: one valid + one self-loop + one bogus rel.
         let payload = json!([
@@ -395,9 +395,9 @@ mod tests {
         let a = Entity::new(EntityType::Fact, "a");
         let b = Entity::new(EntityType::Fact, "b");
         let c = Entity::new(EntityType::Fact, "c");
-        mem.workstream.insert_entity(&a).unwrap();
-        mem.workstream.insert_entity(&b).unwrap();
-        mem.workstream.insert_entity(&c).unwrap();
+        mem.lens.insert_entity(&a).unwrap();
+        mem.lens.insert_entity(&b).unwrap();
+        mem.lens.insert_entity(&c).unwrap();
 
         let many = json!([
             {"from_id": a.id, "rel": "relates_to", "to_id": b.id, "reason": "x"},
@@ -415,7 +415,7 @@ mod tests {
     async fn cursor_advances_and_skips_on_rerun() {
         let (tmp, mem, j, fac) = setup();
         let a = Entity::new(EntityType::Fact, "a");
-        mem.workstream.insert_entity(&a).unwrap();
+        mem.lens.insert_entity(&a).unwrap();
         let mock = Arc::new(ScriptedMock::new(vec![json!([])]));
         let sub = MapSubroutine::new(mock as Arc<dyn LlmClient>, "mock", Arc::clone(&fac));
         let _ = sub.run(&ctx(&tmp, &mem, &j, 10)).await.unwrap();

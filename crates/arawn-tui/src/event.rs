@@ -222,7 +222,10 @@ mod tests {
             (key(KeyCode::Char('\x01')), Action::CursorHome),
             (key(KeyCode::Char('\x05')), Action::CursorEnd),
         ] {
-            assert_eq!(map_key_event(k, Focus::Main, false, false, false), Some(want));
+            assert_eq!(
+                map_key_event(k, Focus::Main, false, false, false),
+                Some(want)
+            );
         }
     }
 

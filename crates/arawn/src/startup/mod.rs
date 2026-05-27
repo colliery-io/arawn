@@ -12,9 +12,9 @@ pub mod integrations;
 
 pub use cli::run_cli_via_server;
 pub use engine::build_engine_config;
-pub use hooks::load_and_build_hook_runner;
 pub use feeds_helpers::{expand_github_org, register_one_feed};
 pub use helpers::{
     build_llm_client, connect_mcp_servers, dirs_path, register_default_tools,
     register_workflow_tools,
 };
+pub use hooks::load_and_build_hook_runner;

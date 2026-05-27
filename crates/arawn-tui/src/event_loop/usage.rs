@@ -1,4 +1,3 @@
-
 /// T-0362: TUI `/usage` slash command — call the server-side
 /// `usage.summary` RPC and pretty-print via the shared renderer
 /// in `arawn_llm::usage::render_usage_human`. Server-side
@@ -30,4 +29,3 @@ pub(super) async fn render_usage(client: &mut crate::ws_client::WsClient, period
     let body = arawn_llm::usage::render_usage_human(&summary);
     format!("```\n{body}```")
 }
-

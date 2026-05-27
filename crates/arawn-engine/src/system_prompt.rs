@@ -32,7 +32,7 @@ const ASSISTANT_DOING_TASKS: &str = r#"# Doing tasks
 - The user will primarily ask you to summarize, check, surface, schedule, draft, and follow up on things across their connected tools.
 - You are highly capable and can help users complete ambitious tasks that would otherwise be too complex or take too long.
 - Read before you act: when something already exists (a thread, a ticket, a calendar invite, a document), look at it before you suggest changes.
-- Don't fabricate. If a tool returns no results, retry with broader terms before reporting empty. If still empty, say so plainly. Never fall back to training-data knowledge to fill a gap — what's in the user's tools is the only truth about their workstream.
+- Don't fabricate. If a tool returns no results, retry with broader terms before reporting empty. If still empty, say so plainly. Never fall back to training-data knowledge to fill a gap — what's in the user's tools is the only truth about their lens.
 - Be careful with actions that send messages, schedule events, or modify external state — these are visible to other people. Confirm before doing them unless the user has clearly authorized you for this turn.
 - Don't add scope. A "summarize my inbox" request doesn't need follow-ups drafted unless asked. A "what's on my calendar" request doesn't need rescheduling proposed.
 
@@ -47,7 +47,7 @@ If an approach fails, diagnose why before switching tactics — read the error, 
 
 # Behavioral context (arawn.md)
 You can read and write to `arawn.md` files to persist behavioral directives across sessions:
-- The workstream-level `arawn.md` is in the workstream root. It applies to all sessions in this workstream.
+- The lens-level `arawn.md` is in the lens root. It applies to all sessions in this lens.
 - The global `arawn.md` is at the top of the data directory. It applies everywhere.
 - Both files are injected into your system prompt at the start of each turn.
 - Use arawn.md for consistent behavioral changes: tone preferences, recurring instructions, response style.
@@ -73,7 +73,7 @@ If an approach fails, diagnose why before switching tactics — read the error, 
 
 # Behavioral context (arawn.md)
 You can read and write to `arawn.md` files to persist behavioral directives across sessions:
-- The workstream-level `arawn.md` is in the workstream root. It applies to all sessions in this workstream.
+- The lens-level `arawn.md` is in the lens root. It applies to all sessions in this lens.
 - The global `arawn.md` is at the top of the data directory. It applies everywhere.
 - Both files are injected into your system prompt at the start of each turn.
 - Use arawn.md for consistent behavioral changes: coding conventions, tool preferences, workflow rules, response style.
@@ -302,13 +302,10 @@ impl SystemPromptBuilder {
         self
     }
 
-    /// Add the workstream section.
-    pub fn workstream(mut self, name: &str, root_dir: &Path) -> Self {
+    /// Add the lens section.
+    pub fn lens(mut self, name: &str, root_dir: &Path) -> Self {
         self.sections.push(PromptSection {
-            content: format!(
-                "# Workstream\n- Name: {name}\n- Root: {}",
-                root_dir.display()
-            ),
+            content: format!("# Lens\n- Name: {name}\n- Root: {}", root_dir.display()),
             priority: 1,
         });
         self
@@ -338,7 +335,7 @@ impl SystemPromptBuilder {
         self
     }
 
-    /// Add context files (arawn.md at workstream and global levels).
+    /// Add context files (arawn.md at lens and global levels).
     pub fn context_files(mut self, files: &[ContextFile]) -> Self {
         if files.is_empty() {
             return self;
@@ -479,8 +476,8 @@ pub struct ContextFile {
     pub truncated: bool,
 }
 
-/// Load context files from workstream root and global config dir.
-pub fn find_context_files(workstream_root: &Path, global_dir: &Path) -> Vec<ContextFile> {
+/// Load context files from lens root and global config dir.
+pub fn find_context_files(lens_root: &Path, global_dir: &Path) -> Vec<ContextFile> {
     let mut files = Vec::new();
 
     // Global context first
@@ -489,8 +486,8 @@ pub fn find_context_files(workstream_root: &Path, global_dir: &Path) -> Vec<Cont
         files.push(cf);
     }
 
-    // Workstream-specific context (higher priority, loaded second)
-    let project_path = workstream_root.join("arawn.md");
+    // Lens-specific context (higher priority, loaded second)
+    let project_path = lens_root.join("arawn.md");
     if let Some(cf) = load_context_file(&project_path, MAX_CONTEXT_FILE_CHARS) {
         files.push(cf);
     }
@@ -579,8 +576,7 @@ mod tests {
             "coding-identity prose leaked into assistant prompt"
         );
         assert!(
-            prompt
-                .contains("summarize, check, surface, schedule, draft, and follow up on things"),
+            prompt.contains("summarize, check, surface, schedule, draft, and follow up on things"),
             "assistant doing_tasks section missing"
         );
         assert!(
@@ -622,7 +618,9 @@ mod tests {
 
     #[test]
     fn default_profile_is_assistant() {
-        let prompt = SystemPromptBuilder::new().load_static_sections(None).build();
+        let prompt = SystemPromptBuilder::new()
+            .load_static_sections(None)
+            .build();
         // No `.with_identity_profile` call — default must be Assistant.
         assert!(prompt.contains("a personal agentic assistant"));
         assert!(!prompt.contains("agent that BUILDS things"));
@@ -634,7 +632,7 @@ mod tests {
         let prompt = SystemPromptBuilder::new()
             .load_static_sections(None)
             .environment("macOS", "zsh", Path::new("/tmp/test"), "test-model")
-            .workstream("scratch", Path::new("/tmp/test"))
+            .lens("scratch", Path::new("/tmp/test"))
             .build();
 
         assert!(prompt.contains("You are Arawn"));
@@ -645,7 +643,7 @@ mod tests {
         assert!(prompt.contains("# Tone and style"));
         assert!(prompt.contains("# Output efficiency"));
         assert!(prompt.contains("# Environment"));
-        assert!(prompt.contains("# Workstream"));
+        assert!(prompt.contains("# Lens"));
     }
 
     // --- TC-02: Section headers ---
@@ -740,12 +738,12 @@ mod tests {
             .with_token_budget(10_000)
             .load_static_sections(None)
             .environment("macOS", "zsh", Path::new("/tmp"), "model")
-            .workstream("test", Path::new("/tmp"))
+            .lens("test", Path::new("/tmp"))
             .build();
 
         assert!(prompt.contains("You are Arawn"));
         assert!(prompt.contains("# Environment"));
-        assert!(prompt.contains("# Workstream"));
+        assert!(prompt.contains("# Lens"));
     }
 
     // --- TC-09: Over budget drops sections ---
@@ -911,7 +909,7 @@ mod tests {
             .current_time(when)
             // Add some other sections to prove "first" is real.
             .environment("macOS", "zsh", Path::new("/tmp"), "test-model")
-            .workstream("ws", Path::new("/tmp/ws"))
+            .lens("ws", Path::new("/tmp/ws"))
             .build();
         assert!(prompt.starts_with("Current time: 2026-05-19 14:32"));
         assert!(prompt.contains("(Tue)"));
@@ -943,11 +941,11 @@ mod tests {
         assert!(!prompt.contains("- Date:"));
     }
 
-    // --- TC-18: Workstream section ---
+    // --- TC-18: Lens section ---
     #[test]
-    fn workstream_section_contains_info() {
+    fn lens_section_contains_info() {
         let prompt = SystemPromptBuilder::new()
-            .workstream("Home Maintenance", Path::new("/home/user/maintenance"))
+            .lens("Home Maintenance", Path::new("/home/user/maintenance"))
             .build();
 
         assert!(prompt.contains("Home Maintenance"));
@@ -963,7 +961,7 @@ mod tests {
         let mut builder = SystemPromptBuilder::new()
             .with_identity_profile(IdentityProfile::Coding)
             .load_static_sections(None)
-            .workstream("scratch", Path::new("/tmp/arawn"));
+            .lens("scratch", Path::new("/tmp/arawn"));
 
         // Add environment manually to avoid date drift
         builder.sections.push(PromptSection {

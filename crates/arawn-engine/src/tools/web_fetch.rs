@@ -323,20 +323,20 @@ mod tests {
     use std::sync::Arc;
 
     use crate::context::EngineToolContext;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use arawn_llm::MockLlmClient;
     use arawn_llm::MockResponse;
     use arawn_tool::ToolContext as _;
     use uuid::Uuid;
 
     fn test_ctx() -> EngineToolContext {
-        let ws = Workstream::scratch("/tmp/test");
+        let ws = Lens::scratch("/tmp/test");
         EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
     fn test_ctx_with_mock(responses: Vec<MockResponse>) -> (EngineToolContext, Arc<MockLlmClient>) {
         let mock = Arc::new(MockLlmClient::new(responses));
-        let ws = Workstream::scratch("/tmp/test");
+        let ws = Lens::scratch("/tmp/test");
         let ctx = EngineToolContext::new(&ws, Uuid::new_v4())
             .with_llm(mock.clone(), "test-model".to_string());
         (ctx, mock)

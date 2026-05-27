@@ -49,9 +49,9 @@ pub struct FeedRuntimeContext {
     /// optional so feeds can run standalone (e.g. tests) without a
     /// projection backend.
     pub projections: Option<Arc<arawn_projections::ProjectionStore>>,
-    /// Optional per-workstream extractor. When set (and projections is
+    /// Optional per-lens extractor. When set (and projections is
     /// also set), each successful feed run fans out to the extractor
-    /// after projection writes — every active workstream evaluates the
+    /// after projection writes — every active lens evaluates the
     /// new projection rows against its scope.
     pub extractor: Option<Arc<arawn_extractor::ExtractorRunner>>,
 }
@@ -241,20 +241,20 @@ async fn run_feed_inner(
         Vec::new()
     };
 
-    // 8. Fan out into the per-workstream extractor for each
+    // 8. Fan out into the per-lens extractor for each
     // projection feed_type this template touched. Reactive trigger
     // (downstream of capture) per the I-0040 phase 4 design.
     // Soft-fails — extractor errors must not fail the feed run.
     if let Some(extractor) = runtime.extractor.as_ref() {
         for feed_type in projections_touched_types {
-            match extractor.run_for_all_workstreams(&feed_type).await {
+            match extractor.run_for_all_lenses(&feed_type).await {
                 Ok(per_ws) => {
                     let total_kept: usize = per_ws.iter().map(|(_, s)| s.kept).sum();
                     if total_kept > 0 {
                         info!(
                             feed_id = %record.id,
                             feed_type = %feed_type,
-                            workstreams = per_ws.len(),
+                            lenses = per_ws.len(),
                             kept = total_kept,
                             "extractor fan-out"
                         );

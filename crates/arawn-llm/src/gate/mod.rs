@@ -43,7 +43,8 @@ pub struct LocalPermit {
 static SEMAPHORE: OnceLock<std::sync::RwLock<std::sync::Arc<Semaphore>>> = OnceLock::new();
 
 fn semaphore() -> &'static std::sync::RwLock<std::sync::Arc<Semaphore>> {
-    SEMAPHORE.get_or_init(|| std::sync::RwLock::new(std::sync::Arc::new(Semaphore::new(LOCAL_SLOTS))))
+    SEMAPHORE
+        .get_or_init(|| std::sync::RwLock::new(std::sync::Arc::new(Semaphore::new(LOCAL_SLOTS))))
 }
 
 /// Acquire a `LocalPermit`, waiting if every slot is full. Returns

@@ -6,30 +6,30 @@ use serde_json::{Value, json};
 use arawn_storage::Store;
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
-use super::SessionWorkstream;
+use super::SessionLens;
 
-pub struct WorkstreamShowTool {
+pub struct LensShowTool {
     store: Arc<Mutex<Store>>,
-    active: SessionWorkstream,
+    active: SessionLens,
 }
 
-impl WorkstreamShowTool {
-    pub fn new(store: Arc<Mutex<Store>>, active: SessionWorkstream) -> Self {
+impl LensShowTool {
+    pub fn new(store: Arc<Mutex<Store>>, active: SessionLens) -> Self {
         Self { store, active }
     }
 }
 
 #[async_trait]
-impl Tool for WorkstreamShowTool {
+impl Tool for LensShowTool {
     fn name(&self) -> &str {
-        "workstream_show"
+        "lens_show"
     }
 
     fn description(&self) -> &str {
-        "Show the active workstream's details (or a named one). \
+        "Show the active lens's details (or a named one). \
          Includes display_name, description, bindings, and — crucially \
-         for downstream tools — the workstream's declared tag ontology. \
-         Use this before calling `workstream_dust` or `signal_query` \
+         for downstream tools — the lens's declared tag ontology. \
+         Use this before calling `lens_dust` or `signal_query` \
          with a tag filter so you pick a tag that actually exists in \
          the ontology."
     }
@@ -39,14 +39,14 @@ impl Tool for WorkstreamShowTool {
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
         json!({
             "type": "object",
             "properties": {
-                "name": {"type": "string", "description": "Defaults to the active workstream"}
+                "name": {"type": "string", "description": "Defaults to the active lens"}
             },
             "required": []
         })
@@ -64,15 +64,15 @@ impl Tool for WorkstreamShowTool {
             .unwrap_or_else(|| self.active.current());
         let store = self.store.lock().unwrap();
         let ws = store
-            .find_workstream_by_name(&name)
+            .find_lens_by_name(&name)
             .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
         let Some(ws) = ws else {
-            return Ok(ToolOutput::error(format!("workstream '{name}' not found")));
+            return Ok(ToolOutput::error(format!("lens '{name}' not found")));
         };
         drop(store);
 
-        // Surface the workstream's declared tag ontology — agents that
-        // call this tool before `workstream_dust` / `signal_query` can
+        // Surface the lens's declared tag ontology — agents that
+        // call this tool before `lens_dust` / `signal_query` can
         // pick valid tags instead of guessing. Soft-fail to empty when
         // the data dir is unavailable or the ontology table is missing.
         let ontology_tags: Vec<String> = match ctx.data_dir() {
@@ -98,4 +98,3 @@ impl Tool for WorkstreamShowTool {
         ))
     }
 }
-

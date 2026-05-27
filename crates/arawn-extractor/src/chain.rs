@@ -9,7 +9,7 @@
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use arawn_core::Workstream;
+use arawn_core::Lens;
 use arawn_memory::MemoryManager;
 use arawn_projections::ProjectionRow;
 
@@ -18,7 +18,7 @@ use crate::error::ExtractionError;
 /// Per-row outcome of a single chain run.
 #[derive(Debug, Clone, Default)]
 pub struct ChainOutcome {
-    /// Entities written or reinforced in the workstream's KB.
+    /// Entities written or reinforced in the lens's KB.
     pub entities_written: Vec<Uuid>,
     /// Number of relations added (not including provenance edges).
     pub relations_written: usize,
@@ -29,11 +29,11 @@ pub struct ChainOutcome {
 #[async_trait]
 pub trait ExtractionChain: Send + Sync {
     /// Process a single projection row in the context of one
-    /// workstream. The `kb` is the routed memory manager for that
-    /// workstream (global + workstream tier).
+    /// lens. The `kb` is the routed memory manager for that
+    /// lens (global + lens tier).
     async fn run(
         &self,
-        workstream: &Workstream,
+        lens: &Lens,
         row: &ProjectionRow,
         kb: &MemoryManager,
     ) -> Result<ChainOutcome, ExtractionError>;
@@ -48,7 +48,7 @@ pub struct StubChain;
 impl ExtractionChain for StubChain {
     async fn run(
         &self,
-        _workstream: &Workstream,
+        _lens: &Lens,
         _row: &ProjectionRow,
         _kb: &MemoryManager,
     ) -> Result<ChainOutcome, ExtractionError> {

@@ -236,7 +236,12 @@ pub fn from_issue_or_pr_json(feed_id: &str, v: &Value) -> Option<GithubIssueOrPr
         .to_string();
     // PRs distinguished by presence of `pull_request` field.
     let pull_request = v.get("pull_request");
-    let kind = if pull_request.is_some() { "pr" } else { "issue" }.to_string();
+    let kind = if pull_request.is_some() {
+        "pr"
+    } else {
+        "issue"
+    }
+    .to_string();
     let merged_at = pull_request
         .and_then(|p| p.get("merged_at"))
         .and_then(|t| t.as_str())
@@ -722,8 +727,10 @@ pub fn from_repo_issue_json(
                 .collect()
         })
         .unwrap_or_default();
-    let body_excerpt =
-        truncate_chars(v.get("body").and_then(|b| b.as_str()).unwrap_or(""), BODY_EXCERPT_MAX);
+    let body_excerpt = truncate_chars(
+        v.get("body").and_then(|b| b.as_str()).unwrap_or(""),
+        BODY_EXCERPT_MAX,
+    );
     let url = v
         .get("html_url")
         .and_then(|u| u.as_str())
@@ -882,8 +889,10 @@ pub fn from_repo_pr_json(
                 .collect()
         })
         .unwrap_or_default();
-    let body_excerpt =
-        truncate_chars(v.get("body").and_then(|b| b.as_str()).unwrap_or(""), BODY_EXCERPT_MAX);
+    let body_excerpt = truncate_chars(
+        v.get("body").and_then(|b| b.as_str()).unwrap_or(""),
+        BODY_EXCERPT_MAX,
+    );
     let url = v
         .get("html_url")
         .and_then(|u| u.as_str())
@@ -986,8 +995,10 @@ pub fn from_comment_json(
     v: &Value,
 ) -> Option<GithubIssueOrPrCommentProjection> {
     let comment_id = v.get("id")?.as_i64()?;
-    let body_excerpt =
-        truncate_chars(v.get("body").and_then(|b| b.as_str()).unwrap_or(""), BODY_EXCERPT_MAX);
+    let body_excerpt = truncate_chars(
+        v.get("body").and_then(|b| b.as_str()).unwrap_or(""),
+        BODY_EXCERPT_MAX,
+    );
     let author = v
         .get("user")
         .and_then(|u| u.get("login"))
@@ -1353,7 +1364,10 @@ mod tests {
         assert_eq!(p.owner, "openai");
         assert_eq!(p.repo, "codex");
         assert_eq!(p.author, "Alice");
-        assert_eq!(p.parents, vec!["parent-1".to_string(), "parent-2".to_string()]);
+        assert_eq!(
+            p.parents,
+            vec!["parent-1".to_string(), "parent-2".to_string()]
+        );
         let row = p.row();
         assert_eq!(row.title, "fix: handle empty payload");
         assert_eq!(row.feed_type, REPO_COMMITS_FEED_TYPE);
@@ -1422,7 +1436,8 @@ mod tests {
             "created_at": "2026-05-18T10:00:00Z",
             "updated_at": "2026-05-18T10:00:00Z"
         });
-        let p = from_comment_json("feed-1", "openai", "codex", "issue_comment", &v).expect("parsed");
+        let p =
+            from_comment_json("feed-1", "openai", "codex", "issue_comment", &v).expect("parsed");
         assert_eq!(p.kind, "issue_comment");
         assert_eq!(p.parent_number, 42);
         assert_eq!(p.source_id, "openai/codex@issue_comment/999");

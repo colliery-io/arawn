@@ -10,7 +10,7 @@
 //! similarity, and computes Recall@5 / Recall@10 / NDCG@10 against the
 //! provided ground-truth session ids. Aggregated across all 500 questions.
 //!
-//! **What this does NOT measure**: anything arawn-specific — workstream
+//! **What this does NOT measure**: anything arawn-specific — lens
 //! scoping, ontology-tagged retrieval, FTS interplay, MemoryStack L1/L2, or
 //! the steward's role in pruning stale entities. For those, see
 //! `recall_eval.rs` (sibling file, runs by default with arawn-shaped

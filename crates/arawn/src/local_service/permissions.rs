@@ -1,17 +1,15 @@
 //! `LocalService` inherent methods backing the `permissions.*` portion of
 //! `ArawnService`. The trait shell in `super::mod` delegates to these.
 
-
-use arawn_service::{
-    PermissionModeInfo, ServiceError,
-};
+use arawn_service::{PermissionModeInfo, ServiceError};
 use tracing::info;
-
 
 use super::LocalService;
 
 impl LocalService {
-    pub(super) async fn get_permission_mode_inner(&self) -> Result<PermissionModeInfo, ServiceError> {
+    pub(super) async fn get_permission_mode_inner(
+        &self,
+    ) -> Result<PermissionModeInfo, ServiceError> {
         let mode = *self.permission_mode.read().unwrap();
         Ok(PermissionModeInfo {
             mode: serde_json::to_value(mode)
@@ -38,7 +36,9 @@ impl LocalService {
         })
     }
 
-    pub(super) async fn get_capabilities_inner(&self) -> Result<arawn_service::ServerCapabilities, ServiceError> {
+    pub(super) async fn get_capabilities_inner(
+        &self,
+    ) -> Result<arawn_service::ServerCapabilities, ServiceError> {
         let embeddings_available = self
             .memory_manager
             .as_ref()
@@ -102,5 +102,4 @@ impl LocalService {
             recent_decisions,
         })
     }
-
 }

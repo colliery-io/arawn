@@ -84,12 +84,12 @@ impl<'a> DetectorCtx<'a> {
         Ok(count)
     }
 
-    /// Sum of a metric for one workstream across the trailing
+    /// Sum of a metric for one lens across the trailing
     /// `lookback_weeks` (exclusive of `current_iso_week`). Returns
     /// `None` when no rows match.
     pub fn metric_sum_trailing(
         &self,
-        workstream: &str,
+        lens: &str,
         metric_key: &str,
         lookback_weeks: u32,
     ) -> Result<Option<f64>, CeremonyError> {
@@ -103,18 +103,13 @@ impl<'a> DetectorCtx<'a> {
         let mut stmt = conn
             .prepare(
                 "SELECT iso_week, value FROM ceremony_activity_rollup \
-                 WHERE workstream = ?1 AND metric_key = ?2 AND iso_week < ?3 \
+                 WHERE lens = ?1 AND metric_key = ?2 AND iso_week < ?3 \
                  ORDER BY iso_week DESC LIMIT ?4",
             )
             .map_err(|e| CeremonyError::Storage(format!("metric_sum prepare: {e}")))?;
         let rows = stmt
             .query_map(
-                params![
-                    workstream,
-                    metric_key,
-                    &self.current_iso_week,
-                    lookback_weeks
-                ],
+                params![lens, metric_key, &self.current_iso_week, lookback_weeks],
                 |row| row.get::<_, f64>(1),
             )
             .map_err(|e| CeremonyError::Storage(format!("metric_sum query: {e}")))?;
@@ -127,15 +122,15 @@ impl<'a> DetectorCtx<'a> {
         if seen == 0 { Ok(None) } else { Ok(Some(total)) }
     }
 
-    /// Current-week value for one workstream/metric. Returns `None`
+    /// Current-week value for one lens/metric. Returns `None`
     /// when no row exists for the current week (vs. zero, which is
     /// an explicit "we measured and got zero").
     pub fn current_metric_value(
         &self,
-        workstream: &str,
+        lens: &str,
         metric_key: &str,
     ) -> Result<Option<f64>, CeremonyError> {
-        crate::rollup::read_rollup_value(self.conn, &self.current_iso_week, workstream, metric_key)
+        crate::rollup::read_rollup_value(self.conn, &self.current_iso_week, lens, metric_key)
     }
 }
 
@@ -219,12 +214,12 @@ mod tests {
 
     fn seed_rollup(
         conn: &ConnHandle,
-        rows: &[(&str, &str, &str, f64)], // (iso_week, workstream, metric_key, value)
+        rows: &[(&str, &str, &str, f64)], // (iso_week, lens, metric_key, value)
     ) {
         let c = conn.0.lock().unwrap();
         for (week, ws, key, val) in rows {
             c.execute(
-                "INSERT INTO ceremony_activity_rollup (iso_week, workstream, metric_key, value) \
+                "INSERT INTO ceremony_activity_rollup (iso_week, lens, metric_key, value) \
                  VALUES (?1, ?2, ?3, ?4)",
                 params![week, ws, key, *val],
             )
@@ -391,7 +386,9 @@ mod tests {
             fn tablet_id(&self) -> &str {
                 "retro-2026-W20"
             }
-            fn period_window(&self) -> (chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>) {
+            fn period_window(
+                &self,
+            ) -> (chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>) {
                 let now = chrono::Utc::now();
                 (now, now + chrono::Duration::days(7))
             }

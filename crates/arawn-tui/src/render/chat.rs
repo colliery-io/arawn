@@ -3,9 +3,9 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
+use super::{SPINNER_FRAMES, compact_tool_summary};
 use crate::app::{App, ChatRole};
 use crate::theme;
-use super::{SPINNER_FRAMES, compact_tool_summary};
 
 pub(super) fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect) {
     // Empty chat, no streaming, not generating. Two cases:
@@ -433,8 +433,7 @@ pub(super) fn render_empty_chat_brief(app: &App, frame: &mut Frame, area: ratatu
         area.width.saturating_sub(4),
         area.height,
     );
-    let para = ratatui::widgets::Paragraph::new(lines)
-        .alignment(ratatui::layout::Alignment::Left);
+    let para = ratatui::widgets::Paragraph::new(lines).alignment(ratatui::layout::Alignment::Left);
     frame.render_widget(para, inner);
 }
 
@@ -479,4 +478,3 @@ pub(super) fn render_idle_hero(frame: &mut Frame, area: ratatui::layout::Rect) {
     let para = Paragraph::new(hero_lines).alignment(ratatui::layout::Alignment::Center);
     frame.render_widget(para, rect);
 }
-

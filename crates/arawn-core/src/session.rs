@@ -5,54 +5,54 @@ use crate::Message;
 use crate::session_stats::SessionStats;
 
 /// A conversation session.
-/// Scratch sessions start with `workstream_id = None` and
-/// `workstream_name = "scratch"`. Once promoted to a workstream,
-/// the binding moves to the named workstream's KB.
+/// Scratch sessions start with `lens_id = None` and
+/// `lens_name = "scratch"`. Once promoted to a lens,
+/// the binding moves to the named lens's KB.
 #[derive(Debug, Clone)]
 pub struct Session {
     pub id: Uuid,
-    workstream_id: Option<Uuid>,
-    /// Slug of the workstream this session contributes to. Memory
+    lens_id: Option<Uuid>,
+    /// Slug of the lens this session contributes to. Memory
     /// routing in the engine reads this to pick which KB to write to /
     /// search. Defaults to `scratch`.
-    workstream_name: String,
+    lens_name: String,
     messages: Vec<Message>,
     pub created_at: DateTime<Utc>,
     pub stats: SessionStats,
 }
 
 impl Session {
-    /// Create a session bound to a workstream.
-    pub fn new(workstream_id: Uuid) -> Self {
+    /// Create a session bound to a lens.
+    pub fn new(lens_id: Uuid) -> Self {
         Self {
             id: Uuid::new_v4(),
-            workstream_id: Some(workstream_id),
-            workstream_name: crate::workstream::SCRATCH_NAME.to_string(),
+            lens_id: Some(lens_id),
+            lens_name: crate::lens::SCRATCH_NAME.to_string(),
             messages: Vec::new(),
             created_at: Utc::now(),
             stats: SessionStats::new(),
         }
     }
 
-    /// Create a session bound to a workstream by name. Use this on
+    /// Create a session bound to a lens by name. Use this on
     /// the new-session path so memory routing picks the right KB.
-    pub fn new_with_workstream(workstream_id: Uuid, workstream_name: impl Into<String>) -> Self {
-        let mut s = Self::new(workstream_id);
-        s.workstream_name = workstream_name.into();
+    pub fn new_with_lens(lens_id: Uuid, lens_name: impl Into<String>) -> Self {
+        let mut s = Self::new(lens_id);
+        s.lens_name = lens_name.into();
         s
     }
 
     /// Reconstruct a session from persisted parts (DB load path).
     pub fn from_parts(
         id: Uuid,
-        workstream_id: Option<Uuid>,
+        lens_id: Option<Uuid>,
         created_at: DateTime<Utc>,
         messages: Vec<Message>,
     ) -> Self {
         Self {
             id,
-            workstream_id,
-            workstream_name: crate::workstream::SCRATCH_NAME.to_string(),
+            lens_id,
+            lens_name: crate::lens::SCRATCH_NAME.to_string(),
             messages,
             created_at,
             stats: SessionStats::new(),
@@ -62,64 +62,64 @@ impl Session {
     /// Reconstruct a session with stats from persisted parts.
     pub fn from_parts_with_stats(
         id: Uuid,
-        workstream_id: Option<Uuid>,
+        lens_id: Option<Uuid>,
         created_at: DateTime<Utc>,
         messages: Vec<Message>,
         stats: SessionStats,
     ) -> Self {
         Self {
             id,
-            workstream_id,
-            workstream_name: crate::workstream::SCRATCH_NAME.to_string(),
+            lens_id,
+            lens_name: crate::lens::SCRATCH_NAME.to_string(),
             messages,
             created_at,
             stats,
         }
     }
 
-    /// Create a scratch session (no workstream binding yet).
+    /// Create a scratch session (no lens binding yet).
     pub fn scratch() -> Self {
         Self {
             id: Uuid::new_v4(),
-            workstream_id: None,
-            workstream_name: crate::workstream::SCRATCH_NAME.to_string(),
+            lens_id: None,
+            lens_name: crate::lens::SCRATCH_NAME.to_string(),
             messages: Vec::new(),
             created_at: Utc::now(),
             stats: SessionStats::new(),
         }
     }
 
-    pub fn workstream_id(&self) -> Option<Uuid> {
-        self.workstream_id
+    pub fn lens_id(&self) -> Option<Uuid> {
+        self.lens_id
     }
 
-    /// Current workstream slug for this session. Memory tools read
+    /// Current lens slug for this session. Memory tools read
     /// this to pick which KB to write to / search.
-    pub fn workstream_name(&self) -> &str {
-        &self.workstream_name
+    pub fn lens_name(&self) -> &str {
+        &self.lens_name
     }
 
-    /// Update the active workstream binding. Both the slug (used for
+    /// Update the active lens binding. Both the slug (used for
     /// KB routing) and the Uuid (used for session-table FK) update
-    /// atomically. Called by `/workstream switch`.
-    pub fn set_workstream(&mut self, name: impl Into<String>, id: Uuid) {
-        self.workstream_name = name.into();
-        self.workstream_id = Some(id);
+    /// atomically. Called by `/lens switch`.
+    pub fn set_lens(&mut self, name: impl Into<String>, id: Uuid) {
+        self.lens_name = name.into();
+        self.lens_id = Some(id);
     }
 
     /// Returns true if this is a scratch session (not yet promoted).
     pub fn is_scratch(&self) -> bool {
-        self.workstream_id.is_none()
+        self.lens_id.is_none()
     }
 
-    /// Promote a scratch session to a workstream. Panics if already bound.
-    pub fn promote(&mut self, workstream_id: Uuid) {
+    /// Promote a scratch session to a lens. Panics if already bound.
+    pub fn promote(&mut self, lens_id: Uuid) {
         assert!(
-            self.workstream_id.is_none(),
-            "cannot promote: session is already bound to workstream {:?}",
-            self.workstream_id.unwrap()
+            self.lens_id.is_none(),
+            "cannot promote: session is already bound to lens {:?}",
+            self.lens_id.unwrap()
         );
-        self.workstream_id = Some(workstream_id);
+        self.lens_id = Some(lens_id);
     }
 
     pub fn add_message(&mut self, msg: Message) {
@@ -273,18 +273,18 @@ mod tests {
     use uuid::Uuid;
 
     #[test]
-    fn session_bound_to_workstream() {
+    fn session_bound_to_lens() {
         let ws_id = Uuid::new_v4();
         let session = Session::new(ws_id);
-        assert_eq!(session.workstream_id(), Some(ws_id));
+        assert_eq!(session.lens_id(), Some(ws_id));
         assert!(!session.is_scratch());
     }
 
     #[test]
-    fn scratch_session_has_no_workstream() {
+    fn scratch_session_has_no_lens() {
         let session = Session::scratch();
         assert!(session.is_scratch());
-        assert_eq!(session.workstream_id(), None);
+        assert_eq!(session.lens_id(), None);
     }
 
     #[test]
@@ -292,7 +292,7 @@ mod tests {
         let mut session = Session::scratch();
         let ws_id = Uuid::new_v4();
         session.promote(ws_id);
-        assert_eq!(session.workstream_id(), Some(ws_id));
+        assert_eq!(session.lens_id(), Some(ws_id));
         assert!(!session.is_scratch());
     }
 

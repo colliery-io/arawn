@@ -5,9 +5,9 @@ use std::sync::Arc;
 
 use tempfile::TempDir;
 
-use arawn_core::{Message, Session, Workstream};
+use arawn_core::{Lens, Message, Session};
 use arawn_engine::{
-    Compactor, ModelLimits, QueryEngine, QueryEngineConfig, EngineToolContext, ToolRegistry,
+    Compactor, EngineToolContext, ModelLimits, QueryEngine, QueryEngineConfig, ToolRegistry,
 };
 use arawn_llm::{MockLlmClient, MockResponse};
 use arawn_storage::Store;
@@ -17,7 +17,7 @@ use arawn_storage::Store;
 #[tokio::test]
 async fn engine_with_compactor_compacts_when_over_threshold() {
     // Create a session with many large messages that exceed a tiny context window
-    let ws = Workstream::new("test", "/tmp/compact-test");
+    let ws = Lens::new("test", "/tmp/compact-test");
     let mut session = Session::new(ws.id);
     let ctx = EngineToolContext::new(&ws, session.id);
 
@@ -74,7 +74,7 @@ async fn engine_with_compactor_compacts_when_over_threshold() {
 
 #[tokio::test]
 async fn engine_without_compactor_no_compaction() {
-    let ws = Workstream::new("test", "/tmp/no-compact");
+    let ws = Lens::new("test", "/tmp/no-compact");
     let mut session = Session::new(ws.id);
     let ctx = EngineToolContext::new(&ws, session.id);
 
@@ -93,7 +93,7 @@ async fn engine_without_compactor_no_compaction() {
 
 #[tokio::test]
 async fn engine_under_threshold_no_compaction() {
-    let ws = Workstream::new("test", "/tmp/under-threshold");
+    let ws = Lens::new("test", "/tmp/under-threshold");
     let mut session = Session::new(ws.id);
     let ctx = EngineToolContext::new(&ws, session.id);
 
@@ -127,8 +127,8 @@ async fn engine_under_threshold_no_compaction() {
 async fn persistence_summary_survives_save_and_load() {
     let tmp = TempDir::new().unwrap();
     let store = Store::open(tmp.path()).unwrap();
-    let ws = Workstream::new("ws", tmp.path().join("workspace"));
-    store.create_workstream(&ws).unwrap();
+    let ws = Lens::new("ws", tmp.path().join("workspace"));
+    store.create_lens(&ws).unwrap();
     std::fs::create_dir_all(&ws.root_dir).unwrap();
 
     let session = Session::new(ws.id);
@@ -194,8 +194,8 @@ async fn persistence_summary_survives_save_and_load() {
 async fn persistence_no_summary_loads_all() {
     let tmp = TempDir::new().unwrap();
     let store = Store::open(tmp.path()).unwrap();
-    let ws = Workstream::new("ws", tmp.path().join("workspace"));
-    store.create_workstream(&ws).unwrap();
+    let ws = Lens::new("ws", tmp.path().join("workspace"));
+    store.create_lens(&ws).unwrap();
     std::fs::create_dir_all(&ws.root_dir).unwrap();
 
     let session = Session::new(ws.id);
@@ -230,8 +230,8 @@ async fn persistence_no_summary_loads_all() {
 async fn persistence_resume_after_compaction() {
     let tmp = TempDir::new().unwrap();
     let store = Store::open(tmp.path()).unwrap();
-    let ws = Workstream::new("ws", tmp.path().join("workspace"));
-    store.create_workstream(&ws).unwrap();
+    let ws = Lens::new("ws", tmp.path().join("workspace"));
+    store.create_lens(&ws).unwrap();
     std::fs::create_dir_all(&ws.root_dir).unwrap();
 
     let session = Session::new(ws.id);

@@ -223,7 +223,7 @@ fn check_data_dir_writable(data_dir: &Path) -> CheckResult {
 
 fn check_memory_store(data_dir: &Path) -> CheckResult {
     // Open the global memory.db. This is the surface that lives in
-    // data_dir directly — the workstream tier opens lazily per ws.
+    // data_dir directly — the lens tier opens lazily per ws.
     let path = data_dir.join("memory.db");
     match arawn_memory::MemoryStore::open(&path) {
         Ok(_) => CheckResult::pass("memory-store"),

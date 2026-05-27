@@ -3,14 +3,14 @@ use std::path::{Path, PathBuf};
 use tracing::{info, warn};
 use uuid::Uuid;
 
-use arawn_core::{Message, Session, Workstream};
+use arawn_core::{Lens, Message, Session};
 
 use crate::database::Database;
 use crate::error::StorageError;
-use crate::jsonl::{JsonlMessageStore, workstream_dir_name};
+use crate::jsonl::{JsonlMessageStore, lens_dir_name};
 use crate::layout::DataLayout;
+use crate::lens_store::LensStore;
 use crate::session_store::{SessionMeta, SessionStore};
-use crate::workstream_store::WorkstreamStore;
 
 /// Unified persistence interface composing SQLite metadata + JSONL messages.
 pub struct Store {
@@ -60,71 +60,71 @@ impl Store {
         &self.messages
     }
 
-    // --- Workstream operations ---
+    // --- Lens operations ---
 
-    pub fn create_workstream(&self, ws: &Workstream) -> Result<(), StorageError> {
+    pub fn create_lens(&self, ws: &Lens) -> Result<(), StorageError> {
         // `scratch` is reserved by the registry's `create` path — route
         // callers through `ensure_scratch` for backward compatibility
         // with code that pre-dated the registry refactor.
         if ws.name == arawn_core::SCRATCH_NAME {
-            self.ensure_scratch_workstream()?;
+            self.ensure_scratch_lens()?;
             return Ok(());
         }
-        let store = WorkstreamStore::new(&self.db);
+        let store = LensStore::new(&self.db);
         store.create(ws)?;
 
-        // Create workstream directory under workstreams/<name>/
-        let ws_dir = self.data_dir.join("workstreams").join(&ws.name);
+        // Create lens directory under lenses/<name>/
+        let ws_dir = self.data_dir.join("lenses").join(&ws.name);
         std::fs::create_dir_all(&ws_dir)?;
 
         Ok(())
     }
 
-    pub fn get_workstream(&self, id: Uuid) -> Result<Option<Workstream>, StorageError> {
-        WorkstreamStore::new(&self.db).get(id)
+    pub fn get_lens(&self, id: Uuid) -> Result<Option<Lens>, StorageError> {
+        LensStore::new(&self.db).get(id)
     }
 
-    pub fn find_workstream_by_name(&self, name: &str) -> Result<Option<Workstream>, StorageError> {
-        WorkstreamStore::new(&self.db).find_by_name(name)
+    pub fn find_lens_by_name(&self, name: &str) -> Result<Option<Lens>, StorageError> {
+        LensStore::new(&self.db).find_by_name(name)
     }
 
-    pub fn list_workstreams(&self) -> Result<Vec<Workstream>, StorageError> {
-        WorkstreamStore::new(&self.db).list()
+    pub fn list_lenses(&self) -> Result<Vec<Lens>, StorageError> {
+        LensStore::new(&self.db).list()
     }
 
-    pub fn list_all_workstreams(&self) -> Result<Vec<Workstream>, StorageError> {
-        WorkstreamStore::new(&self.db).list_all()
+    pub fn list_all_lenses(&self) -> Result<Vec<Lens>, StorageError> {
+        LensStore::new(&self.db).list_all()
     }
 
-    pub fn update_workstream_description(
+    pub fn update_lens_description(
         &self,
         name: &str,
         description: &str,
     ) -> Result<(), StorageError> {
-        WorkstreamStore::new(&self.db).update_description(name, description)
+        LensStore::new(&self.db).update_description(name, description)
     }
 
-    pub fn add_workstream_binding(&self, name: &str, feed_id: &str) -> Result<(), StorageError> {
-        WorkstreamStore::new(&self.db).add_binding(name, feed_id)
+    pub fn add_lens_binding(&self, name: &str, feed_id: &str) -> Result<(), StorageError> {
+        LensStore::new(&self.db).add_binding(name, feed_id)
     }
 
-    pub fn remove_workstream_binding(&self, name: &str, feed_id: &str) -> Result<(), StorageError> {
-        WorkstreamStore::new(&self.db).remove_binding(name, feed_id)
+    pub fn remove_lens_binding(&self, name: &str, feed_id: &str) -> Result<(), StorageError> {
+        LensStore::new(&self.db).remove_binding(name, feed_id)
     }
 
-    /// Find the workstream (by name) that has the given `feed_id` in
-    /// its bindings list. Returns `Ok(None)` when no workstream owns
+    /// Find the lens (by name) that has the given `feed_id` in
+    /// its bindings list. Returns `Ok(None)` when no lens owns
     /// the feed (e.g. unbound system feeds, or feed_ids that fell out
     /// of the registry). The `feeds` table itself has no
-    /// `workstream_id` column today; the mapping lives in the
-    /// `workstreams.bindings` JSON array per workstream row, so this
-    /// scans active (non-archived) workstreams in updated-at order.
+    /// `lens_id` column today; the mapping lives in the
+    /// `lenses.bindings` JSON array per lens row, so this
+    /// scans active (non-archived) lenses in updated-at order.
     ///
-    /// Cache the result at the call site — workstreams change rarely
+    /// Cache the result at the call site — lenses change rarely
     /// at runtime and per-row lookups would be wasteful.
-    pub fn find_workstream_for_feed(&self, feed_id: &str) -> Result<Option<String>, StorageError> {
-        let workstreams = WorkstreamStore::new(&self.db).list()?;
-        for ws in workstreams {
+    pub fn find_lens_for_feed(&self, feed_id: &str) -> Result<Option<String>, StorageError> {
+        let lenses = LensStore::new(&self.db).list()?;
+        for ws in lenses {
             if ws.bindings.iter().any(|b| b == feed_id) {
                 return Ok(Some(ws.name));
             }
@@ -132,16 +132,16 @@ impl Store {
         Ok(None)
     }
 
-    pub fn soft_delete_workstream(&self, name: &str) -> Result<(), StorageError> {
-        WorkstreamStore::new(&self.db).soft_delete(name)
+    pub fn soft_delete_lens(&self, name: &str) -> Result<(), StorageError> {
+        LensStore::new(&self.db).soft_delete(name)
     }
 
-    /// Idempotently ensure the `scratch` workstream exists. Safe to
+    /// Idempotently ensure the `scratch` lens exists. Safe to
     /// call on every boot; the on-disk dir is created if absent.
-    pub fn ensure_scratch_workstream(&self) -> Result<Workstream, StorageError> {
-        let scratch_dir = self.data_dir.join("workstreams").join("scratch");
+    pub fn ensure_scratch_lens(&self) -> Result<Lens, StorageError> {
+        let scratch_dir = self.data_dir.join("lenses").join("scratch");
         let _ = std::fs::create_dir_all(&scratch_dir);
-        WorkstreamStore::new(&self.db).ensure_scratch(&scratch_dir)
+        LensStore::new(&self.db).ensure_scratch(&scratch_dir)
     }
 
     // --- Session operations ---
@@ -154,27 +154,24 @@ impl Store {
         SessionStore::new(&self.db).get(id)
     }
 
-    pub fn list_sessions_for_workstream(
-        &self,
-        ws_id: Uuid,
-    ) -> Result<Vec<SessionMeta>, StorageError> {
-        SessionStore::new(&self.db).list_for_workstream(ws_id)
+    pub fn list_sessions_for_lens(&self, ws_id: Uuid) -> Result<Vec<SessionMeta>, StorageError> {
+        SessionStore::new(&self.db).list_for_lens(ws_id)
     }
 
     pub fn list_scratch_sessions(&self) -> Result<Vec<SessionMeta>, StorageError> {
         SessionStore::new(&self.db).list_scratch()
     }
 
-    /// Persist a session's active workstream name. Called by
-    /// `WorkstreamSwitchTool` so the active workstream survives the
+    /// Persist a session's active lens name. Called by
+    /// `LensSwitchTool` so the active lens survives the
     /// session-load auto-restore on the next turn (without this,
     /// switches are in-memory only and revert).
-    pub fn update_session_workstream_name(
+    pub fn update_session_lens_name(
         &self,
         session_id: Uuid,
-        workstream_name: &str,
+        lens_name: &str,
     ) -> Result<bool, StorageError> {
-        SessionStore::new(&self.db).update_workstream_name(session_id, workstream_name)
+        SessionStore::new(&self.db).update_lens_name(session_id, lens_name)
     }
 
     /// Remove SQLite session records whose JSONL files no longer exist on disk.
@@ -193,11 +190,11 @@ impl Store {
             }
         }
 
-        // Check workstream-bound sessions
-        let workstreams = WorkstreamStore::new(&self.db).list()?;
-        for ws in &workstreams {
-            let ws_dir = workstream_dir_name(&ws.name, ws.id);
-            let sessions = session_store.list_for_workstream(ws.id)?;
+        // Check lens-bound sessions
+        let lenses = LensStore::new(&self.db).list()?;
+        for ws in &lenses {
+            let ws_dir = lens_dir_name(&ws.name, ws.id);
+            let sessions = session_store.list_for_lens(ws.id)?;
             for meta in &sessions {
                 let jsonl = self.messages.path_for(meta.id, &ws_dir);
                 if !jsonl.exists() {
@@ -213,15 +210,15 @@ impl Store {
         Ok(removed)
     }
 
-    /// Resolve the directory name for a workstream by UUID.
+    /// Resolve the directory name for a lens by UUID.
     /// Uses name if available, falls back to UUID string.
     fn resolve_ws_dir(&self, ws_id: Option<Uuid>) -> Result<String, StorageError> {
         match ws_id {
             Some(id) => {
-                let ws = WorkstreamStore::new(&self.db).get(id)?.ok_or_else(|| {
-                    StorageError::InvalidOperation(format!("workstream {id} not found"))
+                let ws = LensStore::new(&self.db).get(id)?.ok_or_else(|| {
+                    StorageError::InvalidOperation(format!("lens {id} not found"))
                 })?;
-                Ok(workstream_dir_name(&ws.name, ws.id))
+                Ok(lens_dir_name(&ws.name, ws.id))
             }
             None => Ok("scratch".to_string()),
         }
@@ -234,13 +231,13 @@ impl Store {
             None => return Ok(None),
         };
 
-        let ws_dir = self.resolve_ws_dir(meta.workstream_id)?;
+        let ws_dir = self.resolve_ws_dir(meta.lens_id)?;
         let all_messages = self.messages.load(id, &ws_dir).await?;
         let messages = Session::load_compacted(all_messages);
 
         Ok(Some(Session::from_parts_with_stats(
             meta.id,
-            meta.workstream_id,
+            meta.lens_id,
             meta.created_at,
             messages,
             meta.stats,
@@ -260,45 +257,43 @@ impl Store {
     pub async fn append_message(
         &self,
         session_id: Uuid,
-        workstream_dir: &str,
+        lens_dir: &str,
         msg: &Message,
     ) -> Result<(), StorageError> {
-        self.messages.append(session_id, workstream_dir, msg).await
+        self.messages.append(session_id, lens_dir, msg).await
     }
 
     pub async fn load_messages(
         &self,
         session_id: Uuid,
-        workstream_dir: &str,
+        lens_dir: &str,
     ) -> Result<Vec<Message>, StorageError> {
-        self.messages.load(session_id, workstream_dir).await
+        self.messages.load(session_id, lens_dir).await
     }
 
     // --- Promotion ---
 
-    /// Promote a scratch session to a workstream.
+    /// Promote a scratch session to a lens.
     /// Updates SQLite metadata, moves the JSONL file, and merges the workspace.
     pub async fn promote_session(
         &self,
         session_id: Uuid,
         new_ws_id: Uuid,
     ) -> Result<(), StorageError> {
-        let ws = WorkstreamStore::new(&self.db)
+        let ws = LensStore::new(&self.db)
             .get(new_ws_id)?
-            .ok_or_else(|| {
-                StorageError::InvalidOperation(format!("workstream {new_ws_id} not found"))
-            })?;
-        let ws_dir = workstream_dir_name(&ws.name, ws.id);
+            .ok_or_else(|| StorageError::InvalidOperation(format!("lens {new_ws_id} not found")))?;
+        let ws_dir = lens_dir_name(&ws.name, ws.id);
 
-        // Update SQLite — only works if session is currently scratch (workstream_id IS NULL)
-        let updated = SessionStore::new(&self.db).update_workstream_id(session_id, new_ws_id)?;
+        // Update SQLite — only works if session is currently scratch (lens_id IS NULL)
+        let updated = SessionStore::new(&self.db).update_lens_id(session_id, new_ws_id)?;
         if !updated {
             return Err(StorageError::InvalidOperation(
                 "session is not a scratch session or does not exist".into(),
             ));
         }
 
-        // Move JSONL file from scratch to workstream directory
+        // Move JSONL file from scratch to lens directory
         if let Err(e) = self
             .messages
             .move_session(session_id, "scratch", &ws_dir)
@@ -313,7 +308,7 @@ impl Store {
             return Err(e);
         }
 
-        // Move scratch session workspace/ → workstream workspace/ (if it exists)
+        // Move scratch session workspace/ → lens workspace/ (if it exists)
         let scratch_session_dir = self.messages.sandbox_dir("scratch", session_id, true);
         let scratch_workspace = scratch_session_dir.join("workspace");
         let target_workspace = self
@@ -334,19 +329,18 @@ impl Store {
     }
 
     /// Resolve the sandbox root for a session.
-    pub fn sandbox_for(&self, workstream_dir: &str, session_id: Uuid, is_scratch: bool) -> PathBuf {
-        self.messages
-            .sandbox_dir(workstream_dir, session_id, is_scratch)
+    pub fn sandbox_for(&self, lens_dir: &str, session_id: Uuid, is_scratch: bool) -> PathBuf {
+        self.messages.sandbox_dir(lens_dir, session_id, is_scratch)
     }
 
-    /// Sync-only part of session promotion: update SQLite workstream_id.
+    /// Sync-only part of session promotion: update SQLite lens_id.
     /// Returns Err if the session isn't scratch or doesn't exist.
     pub fn promote_session_metadata(
         &self,
         session_id: Uuid,
         new_ws_id: Uuid,
     ) -> Result<(), StorageError> {
-        let updated = SessionStore::new(&self.db).update_workstream_id(session_id, new_ws_id)?;
+        let updated = SessionStore::new(&self.db).update_lens_id(session_id, new_ws_id)?;
         if !updated {
             return Err(StorageError::InvalidOperation(
                 "session is not a scratch session or does not exist".into(),
@@ -355,7 +349,7 @@ impl Store {
         Ok(())
     }
 
-    /// Async part of session promotion: move the JSONL file between workstream dirs.
+    /// Async part of session promotion: move the JSONL file between lens dirs.
     pub async fn move_session_jsonl(
         &self,
         session_id: Uuid,
@@ -401,7 +395,7 @@ mod tests {
         let _store = Store::open(tmp.path()).unwrap();
 
         assert!(tmp.path().join("arawn.db").exists());
-        assert!(tmp.path().join("workstreams").is_dir());
+        assert!(tmp.path().join("lenses").is_dir());
     }
 
     #[test]
@@ -413,12 +407,12 @@ mod tests {
     }
 
     #[test]
-    fn create_and_list_workstreams() {
+    fn create_and_list_lenses() {
         let (_tmp, store) = setup();
-        let ws = Workstream::new("test", "/tmp/test");
-        store.create_workstream(&ws).unwrap();
+        let ws = Lens::new("test", "/tmp/test");
+        store.create_lens(&ws).unwrap();
 
-        let list = store.list_workstreams().unwrap();
+        let list = store.list_lenses().unwrap();
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].name, "test");
     }
@@ -447,8 +441,8 @@ mod tests {
     #[tokio::test]
     async fn load_full_session() {
         let (_tmp, store) = setup();
-        let ws = Workstream::new("ws", "/tmp/ws");
-        store.create_workstream(&ws).unwrap();
+        let ws = Lens::new("ws", "/tmp/ws");
+        store.create_lens(&ws).unwrap();
 
         let session = Session::new(ws.id);
         store.create_session(&session).unwrap();
@@ -466,7 +460,7 @@ mod tests {
 
         let loaded = store.load_session(session.id).await.unwrap().unwrap();
         assert_eq!(loaded.id, session.id);
-        assert_eq!(loaded.workstream_id(), Some(ws.id));
+        assert_eq!(loaded.lens_id(), Some(ws.id));
         assert_eq!(loaded.messages().len(), 1);
     }
 
@@ -474,9 +468,9 @@ mod tests {
     async fn promote_session_full_flow() {
         let (_tmp, store) = setup();
 
-        // Create target workstream
-        let ws = Workstream::new("target", "/tmp/target");
-        store.create_workstream(&ws).unwrap();
+        // Create target lens
+        let ws = Lens::new("target", "/tmp/target");
+        store.create_lens(&ws).unwrap();
 
         // Create scratch session with messages
         let session = Session::scratch();
@@ -496,11 +490,11 @@ mod tests {
         // Promote
         store.promote_session(session.id, ws.id).await.unwrap();
 
-        // Verify: session now bound to workstream in SQLite
+        // Verify: session now bound to lens in SQLite
         let meta = store.get_session_meta(session.id).unwrap().unwrap();
-        assert_eq!(meta.workstream_id, Some(ws.id));
+        assert_eq!(meta.lens_id, Some(ws.id));
 
-        // Verify: messages loadable from new workstream location
+        // Verify: messages loadable from new lens location
         let messages = store.load_messages(session.id, "target").await.unwrap();
         assert_eq!(messages.len(), 1);
         match &messages[0] {
@@ -516,14 +510,14 @@ mod tests {
     #[tokio::test]
     async fn promote_bound_session_fails() {
         let (_tmp, store) = setup();
-        let ws = Workstream::new("ws", "/tmp/ws");
-        store.create_workstream(&ws).unwrap();
+        let ws = Lens::new("ws", "/tmp/ws");
+        store.create_lens(&ws).unwrap();
 
         let session = Session::new(ws.id);
         store.create_session(&session).unwrap();
 
-        let ws2 = Workstream::new("ws2", "/tmp/ws2");
-        store.create_workstream(&ws2).unwrap();
+        let ws2 = Lens::new("ws2", "/tmp/ws2");
+        store.create_lens(&ws2).unwrap();
 
         let result = store.promote_session(session.id, ws2.id).await;
         assert!(result.is_err());
@@ -541,7 +535,7 @@ mod tests {
         let (_tmp, store) = setup();
         let sid = Uuid::nil();
         let dir = store.sandbox_for("scratch", sid, true);
-        assert!(dir.to_string_lossy().contains("workstreams/scratch"));
+        assert!(dir.to_string_lossy().contains("lenses/scratch"));
         assert!(dir.to_string_lossy().contains(&sid.to_string()));
         assert!(!dir.to_string_lossy().ends_with("workspace"));
     }
@@ -551,7 +545,7 @@ mod tests {
         let (_tmp, store) = setup();
         let sid = Uuid::nil();
         let dir = store.sandbox_for("my-project", sid, false);
-        assert!(dir.to_string_lossy().contains("workstreams/my-project"));
+        assert!(dir.to_string_lossy().contains("lenses/my-project"));
         assert!(!dir.to_string_lossy().contains(&sid.to_string()));
     }
 }

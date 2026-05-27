@@ -8,18 +8,18 @@ use tokio::sync::mpsc;
 use tracing::{info, warn};
 use uuid::Uuid;
 
-use arawn_core::{Message, Workstream};
+use arawn_core::{Lens, Message};
 use arawn_engine::{
-    BackgroundTaskManager, Compactor, PermissionChecker, PermissionRule, PlanModeState,
-    QueryEngine, QueryEngineConfig, EngineToolContext, ToolRegistry,
+    BackgroundTaskManager, Compactor, EngineToolContext, PermissionChecker, PermissionRule,
+    PlanModeState, QueryEngine, QueryEngineConfig, ToolRegistry,
 };
 use arawn_llm::LlmClient;
 use arawn_service::{
-    ArawnService, CommandInfo, EngineEvent, ForgetResult, InventoryItem,
-    MemoryStoreResult, MemorySummary, PermissionModeInfo,
-    PromotionResult, ServiceError, SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
+    ArawnService, CommandInfo, EngineEvent, ForgetResult, InventoryItem, LensInfo,
+    MemoryStoreResult, MemorySummary, PermissionModeInfo, PromotionResult, ServiceError,
+    SessionDetail, SessionInfo, WorkflowInfo,
 };
-use arawn_storage::{Store, workstream_dir_name};
+use arawn_storage::{Store, lens_dir_name};
 use tracing::instrument;
 
 use crate::channel_prompt::{ChannelModalPrompt, PendingModals};
@@ -51,7 +51,7 @@ pub struct LocalService {
     plan_state: Arc<PlanModeState>,
     /// Shared background task manager — tracks running background tasks.
     background_tasks: Arc<BackgroundTaskManager>,
-    /// Shared memory manager — two-tier KB (global + workstream).
+    /// Shared memory manager — two-tier KB (global + lens).
     memory_manager: Option<Arc<arawn_memory::MemoryManager>>,
     /// Tracks sessions with active send_message calls to prevent concurrent access.
     active_sessions: Arc<Mutex<HashSet<Uuid>>>,
@@ -77,12 +77,12 @@ pub struct LocalService {
     /// runner, no DB, etc.) — `/watch` and `/feeds` then return a
     /// clear "feeds runtime unavailable" error.
     feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>>,
-    /// Shared active-workstream shim. Memory tools read this to route
+    /// Shared active-lens shim. Memory tools read this to route
     /// memory_store / memory_search to the right KB. Set on session
-    /// resume from the persisted Session.workstream_name so the
-    /// active workstream re-establishes without the user re-typing
-    /// `/workstream switch`.
-    active_workstream: Option<arawn_engine::SessionWorkstream>,
+    /// resume from the persisted Session.lens_name so the
+    /// active lens re-establishes without the user re-typing
+    /// `/lens switch`.
+    active_lens: Option<arawn_engine::SessionLens>,
     /// Shared ceremony service — wired by main.rs after the cloacina
     /// runtime is available. Set late (post-construction) via
     /// `set_ceremony_service`, mirroring `feed_runtime`'s lifecycle.
@@ -131,7 +131,7 @@ impl LocalService {
             notice_tx: tokio::sync::broadcast::channel(64).0,
             integration_registry: Arc::new(std::sync::RwLock::new(HashMap::new())),
             feed_runtime: Arc::new(std::sync::RwLock::new(None)),
-            active_workstream: None,
+            active_lens: None,
             ceremony_service: Arc::new(std::sync::RwLock::new(None)),
             todo_event_tx: arawn_storage::todo_event_channel().0,
             hook_runner: None,
@@ -176,11 +176,11 @@ impl LocalService {
         self.ceremony_service.read().unwrap().clone()
     }
 
-    /// Wire the shared `SessionWorkstream` shim. Memory tools read
+    /// Wire the shared `SessionLens` shim. Memory tools read
     /// this for routing; load_session_state restores it from the
     /// persisted name on resume.
-    pub fn with_active_workstream(mut self, ws: arawn_engine::SessionWorkstream) -> Self {
-        self.active_workstream = Some(ws);
+    pub fn with_active_lens(mut self, ws: arawn_engine::SessionLens) -> Self {
+        self.active_lens = Some(ws);
         self
     }
 
@@ -240,10 +240,7 @@ impl LocalService {
     /// T-0347: override the starting permission mode (declared in
     /// `[permissions] autonomy` in arawn.toml). Defaults to
     /// `PermissionMode::Ask`.
-    pub fn with_permission_mode(
-        self,
-        mode: arawn_engine::permissions::PermissionMode,
-    ) -> Self {
+    pub fn with_permission_mode(self, mode: arawn_engine::permissions::PermissionMode) -> Self {
         *self.permission_mode.write().unwrap() = mode;
         self
     }
@@ -324,46 +321,46 @@ impl LocalService {
         self
     }
 
-    /// Load session metadata, resolve workstream, and load message history.
+    /// Load session metadata, resolve lens, and load message history.
     #[instrument(skip_all, fields(%session_id))]
     fn load_session_state(
         &self,
         session_id: Uuid,
-    ) -> Result<(arawn_storage::SessionMeta, Workstream, String, Vec<Message>), ServiceError> {
-        let (meta, workstream, ws_dir) = {
+    ) -> Result<(arawn_storage::SessionMeta, Lens, String, Vec<Message>), ServiceError> {
+        let (meta, lens, ws_dir) = {
             let store = self.store.lock().unwrap();
             let meta = store
                 .get_session_meta(session_id)?
                 .ok_or_else(|| ServiceError::NotFound(format!("session {session_id}")))?;
 
-            let ws_dir = resolve_ws_dir_from_store(&store, meta.workstream_id)?;
+            let ws_dir = resolve_ws_dir_from_store(&store, meta.lens_id)?;
 
-            let workstream = if let Some(ws_id) = meta.workstream_id {
+            let lens = if let Some(ws_id) = meta.lens_id {
                 store
-                    .get_workstream(ws_id)?
-                    .ok_or_else(|| ServiceError::NotFound(format!("workstream {ws_id}")))?
+                    .get_lens(ws_id)?
+                    .ok_or_else(|| ServiceError::NotFound(format!("lens {ws_id}")))?
             } else {
                 store
-                    .find_workstream_by_name("scratch")?
-                    .ok_or_else(|| ServiceError::NotFound("scratch workstream".into()))?
+                    .find_lens_by_name("scratch")?
+                    .ok_or_else(|| ServiceError::NotFound("scratch lens".into()))?
             };
 
-            (meta, workstream, ws_dir)
+            (meta, lens, ws_dir)
         };
 
-        // Re-establish the active workstream from the persisted
+        // Re-establish the active lens from the persisted
         // session record. Falls back gracefully when the shim isn't
-        // wired (e.g. tests that bypass `with_active_workstream`).
-        if let Some(active) = self.active_workstream.as_ref() {
-            let name = if !meta.workstream_name.is_empty() {
-                meta.workstream_name.clone()
+        // wired (e.g. tests that bypass `with_active_lens`).
+        if let Some(active) = self.active_lens.as_ref() {
+            let name = if !meta.lens_name.is_empty() {
+                meta.lens_name.clone()
             } else {
-                workstream.name.clone()
+                lens.name.clone()
             };
             active.set(name);
         }
 
-        Ok((meta, workstream, ws_dir, Vec::new()))
+        Ok((meta, lens, ws_dir, Vec::new()))
     }
 
     /// Build a EngineToolContext and per-session PromptContext for the engine.
@@ -371,24 +368,20 @@ impl LocalService {
     fn build_session_context(
         &self,
         session_id: Uuid,
-        workstream: &Workstream,
+        lens: &Lens,
         ws_dir: &str,
         workspace_dir: &std::path::Path,
         content: &str,
     ) -> (EngineToolContext, Option<arawn_engine::PromptContext>) {
-        let mut ws_for_ctx = workstream.clone();
+        let mut ws_for_ctx = lens.clone();
         ws_for_ctx.root_dir = workspace_dir.to_path_buf();
 
         let global_arawn_md = self.data_dir.join("arawn.md");
-        let workstream_arawn_md = self
-            .data_dir
-            .join("workstreams")
-            .join(ws_dir)
-            .join("arawn.md");
+        let lens_arawn_md = self.data_dir.join("lenses").join(ws_dir).join("arawn.md");
         let pool = Arc::clone(&self.llm_pool);
         let resolver: Arc<arawn_tool::LlmResolverFn> = Arc::new(move |pref| pool.resolve(pref));
         let ctx = EngineToolContext::new(&ws_for_ctx, session_id)
-            .with_allowed_paths(vec![global_arawn_md, workstream_arawn_md])
+            .with_allowed_paths(vec![global_arawn_md, lens_arawn_md])
             .with_llm(self.llm_pool.engine(), self.config.model.clone())
             .with_llm_resolver(resolver)
             .with_model_limits(self.config.model_limits.clone())
@@ -400,14 +393,14 @@ impl LocalService {
                 os: pc.os.clone(),
                 shell: pc.shell.clone(),
                 cwd: workspace_dir.to_path_buf(),
-                workstream_name: workstream.name.clone(),
-                workstream_root: workspace_dir.to_path_buf(),
+                lens_name: lens.name.clone(),
+                lens_root: workspace_dir.to_path_buf(),
                 context_files: arawn_engine::find_context_files(workspace_dir, &self.data_dir),
                 memories: self
                     .memory_manager
                     .as_ref()
                     .map(|mgr| {
-                        let stack = arawn_memory::MemoryStack::new(mgr, &workstream.name);
+                        let stack = arawn_memory::MemoryStack::new(mgr, &lens.name);
                         let mut mems = vec![stack.wake_up(900)];
 
                         let keywords: Vec<String> = content
@@ -431,7 +424,7 @@ impl LocalService {
                     .unwrap_or_else(|| pc.memories.clone()),
                 session_context: pc.session_context.clone(),
                 plugin_prompts: pc.plugin_prompts.clone(),
-                identity_profile: workstream.identity_profile,
+                identity_profile: lens.identity_profile,
                 // Closure captures the registry Arc; queries it fresh each
                 // turn so /connect and /disconnect reflect immediately.
                 integration_capabilities: Some({
@@ -488,9 +481,9 @@ impl LocalService {
                         let handle = tokio::runtime::Handle::try_current().ok();
                         for integ in integrations {
                             let connected = match &handle {
-                                Some(h) => tokio::task::block_in_place(|| {
-                                    h.block_on(integ.is_connected())
-                                }),
+                                Some(h) => {
+                                    tokio::task::block_in_place(|| h.block_on(integ.is_connected()))
+                                }
                                 None => false,
                             };
                             if connected {
@@ -598,38 +591,27 @@ pub(super) fn infer_entity_type(text: &str) -> (arawn_memory::EntityType, String
 
 use async_trait::async_trait;
 
-
 mod commands;
 mod feeds;
 mod integrations;
+mod lenses;
 mod memory;
 mod permissions;
 mod sessions;
-mod workstreams;
 
 #[async_trait]
 impl ArawnService for LocalService {
-    async fn list_workstreams(&self) -> Result<Vec<WorkstreamInfo>, ServiceError> {
-        self.list_workstreams_inner().await
+    async fn list_lenses(&self) -> Result<Vec<LensInfo>, ServiceError> {
+        self.list_lenses_inner().await
     }
-    async fn create_workstream(
-        &self,
-        name: String,
-        root_dir: PathBuf,
-    ) -> Result<WorkstreamInfo, ServiceError> {
-        self.create_workstream_inner(name, root_dir).await
+    async fn create_lens(&self, name: String, root_dir: PathBuf) -> Result<LensInfo, ServiceError> {
+        self.create_lens_inner(name, root_dir).await
     }
-    async fn list_sessions(
-        &self,
-        workstream_id: Option<Uuid>,
-    ) -> Result<Vec<SessionInfo>, ServiceError> {
-        self.list_sessions_inner(workstream_id).await
+    async fn list_sessions(&self, lens_id: Option<Uuid>) -> Result<Vec<SessionInfo>, ServiceError> {
+        self.list_sessions_inner(lens_id).await
     }
-    async fn create_session(
-        &self,
-        workstream_id: Option<Uuid>,
-    ) -> Result<SessionInfo, ServiceError> {
-        self.create_session_inner(workstream_id).await
+    async fn create_session(&self, lens_id: Option<Uuid>) -> Result<SessionInfo, ServiceError> {
+        self.create_session_inner(lens_id).await
     }
     async fn load_session(&self, id: Uuid) -> Result<SessionDetail, ServiceError> {
         self.load_session_inner(id).await
@@ -639,7 +621,8 @@ impl ArawnService for LocalService {
         id: Uuid,
         user_message_index: usize,
     ) -> Result<SessionDetail, ServiceError> {
-        self.truncate_session_at_user_message_inner(id, user_message_index).await
+        self.truncate_session_at_user_message_inner(id, user_message_index)
+            .await
     }
     async fn send_message(
         &self,
@@ -654,16 +637,17 @@ impl ArawnService for LocalService {
     async fn promote_session(
         &self,
         session_id: Uuid,
-        workstream_name: &str,
+        lens_name: &str,
     ) -> Result<PromotionResult, ServiceError> {
-        self.promote_session_inner(session_id, workstream_name).await
+        self.promote_session_inner(session_id, lens_name).await
     }
     async fn resolve_user_input(
         &self,
         request_id: &str,
         selected_index: Option<usize>,
     ) -> Result<(), ServiceError> {
-        self.resolve_user_input_inner(request_id, selected_index).await
+        self.resolve_user_input_inner(request_id, selected_index)
+            .await
     }
     async fn query_inventory(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError> {
         self.query_inventory_inner(kind).await
@@ -854,14 +838,17 @@ impl arawn_integrations::ConnectContext for OAuthFlowCtx {
     }
 }
 
-/// Resolve workstream directory name from store. Returns "scratch" for None.
-pub(super) fn resolve_ws_dir_from_store(store: &Store, ws_id: Option<Uuid>) -> Result<String, ServiceError> {
+/// Resolve lens directory name from store. Returns "scratch" for None.
+pub(super) fn resolve_ws_dir_from_store(
+    store: &Store,
+    ws_id: Option<Uuid>,
+) -> Result<String, ServiceError> {
     match ws_id {
         Some(id) => {
             let ws = store
-                .get_workstream(id)?
-                .ok_or_else(|| ServiceError::NotFound(format!("workstream {id}")))?;
-            Ok(workstream_dir_name(&ws.name, ws.id))
+                .get_lens(id)?
+                .ok_or_else(|| ServiceError::NotFound(format!("lens {id}")))?;
+            Ok(lens_dir_name(&ws.name, ws.id))
         }
         None => Ok("scratch".to_string()),
     }

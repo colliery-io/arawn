@@ -585,7 +585,12 @@ mod fts_escape_tests {
     #[test]
     fn hyphenated_identifier_matches_post_fix() {
         let store = open_store();
-        seed(&store, "m1", "Re: RFC-0042 sign-off", "Alice asked about the doc");
+        seed(
+            &store,
+            "m1",
+            "Re: RFC-0042 sign-off",
+            "Alice asked about the doc",
+        );
         let hits = store
             .fts_search("slack_messages", "RFC-0042", 10)
             .expect("search must not error");

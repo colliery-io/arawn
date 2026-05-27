@@ -7,12 +7,12 @@ use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 use super::util::extract_json_block;
 
-pub struct WorkstreamProposeOntologyTool {
+pub struct LensProposeOntologyTool {
     client: Arc<dyn arawn_llm::LlmClient>,
     model: String,
 }
 
-impl WorkstreamProposeOntologyTool {
+impl LensProposeOntologyTool {
     pub fn new(client: Arc<dyn arawn_llm::LlmClient>, model: impl Into<String>) -> Self {
         Self {
             client,
@@ -22,17 +22,17 @@ impl WorkstreamProposeOntologyTool {
 }
 
 #[async_trait]
-impl Tool for WorkstreamProposeOntologyTool {
+impl Tool for LensProposeOntologyTool {
     fn name(&self) -> &str {
-        "workstream_propose_ontology"
+        "lens_propose_ontology"
     }
 
     fn description(&self) -> &str {
-        "Given a free-text description of a workstream, propose an initial \
+        "Given a free-text description of a lens, propose an initial \
          tag ontology (closed list of tag slugs the extractor will be allowed \
          to use). Returns `{ tags: [...], rationale: \"...\" }`. The agent \
          calls this during the create flow, shows the proposal to the user, \
-         iterates if needed, then calls `workstream_new` with the agreed list. \
+         iterates if needed, then calls `lens_new` with the agreed list. \
          Tag slugs are short (`lowercase-with-dashes`), describe the kinds of \
          things you'll track (projects, people, processes), and should number \
          5–12 — keep it focused; new tags grow into the ontology via the \
@@ -44,7 +44,7 @@ impl Tool for WorkstreamProposeOntologyTool {
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
@@ -53,7 +53,7 @@ impl Tool for WorkstreamProposeOntologyTool {
             "properties": {
                 "description": {
                     "type": "string",
-                    "description": "Free-text description of the workstream — what it tracks, who's involved, what's in scope."
+                    "description": "Free-text description of the lens — what it tracks, who's involved, what's in scope."
                 }
             },
             "required": ["description"]
@@ -73,7 +73,7 @@ impl Tool for WorkstreamProposeOntologyTool {
         };
 
         let system = "You propose an initial tag ontology for a personal \
-                      knowledge-base workstream. Output ONLY a JSON object: \
+                      knowledge-base lens. Output ONLY a JSON object: \
                       {\"tags\": [array of 5–12 lowercase slug strings], \
                       \"rationale\": \"one short paragraph explaining what \
                       kinds of things each cluster of tags captures\"}.\n\n\
@@ -89,9 +89,9 @@ impl Tool for WorkstreamProposeOntologyTool {
                       - tags are a STARTING point. They grow over time via \
                       the tag-promoter subroutine. Don't try to anticipate \
                       everything — pick 5–12 that cover the obvious shape \
-                      of this workstream.";
+                      of this lens.";
         let user = format!(
-            "Workstream description:\n{description}\n\n\
+            "Lens description:\n{description}\n\n\
              Propose the initial ontology.",
         );
 
@@ -177,4 +177,3 @@ async fn propose_llm_call(
     }
     Ok(out)
 }
-

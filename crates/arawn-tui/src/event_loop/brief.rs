@@ -1,5 +1,5 @@
-use crate::app::App;
 use super::ceremony::{current_iso_week, fetch_daily_view, fetch_weekly_view};
+use crate::app::App;
 
 /// I-0035 Phase 2 / 3 / 4: refresh the cached brief markdown +
 /// parsed daily view on `App`. Used by the session-start preload
@@ -21,8 +21,7 @@ pub(super) async fn refresh_brief_cache(client: &mut crate::ws_client::WsClient,
         daily: daily.clone(),
         weekly,
     };
-    app.brief_markdown =
-        Some(arawn_ceremonies::render_brief(&view, chrono::Utc::now()));
+    app.brief_markdown = Some(arawn_ceremonies::render_brief(&view, chrono::Utc::now()));
     app.daily_view = daily;
 }
 
@@ -41,4 +40,3 @@ pub(super) async fn render_brief_combined(client: &mut crate::ws_client::WsClien
     let view = arawn_ceremonies::BriefView { daily, weekly };
     arawn_ceremonies::render_brief(&view, chrono::Utc::now())
 }
-

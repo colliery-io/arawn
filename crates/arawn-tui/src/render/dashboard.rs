@@ -40,7 +40,9 @@ pub(super) fn render_dashboard_brief(app: &App, frame: &mut Frame, area: ratatui
     if area.width < 6 || area.height < 1 {
         return;
     }
-    let strong = Style::default().fg(theme::TEXT).add_modifier(Modifier::BOLD);
+    let strong = Style::default()
+        .fg(theme::TEXT)
+        .add_modifier(Modifier::BOLD);
     let muted = Style::default().fg(theme::SUBTEXT0);
     let warn = Style::default().fg(theme::YELLOW);
 
@@ -63,8 +65,11 @@ pub(super) fn render_dashboard_brief(app: &App, frame: &mut Frame, area: ratatui
     lines.push(Line::from(Span::styled(date_line, muted)));
     lines.push(Line::from(""));
 
-    let calendar_items: Vec<&arawn_ceremonies::service::ItemDto> =
-        view.items.iter().filter(|i| i.section_key == "calendar").collect();
+    let calendar_items: Vec<&arawn_ceremonies::service::ItemDto> = view
+        .items
+        .iter()
+        .filter(|i| i.section_key == "calendar")
+        .collect();
     if calendar_items.is_empty() {
         lines.push(Line::from(Span::styled(
             "(no calendar events today)".to_string(),
@@ -76,10 +81,7 @@ pub(super) fn render_dashboard_brief(app: &App, frame: &mut Frame, area: ratatui
         let text_budget = (area.width as usize).saturating_sub(2);
         for item in calendar_items.iter().take(MAX_CAL) {
             let row = format_calendar_row(item, text_budget);
-            lines.push(Line::from(vec![
-                Span::raw("• "),
-                Span::raw(row),
-            ]));
+            lines.push(Line::from(vec![Span::raw("• "), Span::raw(row)]));
         }
         if calendar_items.len() > MAX_CAL {
             lines.push(Line::from(Span::styled(
@@ -106,14 +108,19 @@ pub(super) fn render_dashboard_actions(app: &App, frame: &mut Frame, area: ratat
     if area.width < 6 || area.height < 1 {
         return;
     }
-    let strong = Style::default().fg(theme::TEXT).add_modifier(Modifier::BOLD);
+    let strong = Style::default()
+        .fg(theme::TEXT)
+        .add_modifier(Modifier::BOLD);
     let muted = Style::default().fg(theme::SUBTEXT0);
 
     let mut lines: Vec<Line<'static>> = Vec::new();
     lines.push(Line::from(Span::styled("Action items".to_string(), strong)));
 
     let Some(view) = app.daily_view.as_ref() else {
-        lines.push(Line::from(Span::styled("(no action items)".to_string(), muted)));
+        lines.push(Line::from(Span::styled(
+            "(no action items)".to_string(),
+            muted,
+        )));
         frame.render_widget(Paragraph::new(lines), area);
         return;
     };
@@ -130,7 +137,10 @@ pub(super) fn render_dashboard_actions(app: &App, frame: &mut Frame, area: ratat
         .collect();
 
     if attention.is_empty() && carried.is_empty() {
-        lines.push(Line::from(Span::styled("(no action items)".to_string(), muted)));
+        lines.push(Line::from(Span::styled(
+            "(no action items)".to_string(),
+            muted,
+        )));
         frame.render_widget(Paragraph::new(lines), area);
         return;
     }
@@ -166,9 +176,7 @@ pub(super) fn render_dashboard_actions(app: &App, frame: &mut Frame, area: ratat
             "─ Carried over ─".to_string(),
             muted,
         )));
-        let carried_alloc = total_rows
-            .saturating_sub(lines.len())
-            .max(1);
+        let carried_alloc = total_rows.saturating_sub(lines.len()).max(1);
         push_action_rows(&mut lines, &carried, carried_alloc, text_budget, muted);
     }
 
@@ -212,7 +220,10 @@ pub(super) fn push_action_rows(
     }
 }
 
-pub(super) fn format_action_row(item: &arawn_ceremonies::service::ItemDto, budget: usize) -> String {
+pub(super) fn format_action_row(
+    item: &arawn_ceremonies::service::ItemDto,
+    budget: usize,
+) -> String {
     let title = item
         .body
         .get("text")
@@ -256,7 +267,10 @@ pub(super) fn format_brief_date_line(period_key: &str) -> String {
 
 /// Render one calendar row: `HH:MM <title>` when body has a
 /// `start_ts`, else `<title>` falling back to body.text.
-pub(super) fn format_calendar_row(item: &arawn_ceremonies::service::ItemDto, budget: usize) -> String {
+pub(super) fn format_calendar_row(
+    item: &arawn_ceremonies::service::ItemDto,
+    budget: usize,
+) -> String {
     let title = item
         .body
         .get("text")
@@ -320,4 +334,3 @@ pub(super) fn detect_conflict(items: &[&arawn_ceremonies::service::ItemDto]) -> 
     }
     None
 }
-

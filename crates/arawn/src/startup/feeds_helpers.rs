@@ -6,13 +6,13 @@ use tracing::{debug, info, warn};
 
 /// I-0050 T-0327 — list every repo under `owner` (via the github
 /// integration's authenticated client) and register one
-/// `github/repo-mirror` feed per repo against `workstream`.
+/// `github/repo-mirror` feed per repo against `lens`.
 /// Idempotent: existing feeds are skipped.
 pub async fn expand_github_org(
     github: Arc<arawn_integrations::github::GithubIntegration>,
     store: Arc<std::sync::Mutex<arawn_storage::Store>>,
     feed_runtime: Option<Arc<arawn_feeds::FeedRuntime>>,
-    workstream: String,
+    lens: String,
     owner: String,
 ) {
     use arawn_feeds::GithubFeedClient;
@@ -24,7 +24,7 @@ pub async fn expand_github_org(
             return;
         }
     };
-    info!(owner = %owner, count = repos.len(), workstream = %workstream,
+    info!(owner = %owner, count = repos.len(), lens = %lens,
           "org-expand: registering per-repo feeds");
     let now = chrono::Utc::now().to_rfc3339();
     let mut new_feed_ids: Vec<String> = Vec::new();
@@ -47,8 +47,7 @@ pub async fn expand_github_org(
                 continue;
             }
             let feed_id = format!("github-repo:{owner}/{name}");
-            let params_json =
-                serde_json::json!({"owner": &owner, "name": &name}).to_string();
+            let params_json = serde_json::json!({"owner": &owner, "name": &name}).to_string();
             // Idempotent insert — skip if already exists.
             match conn.execute(
                 "INSERT OR IGNORE INTO feeds \
@@ -70,7 +69,7 @@ pub async fn expand_github_org(
             register_one_feed(Arc::clone(&frt), Arc::clone(&store), &id).await;
         }
     }
-    let _ = workstream; // future: persist which workstream owns these
+    let _ = lens; // future: persist which lens owns these
 }
 
 /// T-0329 — fetch a feed record by id and register its cron schedule

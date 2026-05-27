@@ -85,14 +85,12 @@ impl FeedTemplate for IssuesAndPrsTemplate {
         ];
 
         let dir = feed_dir.join("issues_and_prs");
-        std::fs::create_dir_all(&dir).map_err(|e| {
-            FeedError::Storage(format!("create {}: {e}", dir.display()))
-        })?;
+        std::fs::create_dir_all(&dir)
+            .map_err(|e| FeedError::Storage(format!("create {}: {e}", dir.display())))?;
 
         let mut total_items: u64 = 0;
         let mut total_bytes: u64 = 0;
-        let mut seen_paths: std::collections::HashSet<PathBuf> =
-            std::collections::HashSet::new();
+        let mut seen_paths: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
 
         for query in &queries {
             let items = match github
@@ -185,13 +183,19 @@ fn path_for_item(item: &Value, dir: &Path) -> Option<PathBuf> {
 
 fn sanitize(s: &str) -> String {
     s.chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
 fn write_json(path: &PathBuf, v: &Value) -> Result<u64, FeedError> {
-    let body = serde_json::to_vec_pretty(v)
-        .map_err(|e| FeedError::Storage(format!("serialize: {e}")))?;
+    let body =
+        serde_json::to_vec_pretty(v).map_err(|e| FeedError::Storage(format!("serialize: {e}")))?;
     let len = body.len() as u64;
     let tmp = path.with_extension("json.tmp");
     std::fs::write(&tmp, &body)
@@ -336,11 +340,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         // Q1 returns issues 1+2; Q2 returns issue 2 (dupe of Q1) +
         // issue 3; Q3 returns nothing. Expected on disk: 3 files.
-        let responses = vec![
-            vec![issue(1), issue(2)],
-            vec![issue(2), issue(3)],
-            vec![],
-        ];
+        let responses = vec![vec![issue(1), issue(2)], vec![issue(2), issue(3)], vec![]];
         let fake = Arc::new(FakeGithub {
             queries: Mutex::new(Vec::new()),
             responses: Mutex::new(responses),
@@ -391,7 +391,9 @@ mod tests {
     #[test]
     fn defaults_have_30min_cadence() {
         assert_eq!(
-            IssuesAndPrsTemplate.defaults(&TemplateParams::default()).cadence,
+            IssuesAndPrsTemplate
+                .defaults(&TemplateParams::default())
+                .cadence,
             "*/30 * * * *"
         );
     }

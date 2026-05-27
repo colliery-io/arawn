@@ -1,22 +1,21 @@
-//! `LocalService` inherent methods backing the `workstreams.*` portion of
+//! `LocalService` inherent methods backing the `lenses.*` portion of
 //! `ArawnService`. The trait shell in `super::mod` delegates to these.
 
 use std::path::PathBuf;
 
-use arawn_core::Workstream;
-use arawn_service::{ServiceError, WorkstreamInfo};
-
+use arawn_core::Lens;
+use arawn_service::{LensInfo, ServiceError};
 
 use super::LocalService;
 
 impl LocalService {
-    pub(super) async fn list_workstreams_inner(&self) -> Result<Vec<WorkstreamInfo>, ServiceError> {
+    pub(super) async fn list_lenses_inner(&self) -> Result<Vec<LensInfo>, ServiceError> {
         let store = self.store.lock().unwrap();
-        let workstreams = store.list_workstreams()?;
+        let lenses = store.list_lenses()?;
 
-        Ok(workstreams
+        Ok(lenses
             .into_iter()
-            .map(|ws| WorkstreamInfo {
+            .map(|ws| LensInfo {
                 id: ws.id,
                 name: ws.name,
                 root_dir: ws.root_dir,
@@ -25,21 +24,20 @@ impl LocalService {
             .collect())
     }
 
-    pub(super) async fn create_workstream_inner(
+    pub(super) async fn create_lens_inner(
         &self,
         name: String,
         root_dir: PathBuf,
-    ) -> Result<WorkstreamInfo, ServiceError> {
-        let ws = Workstream::new(&name, &root_dir);
+    ) -> Result<LensInfo, ServiceError> {
+        let ws = Lens::new(&name, &root_dir);
         let store = self.store.lock().unwrap();
-        store.create_workstream(&ws)?;
+        store.create_lens(&ws)?;
 
-        Ok(WorkstreamInfo {
+        Ok(LensInfo {
             id: ws.id,
             name: ws.name,
             root_dir: ws.root_dir,
             created_at: ws.created_at,
         })
     }
-
 }

@@ -20,15 +20,13 @@ fn handle_todo_rpc(id: u64, method: &str, params: &Value, service: &LocalService
         .with_events(service.todo_event_sender());
 
     match method {
-        "todos.create" => {
-            match serde_json::from_value::<arawn_storage::NewTodo>(params.clone()) {
-                Ok(req) => match svc.create(req) {
-                    Ok(t) => Response::success(id, serde_json::to_value(&t).unwrap()),
-                    Err(e) => Response::from_todo_error(id, &e),
-                },
-                Err(e) => Response::error(id, "invalid_params", format!("todos.create: {e}")),
-            }
-        }
+        "todos.create" => match serde_json::from_value::<arawn_storage::NewTodo>(params.clone()) {
+            Ok(req) => match svc.create(req) {
+                Ok(t) => Response::success(id, serde_json::to_value(&t).unwrap()),
+                Err(e) => Response::from_todo_error(id, &e),
+            },
+            Err(e) => Response::error(id, "invalid_params", format!("todos.create: {e}")),
+        },
         "todos.list" => {
             let filter = if params.is_null() {
                 arawn_storage::ListFilter::default()
@@ -36,11 +34,7 @@ fn handle_todo_rpc(id: u64, method: &str, params: &Value, service: &LocalService
                 match serde_json::from_value::<arawn_storage::ListFilter>(params.clone()) {
                     Ok(f) => f,
                     Err(e) => {
-                        return Response::error(
-                            id,
-                            "invalid_params",
-                            format!("todos.list: {e}"),
-                        );
+                        return Response::error(id, "invalid_params", format!("todos.list: {e}"));
                     }
                 }
             };
@@ -86,11 +80,7 @@ fn handle_todo_rpc(id: u64, method: &str, params: &Value, service: &LocalService
                 match serde_json::from_value::<arawn_storage::TodoPatch>(patch_v) {
                     Ok(p) => p,
                     Err(e) => {
-                        return Response::error(
-                            id,
-                            "invalid_params",
-                            format!("todos.patch: {e}"),
-                        );
+                        return Response::error(id, "invalid_params", format!("todos.patch: {e}"));
                     }
                 }
             };

@@ -1,4 +1,4 @@
-//! Append-only `steward_journal` colocated with each workstream KB.
+//! Append-only `steward_journal` colocated with each lens KB.
 //!
 //! Per ARAWN-A-0003: every steward action — mutations and proposals —
 //! gets exactly one row, written *before* the mutation runs (write-
@@ -96,8 +96,8 @@ impl JournalGate {
         self.journal.write_ahead(record)
     }
 
-    pub fn workstream(&self) -> &str {
-        self.journal.workstream()
+    pub fn lens(&self) -> &str {
+        self.journal.lens()
     }
 
     /// Read-side accessor onto the underlying journal. Subroutines that
@@ -111,38 +111,38 @@ impl JournalGate {
     }
 }
 
-/// Workstream-scoped journal. Opens its own rusqlite connection to the
-/// workstream's `memory.db`. Multiple connections to the same file are
+/// Lens-scoped journal. Opens its own rusqlite connection to the
+/// lens's `memory.db`. Multiple connections to the same file are
 /// fine — graphqlite + steward live in the same db but use disjoint
 /// tables.
 pub struct Journal {
     conn: Arc<Mutex<Connection>>,
-    workstream: String,
+    lens: String,
     path: PathBuf,
 }
 
 impl Journal {
-    /// Open (or create) the journal for `workstream_name` rooted at
-    /// `data_dir`. The workstream's KB lives at
-    /// `<data_dir>/workstreams/<name>/memory.db`. Creates parent dirs
+    /// Open (or create) the journal for `lens_name` rooted at
+    /// `data_dir`. The lens's KB lives at
+    /// `<data_dir>/lenses/<name>/memory.db`. Creates parent dirs
     /// if they don't exist so first-touch lazy-init mirrors what
-    /// `MemoryManager::for_workstream` already does.
-    pub fn open(data_dir: &Path, workstream_name: &str) -> Result<Self, StewardError> {
-        let ws_dir = data_dir.join("workstreams").join(workstream_name);
+    /// `MemoryManager::for_lens` already does.
+    pub fn open(data_dir: &Path, lens_name: &str) -> Result<Self, StewardError> {
+        let ws_dir = data_dir.join("lenses").join(lens_name);
         std::fs::create_dir_all(&ws_dir)
-            .map_err(|e| StewardError::Storage(format!("create workstream dir {ws_dir:?}: {e}")))?;
+            .map_err(|e| StewardError::Storage(format!("create lens dir {ws_dir:?}: {e}")))?;
         let path = ws_dir.join("memory.db");
         let conn = Connection::open(&path)?;
         ensure_schema(&conn)?;
         Ok(Self {
             conn: Arc::new(Mutex::new(conn)),
-            workstream: workstream_name.to_string(),
+            lens: lens_name.to_string(),
             path,
         })
     }
 
-    pub fn workstream(&self) -> &str {
-        &self.workstream
+    pub fn lens(&self) -> &str {
+        &self.lens
     }
 
     pub fn path(&self) -> &Path {
@@ -194,7 +194,7 @@ impl Journal {
         row.transpose()
     }
 
-    /// Last `limit` rows, newest first. Used by `/workstream journal`.
+    /// Last `limit` rows, newest first. Used by `/lens journal`.
     pub fn recent(&self, limit: usize) -> Result<Vec<JournalRow>, StewardError> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
@@ -230,7 +230,7 @@ impl Journal {
     }
 
     /// Flip a row from `applied = false` to `applied = true`. Used by
-    /// the proposal-accept path (`workstream_apply`). Idempotent: a row
+    /// the proposal-accept path (`lens_apply`). Idempotent: a row
     /// already applied returns `newly_applied = false`. Returns the
     /// (re-read) row so the caller has the post-flip state.
     pub fn mark_applied(&self, id: i64) -> Result<AppliedResult, StewardError> {

@@ -22,7 +22,7 @@ pub struct TodoRow {
     pub id: String,
     pub body: String,
     pub kind: String,
-    pub workstream: Option<String>,
+    pub lens: Option<String>,
     pub done_at: Option<String>,
     pub due_at: Option<String>,
 }
@@ -42,11 +42,18 @@ pub enum TodoOutcome {
     None,
     /// Toggle done state via `todos.done` (if open) or `todos.undo`
     /// (if already done).
-    Toggle { id: String, mark_done: bool },
+    Toggle {
+        id: String,
+        mark_done: bool,
+    },
     /// Archive via `todos.archive`.
-    Archive { id: String },
+    Archive {
+        id: String,
+    },
     /// Create a new user todo via `todos.create`.
-    Add { body: String },
+    Add {
+        body: String,
+    },
     /// Close the overlay.
     Close,
 }
@@ -183,8 +190,8 @@ pub fn render_todo_modal(state: &TodoModalState, frame: &mut Frame) {
             };
             let indicator = if is_focused { "▸ " } else { "  " };
             let kind_tag = format!("[{}]", t.kind);
-            let workstream_tag = t
-                .workstream
+            let lens_tag = t
+                .lens
                 .as_deref()
                 .map(|w| format!(" @{w}"))
                 .unwrap_or_default();
@@ -195,12 +202,9 @@ pub fn render_todo_modal(state: &TodoModalState, frame: &mut Frame) {
                 .unwrap_or_default();
             lines.push(Line::from(vec![
                 Span::styled(indicator, Style::default().fg(Color::Yellow)),
-                Span::styled(
-                    format!("{glyph} {} ", t.body),
-                    style,
-                ),
+                Span::styled(format!("{glyph} {} ", t.body), style),
                 Span::styled(kind_tag, Style::default().fg(theme::OVERLAY1)),
-                Span::styled(workstream_tag, Style::default().fg(theme::OVERLAY1)),
+                Span::styled(lens_tag, Style::default().fg(theme::OVERLAY1)),
                 Span::styled(due_tag, Style::default().fg(theme::OVERLAY1)),
             ]));
         }
@@ -261,7 +265,7 @@ mod tests {
             id: id.into(),
             body: body.into(),
             kind: "user".into(),
-            workstream: None,
+            lens: None,
             done_at: if done {
                 Some("2026-05-17T08:00:00Z".into())
             } else {
@@ -299,8 +303,7 @@ mod tests {
 
     #[test]
     fn down_advances_focus() {
-        let mut state =
-            TodoModalState::new(vec![todo("a", "a", false), todo("b", "b", false)]);
+        let mut state = TodoModalState::new(vec![todo("a", "a", false), todo("b", "b", false)]);
         state.handle_key(key(KeyCode::Down));
         assert_eq!(state.focused_index, 1);
         // No further advance past the end.
@@ -342,14 +345,16 @@ mod tests {
     #[test]
     fn q_and_esc_close_overlay() {
         let mut state = TodoModalState::new(vec![]);
-        assert_eq!(state.handle_key(key(KeyCode::Char('q'))), TodoOutcome::Close);
+        assert_eq!(
+            state.handle_key(key(KeyCode::Char('q'))),
+            TodoOutcome::Close
+        );
         assert_eq!(state.handle_key(key(KeyCode::Esc)), TodoOutcome::Close);
     }
 
     #[test]
     fn set_todos_clamps_focused_index() {
-        let mut state =
-            TodoModalState::new(vec![todo("a", "a", false), todo("b", "b", false)]);
+        let mut state = TodoModalState::new(vec![todo("a", "a", false), todo("b", "b", false)]);
         state.focused_index = 1;
         state.set_todos(vec![todo("c", "c", false)]);
         assert_eq!(state.focused_index, 0);

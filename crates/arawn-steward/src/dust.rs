@@ -1,9 +1,9 @@
 //! Dust subroutine — manual trigger (T-0260).
 //!
 //! Per user direction this is *not* on the steward's auto cadence. The
-//! `workstream_dust` agent tool wraps a single run. Dust writes
+//! `lens_dust` agent tool wraps a single run. Dust writes
 //! proposals as `applied = false` journal rows; the user reviews via
-//! `workstream_refine` and commits via `workstream_apply <id>`.
+//! `lens_refine` and commits via `lens_apply <id>`.
 //!
 //! Allowed verbs per ARAWN-A-0003: insert summary entity + add
 //! SUMMARIZES edges. Sources are preserved.
@@ -105,10 +105,7 @@ impl DustEngine {
         let now = Utc::now();
         let threshold = now - Duration::days(opts.idle_days);
 
-        let active = kb
-            .workstream
-            .list_all_ranked(2_000)
-            .map_err(StewardError::from)?;
+        let active = kb.lens.list_all_ranked(2_000).map_err(StewardError::from)?;
         let clusters = match opts.cluster_by {
             ClusterMode::Tag => cluster_by_tag(&active, opts),
             ClusterMode::Provenance => cluster_by_provenance(&active, kb, opts)?,
@@ -254,7 +251,7 @@ struct ProposedSummary {
 
 fn cluster_by_tag(active: &[Entity], opts: &DustOpts) -> Vec<(String, Vec<Entity>)> {
     // Per ADR-0004 dust clusters on `tags_ontology` only — that's the
-    // deterministic substrate, drawn from the workstream's declared
+    // deterministic substrate, drawn from the lens's declared
     // closed list. `tags_discovered` is too noisy to cluster on
     // directly (variants like `falcon` vs `falcon-project` defeat
     // exact-string grouping).
@@ -288,10 +285,7 @@ fn cluster_by_provenance(
         if e.tags.iter().any(|t| t == "steward:dust") {
             continue;
         }
-        let rels = kb
-            .workstream
-            .get_relations(e.id)
-            .map_err(StewardError::from)?;
+        let rels = kb.lens.get_relations(e.id).map_err(StewardError::from)?;
         for r in rels {
             if matches!(r.relation_type, RelationType::ExtractedFrom) && r.source_id == e.id {
                 by_src.entry(r.target_id).or_default().push(e.clone());
@@ -373,7 +367,7 @@ mod tests {
         let (_tmp, mgr, j) = setup();
         for i in 0..3 {
             let e = make_stale_entity(&format!("t{i}"), "project-x", 60);
-            mgr.workstream.insert_entity(&e).unwrap();
+            mgr.lens.insert_entity(&e).unwrap();
         }
         let mock = Arc::new(ScriptedMock::new(vec![json!({
             "title": "project x — closed",
@@ -393,13 +387,13 @@ mod tests {
     async fn cluster_with_one_fresh_member_is_skipped() {
         let (_tmp, mgr, j) = setup();
         // 2 stale + 1 fresh — cluster size 3, but not all idle.
-        mgr.workstream
+        mgr.lens
             .insert_entity(&make_stale_entity("a", "p", 60))
             .unwrap();
-        mgr.workstream
+        mgr.lens
             .insert_entity(&make_stale_entity("b", "p", 60))
             .unwrap();
-        mgr.workstream
+        mgr.lens
             .insert_entity(&make_stale_entity("c", "p", 1))
             .unwrap();
         let mock = Arc::new(ScriptedMock::new(vec![]));
@@ -411,10 +405,10 @@ mod tests {
     #[tokio::test]
     async fn min_cluster_size_filters_out_small_clusters() {
         let (_tmp, mgr, j) = setup();
-        mgr.workstream
+        mgr.lens
             .insert_entity(&make_stale_entity("a", "tiny", 60))
             .unwrap();
-        mgr.workstream
+        mgr.lens
             .insert_entity(&make_stale_entity("b", "tiny", 60))
             .unwrap();
         let mock = Arc::new(ScriptedMock::new(vec![]));
@@ -432,7 +426,7 @@ mod tests {
         let (_tmp, mgr, j) = setup();
         for tag in ["a", "b", "c"] {
             for i in 0..3 {
-                mgr.workstream
+                mgr.lens
                     .insert_entity(&make_stale_entity(&format!("{tag}-{i}"), tag, 60))
                     .unwrap();
             }
@@ -456,7 +450,7 @@ mod tests {
         let (_tmp, mgr, j) = setup();
         // Three real entities — stale.
         for i in 0..3 {
-            mgr.workstream
+            mgr.lens
                 .insert_entity(&make_stale_entity(&format!("e{i}"), "p", 60))
                 .unwrap();
         }
@@ -468,7 +462,7 @@ mod tests {
             .with_tags(vec!["steward:dust".into()]);
         prior.created_at = Utc::now() - Duration::days(60);
         prior.updated_at = prior.created_at;
-        mgr.workstream.insert_entity(&prior).unwrap();
+        mgr.lens.insert_entity(&prior).unwrap();
 
         let mock = Arc::new(ScriptedMock::new(vec![json!({
             "title": "p — closed",

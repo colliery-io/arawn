@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use arawn_core::Workstream;
+use arawn_core::Lens;
 use arawn_llm::{MockLlmClient, MockResponse};
 use arawn_tool::{Tool, ToolRegistry};
 use tempfile::TempDir;
@@ -43,12 +43,8 @@ impl TestHarnessBuilder {
         }
     }
 
-    /// Pre-populate a file in the workstream directory.
-    pub fn with_workstream_file(
-        mut self,
-        path: impl Into<String>,
-        content: impl Into<String>,
-    ) -> Self {
+    /// Pre-populate a file in the lens directory.
+    pub fn with_lens_file(mut self, path: impl Into<String>, content: impl Into<String>) -> Self {
         self.files.push((path.into(), content.into()));
         self
     }
@@ -119,7 +115,7 @@ impl TestHarnessBuilder {
             std::fs::write(&full_path, content).expect("failed to write file");
         }
 
-        let workstream = Workstream::new("test", self.temp_dir.path());
+        let lens = Lens::new("test", self.temp_dir.path());
         let registry = Arc::new(ToolRegistry::new());
         for tool in self.tools {
             registry.register(tool);
@@ -160,7 +156,7 @@ impl TestHarnessBuilder {
 
         TestHarness {
             _temp_dir: self.temp_dir,
-            workstream,
+            lens,
             registry,
             mock_llm,
             config,

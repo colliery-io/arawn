@@ -1,16 +1,15 @@
 //! `LocalService` inherent methods backing the `commands.*` portion of
 //! `ArawnService`. The trait shell in `super::mod` delegates to these.
 
-
-use arawn_service::{
-    CommandInfo, InventoryItem, ServiceError, WorkflowInfo,
-};
-
+use arawn_service::{CommandInfo, InventoryItem, ServiceError, WorkflowInfo};
 
 use super::{LocalService, first_sentence};
 
 impl LocalService {
-    pub(super) async fn query_inventory_inner(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError> {
+    pub(super) async fn query_inventory_inner(
+        &self,
+        kind: &str,
+    ) -> Result<Vec<InventoryItem>, ServiceError> {
         let items = match kind {
             "tools" => self
                 .registry
@@ -77,7 +76,9 @@ impl LocalService {
         Ok(items)
     }
 
-    pub(super) async fn list_available_commands_inner(&self) -> Result<Vec<CommandInfo>, ServiceError> {
+    pub(super) async fn list_available_commands_inner(
+        &self,
+    ) -> Result<Vec<CommandInfo>, ServiceError> {
         let mut commands = Vec::new();
         if let Some(ref reg) = self.skill_registry {
             for skill in reg.user_invocable() {
@@ -122,5 +123,4 @@ impl LocalService {
         }
         Ok(workflows)
     }
-
 }

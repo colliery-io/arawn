@@ -12,10 +12,10 @@ pub use error::ServiceError;
 pub use types::{
     CommandInfo, EngineEvent, FeedDiscoverDto, FeedDiscoverRow, FeedParamKindDto, FeedParamSpecDto,
     FeedRegisterSpec, FeedRemoveDto, FeedSchemaDto, FeedSummaryDto, FeedTemplateInfo,
-    ForgetCandidate, ForgetResult, IntegrationStatus, InventoryItem,
-    MemoryStoreResult, MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption,
-    OAuthFlowStarted, PermissionAuditEntry, PermissionModeInfo, PermissionsStatus, PromotionResult,
-    ServerCapabilities, ServerNotice, SessionDetail, SessionInfo, WorkflowInfo, WorkstreamInfo,
+    ForgetCandidate, ForgetResult, IntegrationStatus, InventoryItem, LensInfo, MemoryStoreResult,
+    MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption, OAuthFlowStarted,
+    PermissionAuditEntry, PermissionModeInfo, PermissionsStatus, PromotionResult,
+    ServerCapabilities, ServerNotice, SessionDetail, SessionInfo, WorkflowInfo,
 };
 
 /// The service contract between any UI client and the Arawn backend.
@@ -25,31 +25,21 @@ pub use types::{
 /// - Future: `RemoteService` (WebSocket client to a running daemon)
 #[async_trait]
 pub trait ArawnService: Send + Sync {
-    // --- Workstreams ---
+    // --- Lenses ---
 
-    /// List all workstreams.
-    async fn list_workstreams(&self) -> Result<Vec<WorkstreamInfo>, ServiceError>;
+    /// List all lenses.
+    async fn list_lenses(&self) -> Result<Vec<LensInfo>, ServiceError>;
 
-    /// Create a new workstream.
-    async fn create_workstream(
-        &self,
-        name: String,
-        root_dir: PathBuf,
-    ) -> Result<WorkstreamInfo, ServiceError>;
+    /// Create a new lens.
+    async fn create_lens(&self, name: String, root_dir: PathBuf) -> Result<LensInfo, ServiceError>;
 
     // --- Sessions ---
 
-    /// List sessions, optionally filtered by workstream. Pass `None` for scratch sessions.
-    async fn list_sessions(
-        &self,
-        workstream_id: Option<Uuid>,
-    ) -> Result<Vec<SessionInfo>, ServiceError>;
+    /// List sessions, optionally filtered by lens. Pass `None` for scratch sessions.
+    async fn list_sessions(&self, lens_id: Option<Uuid>) -> Result<Vec<SessionInfo>, ServiceError>;
 
-    /// Create a new session in a workstream. Pass `None` for scratch.
-    async fn create_session(
-        &self,
-        workstream_id: Option<Uuid>,
-    ) -> Result<SessionInfo, ServiceError>;
+    /// Create a new session in a lens. Pass `None` for scratch.
+    async fn create_session(&self, lens_id: Option<Uuid>) -> Result<SessionInfo, ServiceError>;
 
     /// Load a session with its full message history.
     async fn load_session(&self, id: Uuid) -> Result<SessionDetail, ServiceError>;
@@ -85,11 +75,11 @@ pub trait ArawnService: Send + Sync {
 
     // --- Session Management ---
 
-    /// Promote a scratch session to a named workstream.
+    /// Promote a scratch session to a named lens.
     async fn promote_session(
         &self,
         session_id: Uuid,
-        workstream_name: &str,
+        lens_name: &str,
     ) -> Result<PromotionResult, ServiceError>;
 
     /// Resolve a pending user input modal by delivering the selected index.

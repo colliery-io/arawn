@@ -4,14 +4,14 @@
 //! `ProjectionStore` end-to-end: schema gets created lazily,
 //! rows write, FTS picks up the title/body, count + get_row work.
 
+use arawn_projections::ProjectionStore;
 use arawn_projections::github::{
     GithubIssueOrPrCommentProjection, GithubIssueOrPrProjection, GithubNotificationProjection,
     GithubRepoCommitProjection, GithubRepoIssueProjection, GithubRepoPrProjection,
-    GithubReviewRequestProjection, ISSUES_AND_PRS_FEED_TYPE, ISSUE_OR_PR_COMMENTS_FEED_TYPE,
+    GithubReviewRequestProjection, ISSUE_OR_PR_COMMENTS_FEED_TYPE, ISSUES_AND_PRS_FEED_TYPE,
     NOTIFICATIONS_FEED_TYPE, REPO_COMMITS_FEED_TYPE, REPO_ISSUES_FEED_TYPE, REPO_PRS_FEED_TYPE,
     REVIEW_QUEUE_FEED_TYPE,
 };
-use arawn_projections::ProjectionStore;
 use chrono::{TimeZone, Utc};
 
 fn notif(id: &str, title: &str) -> GithubNotificationProjection {
@@ -24,9 +24,7 @@ fn notif(id: &str, title: &str) -> GithubNotificationProjection {
         repo: "arawn".into(),
         thread_id: id.into(),
         subject_title: title.into(),
-        subject_url: Some(
-            "https://api.github.com/repos/arawn-dev/arawn/pulls/42".into(),
-        ),
+        subject_url: Some("https://api.github.com/repos/arawn-dev/arawn/pulls/42".into()),
         reason: "review_requested".into(),
         kind: "PullRequest".into(),
         unread: true,
@@ -79,8 +77,12 @@ fn review(pr_number: i64, title: &str) -> GithubReviewRequestProjection {
 #[test]
 fn notifications_write_count_get() {
     let store = ProjectionStore::in_memory().unwrap();
-    store.write(&notif("n1", "Ship the GitHub integration")).unwrap();
-    store.write(&notif("n2", "Wire the feed templates")).unwrap();
+    store
+        .write(&notif("n1", "Ship the GitHub integration"))
+        .unwrap();
+    store
+        .write(&notif("n2", "Wire the feed templates"))
+        .unwrap();
     assert_eq!(store.count(NOTIFICATIONS_FEED_TYPE).unwrap(), 2);
     let row = store
         .get_row(NOTIFICATIONS_FEED_TYPE, "feed-1:n1")
@@ -110,7 +112,9 @@ fn issues_write_fts_and_metadata_round_trip() {
         .unwrap();
     assert_eq!(store.count(ISSUES_AND_PRS_FEED_TYPE).unwrap(), 2);
     // FTS finds the body content.
-    let hits = store.fts_search(ISSUES_AND_PRS_FEED_TYPE, "panic", 5).unwrap();
+    let hits = store
+        .fts_search(ISSUES_AND_PRS_FEED_TYPE, "panic", 5)
+        .unwrap();
     assert_eq!(hits.len(), 1);
     assert!(hits[0].contains("#42"));
     // Metadata round-trips for the typed fields the morning brief needs.
@@ -235,9 +239,7 @@ fn comment(id_n: i64, parent: i64, kind: &str) -> GithubIssueOrPrCommentProjecti
         parent_number: parent,
         body_excerpt: format!("comment {id_n} body"),
         author: "alice".into(),
-        url: format!(
-            "https://github.com/openai/codex/issues/{parent}#issuecomment-{id_n}"
-        ),
+        url: format!("https://github.com/openai/codex/issues/{parent}#issuecomment-{id_n}"),
         kind: kind.into(),
         created_at: ts(),
         updated_at: ts(),
@@ -265,7 +267,9 @@ fn repo_issues_round_trip_with_fts_hit() {
     store.write(&repo_issue(1)).unwrap();
     store.write(&repo_issue(2)).unwrap();
     assert_eq!(store.count(REPO_ISSUES_FEED_TYPE).unwrap(), 2);
-    let hits = store.fts_search(REPO_ISSUES_FEED_TYPE, "details", 5).unwrap();
+    let hits = store
+        .fts_search(REPO_ISSUES_FEED_TYPE, "details", 5)
+        .unwrap();
     assert_eq!(hits.len(), 2);
 }
 

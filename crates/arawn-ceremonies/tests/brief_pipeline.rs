@@ -26,15 +26,15 @@ use rusqlite::Connection;
 use serde_json::json;
 use tempfile::TempDir;
 
-use arawn_ceremonies::service::{AddPriorityRequest, CeremonyService};
-use arawn_ceremonies::{
-    BriefView, ConnHandle, DailyView, DispatchOutcome, EngineDispatcher, PluginRegistry, WeeklyView,
-    render_brief,
-};
 use arawn_ceremonies::plugin::{
     Ceremony, CeremonyCtx, ComposedItem, CronSchedule, NewItem, UserItem,
 };
+use arawn_ceremonies::service::{AddPriorityRequest, CeremonyService};
 use arawn_ceremonies::types::{GatheredFacts, ItemKind};
+use arawn_ceremonies::{
+    BriefView, ConnHandle, DailyView, DispatchOutcome, EngineDispatcher, PluginRegistry,
+    WeeklyView, render_brief,
+};
 
 fn open_test_db() -> (TempDir, ConnHandle) {
     let tmp = TempDir::new().unwrap();
@@ -126,7 +126,13 @@ fn daily_seed_items() -> Vec<NewItem> {
         composed(&tid, "calendar", 0, "09:00 standup", "evt-standup"),
         composed(&tid, "todos", 0, "ship I-0035 brief", "todo-brief"),
         composed(&tid, "attention", 0, "RFC-0042 waiting on you", "rfc-0042"),
-        composed(&tid, "alignment", 0, "Phase 2 lands this week", "prio-phase2"),
+        composed(
+            &tid,
+            "alignment",
+            0,
+            "Phase 2 lands this week",
+            "prio-phase2",
+        ),
         // Diary placeholder — matches the daily plugin's user-item shape.
         user_item(&tid, "diary"),
     ]
@@ -256,7 +262,10 @@ async fn brief_pipeline_renders_daily_and_weekly_content() {
     );
 
     // Seeded content surfaces from both sides.
-    assert!(md.contains("09:00 standup"), "missing daily calendar:\n{md}");
+    assert!(
+        md.contains("09:00 standup"),
+        "missing daily calendar:\n{md}"
+    );
     assert!(
         md.contains("ship I-0035 brief"),
         "missing daily todo:\n{md}"

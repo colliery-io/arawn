@@ -668,7 +668,7 @@ mod tests {
             source_id: "msg-77".into(),
             ts,
             summary: "Tax form due Friday".into(),
-            workstream: Some("personal".into()),
+            lens: Some("personal".into()),
         }]
     }
 
@@ -676,7 +676,7 @@ mod tests {
         let c = conn.0.lock().unwrap();
         // Prior retro tablet + diary + a pattern row.
         c.execute(
-            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
              VALUES (?1, 'retro', ?2, ?3, 'reviewed', '[]')",
             params!["retro-prev", "2026-W19", "2026-05-08T16:00:00Z"],
         )
@@ -700,7 +700,7 @@ mod tests {
         .unwrap();
         // Prior weekly tablet + an open inbound item.
         c.execute(
-            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
              VALUES (?1, 'weekly', ?2, ?3, 'reviewed', '[]')",
             params!["weekly-prev", "2026-W19", "2026-05-04T07:00:00Z"],
         )
@@ -719,7 +719,7 @@ mod tests {
         .unwrap();
         // A daily tablet (only used as FK target for rolling todos).
         c.execute(
-            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
              VALUES (?1, 'daily', ?2, ?3, 'reviewed', '[]')",
             params!["daily-origin", "2026-05-04", "2026-05-04T07:00:00Z"],
         )
@@ -727,7 +727,7 @@ mod tests {
         // A hot rolling todo created > 7d ago.
         let old = (Utc::now() - Duration::days(14)).to_rfc3339();
         c.execute(
-            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+            "INSERT INTO todos (id, body, rationale, kind, lens, created_at, \
                                 due_at, done_at, archived_at, attrs) \
              VALUES (?1, ?2, NULL, 'rollover', NULL, ?3, NULL, NULL, NULL, \
                      json_object('origin_tablet_id','daily-origin','last_seen_tablet_id','daily-origin'))",

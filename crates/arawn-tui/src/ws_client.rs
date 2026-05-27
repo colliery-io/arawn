@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use arawn_service::{EngineEvent, SessionInfo, WorkstreamInfo};
+use arawn_service::{EngineEvent, LensInfo, SessionInfo};
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{Value, json};
 use tokio::sync::{Mutex, mpsc, oneshot};
@@ -143,10 +143,8 @@ impl WsClient {
         }
     }
 
-    pub async fn list_workstreams(
-        &mut self,
-    ) -> Result<Vec<WorkstreamInfo>, Box<dyn std::error::Error>> {
-        let resp = self.request_response("list_workstreams", json!({})).await?;
+    pub async fn list_lenses(&mut self) -> Result<Vec<LensInfo>, Box<dyn std::error::Error>> {
+        let resp = self.request_response("list_lenses", json!({})).await?;
         let result = resp.get("result").ok_or("no result")?;
         Ok(serde_json::from_value(result.clone())?)
     }
@@ -381,8 +379,8 @@ impl WsClient {
         ws_id: Option<uuid::Uuid>,
     ) -> Result<Vec<SessionInfo>, Box<dyn std::error::Error>> {
         let params = match ws_id {
-            Some(id) => json!({"workstream_id": id.to_string()}),
-            None => json!({"workstream_id": null}),
+            Some(id) => json!({"lens_id": id.to_string()}),
+            None => json!({"lens_id": null}),
         };
         let resp = self.request_response("list_sessions", params).await?;
         let result = resp.get("result").ok_or("no result")?;
@@ -394,8 +392,8 @@ impl WsClient {
         ws_id: Option<uuid::Uuid>,
     ) -> Result<SessionInfo, Box<dyn std::error::Error>> {
         let params = match ws_id {
-            Some(id) => json!({"workstream_id": id.to_string()}),
-            None => json!({"workstream_id": null}),
+            Some(id) => json!({"lens_id": id.to_string()}),
+            None => json!({"lens_id": null}),
         };
         let resp = self.request_response("create_session", params).await?;
         let result = resp.get("result").ok_or("no result")?;

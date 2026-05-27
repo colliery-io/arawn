@@ -1,4 +1,3 @@
-
 use arawn_storage::Store;
 
 pub fn validate_github_scope_scheme(feed_id: &str) -> Result<(), String> {
@@ -60,15 +59,15 @@ pub fn parse_github_scope(feed_id: &str) -> Option<GithubScope> {
     None
 }
 
-/// Walk active workstreams, return `(workstream_name, binding)` for
+/// Walk active lenses, return `(lens_name, binding)` for
 /// every binding matching the predicate.
-pub(super) fn find_workstreams_binding(
+pub(super) fn find_lenses_binding(
     store: &Store,
     matcher: impl Fn(&str) -> bool,
 ) -> Vec<(String, String)> {
-    let workstreams = store.list_workstreams().unwrap_or_default();
+    let lenses = store.list_lenses().unwrap_or_default();
     let mut out = Vec::new();
-    for ws in workstreams {
+    for ws in lenses {
         for binding in &ws.bindings {
             if matcher(binding) {
                 out.push((ws.name.clone(), binding.clone()));
@@ -135,7 +134,10 @@ pub(super) fn delete_feed(store: &Store, feed_id: &str) -> Result<(), arawn_stor
     use arawn_storage::StorageError;
     let db = store.database();
     db.conn()
-        .execute("DELETE FROM feeds WHERE id = ?1", rusqlite::params![feed_id])
+        .execute(
+            "DELETE FROM feeds WHERE id = ?1",
+            rusqlite::params![feed_id],
+        )
         .map_err(|e| StorageError::InvalidOperation(format!("delete feed: {e}")))?;
     Ok(())
 }

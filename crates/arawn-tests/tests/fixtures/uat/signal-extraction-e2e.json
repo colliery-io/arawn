@@ -1,6 +1,6 @@
 {
-  "$comment": "Synthetic UAT fixture for I-0040 (signal extraction). Two workstreams with deliberate noise: real decisions worth extracting, off-topic items, near-duplicates for re-shelve, a cross-workstream identity candidate for door-watch, and an idle cluster for manual dust. Timestamps are absolute so behavior is stable across CI runs.",
-  "workstreams": [
+  "$comment": "Synthetic UAT fixture for I-0040 (signal extraction). Two lenses with deliberate noise: real decisions worth extracting, off-topic items, near-duplicates for re-shelve, a cross-lens identity candidate for door-watch, and an idle cluster for manual dust. Timestamps are absolute so behavior is stable across CI runs.",
+  "lenses": [
     {
       "name": "work",
       "description": "Pat's day job at Acme — backend platform team. Focus: infrastructure decisions, on-call rotations, RFCs, eng-org logistics.",

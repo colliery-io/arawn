@@ -480,11 +480,11 @@ mod tests {
         let _ = week;
     }
 
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use uuid::Uuid;
 
     fn ctx() -> crate::context::EngineToolContext {
-        let ws = Workstream::scratch("/tmp/test");
+        let ws = Lens::scratch("/tmp/test");
         crate::context::EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
@@ -532,7 +532,7 @@ mod tests {
         // fires.
         let conn = Connection::open(tmp.path().join("test.db")).unwrap();
         conn.execute(
-            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
              VALUES ('daily-1', 'daily', '2026-05-15', '2026-05-15T07:00:00Z', 'open', '[]')",
             params![],
         )

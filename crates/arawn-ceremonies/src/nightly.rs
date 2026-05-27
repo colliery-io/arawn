@@ -59,7 +59,7 @@ mod tests {
     fn insert_retro(conn: &ConnHandle, id: &str, period_key: &str, status: &str) {
         let c = conn.0.lock().unwrap();
         c.execute(
-            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
              VALUES (?1, 'retro', ?2, ?3, ?4, '[]')",
             params![id, period_key, "2026-05-15T16:00:00Z", status],
         )
@@ -145,7 +145,7 @@ mod tests {
         // (sweep is retro-only).
         let c = conn.0.lock().unwrap();
         c.execute(
-            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
              VALUES ('daily-2020-01-01', 'daily', '2020-01-01', '2020-01-01T07:00:00Z', 'open', '[]')",
             [],
         )

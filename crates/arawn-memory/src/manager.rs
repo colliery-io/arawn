@@ -1,4 +1,4 @@
-//! Two-tier memory manager — global + workstream knowledge bases.
+//! Two-tier memory manager — global + lens knowledge bases.
 //!
 //! `MemoryManager` is the single handle the rest of the system uses.
 //! It abstracts the two-tier scoping and routes entities to the appropriate store.
@@ -15,12 +15,12 @@ use crate::store::MemoryStore;
 use crate::types::{Entity, EntityType, Scope, StoreFactResult};
 use crate::vector;
 
-/// Two-tier memory manager holding global and workstream knowledge bases.
+/// Two-tier memory manager holding global and lens knowledge bases.
 pub struct MemoryManager {
     /// Global KB: user preferences, cross-project facts, people.
     pub global: Arc<MemoryStore>,
-    /// Workstream KB: project decisions, conventions, notes.
-    pub workstream: Arc<MemoryStore>,
+    /// Lens KB: project decisions, conventions, notes.
+    pub lens: Arc<MemoryStore>,
     /// Whether vector storage is initialized.
     vectors_enabled: bool,
     /// Optional embedder for automatic embedding on ingest and vector retrieval.
@@ -30,7 +30,7 @@ pub struct MemoryManager {
 impl MemoryManager {
     /// Open both KB tiers. Creates databases if they don't exist.
     /// `data_dir` is typically `~/.arawn/`.
-    /// `ws_dir` is the workstream subdirectory name (e.g., "my-project-{uuid}").
+    /// `ws_dir` is the lens subdirectory name (e.g., "my-project-{uuid}").
     pub fn open(
         data_dir: &Path,
         ws_dir: &str,
@@ -42,17 +42,17 @@ impl MemoryManager {
         }
 
         let global_path = data_dir.join("memory.db");
-        let ws_path = data_dir.join("workstreams").join(ws_dir).join("memory.db");
+        let ws_path = data_dir.join("lenses").join(ws_dir).join("memory.db");
 
         let global = Arc::new(MemoryStore::open(&global_path)?);
-        let workstream = Arc::new(MemoryStore::open(&ws_path)?);
+        let lens = Arc::new(MemoryStore::open(&ws_path)?);
 
         let mut vectors_enabled = false;
         if let Some(dims) = embedding_dims {
             if let Err(e) = global.init_vectors(dims) {
                 warn!(error = %e, "failed to init vectors on global KB");
-            } else if let Err(e) = workstream.init_vectors(dims) {
-                warn!(error = %e, "failed to init vectors on workstream KB");
+            } else if let Err(e) = lens.init_vectors(dims) {
+                warn!(error = %e, "failed to init vectors on lens KB");
             } else {
                 vectors_enabled = true;
                 info!(dims, "vector storage enabled on both KB tiers");
@@ -61,36 +61,36 @@ impl MemoryManager {
 
         info!(
             global = ?global_path,
-            workstream = ?ws_path,
+            lens = ?ws_path,
             vectors = vectors_enabled,
             "memory manager opened"
         );
 
         Ok(Self {
             global,
-            workstream,
+            lens,
             vectors_enabled,
             embedder: None,
         })
     }
 
     /// Convenience wrapper: open a memory manager scoped to a named
-    /// workstream. The workstream KB lives at
-    /// `<data_dir>/workstreams/<name>/memory.db` and is created on
-    /// first write. The global KB is shared across workstreams.
-    pub fn for_workstream(
+    /// lens. The lens KB lives at
+    /// `<data_dir>/lenses/<name>/memory.db` and is created on
+    /// first write. The global KB is shared across lenses.
+    pub fn for_lens(
         data_dir: &Path,
-        workstream_name: &str,
+        lens_name: &str,
         embedding_dims: Option<usize>,
     ) -> Result<Self, MemoryError> {
-        Self::open(data_dir, workstream_name, embedding_dims)
+        Self::open(data_dir, lens_name, embedding_dims)
     }
 
     /// Create a MemoryManager from pre-built stores (for testing).
-    pub fn open_with_stores(global: Arc<MemoryStore>, workstream: Arc<MemoryStore>) -> Self {
+    pub fn open_with_stores(global: Arc<MemoryStore>, lens: Arc<MemoryStore>) -> Self {
         Self {
             global,
-            workstream,
+            lens,
             vectors_enabled: false,
             embedder: None,
         }
@@ -150,7 +150,7 @@ impl MemoryManager {
     pub fn store_for(&self, scope: Scope) -> &Arc<MemoryStore> {
         match scope {
             Scope::Global => &self.global,
-            Scope::Workstream => &self.workstream,
+            Scope::Lens => &self.lens,
         }
     }
 
@@ -201,7 +201,7 @@ impl MemoryManager {
         };
 
         // FTS + tag search (always available)
-        for store in [&self.global, &self.workstream] {
+        for store in [&self.global, &self.lens] {
             for keyword in keywords {
                 if let Ok(entities) = store.search(keyword, 10) {
                     for entity in entities {
@@ -250,7 +250,7 @@ impl MemoryManager {
             };
 
             if let Some(query_emb) = embedding {
-                for store in [&self.global, &self.workstream] {
+                for store in [&self.global, &self.lens] {
                     if let Ok(sim_results) = store.search_similar(&query_emb, 10) {
                         for result in &sim_results {
                             if let Ok(Some(entity)) = store.get_entity(result.entity_id)
@@ -293,14 +293,14 @@ mod tests {
 
     fn setup() -> (TempDir, MemoryManager) {
         let tmp = TempDir::new().unwrap();
-        std::fs::create_dir_all(tmp.path().join("workstreams/test-ws")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("lenses/test-ws")).unwrap();
         let mgr = MemoryManager::open(tmp.path(), "test-ws", None).unwrap();
         (tmp, mgr)
     }
 
     fn setup_with_vectors() -> (TempDir, MemoryManager) {
         let tmp = TempDir::new().unwrap();
-        std::fs::create_dir_all(tmp.path().join("workstreams/test-ws")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("lenses/test-ws")).unwrap();
         let mgr = MemoryManager::open(tmp.path(), "test-ws", Some(4)).unwrap();
         (tmp, mgr)
     }
@@ -309,7 +309,7 @@ mod tests {
     fn opens_both_stores() {
         let (tmp, mgr) = setup();
         assert!(tmp.path().join("memory.db").exists());
-        assert!(tmp.path().join("workstreams/test-ws/memory.db").exists());
+        assert!(tmp.path().join("lenses/test-ws/memory.db").exists());
 
         // Both stores should be functional
         let entity = Entity::new(EntityType::Preference, "test pref");
@@ -331,22 +331,22 @@ mod tests {
             Arc::as_ptr(&mgr.global)
         ));
 
-        // Decisions → workstream
+        // Decisions → lens
         assert!(std::ptr::eq(
             Arc::as_ptr(mgr.store_for_type(EntityType::Decision)),
-            Arc::as_ptr(&mgr.workstream)
+            Arc::as_ptr(&mgr.lens)
         ));
         assert!(std::ptr::eq(
             Arc::as_ptr(mgr.store_for_type(EntityType::Convention)),
-            Arc::as_ptr(&mgr.workstream)
+            Arc::as_ptr(&mgr.lens)
         ));
         assert!(std::ptr::eq(
             Arc::as_ptr(mgr.store_for_type(EntityType::Fact)),
-            Arc::as_ptr(&mgr.workstream)
+            Arc::as_ptr(&mgr.lens)
         ));
         assert!(std::ptr::eq(
             Arc::as_ptr(mgr.store_for_type(EntityType::Note)),
-            Arc::as_ptr(&mgr.workstream)
+            Arc::as_ptr(&mgr.lens)
         ));
     }
 
@@ -385,17 +385,12 @@ mod tests {
         let ws_entity = Entity::new(EntityType::Decision, "ws decision");
 
         mgr.global.insert_entity(&global_entity).unwrap();
-        mgr.workstream.insert_entity(&ws_entity).unwrap();
+        mgr.lens.insert_entity(&ws_entity).unwrap();
 
         // Each store only sees its own entities
         assert!(mgr.global.get_entity(global_entity.id).unwrap().is_some());
         assert!(mgr.global.get_entity(ws_entity.id).unwrap().is_none());
-        assert!(mgr.workstream.get_entity(ws_entity.id).unwrap().is_some());
-        assert!(
-            mgr.workstream
-                .get_entity(global_entity.id)
-                .unwrap()
-                .is_none()
-        );
+        assert!(mgr.lens.get_entity(ws_entity.id).unwrap().is_some());
+        assert!(mgr.lens.get_entity(global_entity.id).unwrap().is_none());
     }
 }

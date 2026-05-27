@@ -60,11 +60,10 @@ fn setup_memory_manager() -> (Arc<MemoryManager>, Option<Arc<dyn Embedder>>) {
     arawn_memory::init_vector_extension();
     let global = Arc::new(arawn_memory::MemoryStore::in_memory().unwrap());
     global.init_vectors(64).unwrap();
-    let workstream = Arc::new(arawn_memory::MemoryStore::in_memory().unwrap());
-    workstream.init_vectors(64).unwrap();
+    let lens = Arc::new(arawn_memory::MemoryStore::in_memory().unwrap());
+    lens.init_vectors(64).unwrap();
     let embedder: Arc<dyn Embedder> = Arc::new(MockEmbedder::new(64));
-    let mgr =
-        MemoryManager::open_with_stores(global, workstream).with_embedder(Arc::clone(&embedder));
+    let mgr = MemoryManager::open_with_stores(global, lens).with_embedder(Arc::clone(&embedder));
     (Arc::new(mgr), Some(embedder))
 }
 
@@ -93,12 +92,9 @@ async fn memory_store_inserts_entity() {
     assert_eq!(calls.len(), 1);
     assert_eq!(calls[0].0, "memory_store");
 
-    // Entity should exist in the workstream KB
-    let entities = mgr.workstream.search("PostgreSQL", 5).unwrap();
-    assert!(
-        !entities.is_empty(),
-        "entity should be stored in workstream KB"
-    );
+    // Entity should exist in the lens KB
+    let entities = mgr.lens.search("PostgreSQL", 5).unwrap();
+    assert!(!entities.is_empty(), "entity should be stored in lens KB");
     assert_eq!(entities[0].title, "Project uses PostgreSQL 15");
     assert_eq!(
         entities[0].content.as_deref(),
@@ -134,9 +130,9 @@ async fn memory_store_preference_goes_to_global() {
         "preferences should be stored in global KB"
     );
 
-    // Should NOT be in workstream
-    let ws = mgr.workstream.search("dark mode", 5).unwrap();
-    assert!(ws.is_empty(), "preferences should not be in workstream KB");
+    // Should NOT be in lens
+    let ws = mgr.lens.search("dark mode", 5).unwrap();
+    assert!(ws.is_empty(), "preferences should not be in lens KB");
 }
 
 #[tokio::test]
@@ -187,7 +183,7 @@ async fn memory_store_deduplicates_on_reinsertion() {
     // Store again directly to test dedup
     let entity = arawn_memory::Entity::new(arawn_memory::EntityType::Decision, "We use Axum")
         .with_confidence(arawn_memory::ConfidenceSource::Stated);
-    let result = mgr.workstream.store_fact(&entity).unwrap();
+    let result = mgr.lens.store_fact(&entity).unwrap();
 
     // Should reinforce, not insert
     match result {
@@ -199,7 +195,7 @@ async fn memory_store_deduplicates_on_reinsertion() {
         }
         arawn_memory::StoreFactResult::Inserted { .. } => {
             // Check if we at least have only 1 entity
-            let entities = mgr.workstream.search("\"Axum\"", 5).unwrap();
+            let entities = mgr.lens.search("\"Axum\"", 5).unwrap();
             assert_eq!(
                 entities.len(),
                 1,
@@ -222,7 +218,7 @@ async fn memory_search_finds_stored_entity() {
     )
     .with_confidence(arawn_memory::ConfidenceSource::Stated)
     .with_content("All cache keys expire after 5 minutes. Session data uses 24 hour TTL.");
-    mgr.workstream.insert_entity(&entity).unwrap();
+    mgr.lens.insert_entity(&entity).unwrap();
 
     let harness = TestHarness::builder()
         .with_tool(Box::new(MemorySearchTool::new(
@@ -262,13 +258,13 @@ async fn memory_search_filters_by_type() {
     let (mgr, embedder) = setup_memory_manager();
 
     // Store a fact and a decision
-    mgr.workstream
+    mgr.lens
         .insert_entity(&arawn_memory::Entity::new(
             arawn_memory::EntityType::Fact,
             "Rust is fast",
         ))
         .unwrap();
-    mgr.workstream
+    mgr.lens
         .insert_entity(&arawn_memory::Entity::new(
             arawn_memory::EntityType::Decision,
             "We decided to use Rust",
@@ -415,7 +411,7 @@ async fn memory_store_with_tags() {
         .run("Convention: always run clippy before merging")
         .await;
 
-    let entities = mgr.workstream.search("clippy", 5).unwrap();
+    let entities = mgr.lens.search("clippy", 5).unwrap();
     assert!(!entities.is_empty());
     assert_eq!(entities[0].tags, vec!["ci", "rust", "quality"]);
 }
@@ -424,7 +420,7 @@ async fn memory_store_with_tags() {
 async fn memory_store_explicit_scope_override() {
     let (mgr, embedder) = setup_memory_manager();
 
-    // Facts default to workstream scope, but explicitly set to global
+    // Facts default to lens scope, but explicitly set to global
     let harness = TestHarness::builder()
         .with_tool(Box::new(MemoryStoreTool::new(
             Arc::clone(&mgr),
@@ -447,9 +443,6 @@ async fn memory_store_explicit_scope_override() {
         !global.is_empty(),
         "explicit global scope should override default"
     );
-    let ws = mgr.workstream.search("founded", 5).unwrap();
-    assert!(
-        ws.is_empty(),
-        "should not be in workstream when global specified"
-    );
+    let ws = mgr.lens.search("founded", 5).unwrap();
+    assert!(ws.is_empty(), "should not be in lens when global specified");
 }

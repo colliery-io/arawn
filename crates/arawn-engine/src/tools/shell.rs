@@ -10,14 +10,14 @@ use tracing::{debug, info, warn};
 use crate::background::{
     BackgroundTaskKind, BackgroundTaskManager, BackgroundTaskStatus, append_output,
 };
-use arawn_tool::{Tool, ToolError, ToolOutput};
 use crate::tools::safe_env::safe_env;
 use crate::tools::sensitive_paths::sensitive_deny_read_paths;
+use arawn_tool::{Tool, ToolError, ToolOutput};
 
 /// Execute a shell command within an OS-level sandbox.
 ///
 /// Uses `sandbox-exec` (macOS) or `bubblewrap` (Linux) to enforce:
-/// - Write access restricted to the session/workstream sandbox directory
+/// - Write access restricted to the session/lens sandbox directory
 /// - Sensitive paths denied for reading (~/.ssh, ~/.aws, credentials, etc.)
 /// - Network blocked by default, unless the command invokes a known network tool
 #[derive(Default)]
@@ -552,18 +552,18 @@ fn sandbox_unavailable_message(detail: &str) -> String {
 mod tests {
     use super::*;
     use crate::context::EngineToolContext;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use serde_json::json;
     use serial_test::serial;
     use uuid::Uuid;
 
     fn test_ctx() -> EngineToolContext {
-        let ws = Workstream::scratch("/tmp");
+        let ws = Lens::scratch("/tmp");
         EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
     fn test_ctx_in(dir: &std::path::Path) -> EngineToolContext {
-        let ws = Workstream::scratch(dir);
+        let ws = Lens::scratch(dir);
         EngineToolContext::new(&ws, Uuid::new_v4())
     }
 

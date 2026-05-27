@@ -11,9 +11,9 @@ use crate::error::StorageError;
 
 /// JSONL-based message persistence.
 ///
-/// Layout (under data_dir/workstreams/):
+/// Layout (under data_dir/lenses/):
 ///   scratch/<session-uuid>/messages.jsonl      — scratch sessions (each gets own workspace)
-///   <ws-name>/<session-uuid>/messages.jsonl    — named workstream sessions
+///   <ws-name>/<session-uuid>/messages.jsonl    — named lens sessions
 pub struct JsonlMessageStore {
     data_dir: PathBuf,
 }
@@ -29,10 +29,10 @@ impl JsonlMessageStore {
     pub async fn append(
         &self,
         session_id: Uuid,
-        workstream_dir: &str,
+        lens_dir: &str,
         msg: &Message,
     ) -> Result<(), StorageError> {
-        let path = self.session_path(session_id, workstream_dir);
+        let path = self.session_path(session_id, lens_dir);
 
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent).await?;
@@ -61,9 +61,9 @@ impl JsonlMessageStore {
     pub async fn load(
         &self,
         session_id: Uuid,
-        workstream_dir: &str,
+        lens_dir: &str,
     ) -> Result<Vec<Message>, StorageError> {
-        let path = self.session_path(session_id, workstream_dir);
+        let path = self.session_path(session_id, lens_dir);
 
         if !path.exists() {
             return Ok(Vec::new());
@@ -113,15 +113,15 @@ impl JsonlMessageStore {
     pub async fn truncate(
         &self,
         session_id: Uuid,
-        workstream_dir: &str,
+        lens_dir: &str,
         keep_count: usize,
     ) -> Result<(), StorageError> {
-        let path = self.session_path(session_id, workstream_dir);
+        let path = self.session_path(session_id, lens_dir);
         if !path.exists() {
             return Ok(());
         }
 
-        let messages = self.load(session_id, workstream_dir).await?;
+        let messages = self.load(session_id, lens_dir).await?;
         if keep_count >= messages.len() {
             return Ok(()); // Nothing to drop.
         }
@@ -152,7 +152,7 @@ impl JsonlMessageStore {
         Ok(())
     }
 
-    /// Move a session's JSONL file from one workstream directory to another.
+    /// Move a session's JSONL file from one lens directory to another.
     /// Used during session promotion.
     pub async fn move_session(
         &self,
@@ -177,41 +177,41 @@ impl JsonlMessageStore {
     }
 
     /// Resolve the filesystem path for a session's JSONL file.
-    /// Layout: workstreams/<ws-dir>/<session-uuid>/messages.jsonl
-    fn session_path(&self, session_id: Uuid, workstream_dir: &str) -> PathBuf {
+    /// Layout: lenses/<ws-dir>/<session-uuid>/messages.jsonl
+    fn session_path(&self, session_id: Uuid, lens_dir: &str) -> PathBuf {
         self.data_dir
-            .join("workstreams")
-            .join(workstream_dir)
+            .join("lenses")
+            .join(lens_dir)
             .join(session_id.to_string())
             .join("messages.jsonl")
     }
 
     /// Get the path for a session (exposed for testing/debugging).
-    pub fn path_for(&self, session_id: Uuid, workstream_dir: &str) -> PathBuf {
-        self.session_path(session_id, workstream_dir)
+    pub fn path_for(&self, session_id: Uuid, lens_dir: &str) -> PathBuf {
+        self.session_path(session_id, lens_dir)
     }
 
     /// Resolve the sandbox root for a session.
-    /// Scratch: workstreams/scratch/<session-uuid>/
-    /// Named:  workstreams/<ws-name>/
+    /// Scratch: lenses/scratch/<session-uuid>/
+    /// Named:  lenses/<ws-name>/
     ///
     /// The `workspace/` subdirectory within this root is a convention for
-    /// agent-created artifacts, but the entire session/workstream folder
+    /// agent-created artifacts, but the entire session/lens folder
     /// is the sandbox boundary.
-    pub fn sandbox_dir(&self, workstream_dir: &str, session_id: Uuid, is_scratch: bool) -> PathBuf {
+    pub fn sandbox_dir(&self, lens_dir: &str, session_id: Uuid, is_scratch: bool) -> PathBuf {
         if is_scratch {
             self.data_dir
-                .join("workstreams")
-                .join(workstream_dir)
+                .join("lenses")
+                .join(lens_dir)
                 .join(session_id.to_string())
         } else {
-            self.data_dir.join("workstreams").join(workstream_dir)
+            self.data_dir.join("lenses").join(lens_dir)
         }
     }
 }
 
-/// Resolve a workstream directory name: use name if non-empty, fall back to UUID.
-pub fn workstream_dir_name(name: &str, id: Uuid) -> String {
+/// Resolve a lens directory name: use name if non-empty, fall back to UUID.
+pub fn lens_dir_name(name: &str, id: Uuid) -> String {
     if name.is_empty() {
         id.to_string()
     } else {
@@ -329,7 +329,7 @@ mod tests {
         assert_eq!(loaded.len(), 1);
 
         let path = store.path_for(session_id, "scratch");
-        assert!(path.to_string_lossy().contains("workstreams/scratch"));
+        assert!(path.to_string_lossy().contains("lenses/scratch"));
         assert!(path.to_string_lossy().contains("messages.jsonl"));
     }
 
@@ -353,7 +353,7 @@ mod tests {
         let scratch_path = store.path_for(session_id, "scratch");
         assert!(scratch_path.exists());
 
-        // Move to named workstream
+        // Move to named lens
         store
             .move_session(session_id, "scratch", "my-project")
             .await
@@ -426,10 +426,7 @@ mod tests {
         let store = JsonlMessageStore::new("/data");
         let sid = Uuid::nil();
         let dir = store.sandbox_dir("scratch", sid, true);
-        assert_eq!(
-            dir,
-            PathBuf::from(format!("/data/workstreams/scratch/{sid}"))
-        );
+        assert_eq!(dir, PathBuf::from(format!("/data/lenses/scratch/{sid}")));
     }
 
     #[test]
@@ -437,20 +434,20 @@ mod tests {
         let store = JsonlMessageStore::new("/data");
         let sid = Uuid::nil();
         let dir = store.sandbox_dir("my-project", sid, false);
-        assert_eq!(dir, PathBuf::from("/data/workstreams/my-project"));
+        assert_eq!(dir, PathBuf::from("/data/lenses/my-project"));
     }
 
     #[test]
-    fn workstream_dir_name_prefers_name() {
+    fn lens_dir_name_prefers_name() {
         let id = Uuid::nil();
-        assert_eq!(workstream_dir_name("scratch", id), "scratch");
-        assert_eq!(workstream_dir_name("my-project", id), "my-project");
+        assert_eq!(lens_dir_name("scratch", id), "scratch");
+        assert_eq!(lens_dir_name("my-project", id), "my-project");
     }
 
     #[test]
-    fn workstream_dir_name_falls_back_to_uuid() {
+    fn lens_dir_name_falls_back_to_uuid() {
         let id = Uuid::nil();
-        assert_eq!(workstream_dir_name("", id), id.to_string());
+        assert_eq!(lens_dir_name("", id), id.to_string());
     }
 
     #[tokio::test]

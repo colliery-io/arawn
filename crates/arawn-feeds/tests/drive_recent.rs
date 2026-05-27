@@ -9,9 +9,9 @@ use serde_json::{Value, json};
 
 use arawn_feeds::templates::drive::RecentTemplate;
 use arawn_feeds::{
-    AtlassianFeedClient, GithubFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, DriveFile, FeedClients,
-    FeedError, FeedMeta, FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx,
-    TemplateParams,
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, DriveFile, FeedClients,
+    FeedError, FeedMeta, FeedTemplate, GithubFeedClient, GmailFeedClient, MetaStore,
+    SlackFeedClient, TemplateCtx, TemplateParams,
 };
 
 #[derive(Default)]

@@ -3,18 +3,18 @@
 //! Fixtures live as JSON under `tests/fixtures/uat/<scenario>.json`.
 //! The schema is intentionally close to the on-disk shape of a
 //! projection row so a future "real-feed dump" CLI can emit the same
-//! format. Today we hand-author for two workstreams + gmail/slack;
+//! format. Today we hand-author for two lenses + gmail/slack;
 //! drive/jira/confluence/calendar are additive variants.
 //!
 //! Loader responsibilities:
 //!
 //! 1. Open `Store` + `ProjectionStore` rooted at `data_dir`.
-//! 2. Ensure each declared workstream exists in arawn-storage.
+//! 2. Ensure each declared lens exists in arawn-storage.
 //! 3. Write projection rows in feed-type batches via the typed
 //!    `Projection` writers (so each table's schema is materialized
 //!    exactly as the real feed runtime would).
-//! 4. Optionally drive `ExtractorRunner::run_for_workstream_until_exhausted`
-//!    synchronously per workstream so the KB is populated by the time
+//! 4. Optionally drive `ExtractorRunner::run_for_lens_until_exhausted`
+//!    synchronously per lens so the KB is populated by the time
 //!    the agent starts.
 //!
 //! The harness uses this before `start_server` so the agent sees a
@@ -29,7 +29,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use arawn_core::{IdentityProfile, Workstream};
+use arawn_core::{IdentityProfile, Lens};
 use arawn_extractor::{CotChain, ExtractionChain, ExtractorRunner};
 use arawn_llm::LlmClient;
 use arawn_memory::{AddedVia, MemoryManager, TagOntologyStore};
@@ -44,21 +44,21 @@ use arawn_storage::Store;
 /// Top-level fixture file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Fixture {
-    pub workstreams: Vec<WorkstreamFixture>,
+    pub lenses: Vec<LensFixture>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WorkstreamFixture {
+pub struct LensFixture {
     pub name: String,
     pub description: String,
-    /// Per ADR-0004 a workstream's tag ontology must exist before
+    /// Per ADR-0004 a lens's tag ontology must exist before
     /// extraction can populate `tags_ontology` on entities. Required at
     /// fixture-apply time; if a fixture predates this field, fall back
     /// to an empty list and the extractor will run with
     /// discovered-only tags.
     #[serde(default)]
     pub tags_ontology: Vec<String>,
-    /// I-0035 / T-0332: which engine prompt persona this workstream
+    /// I-0035 / T-0332: which engine prompt persona this lens
     /// loads. Optional — defaults to `IdentityProfile::Assistant`
     /// (which is also the storage-side default). Set to "coding" for
     /// fixtures that exercise the engineering persona.
@@ -121,7 +121,7 @@ pub struct GmailFixtureRow {
     #[serde(default)]
     pub labels: Vec<String>,
     /// Feed id this row pretends to come from. Defaults to a stable
-    /// synthetic id derived from the workstream name when omitted.
+    /// synthetic id derived from the lens name when omitted.
     #[serde(default)]
     pub feed_id: Option<String>,
 }
@@ -247,17 +247,17 @@ pub fn resolve_time_placeholders(raw: &str, now: DateTime<Utc>) -> String {
     out
 }
 
-/// Apply a fixture against `data_dir`. Materializes workstreams + writes
+/// Apply a fixture against `data_dir`. Materializes lenses + writes
 /// projection rows. Returns the projection store + the set of feed types
-/// touched per workstream so the caller can drive extraction.
+/// touched per lens so the caller can drive extraction.
 pub struct Applied {
     pub store: Arc<std::sync::Mutex<Store>>,
     pub projections: Arc<ProjectionStore>,
-    pub per_workstream: Vec<AppliedWorkstream>,
+    pub per_lens: Vec<AppliedLens>,
 }
 
-pub struct AppliedWorkstream {
-    pub workstream: Workstream,
+pub struct AppliedLens {
+    pub lens: Lens,
     /// Distinct feed types that received rows, in deterministic order.
     pub feed_types: Vec<String>,
 }
@@ -265,29 +265,29 @@ pub struct AppliedWorkstream {
 pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
     let store = Store::open(data_dir).map_err(|e| format!("open store: {e}"))?;
     store
-        .ensure_scratch_workstream()
+        .ensure_scratch_lens()
         .map_err(|e| format!("ensure scratch: {e}"))?;
 
     let projections = ProjectionStore::open(&data_dir.join("projections.db"))
         .map_err(|e| format!("open projections: {e}"))?;
 
-    let mut applied = Vec::with_capacity(fixture.workstreams.len());
+    let mut applied = Vec::with_capacity(fixture.lenses.len());
 
-    for ws_def in &fixture.workstreams {
-        let ws_dir = data_dir.join("workstreams").join(&ws_def.name);
-        let mut ws = Workstream::new(&ws_def.name, ws_dir);
+    for ws_def in &fixture.lenses {
+        let ws_dir = data_dir.join("lenses").join(&ws_def.name);
+        let mut ws = Lens::new(&ws_def.name, ws_dir);
         ws.description = ws_def.description.clone();
         ws.identity_profile = ws_def
             .identity_profile
             .as_deref()
             .and_then(|s| s.parse::<IdentityProfile>().ok())
             .unwrap_or_default();
-        // ensure_scratch already created "scratch"; create_workstream
+        // ensure_scratch already created "scratch"; create_lens
         // is idempotent in the sense that the test-side store is fresh.
-        let _ = store.create_workstream(&ws);
-        // Re-read so we have the canonical workstream record.
+        let _ = store.create_lens(&ws);
+        // Re-read so we have the canonical lens record.
         let canonical = store
-            .find_workstream_by_name(&ws_def.name)
+            .find_lens_by_name(&ws_def.name)
             .map_err(|e| format!("find ws `{}`: {e}", ws_def.name))?
             .unwrap_or(ws);
 
@@ -390,8 +390,8 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
             feed_types.push("filesystem_signals".to_string());
         }
 
-        applied.push(AppliedWorkstream {
-            workstream: canonical,
+        applied.push(AppliedLens {
+            lens: canonical,
             feed_types,
         });
     }
@@ -399,18 +399,18 @@ pub fn apply(fixture: &Fixture, data_dir: &Path) -> Result<Applied, String> {
     Ok(Applied {
         store: Arc::new(std::sync::Mutex::new(store)),
         projections: Arc::new(projections),
-        per_workstream: applied,
+        per_lens: applied,
     })
 }
 
-fn synthetic_feed_id(workstream: &str, override_: &Option<String>) -> String {
+fn synthetic_feed_id(lens: &str, override_: &Option<String>) -> String {
     override_
         .clone()
-        .unwrap_or_else(|| format!("fixture-{workstream}-gmail"))
+        .unwrap_or_else(|| format!("fixture-{lens}-gmail"))
 }
 
-fn gmail_to_projection(workstream: &str, row: &GmailFixtureRow) -> GmailMessageProjection {
-    let feed_id = synthetic_feed_id(workstream, &row.feed_id);
+fn gmail_to_projection(lens: &str, row: &GmailFixtureRow) -> GmailMessageProjection {
+    let feed_id = synthetic_feed_id(lens, &row.feed_id);
     GmailMessageProjection {
         id: arawn_projections::gmail::projection_id(&feed_id, &row.source_id),
         feed_id,
@@ -425,11 +425,11 @@ fn gmail_to_projection(workstream: &str, row: &GmailFixtureRow) -> GmailMessageP
     }
 }
 
-fn calendar_to_projection(workstream: &str, row: &CalendarFixtureRow) -> CalendarEventProjection {
+fn calendar_to_projection(lens: &str, row: &CalendarFixtureRow) -> CalendarEventProjection {
     let feed_id = row
         .feed_id
         .clone()
-        .unwrap_or_else(|| format!("fixture-{workstream}-calendar"));
+        .unwrap_or_else(|| format!("fixture-{lens}-calendar"));
     CalendarEventProjection {
         id: arawn_projections::calendar::projection_id(&feed_id, &row.source_id),
         feed_id,
@@ -449,11 +449,11 @@ fn calendar_to_projection(workstream: &str, row: &CalendarFixtureRow) -> Calenda
     }
 }
 
-fn jira_issue_to_projection(workstream: &str, row: &JiraIssueFixtureRow) -> JiraIssueProjection {
+fn jira_issue_to_projection(lens: &str, row: &JiraIssueFixtureRow) -> JiraIssueProjection {
     let feed_id = row
         .feed_id
         .clone()
-        .unwrap_or_else(|| format!("fixture-{workstream}-jira"));
+        .unwrap_or_else(|| format!("fixture-{lens}-jira"));
     JiraIssueProjection {
         id: format!("{feed_id}::{}", row.source_id),
         feed_id,
@@ -470,14 +470,11 @@ fn jira_issue_to_projection(workstream: &str, row: &JiraIssueFixtureRow) -> Jira
     }
 }
 
-fn jira_comment_to_projection(
-    workstream: &str,
-    row: &JiraCommentFixtureRow,
-) -> JiraCommentProjection {
+fn jira_comment_to_projection(lens: &str, row: &JiraCommentFixtureRow) -> JiraCommentProjection {
     let feed_id = row
         .feed_id
         .clone()
-        .unwrap_or_else(|| format!("fixture-{workstream}-jira"));
+        .unwrap_or_else(|| format!("fixture-{lens}-jira"));
     JiraCommentProjection {
         id: format!("{feed_id}::{}", row.source_id),
         feed_id,
@@ -489,14 +486,11 @@ fn jira_comment_to_projection(
     }
 }
 
-fn filesystem_to_projection(
-    workstream: &str,
-    row: &FilesystemFixtureRow,
-) -> FilesystemSignalProjection {
+fn filesystem_to_projection(lens: &str, row: &FilesystemFixtureRow) -> FilesystemSignalProjection {
     let feed_id = row
         .feed_id
         .clone()
-        .unwrap_or_else(|| format!("fixture-{workstream}-filesystem"));
+        .unwrap_or_else(|| format!("fixture-{lens}-filesystem"));
     let name = std::path::Path::new(&row.rel_path)
         .file_name()
         .and_then(|s| s.to_str())
@@ -512,19 +506,19 @@ fn filesystem_to_projection(
         event: row.event.clone(),
         // Synthetic absolute path under a notional watched root; the
         // fixture supplies body_text directly so we never read disk.
-        path: format!("/fixture/{workstream}/{}", row.rel_path),
-        source: format!("/fixture/{workstream}"),
+        path: format!("/fixture/{lens}/{}", row.rel_path),
+        source: format!("/fixture/{lens}"),
         size_bytes: Some(row.body_text.len() as u64),
         mtime: Some(row.source_ts.timestamp()),
         body_text: row.body_text.clone(),
     }
 }
 
-fn slack_to_projection(workstream: &str, row: &SlackFixtureRow) -> SlackMessageProjection {
+fn slack_to_projection(lens: &str, row: &SlackFixtureRow) -> SlackMessageProjection {
     let feed_id = row
         .feed_id
         .clone()
-        .unwrap_or_else(|| format!("fixture-{workstream}-slack"));
+        .unwrap_or_else(|| format!("fixture-{lens}-slack"));
     SlackMessageProjection {
         id: format!("{feed_id}::{}", row.source_id),
         feed_id,
@@ -570,8 +564,8 @@ pub fn build_seed_llm_client(
     Ok(Arc::new(client))
 }
 
-/// Drive `ExtractorRunner::run_for_workstream_until_exhausted` for each
-/// (workstream, feed_type) so the KB is populated by the time the
+/// Drive `ExtractorRunner::run_for_lens_until_exhausted` for each
+/// (lens, feed_type) so the KB is populated by the time the
 /// server boots. Uses the supplied LLM client + model.
 pub async fn drive_extraction(
     applied: &Applied,
@@ -583,7 +577,7 @@ pub async fn drive_extraction(
     let chain: Arc<dyn ExtractionChain> = Arc::new(CotChain::new(client, model));
     let data_dir = data_dir.to_path_buf();
     let memory: arawn_extractor::runner::MemoryResolver = Arc::new(move |name: &str| {
-        MemoryManager::for_workstream(&data_dir, name, None)
+        MemoryManager::for_lens(&data_dir, name, None)
             .map(Arc::new)
             .map_err(|e| arawn_extractor::ExtractionError::Memory(e.to_string()))
     });
@@ -595,25 +589,25 @@ pub async fn drive_extraction(
     );
 
     let mut total = 0usize;
-    for aw in &applied.per_workstream {
+    for aw in &applied.per_lens {
         for ft in &aw.feed_types {
             let stats = runner
-                .run_for_workstream_until_exhausted(&aw.workstream, ft, cap)
+                .run_for_lens_until_exhausted(&aw.lens, ft, cap)
                 .await
-                .map_err(|e| format!("extract `{}` / `{}`: {e}", aw.workstream.name, ft))?;
+                .map_err(|e| format!("extract `{}` / `{}`: {e}", aw.lens.name, ft))?;
             total += stats.processed;
         }
     }
     Ok(total)
 }
 
-/// Drive the `tag-promoter` steward subroutine across every workstream
+/// Drive the `tag-promoter` steward subroutine across every lens
 /// after seeding. Pure-stats (no LLM call) — counts `tags_discovered`
 /// frequencies and journals promotion proposals. Run this AFTER
 /// `drive_extraction` so the discovered set is populated.
 ///
 /// Returns the total number of promotion proposals written across all
-/// workstreams. Cap per workstream is generous (50) since this is for
+/// lenses. Cap per lens is generous (50) since this is for
 /// UAT scenarios — production caps live in `arawn.toml`.
 pub async fn drive_tag_promoter(applied: &Applied, data_dir: &Path) -> Result<usize, String> {
     use arawn_steward::journal::JournalGate;
@@ -624,25 +618,25 @@ pub async fn drive_tag_promoter(applied: &Applied, data_dir: &Path) -> Result<us
     // LLM-nondeterminism in seed extraction means recurring discovered
     // tags often land at count=2 within a single fixture, not 3+.
     // UAT 23:48 showed every discovered tag landing at count 2; this
-    // matches what real workstreams look like after one extraction
+    // matches what real lenses look like after one extraction
     // pass and gives the scenario actual proposals to operate on.
     let sub = TagPromoterSubroutine::new(TagPromoterConfig {
         min_count: 2,
         ..TagPromoterConfig::default()
     });
     let mut total = 0usize;
-    for aw in &applied.per_workstream {
-        let mgr = MemoryManager::for_workstream(data_dir, &aw.workstream.name, None)
+    for aw in &applied.per_lens {
+        let mgr = MemoryManager::for_lens(data_dir, &aw.lens.name, None)
             .map(Arc::new)
-            .map_err(|e| format!("open kb `{}`: {e}", aw.workstream.name))?;
+            .map_err(|e| format!("open kb `{}`: {e}", aw.lens.name))?;
         let journal = Arc::new(
-            Journal::open(data_dir, &aw.workstream.name)
-                .map_err(|e| format!("open journal `{}`: {e}", aw.workstream.name))?,
+            Journal::open(data_dir, &aw.lens.name)
+                .map_err(|e| format!("open journal `{}`: {e}", aw.lens.name))?,
         );
         // proposal-only — gate accepts only applied=false writes
         let gate = Arc::new(JournalGate::new(Arc::clone(&journal), false));
         let ctx = SubroutineCtx {
-            workstream: aw.workstream.clone(),
+            lens: aw.lens.clone(),
             memory: mgr,
             journal: gate,
             cap: 50,
@@ -650,7 +644,7 @@ pub async fn drive_tag_promoter(applied: &Applied, data_dir: &Path) -> Result<us
         let outcome = sub
             .run(&ctx)
             .await
-            .map_err(|e| format!("tag-promoter `{}`: {e}", aw.workstream.name))?;
+            .map_err(|e| format!("tag-promoter `{}`: {e}", aw.lens.name))?;
         total += outcome.proposals_recorded;
     }
     Ok(total)
@@ -666,7 +660,7 @@ mod tests {
 
     fn sample_fixture() -> Fixture {
         Fixture {
-            workstreams: vec![WorkstreamFixture {
+            lenses: vec![LensFixture {
                 name: "work".into(),
                 description: "Pat's day job".into(),
                 tags_ontology: vec!["postgres".into(), "ledger".into()],
@@ -716,25 +710,25 @@ mod tests {
         let f = sample_fixture();
         let raw = serde_json::to_string(&f).unwrap();
         let back: Fixture = serde_json::from_str(&raw).unwrap();
-        assert_eq!(back.workstreams.len(), 1);
-        assert_eq!(back.workstreams[0].rows.len(), 2);
+        assert_eq!(back.lenses.len(), 1);
+        assert_eq!(back.lenses[0].rows.len(), 2);
     }
 
     #[test]
-    fn apply_creates_workstream_and_writes_rows() {
+    fn apply_creates_lens_and_writes_rows() {
         let tmp = tempfile::tempdir().unwrap();
         let applied = apply(&sample_fixture(), tmp.path()).unwrap();
-        assert_eq!(applied.per_workstream.len(), 1);
-        assert_eq!(applied.per_workstream[0].workstream.name, "work");
+        assert_eq!(applied.per_lens.len(), 1);
+        assert_eq!(applied.per_lens[0].lens.name, "work");
         // Both gmail + slack should be recorded.
         assert!(
-            applied.per_workstream[0]
+            applied.per_lens[0]
                 .feed_types
                 .iter()
                 .any(|s| s == "gmail_messages")
         );
         assert!(
-            applied.per_workstream[0]
+            applied.per_lens[0]
                 .feed_types
                 .iter()
                 .any(|s| s == "slack_messages")
@@ -751,6 +745,6 @@ mod tests {
         )
         .unwrap();
         let f = load(&path).unwrap();
-        assert_eq!(f.workstreams.len(), 1);
+        assert_eq!(f.lenses.len(), 1);
     }
 }

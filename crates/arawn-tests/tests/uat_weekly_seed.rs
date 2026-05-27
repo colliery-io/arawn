@@ -46,7 +46,7 @@ pub fn apply(data_dir: &Path) -> Result<WeeklySeedSummary, String> {
     let prior_weekly_generated = (now - Duration::days(7)).to_rfc3339();
     conn.execute(
         "INSERT OR IGNORE INTO ceremony_tablets \
-         (id, kind, period_key, generated_at, status, workstreams_scanned) \
+         (id, kind, period_key, generated_at, status, lenses_scanned) \
          VALUES (?1, 'weekly', ?2, ?3, 'reviewed', '[\"proj-a\",\"proj-b\",\"proj-c\"]')",
         params![&prior_weekly_id, &prior_iso, &prior_weekly_generated],
     )
@@ -82,7 +82,7 @@ pub fn apply(data_dir: &Path) -> Result<WeeklySeedSummary, String> {
     let retro_generated = (now - Duration::days(14)).to_rfc3339();
     conn.execute(
         "INSERT OR IGNORE INTO ceremony_tablets \
-         (id, kind, period_key, generated_at, status, workstreams_scanned) \
+         (id, kind, period_key, generated_at, status, lenses_scanned) \
          VALUES (?1, 'retro', ?2, ?3, 'reviewed', '[\"proj-a\",\"proj-b\",\"proj-c\"]')",
         params![&retro_tablet_id, &retro_iso, &retro_generated],
     )
@@ -103,7 +103,7 @@ pub fn apply(data_dir: &Path) -> Result<WeeklySeedSummary, String> {
 
     let patterns = [
         ("pat-weekly-001", "rollover_heat", 0.82_f64),
-        ("pat-weekly-002", "workstream_neglect", 0.66_f64),
+        ("pat-weekly-002", "lens_neglect", 0.66_f64),
     ];
     for (id, key, mag) in patterns {
         conn.execute(
@@ -138,7 +138,7 @@ pub fn apply(data_dir: &Path) -> Result<WeeklySeedSummary, String> {
     for (id, body) in todos {
         conn.execute(
             "INSERT OR IGNORE INTO todos \
-             (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+             (id, body, rationale, kind, lens, created_at, due_at, done_at, archived_at, attrs) \
              VALUES (?1, ?2, NULL, 'rollover', NULL, ?3, NULL, NULL, NULL, \
                      json_object('origin_tablet_id', ?4, 'last_seen_tablet_id', ?4))",
             params![id, body, &created_old, &prior_weekly_id],

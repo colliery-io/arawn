@@ -176,12 +176,12 @@ impl Tool for TaskGetTool {
 mod tests {
     use super::*;
     use crate::background::BackgroundTaskKind;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
 
     fn ctx() -> crate::context::EngineToolContext {
-        let ws = Workstream::scratch("/tmp/test");
+        let ws = Lens::scratch("/tmp/test");
         crate::context::EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
@@ -214,7 +214,10 @@ mod tests {
         let mgr = Arc::new(BackgroundTaskManager::new());
         let running = spawn_task(&mgr, "still going");
         let done = spawn_task(&mgr, "all done");
-        mgr.complete(&done, BackgroundTaskStatus::Completed { exit_code: Some(0) });
+        mgr.complete(
+            &done,
+            BackgroundTaskStatus::Completed { exit_code: Some(0) },
+        );
         let failed = spawn_task(&mgr, "blew up");
         mgr.complete(
             &failed,
@@ -239,10 +242,7 @@ mod tests {
         let mgr = Arc::new(BackgroundTaskManager::new());
         let id = spawn_task(&mgr, "alive");
         let tool = TaskGetTool::new(mgr);
-        let result = tool
-            .execute(&ctx(), json!({"task_id": id}))
-            .await
-            .unwrap();
+        let result = tool.execute(&ctx(), json!({"task_id": id})).await.unwrap();
         assert!(!result.is_error);
         assert!(result.content.contains("running"));
     }

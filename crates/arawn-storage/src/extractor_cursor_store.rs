@@ -1,6 +1,6 @@
-//! Per-workstream extractor cursors (I-0040 phase 4).
+//! Per-lens extractor cursors (I-0040 phase 4).
 //!
-//! One row per (workstream_name, feed_type). The extractor reads
+//! One row per (lens_name, feed_type). The extractor reads
 //! `last_source_ts` to skip already-processed projection rows on the
 //! next run and `advance` it monotonically as it makes progress.
 
@@ -16,7 +16,7 @@ pub struct ExtractorCursorStore<'a> {
 
 #[derive(Debug, Clone)]
 pub struct ExtractorCursor {
-    pub workstream_name: String,
+    pub lens_name: String,
     pub feed_type: String,
     pub last_source_ts: Option<DateTime<Utc>>,
     pub last_processed_at: DateTime<Utc>,
@@ -27,22 +27,22 @@ impl<'a> ExtractorCursorStore<'a> {
         Self { db }
     }
 
-    /// Read the current cursor for (workstream, feed_type). Returns
+    /// Read the current cursor for (lens, feed_type). Returns
     /// `None` when no row exists — the extractor treats this as
     /// "start from the beginning."
     pub fn get(
         &self,
-        workstream_name: &str,
+        lens_name: &str,
         feed_type: &str,
     ) -> Result<Option<ExtractorCursor>, StorageError> {
         let result = self
             .db
             .conn()
             .query_row(
-                "SELECT workstream_name, feed_type, last_source_ts, last_processed_at \
+                "SELECT lens_name, feed_type, last_source_ts, last_processed_at \
                  FROM extractor_cursors \
-                 WHERE workstream_name = ?1 AND feed_type = ?2",
-                [workstream_name, feed_type],
+                 WHERE lens_name = ?1 AND feed_type = ?2",
+                [lens_name, feed_type],
                 |row| {
                     let ws: String = row.get(0)?;
                     let ft: String = row.get(1)?;
@@ -61,7 +61,7 @@ impl<'a> ExtractorCursorStore<'a> {
                     Some(parse_dt(&last_str)?)
                 };
                 Ok(Some(ExtractorCursor {
-                    workstream_name: ws,
+                    lens_name: ws,
                     feed_type: ft,
                     last_source_ts,
                     last_processed_at: parse_dt(&proc_str)?,
@@ -70,11 +70,11 @@ impl<'a> ExtractorCursorStore<'a> {
         }
     }
 
-    /// Advance the cursor for (workstream, feed_type) to `new_source_ts`.
+    /// Advance the cursor for (lens, feed_type) to `new_source_ts`.
     /// Monotonic — refuses to move backwards. Upserts on first run.
     pub fn advance(
         &self,
-        workstream_name: &str,
+        lens_name: &str,
         feed_type: &str,
         new_source_ts: DateTime<Utc>,
     ) -> Result<(), StorageError> {
@@ -84,33 +84,30 @@ impl<'a> ExtractorCursorStore<'a> {
         // greater than the persisted one.
         self.db.conn().execute(
             "INSERT INTO extractor_cursors \
-                 (workstream_name, feed_type, last_source_ts, last_processed_at) \
+                 (lens_name, feed_type, last_source_ts, last_processed_at) \
              VALUES (?1, ?2, ?3, ?4) \
-             ON CONFLICT(workstream_name, feed_type) DO UPDATE SET \
+             ON CONFLICT(lens_name, feed_type) DO UPDATE SET \
                  last_source_ts = CASE \
                      WHEN excluded.last_source_ts > extractor_cursors.last_source_ts \
                      THEN excluded.last_source_ts \
                      ELSE extractor_cursors.last_source_ts \
                  END, \
                  last_processed_at = ?4",
-            (workstream_name, feed_type, &new_str, &now),
+            (lens_name, feed_type, &new_str, &now),
         )?;
         Ok(())
     }
 
-    /// List every cursor row for a workstream — used by
-    /// `/workstream show` and ops tooling.
-    pub fn list_for_workstream(
-        &self,
-        workstream_name: &str,
-    ) -> Result<Vec<ExtractorCursor>, StorageError> {
+    /// List every cursor row for a lens — used by
+    /// `/lens show` and ops tooling.
+    pub fn list_for_lens(&self, lens_name: &str) -> Result<Vec<ExtractorCursor>, StorageError> {
         let mut stmt = self.db.conn().prepare(
-            "SELECT workstream_name, feed_type, last_source_ts, last_processed_at \
+            "SELECT lens_name, feed_type, last_source_ts, last_processed_at \
              FROM extractor_cursors \
-             WHERE workstream_name = ?1 \
+             WHERE lens_name = ?1 \
              ORDER BY feed_type",
         )?;
-        let rows = stmt.query_map([workstream_name], |row| {
+        let rows = stmt.query_map([lens_name], |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
@@ -127,7 +124,7 @@ impl<'a> ExtractorCursorStore<'a> {
                 Some(parse_dt(&last_str)?)
             };
             out.push(ExtractorCursor {
-                workstream_name: ws,
+                lens_name: ws,
                 feed_type: ft,
                 last_source_ts,
                 last_processed_at: parse_dt(&proc_str)?,
@@ -188,7 +185,7 @@ mod tests {
     }
 
     #[test]
-    fn list_for_workstream_returns_all_feed_types() {
+    fn list_for_lens_returns_all_feed_types() {
         let db = db();
         let store = ExtractorCursorStore::new(&db);
         let t: DateTime<Utc> = "2026-05-01T10:00:00Z".parse::<DateTime<Utc>>().unwrap();
@@ -196,12 +193,12 @@ mod tests {
         store.advance("pat", "slack_messages", t).unwrap();
         store.advance("auth-migration", "jira_issues", t).unwrap();
 
-        let pats = store.list_for_workstream("pat").unwrap();
+        let pats = store.list_for_lens("pat").unwrap();
         assert_eq!(pats.len(), 2);
         assert!(pats.iter().any(|c| c.feed_type == "gmail_messages"));
         assert!(pats.iter().any(|c| c.feed_type == "slack_messages"));
 
-        let auth = store.list_for_workstream("auth-migration").unwrap();
+        let auth = store.list_for_lens("auth-migration").unwrap();
         assert_eq!(auth.len(), 1);
     }
 }

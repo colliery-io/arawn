@@ -3,9 +3,9 @@ use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 
+use super::SPINNER_FRAMES;
 use crate::app::App;
 use crate::theme;
-use super::SPINNER_FRAMES;
 
 pub(super) fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::layout::Rect) {
     let bar_style = Style::default()
@@ -33,13 +33,13 @@ pub(super) fn render_status_bar(app: &App, frame: &mut Frame, area: ratatui::lay
         spans.push(Span::styled(format_tokens(out), bar_style));
     }
 
-    // Workstream
+    // Lens
     spans.push(Span::styled(" │ ", dim));
     let ws_name = app
-        .current_workstream
+        .current_lens
         .as_ref()
         .map(|ws| ws.name.as_str())
-        .unwrap_or("no workstream");
+        .unwrap_or("no lens");
     spans.push(Span::styled(ws_name.to_string(), bar_style));
 
     // Permission mode (T-0347: renamed to /autonomy vocabulary —
@@ -116,4 +116,3 @@ pub(super) fn format_tokens(n: u64) -> String {
         n.to_string()
     }
 }
-

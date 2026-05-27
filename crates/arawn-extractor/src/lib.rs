@@ -1,10 +1,10 @@
-//! Per-workstream knowledge extractor — I-0040 phase 4.
+//! Per-lens knowledge extractor — I-0040 phase 4.
 //!
-//! Sits between feed-driven projections and per-workstream memory KBs.
+//! Sits between feed-driven projections and per-lens memory KBs.
 //! For each new projection row, the configured `ExtractionChain`
-//! decides whether the row is in scope for a workstream and, if so,
+//! decides whether the row is in scope for a lens and, if so,
 //! pulls typed entities + linked relations out of it. The runner
-//! advances a per-(workstream, feed_type) cursor so subsequent runs
+//! advances a per-(lens, feed_type) cursor so subsequent runs
 //! pick up only new rows.
 
 pub mod chain;

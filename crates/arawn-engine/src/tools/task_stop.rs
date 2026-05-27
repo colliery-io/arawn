@@ -86,12 +86,12 @@ impl Tool for TaskStopTool {
 mod tests {
     use super::*;
     use crate::background::BackgroundTaskKind;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use tokio_util::sync::CancellationToken;
     use uuid::Uuid;
 
     fn test_ctx() -> crate::context::EngineToolContext {
-        let ws = Workstream::scratch("/tmp/test");
+        let ws = Lens::scratch("/tmp/test");
         crate::context::EngineToolContext::new(&ws, Uuid::new_v4())
     }
 

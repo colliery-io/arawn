@@ -228,7 +228,7 @@ mod tests {
         // Nested subpath
         assert!(is_token_path(&tokens.join("subdir/file"), data_dir));
         // Sibling directories not token-pathed
-        assert!(!is_token_path(&data_dir.join("workstreams"), data_dir));
+        assert!(!is_token_path(&data_dir.join("lenses"), data_dir));
         assert!(!is_token_path(&data_dir.join("tokens-other"), data_dir));
         // Outside data_dir entirely
         assert!(!is_token_path(Path::new("/tmp/somewhere/else"), data_dir));

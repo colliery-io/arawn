@@ -448,7 +448,7 @@ mod tests {
         // Origin daily tablet so rolling todos have somewhere to
         // reference (foreign key on ceremony_todos_rolling).
         c.execute(
-            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
              VALUES (?1, 'daily', ?2, ?3, 'reviewed', '[]')",
             params!["daily-origin", "2026-05-10", "2026-05-10T07:00:00Z"],
         )
@@ -456,7 +456,7 @@ mod tests {
         // Post-V9: rolling todos live in `todos` (view exposes them
         // back as ceremony_todos_rolling for reads).
         c.execute(
-            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+            "INSERT INTO todos (id, body, rationale, kind, lens, created_at, \
                                 due_at, done_at, archived_at, attrs) \
              VALUES ('todo-1', 'Finish daily plugin', NULL, 'rollover', NULL, \
                      '2026-05-10T07:00:00Z', NULL, NULL, NULL, \
@@ -465,7 +465,7 @@ mod tests {
         )
         .unwrap();
         c.execute(
-            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+            "INSERT INTO todos (id, body, rationale, kind, lens, created_at, \
                                 due_at, done_at, archived_at, attrs) \
              VALUES ('todo-2', 'Write tests', NULL, 'rollover', NULL, \
                      '2026-05-11T07:00:00Z', NULL, NULL, NULL, \
@@ -475,13 +475,13 @@ mod tests {
         .unwrap();
         // Weekly tablet + confirmed priority for this iso_week.
         c.execute(
-            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
              VALUES (?1, 'weekly', ?2, ?3, 'reviewed', '[]')",
             params!["weekly-tablet", iso_week, "2026-05-11T07:00:00Z"],
         )
         .unwrap();
         c.execute(
-            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+            "INSERT INTO todos (id, body, rationale, kind, lens, created_at, \
                                 due_at, done_at, archived_at, attrs) \
              VALUES ('td-prio-1', 'Ship daily plugin', 'from last retro', 'weekly_priority', \
                      NULL, '2026-05-11T08:00:00Z', NULL, NULL, NULL, '{}')",
@@ -536,7 +536,7 @@ mod tests {
             source_id: "msg-42".into(),
             ts,
             summary: "Urgent reply requested".into(),
-            workstream: Some("proj-a".into()),
+            lens: Some("proj-a".into()),
         }]
     }
 

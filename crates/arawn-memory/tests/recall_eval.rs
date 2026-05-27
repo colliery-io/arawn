@@ -26,8 +26,8 @@
 //! | `edge_case_no_matches`                          | Empty-result honesty (no fabrication).      |
 //!
 //! Implicit cross-cutting coverage:
-//! - **Cross-workstream retrieval**: `build_query_corpus` includes queries
-//!   targeted at specific workstreams and at the global scope.
+//! - **Cross-lens retrieval**: `build_query_corpus` includes queries
+//!   targeted at specific lenses and at the global scope.
 //! - **Decision-vs-fact disambiguation**: queries differentiate
 //!   `EntityType::Decision` (rationale-bearing) from `EntityType::Fact`
 //!   (atomic claim) and assert the right kind ranks higher.
@@ -295,9 +295,7 @@ fn build_fixture_store() -> Arc<MemoryStore> {
     let notes = [
         (
             "Memory system uses two-tier architecture",
-            Some(
-                "Global KB for cross-workstream knowledge, workstream KB for project-specific facts.",
-            ),
+            Some("Global KB for cross-lens knowledge, lens KB for project-specific facts."),
         ),
         ("Compaction threshold is 85% of context window", None),
         ("Agent nesting limited to depth 3", None),
@@ -646,7 +644,7 @@ fn fts_recall_evaluation() {
 #[test]
 fn memory_stack_l1_coverage() {
     let (_store, manager) = build_fixture_manager();
-    let stack = MemoryStack::new(&manager, "test-workstream");
+    let stack = MemoryStack::new(&manager, "test-lens");
     let context = stack.wake_up(900);
 
     println!("\n======================================================================");
@@ -685,7 +683,7 @@ fn memory_stack_l1_coverage() {
 #[test]
 fn memory_stack_l2_topical_retrieval() {
     let (_store, manager) = build_fixture_manager();
-    let stack = MemoryStack::new(&manager, "test-workstream");
+    let stack = MemoryStack::new(&manager, "test-lens");
     let l1_titles = stack.l1_entity_titles();
 
     // Simulate user message about deployment

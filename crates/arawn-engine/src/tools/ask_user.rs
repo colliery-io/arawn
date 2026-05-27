@@ -144,12 +144,12 @@ impl Tool for AskUserTool {
 mod tests {
     use super::*;
     use crate::context::EngineToolContext;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use serde_json::json;
     use uuid::Uuid;
 
     fn test_ctx() -> EngineToolContext {
-        let ws = Workstream::scratch("/tmp/test");
+        let ws = Lens::scratch("/tmp/test");
         EngineToolContext::new(&ws, Uuid::new_v4())
     }
 

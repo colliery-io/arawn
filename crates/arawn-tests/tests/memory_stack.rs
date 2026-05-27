@@ -10,7 +10,7 @@ use tempfile::TempDir;
 
 fn setup() -> (TempDir, MemoryManager) {
     let tmp = TempDir::new().unwrap();
-    std::fs::create_dir_all(tmp.path().join("workstreams/test-ws")).unwrap();
+    std::fs::create_dir_all(tmp.path().join("lenses/test-ws")).unwrap();
     let mgr = MemoryManager::open(tmp.path(), "test-ws", None).unwrap();
     (tmp, mgr)
 }
@@ -41,7 +41,7 @@ fn wake_up_under_budget_with_many_entities() {
         } else {
             ConfidenceSource::Inferred
         };
-        mgr.workstream.insert_entity(&e).unwrap();
+        mgr.lens.insert_entity(&e).unwrap();
     }
 
     let stack = MemoryStack::new(&mgr, "test-ws");
@@ -60,15 +60,15 @@ fn l1_ranks_stated_highest() {
     // Insert inferred first (older), stated second (newer)
     let mut inferred = Entity::new(EntityType::Decision, "Use SQLite");
     inferred.confidence_source = ConfidenceSource::Inferred;
-    mgr.workstream.insert_entity(&inferred).unwrap();
+    mgr.lens.insert_entity(&inferred).unwrap();
 
     let mut stated = Entity::new(EntityType::Decision, "Use PostgreSQL");
     stated.confidence_source = ConfidenceSource::Stated;
-    mgr.workstream.insert_entity(&stated).unwrap();
+    mgr.lens.insert_entity(&stated).unwrap();
 
     let mut observed = Entity::new(EntityType::Decision, "Use Redis");
     observed.confidence_source = ConfidenceSource::Observed;
-    mgr.workstream.insert_entity(&observed).unwrap();
+    mgr.lens.insert_entity(&observed).unwrap();
 
     let stack = MemoryStack::new(&mgr, "test-ws");
     let output = stack.wake_up(900);
@@ -96,7 +96,7 @@ fn empty_kb_produces_l0_only() {
 fn tiny_budget_does_not_panic() {
     let (_tmp, mgr) = setup();
     for i in 0..10 {
-        mgr.workstream
+        mgr.lens
             .insert_entity(&Entity::new(EntityType::Fact, &format!("Fact {i}")))
             .unwrap();
     }
@@ -117,7 +117,7 @@ fn shortcodes_applied_in_l1_output() {
         let mut e = Entity::new(EntityType::Fact, "arawn-engine");
         e.content = Some("The arawn-engine crate handles query execution".into());
         e.confidence_source = ConfidenceSource::Stated;
-        mgr.workstream.insert_entity(&e).unwrap();
+        mgr.lens.insert_entity(&e).unwrap();
     }
 
     let stack = MemoryStack::new(&mgr, "test-ws");
@@ -158,13 +158,13 @@ fn shortcode_single_occurrence_unchanged() {
 fn l2_retrieves_by_keyword() {
     let (_tmp, mgr) = setup();
 
-    mgr.workstream
+    mgr.lens
         .insert_entity(
             &Entity::new(EntityType::Fact, "WebSocket protocol details")
                 .with_tags(vec!["websocket".into(), "networking".into()]),
         )
         .unwrap();
-    mgr.workstream
+    mgr.lens
         .insert_entity(&Entity::new(EntityType::Fact, "Unrelated fact"))
         .unwrap();
 
@@ -187,7 +187,7 @@ fn l2_deduplicates_against_l1() {
     let mut entity = Entity::new(EntityType::Fact, "Important system fact");
     entity.confidence_source = ConfidenceSource::Stated;
     entity.reinforcement_count = 5;
-    mgr.workstream.insert_entity(&entity).unwrap();
+    mgr.lens.insert_entity(&entity).unwrap();
 
     let stack = MemoryStack::new(&mgr, "test-ws");
     let l1_titles = stack.l1_entity_titles();
@@ -218,7 +218,7 @@ fn retrieve_topical_respects_budget() {
 
     // Insert many tagged entities
     for i in 0..20 {
-        mgr.workstream
+        mgr.lens
             .insert_entity(
                 &Entity::new(
                     EntityType::Fact,

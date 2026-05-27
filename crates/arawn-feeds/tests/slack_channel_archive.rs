@@ -17,9 +17,9 @@ use serde_json::{Value, json};
 
 use arawn_feeds::templates::slack::ChannelArchiveTemplate;
 use arawn_feeds::{
-    AtlassianFeedClient, GithubFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError,
-    FeedMeta, FeedTemplate, GmailFeedClient, MetaStore, SlackAuthInfo, SlackFeedClient,
-    SlackHistoryPage, TemplateCtx, TemplateParams,
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError,
+    FeedMeta, FeedTemplate, GithubFeedClient, GmailFeedClient, MetaStore, SlackAuthInfo,
+    SlackFeedClient, SlackHistoryPage, TemplateCtx, TemplateParams,
 };
 
 #[derive(Default)]

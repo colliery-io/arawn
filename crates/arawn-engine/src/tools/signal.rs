@@ -1,13 +1,13 @@
 //! `signal_search` / `signal_query` / `signal_timeline` — agent-facing
-//! read tools over a workstream KB. Phase 6 of I-0040.
+//! read tools over a lens KB. Phase 6 of I-0040.
 //!
-//! All three operate on the active workstream by default and route
-//! through `MemoryHandle` so a `SessionWorkstream` switch is reflected
-//! immediately. An explicit `workstream` arg routes to a named one when
+//! All three operate on the active lens by default and route
+//! through `MemoryHandle` so a `SessionLens` switch is reflected
+//! immediately. An explicit `lens` arg routes to a named one when
 //! the handle is `Routed`.
 //!
-//! Scoping: signal_* are workstream-tier only (Decision, Note, Fact in
-//! workstream scope, Convention, etc.). The global tier (Preference,
+//! Scoping: signal_* are lens-tier only (Decision, Note, Fact in
+//! lens scope, Convention, etc.). The global tier (Preference,
 //! Person) is reachable via the existing `memory_search` tool.
 
 use std::collections::HashMap;
@@ -22,8 +22,8 @@ use uuid::Uuid;
 use arawn_embed::Embedder;
 use arawn_memory::{Entity, EntityType, MemoryManager, MemoryStore};
 
+use crate::lens_router::{LensMemoryRouter, MemoryHandle};
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
-use crate::workstream_router::{MemoryHandle, WorkstreamMemoryRouter};
 
 /// RRF constant — same value `feed_search` uses.
 const RRF_K: f32 = 60.0;
@@ -32,20 +32,20 @@ fn rrf(rank: usize) -> f32 {
     1.0 / (RRF_K + rank as f32 + 1.0)
 }
 
-/// Resolve the manager for the active workstream, or the explicit
-/// `workstream` arg when provided. `Fixed` handles always return the
+/// Resolve the manager for the active lens, or the explicit
+/// `lens` arg when provided. `Fixed` handles always return the
 /// same manager regardless of the override (for test ergonomics).
 fn resolve_manager(
     handle: &MemoryHandle,
     explicit: Option<&str>,
-    router: Option<&Arc<WorkstreamMemoryRouter>>,
+    router: Option<&Arc<LensMemoryRouter>>,
 ) -> Result<Arc<MemoryManager>, ToolError> {
     if let Some(name) = explicit
         && let Some(r) = router
     {
         return r
-            .for_workstream(name)
-            .map_err(|e| ToolError::ExecutionFailed(format!("workstream `{name}`: {e}")));
+            .for_lens(name)
+            .map_err(|e| ToolError::ExecutionFailed(format!("lens `{name}`: {e}")));
     }
     handle
         .manager()
@@ -76,12 +76,12 @@ fn snippet(s: &str, cap: usize) -> String {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// signal_search — hybrid FTS5 + vector over the workstream KB
+// signal_search — hybrid FTS5 + vector over the lens KB
 // ─────────────────────────────────────────────────────────────────────────
 
 pub struct SignalSearchTool {
     memory: MemoryHandle,
-    router: Option<Arc<WorkstreamMemoryRouter>>,
+    router: Option<Arc<LensMemoryRouter>>,
     embedder: Option<Arc<dyn Embedder>>,
 }
 
@@ -107,7 +107,7 @@ impl Tool for SignalSearchTool {
     }
 
     fn description(&self) -> &str {
-        "Semantic + FTS5 search over the active workstream's curated knowledge \
+        "Semantic + FTS5 search over the active lens's curated knowledge \
          base. Returns **entities** (decisions, facts, notes, conventions) extracted \
          from feeds and ranked by hybrid similarity.\n\n\
          For \"what did we decide / agree / observe about X\" questions, this is the \
@@ -122,13 +122,13 @@ impl Tool for SignalSearchTool {
     }
 
     fn category(&self) -> ToolCategory {
-        // signal_* operate on per-workstream KBs, so they belong to
-        // the Workstream category — the query engine's filter scopes
+        // signal_* operate on per-lens KBs, so they belong to
+        // the Lens category — the query engine's filter scopes
         // tool exposure by category based on keywords in the user
         // message. Putting them in Memory caused the dust/refine/
         // signal_search chain to vanish from the tool list whenever
         // the user prompt didn't include "remember"/"recall"/etc.
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
@@ -136,9 +136,9 @@ impl Tool for SignalSearchTool {
             "type": "object",
             "properties": {
                 "query": { "type": "string", "description": "Free-text search query" },
-                "workstream": {
+                "lens": {
                     "type": "string",
-                    "description": "Override the active workstream; defaults to current"
+                    "description": "Override the active lens; defaults to current"
                 },
                 "limit": { "type": "integer", "description": "Max results (default 10, max 50)" }
             },
@@ -155,7 +155,7 @@ impl Tool for SignalSearchTool {
             .get("query")
             .and_then(|v| v.as_str())
             .ok_or_else(|| ToolError::ExecutionFailed("missing 'query'".into()))?;
-        let explicit = params.get("workstream").and_then(|v| v.as_str());
+        let explicit = params.get("lens").and_then(|v| v.as_str());
         let limit = params
             .get("limit")
             .and_then(|v| v.as_u64())
@@ -163,7 +163,7 @@ impl Tool for SignalSearchTool {
             .min(50) as usize;
 
         let mgr = resolve_manager(&self.memory, explicit, self.router.as_ref())?;
-        let store: &Arc<MemoryStore> = &mgr.workstream;
+        let store: &Arc<MemoryStore> = &mgr.lens;
 
         // FTS5 ranks
         let fts_hits = store
@@ -245,7 +245,7 @@ impl FusedHit {
 
 pub struct SignalQueryTool {
     memory: MemoryHandle,
-    router: Option<Arc<WorkstreamMemoryRouter>>,
+    router: Option<Arc<LensMemoryRouter>>,
 }
 
 impl SignalQueryTool {
@@ -266,7 +266,7 @@ impl Tool for SignalQueryTool {
     }
 
     fn description(&self) -> &str {
-        "Structured filter over the active workstream's KB. Use when you know \
+        "Structured filter over the active lens's KB. Use when you know \
          what *shape* of entity you want (e.g. all decisions tagged \
          stripe:migration since last month) rather than a free-text query. \
          Filters compose: every filter narrows the result set."
@@ -277,13 +277,13 @@ impl Tool for SignalQueryTool {
     }
 
     fn category(&self) -> ToolCategory {
-        // signal_* operate on per-workstream KBs, so they belong to
-        // the Workstream category — the query engine's filter scopes
+        // signal_* operate on per-lens KBs, so they belong to
+        // the Lens category — the query engine's filter scopes
         // tool exposure by category based on keywords in the user
         // message. Putting them in Memory caused the dust/refine/
         // signal_search chain to vanish from the tool list whenever
         // the user prompt didn't include "remember"/"recall"/etc.
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
@@ -305,7 +305,7 @@ impl Tool for SignalQueryTool {
                 },
                 "since": { "type": "string", "description": "RFC3339; updated_at >= since" },
                 "until": { "type": "string", "description": "RFC3339; updated_at <= until" },
-                "workstream": { "type": "string" },
+                "lens": { "type": "string" },
                 "limit": { "type": "integer", "description": "Max results (default 25, max 200)" }
             }
         })
@@ -343,7 +343,7 @@ impl Tool for SignalQueryTool {
             .and_then(|v| v.as_str())
             .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
             .map(|dt| dt.with_timezone(&Utc));
-        let explicit = params.get("workstream").and_then(|v| v.as_str());
+        let explicit = params.get("lens").and_then(|v| v.as_str());
         let limit = params
             .get("limit")
             .and_then(|v| v.as_u64())
@@ -351,7 +351,7 @@ impl Tool for SignalQueryTool {
             .min(200) as usize;
 
         let mgr = resolve_manager(&self.memory, explicit, self.router.as_ref())?;
-        let store = &mgr.workstream;
+        let store = &mgr.lens;
 
         // Candidate set: list_by_type when entity_type is specified,
         // otherwise list_all_ranked. We over-fetch since downstream
@@ -395,12 +395,12 @@ impl Tool for SignalQueryTool {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// signal_timeline — chronological slice across a workstream
+// signal_timeline — chronological slice across a lens
 // ─────────────────────────────────────────────────────────────────────────
 
 pub struct SignalTimelineTool {
     memory: MemoryHandle,
-    router: Option<Arc<WorkstreamMemoryRouter>>,
+    router: Option<Arc<LensMemoryRouter>>,
 }
 
 impl SignalTimelineTool {
@@ -421,9 +421,9 @@ impl Tool for SignalTimelineTool {
     }
 
     fn description(&self) -> &str {
-        "Chronological slice across a workstream's KB. Returns entities in \
+        "Chronological slice across a lens's KB. Returns entities in \
          created_at-descending order within an optional [since, until] window. \
-         Useful for `what happened in this workstream last week` summaries."
+         Useful for `what happened in this lens last week` summaries."
     }
 
     fn is_read_only(&self) -> bool {
@@ -431,13 +431,13 @@ impl Tool for SignalTimelineTool {
     }
 
     fn category(&self) -> ToolCategory {
-        // signal_* operate on per-workstream KBs, so they belong to
-        // the Workstream category — the query engine's filter scopes
+        // signal_* operate on per-lens KBs, so they belong to
+        // the Lens category — the query engine's filter scopes
         // tool exposure by category based on keywords in the user
         // message. Putting them in Memory caused the dust/refine/
         // signal_search chain to vanish from the tool list whenever
         // the user prompt didn't include "remember"/"recall"/etc.
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
@@ -446,7 +446,7 @@ impl Tool for SignalTimelineTool {
             "properties": {
                 "since": { "type": "string", "description": "RFC3339" },
                 "until": { "type": "string", "description": "RFC3339" },
-                "workstream": { "type": "string" },
+                "lens": { "type": "string" },
                 "limit": { "type": "integer", "description": "Max events (default 50, max 200)" }
             }
         })
@@ -467,7 +467,7 @@ impl Tool for SignalTimelineTool {
             .and_then(|v| v.as_str())
             .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
             .map(|dt| dt.with_timezone(&Utc));
-        let explicit = params.get("workstream").and_then(|v| v.as_str());
+        let explicit = params.get("lens").and_then(|v| v.as_str());
         let limit = params
             .get("limit")
             .and_then(|v| v.as_u64())
@@ -475,7 +475,7 @@ impl Tool for SignalTimelineTool {
             .min(200) as usize;
 
         let mgr = resolve_manager(&self.memory, explicit, self.router.as_ref())?;
-        let store = &mgr.workstream;
+        let store = &mgr.lens;
 
         // No native "list all ordered by created_at" — list_all_ranked
         // returns the active set, we sort by created_at here. Window
@@ -519,7 +519,7 @@ impl Tool for SignalTimelineTool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use arawn_memory::{ConfidenceSource, Entity, EntityType, MemoryManager};
     use tempfile::TempDir;
 
@@ -529,9 +529,9 @@ mod tests {
         crate::context::EngineToolContext,
     ) {
         let tmp = TempDir::new().unwrap();
-        std::fs::create_dir_all(tmp.path().join("workstreams/test-ws")).unwrap();
+        std::fs::create_dir_all(tmp.path().join("lenses/test-ws")).unwrap();
         let mgr = Arc::new(MemoryManager::open(tmp.path(), "test-ws", None).unwrap());
-        let ws = Workstream::scratch(tmp.path());
+        let ws = Lens::scratch(tmp.path());
         let ctx = crate::context::EngineToolContext::new(&ws, Uuid::new_v4());
         (tmp, mgr, ctx)
     }
@@ -539,7 +539,7 @@ mod tests {
     fn seed(mgr: &MemoryManager) {
         // signal_query defaults to filtering on tags_ontology (ADR-0004).
         // Tests seed ontology tags directly.
-        mgr.workstream
+        mgr.lens
             .insert_entity(
                 &Entity::new(EntityType::Decision, "use postgres for storage")
                     .with_content("chose postgres over mysql for jsonb support")
@@ -547,13 +547,13 @@ mod tests {
                     .with_confidence(ConfidenceSource::Stated),
             )
             .unwrap();
-        mgr.workstream
+        mgr.lens
             .insert_entity(
                 &Entity::new(EntityType::Convention, "PRs require two reviewers")
                     .with_tags_ontology(vec!["process".into()]),
             )
             .unwrap();
-        mgr.workstream
+        mgr.lens
             .insert_entity(
                 &Entity::new(EntityType::Note, "alice is on parental leave through june")
                     .with_tags_ontology(vec!["team".into()]),
@@ -665,24 +665,24 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn explicit_workstream_arg_routes_via_router() {
+    async fn explicit_lens_arg_routes_via_router() {
         let tmp = TempDir::new().unwrap();
-        let session = crate::tools::SessionWorkstream::scratch();
-        let router = Arc::new(WorkstreamMemoryRouter::new(
+        let session = crate::tools::SessionLens::scratch();
+        let router = Arc::new(LensMemoryRouter::new(
             tmp.path(),
             None,
             None,
             session.clone(),
         ));
-        // Seed "other" workstream
+        // Seed "other" lens
         {
-            let other = router.for_workstream("other").unwrap();
+            let other = router.for_lens("other").unwrap();
             other
-                .workstream
+                .lens
                 .insert_entity(&Entity::new(EntityType::Fact, "secret from other ws"))
                 .unwrap();
         }
-        let ws = Workstream::scratch(tmp.path());
+        let ws = Lens::scratch(tmp.path());
         let ctx = crate::context::EngineToolContext::new(&ws, Uuid::new_v4());
         let tool = SignalSearchTool::new(router, None);
 
@@ -696,7 +696,7 @@ mod tests {
 
         // Explicit override routes to "other".
         let r = tool
-            .execute(&ctx, json!({"query": "secret", "workstream": "other"}))
+            .execute(&ctx, json!({"query": "secret", "lens": "other"}))
             .await
             .unwrap();
         let v: Value = serde_json::from_str(&r.content).unwrap();

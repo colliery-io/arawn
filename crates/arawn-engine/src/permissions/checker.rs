@@ -258,10 +258,7 @@ impl PermissionChecker {
     /// Wire a hook runner. When set, the checker fires
     /// `PermissionRequest` before a modal prompt and `PermissionDenied`
     /// when a tool call is rejected. Both non-blocking.
-    pub fn with_hook_runner(
-        mut self,
-        runner: std::sync::Arc<crate::hooks::HookRunner>,
-    ) -> Self {
+    pub fn with_hook_runner(mut self, runner: std::sync::Arc<crate::hooks::HookRunner>) -> Self {
         self.hook_runner = Some(runner);
         self
     }
@@ -397,7 +394,8 @@ impl PermissionChecker {
             ),
             PermissionDecision::Denied => unreachable!("handled above"),
             PermissionDecision::Ask => {
-                self.fire_permission_request_hook(tool_name, tool_input).await;
+                self.fire_permission_request_hook(tool_name, tool_input)
+                    .await;
                 let prompted = self.prompt_user(tool_name, tool_input).await;
                 if prompted == PermissionDecision::Denied {
                     self.fire_permission_denied_hook(tool_name, tool_input, "user prompt")
@@ -413,7 +411,8 @@ impl PermissionChecker {
                 let reason = DecisionReason::ModeFallback { mode };
                 let final_decision = match fallback {
                     PermissionDecision::Ask => {
-                        self.fire_permission_request_hook(tool_name, tool_input).await;
+                        self.fire_permission_request_hook(tool_name, tool_input)
+                            .await;
                         let prompted = self.prompt_user(tool_name, tool_input).await;
                         if prompted == PermissionDecision::Denied {
                             self.fire_permission_denied_hook(
@@ -515,12 +514,7 @@ impl PermissionChecker {
 
     /// Fire the `PermissionDenied` hook when a tool call is rejected.
     /// Non-blocking; result is ignored.
-    async fn fire_permission_denied_hook(
-        &self,
-        tool_name: &str,
-        tool_input: &str,
-        reason: &str,
-    ) {
+    async fn fire_permission_denied_hook(&self, tool_name: &str, tool_input: &str, reason: &str) {
         if let Some(ref runner) = self.hook_runner {
             let parsed: serde_json::Value =
                 serde_json::from_str(tool_input).unwrap_or(serde_json::Value::Null);
@@ -617,7 +611,13 @@ mod tests {
             PermissionDecision::Allowed
         );
         // Not granted for session — next call should ask again
-        assert!(!checker.grants.lock().unwrap().is_granted_shape("Bash", &crate::approval::ArgShape("Bash:*".into())));
+        assert!(
+            !checker
+                .grants
+                .lock()
+                .unwrap()
+                .is_granted_shape("Bash", &crate::approval::ArgShape("Bash:*".into()))
+        );
     }
 
     #[tokio::test]
@@ -630,7 +630,13 @@ mod tests {
             PermissionDecision::Allowed
         );
         // Session grant recorded — subsequent calls skip prompting
-        assert!(checker.grants.lock().unwrap().is_granted_shape("Bash", &crate::approval::ArgShape("Bash:*".into())));
+        assert!(
+            checker
+                .grants
+                .lock()
+                .unwrap()
+                .is_granted_shape("Bash", &crate::approval::ArgShape("Bash:*".into()))
+        );
         assert_eq!(
             checker
                 .check("Bash", "cargo test", PermissionCategory::Shell)
@@ -777,7 +783,10 @@ mod tests {
         let rules = vec![PermissionRule::new(RuleKind::Deny, "Bash")];
         let checker = PermissionChecker::new(rules);
         // Manually grant — deny rule should still win
-        checker.grants.lock().unwrap().grant_shape("Bash".to_string(), crate::approval::ArgShape("Bash:*".into()));
+        checker.grants.lock().unwrap().grant_shape(
+            "Bash".to_string(),
+            crate::approval::ArgShape("Bash:*".into()),
+        );
         assert_eq!(
             checker
                 .check("Bash", "rm -rf /", PermissionCategory::Shell)
@@ -791,7 +800,10 @@ mod tests {
         // Allow rule + grant: grant should short-circuit
         let rules = vec![PermissionRule::new(RuleKind::Ask, "think")];
         let checker = PermissionChecker::new(rules);
-        checker.grants.lock().unwrap().grant_shape("think".to_string(), crate::approval::ArgShape("think:*".into()));
+        checker.grants.lock().unwrap().grant_shape(
+            "think".to_string(),
+            crate::approval::ArgShape("think:*".into()),
+        );
         assert_eq!(
             checker
                 .check("think", "", PermissionCategory::ReadOnly)
@@ -851,7 +863,10 @@ mod tests {
     async fn clear_grants_resets() {
         let rules = vec![PermissionRule::new(RuleKind::Deny, "Bash")];
         let checker = PermissionChecker::new(rules);
-        checker.grants.lock().unwrap().grant_shape("Bash".to_string(), crate::approval::ArgShape("Bash:*".into()));
+        checker.grants.lock().unwrap().grant_shape(
+            "Bash".to_string(),
+            crate::approval::ArgShape("Bash:*".into()),
+        );
         checker.clear_grants();
         assert_eq!(
             checker.check("Bash", "ls", PermissionCategory::Shell).await,

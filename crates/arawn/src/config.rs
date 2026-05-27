@@ -125,7 +125,7 @@ impl Default for CompactorConfig {
     }
 }
 
-/// Configuration for the per-workstream extractor (I-0040 phase 4).
+/// Configuration for the per-lens extractor (I-0040 phase 4).
 ///
 /// `llm` names an entry in the `[llm.<name>]` map. If `None` or empty,
 /// extraction falls through to the engine's LLM. This lets users wire
@@ -560,7 +560,7 @@ impl ArawnConfig {
         self.engine_llm()
     }
 
-    /// Resolve the LLM config for the per-workstream extractor.
+    /// Resolve the LLM config for the per-lens extractor.
     /// Falls back to engine's LLM if `[extraction]` is absent or names
     /// a missing entry.
     pub fn extraction_llm(&self) -> &LlmConfig {

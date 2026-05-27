@@ -47,4 +47,3 @@ pub(super) fn render_oauth_heartbeat(app: &App, frame: &mut Frame, area: ratatui
     ]);
     frame.render_widget(Paragraph::new(line), area);
 }
-

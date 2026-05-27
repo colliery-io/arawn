@@ -1,9 +1,6 @@
-
-
 use crate::command::AutocompleteState;
 
 use super::App;
-
 
 impl App {
     /// Update autocomplete suggestions based on current input buffer.

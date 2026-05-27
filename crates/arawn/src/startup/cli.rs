@@ -2,7 +2,6 @@
 //! and streams a single prompt's response. Used when the binary is run
 //! without `serve`/`tui` but with a prompt argument.
 
-
 use anyhow::Result;
 use uuid::Uuid;
 

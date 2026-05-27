@@ -2,8 +2,8 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 use tokio::process::Command;
 
-use arawn_tool::{Tool, ToolError, ToolOutput};
 use crate::tools::sensitive_paths::{is_sensitive_path, is_token_path};
+use arawn_tool::{Tool, ToolError, ToolOutput};
 
 /// Default cap on grep results when head_limit is unspecified.
 const DEFAULT_HEAD_LIMIT: usize = 250;
@@ -114,7 +114,7 @@ impl Tool for GrepTool {
 
         let path = params.get("path").and_then(|v| v.as_str()).unwrap_or(".");
 
-        // Validate path stays within workstream root and isn't sensitive
+        // Validate path stays within lens root and isn't sensitive
         if path != "." {
             let resolved = match ctx.validate_path(path) {
                 Ok(p) => p,
@@ -354,12 +354,12 @@ async fn run_grep_fallback(
 mod tests {
     use super::*;
     use crate::context::EngineToolContext;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use tempfile::TempDir;
     use uuid::Uuid;
 
     fn test_ctx(dir: &std::path::Path) -> EngineToolContext {
-        let ws = Workstream::new("test", dir);
+        let ws = Lens::new("test", dir);
         EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
@@ -532,7 +532,7 @@ mod tests {
 
         assert!(result.is_error, "traversal path should be rejected");
         assert!(
-            result.content.contains("escapes workstream root"),
+            result.content.contains("escapes lens root"),
             "expected traversal error, got: {}",
             result.content
         );
@@ -553,7 +553,7 @@ mod tests {
             result.is_error,
             "absolute path outside root should be rejected"
         );
-        assert!(result.content.contains("escapes workstream root"));
+        assert!(result.content.contains("escapes lens root"));
     }
 
     #[tokio::test]

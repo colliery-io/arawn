@@ -2,7 +2,7 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-┌ Workstreams ─────┐                                                    ┌ Today ───────────────────┐
+┌ Lenses ──────────┐                                                    ┌ Today ───────────────────┐
 │▸ scratch         │                                                    │Brief                     │
 │                  │                                                    │(no brief yet — run /day t│
 │                  │                                                    │                          │
@@ -31,4 +31,4 @@ expression: snap
 └──────────────────┘                                                    └──────────────────────────┘
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 > Type your message...
- no model │ no workstream Ready
+ no model │ no lens Ready

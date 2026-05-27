@@ -1,6 +1,6 @@
 {
   "$comment": "UAT fixture for ARAWN-I-0057 (local filesystem feed). Seeds the filesystem_signals projection with synthetic transcript files as if a `filesystem/folder` feed had scanned a notes folder. Distinctive named entities let the judge verify a feed_search round-trip surfaces content that exists ONLY in the transcripts. Absolute timestamps keep behavior stable across CI runs.",
-  "workstreams": [
+  "lenses": [
     {
       "name": "notes",
       "description": "Pat's local transcript drop — meeting notes exported to a watched folder and indexed by the filesystem/folder feed.",

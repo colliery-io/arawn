@@ -91,8 +91,7 @@ async fn allow_rule_permits_tool_call() {
 #[tokio::test]
 async fn bypass_mode_allows_all_tools() {
     // No explicit rules — BypassPermissions mode should auto-allow everything
-    let checker =
-        Arc::new(PermissionChecker::new(vec![]).with_mode(PermissionMode::Full));
+    let checker = Arc::new(PermissionChecker::new(vec![]).with_mode(PermissionMode::Full));
 
     let harness = TestHarness::builder()
         .with_tool(Box::new(ShellTool::default()))

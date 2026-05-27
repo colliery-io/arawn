@@ -1,8 +1,4 @@
-
-
-
 use super::{App, HistoryEntry};
-
 
 impl App {
     /// Append `text` to input history, skipping empty input and deduping

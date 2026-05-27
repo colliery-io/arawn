@@ -6,35 +6,35 @@ use serde_json::{Value, json};
 use arawn_storage::Store;
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
-use super::SessionWorkstream;
+use super::SessionLens;
 
-pub struct WorkstreamListTool {
+pub struct LensListTool {
     store: Arc<Mutex<Store>>,
-    active: SessionWorkstream,
+    active: SessionLens,
 }
 
-impl WorkstreamListTool {
+impl LensListTool {
     pub fn new(store: Arc<Mutex<Store>>) -> Self {
         Self {
             store,
-            active: SessionWorkstream::default(),
+            active: SessionLens::default(),
         }
     }
 
-    pub fn with_active(mut self, active: SessionWorkstream) -> Self {
+    pub fn with_active(mut self, active: SessionLens) -> Self {
         self.active = active;
         self
     }
 }
 
 #[async_trait]
-impl Tool for WorkstreamListTool {
+impl Tool for LensListTool {
     fn name(&self) -> &str {
-        "workstream_list"
+        "lens_list"
     }
 
     fn description(&self) -> &str {
-        "List active workstreams (newest update first). Pass `all: true` to include archived."
+        "List active lenses (newest update first). Pass `all: true` to include archived."
     }
 
     fn is_read_only(&self) -> bool {
@@ -42,14 +42,14 @@ impl Tool for WorkstreamListTool {
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
         json!({
             "type": "object",
             "properties": {
-                "all": {"type": "boolean", "description": "Include archived (soft-deleted) workstreams"}
+                "all": {"type": "boolean", "description": "Include archived (soft-deleted) lenses"}
             },
             "required": []
         })
@@ -63,14 +63,14 @@ impl Tool for WorkstreamListTool {
         let include_archived = params.get("all").and_then(|v| v.as_bool()).unwrap_or(false);
         let active = self.active.current();
         let store = self.store.lock().unwrap();
-        let workstreams = if include_archived {
-            store.list_all_workstreams()
+        let lenses = if include_archived {
+            store.list_all_lenses()
         } else {
-            store.list_workstreams()
+            store.list_lenses()
         }
         .map_err(|e| ToolError::ExecutionFailed(e.to_string()))?;
 
-        let items: Vec<Value> = workstreams
+        let items: Vec<Value> = lenses
             .iter()
             .map(|ws| {
                 json!({
@@ -85,8 +85,7 @@ impl Tool for WorkstreamListTool {
             .collect();
 
         Ok(ToolOutput::success(
-            json!({ "active": active, "workstreams": items }).to_string(),
+            json!({ "active": active, "lenses": items }).to_string(),
         ))
     }
 }
-

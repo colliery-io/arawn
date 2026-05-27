@@ -6,9 +6,9 @@ use uuid::Uuid;
 
 use arawn_core::Message;
 
-/// Lightweight view of a workstream for API transport.
+/// Lightweight view of a lens for API transport.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WorkstreamInfo {
+pub struct LensInfo {
     pub id: Uuid,
     pub name: String,
     pub root_dir: PathBuf,
@@ -19,7 +19,7 @@ pub struct WorkstreamInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionInfo {
     pub id: Uuid,
-    pub workstream_id: Option<Uuid>,
+    pub lens_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -27,7 +27,7 @@ pub struct SessionInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionDetail {
     pub id: Uuid,
-    pub workstream_id: Option<Uuid>,
+    pub lens_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub messages: Vec<Message>,
 }
@@ -123,7 +123,7 @@ pub enum MemoryStoreResult {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemorySummary {
     pub global: MemoryStoreSummary,
-    pub workstream: MemoryStoreSummary,
+    pub lens: MemoryStoreSummary,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -183,11 +183,11 @@ pub struct CommandInfo {
     pub kind: String,
 }
 
-/// Result of promoting a scratch session to a workstream.
+/// Result of promoting a scratch session to a lens.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PromotionResult {
-    pub workstream_id: String,
-    pub workstream_name: String,
+    pub lens_id: String,
+    pub lens_name: String,
 }
 
 /// Info about a workflow.

@@ -7,20 +7,20 @@ use arawn_storage::Store;
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
 use super::util::{
-    GithubScope, delete_feed, find_workstreams_binding,
-    parse_github_scope, upsert_repo_mirror_feed, validate_github_scope_scheme,
+    GithubScope, delete_feed, find_lenses_binding, parse_github_scope, upsert_repo_mirror_feed,
+    validate_github_scope_scheme,
 };
 
 pub trait BindBackfillHook: Send + Sync {
-    fn on_bind(&self, workstream_name: &str, feed_id: &str);
+    fn on_bind(&self, lens_name: &str, feed_id: &str);
 }
 
-pub struct WorkstreamBindTool {
+pub struct LensBindTool {
     store: Arc<Mutex<Store>>,
     hook: Option<Arc<dyn BindBackfillHook>>,
 }
 
-impl WorkstreamBindTool {
+impl LensBindTool {
     pub fn new(store: Arc<Mutex<Store>>) -> Self {
         Self { store, hook: None }
     }
@@ -32,14 +32,14 @@ impl WorkstreamBindTool {
 }
 
 #[async_trait]
-impl Tool for WorkstreamBindTool {
+impl Tool for LensBindTool {
     fn name(&self) -> &str {
-        "workstream_bind"
+        "lens_bind"
     }
 
     fn description(&self) -> &str {
-        "Bind a feed to a workstream. Bindings hint to the Phase 4 extractor \
-         which feed items should land in this workstream's KB. Idempotent. \
+        "Bind a feed to a lens. Bindings hint to the Phase 4 extractor \
+         which feed items should land in this lens's KB. Idempotent. \
          \n\n\
          `feed_id` accepts either a real feed id (e.g. `gh-notifs-pat`) \
          OR a GitHub scope scheme (I-0045 T-0322):\n\
@@ -50,11 +50,11 @@ impl Tool for WorkstreamBindTool {
            `github:org:openai`).\n\
          \n\
          Scope bindings let one feed (e.g. `gh-notifs-personal`) fan out \
-         to multiple workstreams based on which repo/org each row touches."
+         to multiple lenses based on which repo/org each row touches."
     }
 
     fn category(&self) -> ToolCategory {
-        ToolCategory::Workstream
+        ToolCategory::Lens
     }
 
     fn parameters_schema(&self) -> Value {
@@ -102,21 +102,20 @@ impl Tool for WorkstreamBindTool {
             match &scope {
                 GithubScope::Repo { owner, .. } => {
                     let org_key = format!("github:org:{owner}");
-                    let already = find_workstreams_binding(&store, |b| b == &org_key);
+                    let already = find_lenses_binding(&store, |b| b == org_key);
                     if let Some((other_ws, _)) = already.first() {
                         return Ok(ToolOutput::error(format!(
-                            "binding rejected: covered by `{org_key}` already bound to workstream `{other_ws}`"
+                            "binding rejected: covered by `{org_key}` already bound to lens `{other_ws}`"
                         )));
                     }
                 }
                 GithubScope::Org { owner } => {
                     let prefix = format!("github:repo:{owner}/");
                     let to_drop: Vec<(String, String)> =
-                        find_workstreams_binding(&store, |b| b.starts_with(&prefix));
+                        find_lenses_binding(&store, |b| b.starts_with(&prefix));
                     for (ws, binding) in &to_drop {
-                        let _ = store.remove_workstream_binding(ws, binding);
-                        if let Some(GithubScope::Repo { owner, name }) =
-                            parse_github_scope(binding)
+                        let _ = store.remove_lens_binding(ws, binding);
+                        if let Some(GithubScope::Repo { owner, name }) = parse_github_scope(binding)
                         {
                             let feed_id = format!("github-repo:{owner}/{name}");
                             let _ = delete_feed(&store, &feed_id);
@@ -128,20 +127,18 @@ impl Tool for WorkstreamBindTool {
         }
         let result = {
             let store = self.store.lock().unwrap();
-            store.add_workstream_binding(&name, &feed_id)
+            store.add_lens_binding(&name, &feed_id)
         };
         match result {
             Ok(()) => {
                 // I-0050 T-0326 — register the `github-repo:owner/name`
                 // feed for repo binds. Org binds are handled in T-0327
                 // (list_org_repos fan-out happens via the bind hook).
-                if let Some(GithubScope::Repo { owner, name: repo }) =
-                    parse_github_scope(&feed_id)
+                if let Some(GithubScope::Repo { owner, name: repo }) = parse_github_scope(&feed_id)
                 {
                     let feed_id_full = format!("github-repo:{owner}/{repo}");
                     let store = self.store.lock().unwrap();
-                    if let Err(e) = upsert_repo_mirror_feed(&store, &feed_id_full, &owner, &repo)
-                    {
+                    if let Err(e) = upsert_repo_mirror_feed(&store, &feed_id_full, &owner, &repo) {
                         // Persistence of the binding succeeded; feed
                         // registration is best-effort here. Log via
                         // tool output rather than failing the bind.
@@ -171,4 +168,3 @@ impl Tool for WorkstreamBindTool {
         }
     }
 }
-

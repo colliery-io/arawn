@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 use serde_json::{Value, json};
 
-use arawn_tool::{Tool, ToolError, ToolOutput};
 use crate::tools::sensitive_paths::{is_secret_file, is_token_path};
+use arawn_tool::{Tool, ToolError, ToolOutput};
 
 /// Edit a file by replacing a string. Path traversal protection.
 pub struct FileEditTool;
@@ -35,7 +35,7 @@ impl Tool for FileEditTool {
             "properties": {
                 "path": {
                     "type": "string",
-                    "description": "File path relative to the workstream root"
+                    "description": "File path relative to the lens root"
                 },
                 "old_string": {
                     "type": "string",
@@ -89,15 +89,13 @@ impl Tool for FileEditTool {
         let canonical_root = match ctx.working_dir().canonicalize() {
             Ok(p) => p,
             Err(e) => {
-                return Ok(ToolOutput::error(format!(
-                    "cannot resolve workstream root: {e}"
-                )));
+                return Ok(ToolOutput::error(format!("cannot resolve lens root: {e}")));
             }
         };
 
         if !canonical.starts_with(&canonical_root) && !ctx.is_allowed_path(&canonical) {
             return Ok(ToolOutput::error(format!(
-                "path '{path_str}' escapes workstream root"
+                "path '{path_str}' escapes lens root"
             )));
         }
 
@@ -170,13 +168,13 @@ impl Tool for FileEditTool {
 mod tests {
     use super::*;
     use crate::context::EngineToolContext;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use arawn_tool::ToolContext as _;
     use tempfile::TempDir;
     use uuid::Uuid;
 
     fn test_ctx(dir: &std::path::Path) -> EngineToolContext {
-        let ws = Workstream::new("test", dir);
+        let ws = Lens::new("test", dir);
         EngineToolContext::new(&ws, Uuid::new_v4())
     }
 

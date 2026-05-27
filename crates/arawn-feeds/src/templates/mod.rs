@@ -152,8 +152,7 @@ mod param_schema_tests {
         let reg = default_registry();
         let reg_names: std::collections::HashSet<&str> = reg.names().collect();
         let catalog = super::template_catalog();
-        let cat_names: std::collections::HashSet<&str> =
-            catalog.iter().map(|(n, _)| *n).collect();
+        let cat_names: std::collections::HashSet<&str> = catalog.iter().map(|(n, _)| *n).collect();
         assert_eq!(cat_names, reg_names, "catalog must match the registry");
         for (name, blurb) in &catalog {
             assert!(!blurb.is_empty(), "{name} has no picker blurb");
@@ -165,7 +164,11 @@ mod param_schema_tests {
     #[test]
     fn paramless_feeds_have_empty_schema() {
         let reg = default_registry();
-        for name in ["slack/my-mentions", "github/issues-and-prs", "github/review-queue"] {
+        for name in [
+            "slack/my-mentions",
+            "github/issues-and-prs",
+            "github/review-queue",
+        ] {
             let tpl = reg.get(name).unwrap_or_else(|| panic!("{name} registered"));
             assert!(
                 tpl.param_schema().is_empty(),

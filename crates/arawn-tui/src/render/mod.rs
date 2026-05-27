@@ -17,7 +17,6 @@ const DASHBOARD_WIDTH: u16 = 28;
 const MIN_FOR_THREE_PANE: u16 = 100;
 
 /// Render function. Draws to Frame and updates app.layout for mouse hit-testing.
-
 mod chat;
 mod dashboard;
 mod input;
@@ -70,11 +69,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     // when the terminal is wide enough. Width budget = sidebar
     // (3 or ~20%) + chat (min ~40) + dashboard (28).
     let show_dashboard = vertical[0].width >= MIN_FOR_THREE_PANE;
-    let dashboard_width = if show_dashboard {
-        DASHBOARD_WIDTH
-    } else {
-        0
-    };
+    let dashboard_width = if show_dashboard { DASHBOARD_WIDTH } else { 0 };
 
     if app.focus == Focus::Sidebar {
         let mut constraints = vec![Constraint::Percentage(20), Constraint::Min(1)];
@@ -165,26 +160,6 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /// Truncate a string to fit within a display width, adding "…" if needed.
 pub(super) fn truncate_to(s: &str, max_cells: usize) -> String {
     crate::width::truncate_display(s, max_cells)
@@ -206,8 +181,10 @@ pub(super) fn truncate_for_display(s: &str, max: usize) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::dashboard::{
+        detect_conflict, format_brief_date_line, render_dashboard_actions, render_dashboard_brief,
+    };
     use super::*;
-    use super::dashboard::{detect_conflict, format_brief_date_line, render_dashboard_actions, render_dashboard_brief};
     use crate::app::{App, ChatMessage, ChatRole};
     use ratatui::Terminal;
     use ratatui::backend::TestBackend;
@@ -260,9 +237,9 @@ mod tests {
                 period_key: "2026-05-19".into(),
                 generated_at: "2026-05-19T07:00:00Z".into(),
                 status: "open".into(),
-                workstreams_scanned: serde_json::json!([]),
+                lenses_scanned: serde_json::json!([]),
                 priorities_confirmed_at: None,
-            recovered: false,
+                recovered: false,
             },
             items,
         }
@@ -272,8 +249,16 @@ mod tests {
     fn dashboard_brief_renders_today_with_calendar() {
         let mut app = App::new();
         app.daily_view = Some(daily_view_with_items(vec![
-            cal_item("09:00 standup", "2026-05-19T09:00:00Z", "2026-05-19T09:15:00Z"),
-            cal_item("13:00 1:1 Jamie", "2026-05-19T13:00:00Z", "2026-05-19T13:30:00Z"),
+            cal_item(
+                "09:00 standup",
+                "2026-05-19T09:00:00Z",
+                "2026-05-19T09:15:00Z",
+            ),
+            cal_item(
+                "13:00 1:1 Jamie",
+                "2026-05-19T13:00:00Z",
+                "2026-05-19T13:30:00Z",
+            ),
         ]));
         let mut terminal = Terminal::new(TestBackend::new(28, 12)).unwrap();
         terminal
@@ -306,8 +291,16 @@ mod tests {
     fn dashboard_brief_flags_conflict() {
         // Two events overlapping 14:00-15:00.
         let items = vec![
-            cal_item("14:00 review", "2026-05-19T14:00:00Z", "2026-05-19T15:00:00Z"),
-            cal_item("14:30 design", "2026-05-19T14:30:00Z", "2026-05-19T15:30:00Z"),
+            cal_item(
+                "14:00 review",
+                "2026-05-19T14:00:00Z",
+                "2026-05-19T15:00:00Z",
+            ),
+            cal_item(
+                "14:30 design",
+                "2026-05-19T14:30:00Z",
+                "2026-05-19T15:30:00Z",
+            ),
         ];
         let refs: Vec<&_> = items.iter().collect();
         let line = detect_conflict(&refs).expect("conflict detected");
@@ -319,7 +312,11 @@ mod tests {
     #[test]
     fn dashboard_brief_no_conflict_when_separated() {
         let items = vec![
-            cal_item("09:00 standup", "2026-05-19T09:00:00Z", "2026-05-19T09:15:00Z"),
+            cal_item(
+                "09:00 standup",
+                "2026-05-19T09:00:00Z",
+                "2026-05-19T09:15:00Z",
+            ),
             cal_item("13:00 1:1", "2026-05-19T13:00:00Z", "2026-05-19T13:30:00Z"),
         ];
         let refs: Vec<&_> = items.iter().collect();
@@ -381,10 +378,7 @@ mod tests {
 
     // ─── I-0035 Phase 3 T-C (T-0358) — dashboard actions ─────────────────
 
-    fn attn_item(
-        ordinal: i32,
-        text: &str,
-    ) -> arawn_ceremonies::service::ItemDto {
+    fn attn_item(ordinal: i32, text: &str) -> arawn_ceremonies::service::ItemDto {
         arawn_ceremonies::service::ItemDto {
             id: format!("attn-{ordinal}"),
             tablet_id: "daily-2026-05-19".into(),
@@ -398,10 +392,7 @@ mod tests {
         }
     }
 
-    fn todo_item(
-        ordinal: i32,
-        text: &str,
-    ) -> arawn_ceremonies::service::ItemDto {
+    fn todo_item(ordinal: i32, text: &str) -> arawn_ceremonies::service::ItemDto {
         arawn_ceremonies::service::ItemDto {
             id: format!("todo-{ordinal}"),
             tablet_id: "daily-2026-05-19".into(),
@@ -425,9 +416,9 @@ mod tests {
                 period_key: "2026-05-19".into(),
                 generated_at: "2026-05-19T07:00:00Z".into(),
                 status: "open".into(),
-                workstreams_scanned: serde_json::json!([]),
+                lenses_scanned: serde_json::json!([]),
                 priorities_confirmed_at: None,
-            recovered: false,
+                recovered: false,
             },
             items,
         }
@@ -487,7 +478,8 @@ mod tests {
 
     #[test]
     fn dashboard_actions_truncates_long_titles() {
-        let long = "This is a very long attention item that will definitely overflow the dashboard width";
+        let long =
+            "This is a very long attention item that will definitely overflow the dashboard width";
         let mut app = App::new();
         app.daily_view = Some(daily_view_for_actions(vec![attn_item(0, long)]));
         let terminal = draw_actions(&app, 28, 4);
@@ -609,7 +601,7 @@ mod tests {
 
         let h = terminal.backend().buffer().area.height;
         let status_row = buffer_to_string(&terminal, h - 1);
-        assert!(status_row.contains("no model") || status_row.contains("no workstream"));
+        assert!(status_row.contains("no model") || status_row.contains("no lens"));
     }
 
     #[test]
@@ -938,22 +930,22 @@ mod tests {
     }
 
     #[test]
-    fn sidebar_renders_workstream_names() {
-        use arawn_service::WorkstreamInfo;
+    fn sidebar_renders_lens_names() {
+        use arawn_service::LensInfo;
         use chrono::Utc;
         use std::path::PathBuf;
         use uuid::Uuid;
 
         let mut app = App::new();
         app.focus = Focus::Sidebar;
-        app.workstreams = vec![
-            WorkstreamInfo {
+        app.lenses = vec![
+            LensInfo {
                 id: Uuid::new_v4(),
                 name: "scratch".into(),
                 root_dir: PathBuf::from("/tmp"),
                 created_at: Utc::now(),
             },
-            WorkstreamInfo {
+            LensInfo {
                 id: Uuid::new_v4(),
                 name: "myproject".into(),
                 root_dir: PathBuf::from("/tmp"),
@@ -978,14 +970,14 @@ mod tests {
 
     #[test]
     fn sidebar_does_not_leak_into_chat() {
-        use arawn_service::WorkstreamInfo;
+        use arawn_service::LensInfo;
         use chrono::Utc;
         use std::path::PathBuf;
         use uuid::Uuid;
 
         let mut app = App::new();
         app.focus = Focus::Sidebar;
-        app.workstreams = vec![WorkstreamInfo {
+        app.lenses = vec![LensInfo {
             id: Uuid::new_v4(),
             name: "sb_data".into(),
             root_dir: PathBuf::from("/tmp"),
@@ -1061,14 +1053,14 @@ mod tests {
     }
 
     #[test]
-    fn status_bar_shows_workstream_name() {
-        use arawn_service::WorkstreamInfo;
+    fn status_bar_shows_lens_name() {
+        use arawn_service::LensInfo;
         use chrono::Utc;
         use std::path::PathBuf;
         use uuid::Uuid;
 
         let mut app = App::new();
-        app.current_workstream = Some(WorkstreamInfo {
+        app.current_lens = Some(LensInfo {
             id: Uuid::new_v4(),
             name: "Home Maintenance".into(),
             root_dir: PathBuf::from("/tmp"),
@@ -1083,7 +1075,7 @@ mod tests {
         let status = buffer_to_string(&terminal, h - 1);
         assert!(
             status.contains("Home Maintenance"),
-            "status bar should show workstream name, got:\n{status}"
+            "status bar should show lens name, got:\n{status}"
         );
     }
 

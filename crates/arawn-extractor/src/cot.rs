@@ -1,13 +1,13 @@
 //! `CotChain` — the real 4-stage chain-of-thought extractor.
 //!
-//! Stage 1 (classify): is this projection row in scope for the workstream?
+//! Stage 1 (classify): is this projection row in scope for the lens?
 //! Stage 2 (extract): pull typed entities out of the body.
 //! Stage 3 (link-by-name): emit candidate relations; we resolve by FTS.
 //! Stage 4 (write): store_fact each entity + add resolved relations
 //! plus an EXTRACTED_FROM provenance edge.
 //!
 //! Each stage is one LLM call. Free / inexpensive backend behind it
-//! per I-0040 phase 4 design. The chain reads the workstream
+//! per I-0040 phase 4 design. The chain reads the lens
 //! description to scope decisions and emits free-form tags; the
 //! steward (Phase 5) refines vocabulary later.
 
@@ -19,7 +19,7 @@ use serde::Deserialize;
 use tracing::{debug, warn};
 use uuid::Uuid;
 
-use arawn_core::Workstream;
+use arawn_core::Lens;
 use arawn_llm::LlmClient;
 use arawn_memory::{
     ConfidenceSource, Entity, EntityType, MemoryManager, MemoryStore, RelationType, Scope,
@@ -61,15 +61,15 @@ impl CotChain {
 impl ExtractionChain for CotChain {
     async fn run(
         &self,
-        workstream: &Workstream,
+        lens: &Lens,
         row: &ProjectionRow,
         kb: &MemoryManager,
     ) -> Result<ChainOutcome, ExtractionError> {
         // ── Stage 1: classify ───────────────────────────────────────────
-        let classify = self.classify(workstream, row).await?;
+        let classify = self.classify(lens, row).await?;
         if !classify.in_scope {
             debug!(
-                workstream = %workstream.name,
+                lens = %lens.name,
                 row_id = %row.id,
                 reason = %classify.reason,
                 "row classified out of scope"
@@ -81,16 +81,16 @@ impl ExtractionChain for CotChain {
             });
         }
 
-        // Load the workstream's declared ontology — Stage 2's prompt
+        // Load the lens's declared ontology — Stage 2's prompt
         // shows it to the model and Stage 4 filters LLM emissions
         // against it. Soft-fail to empty so an absent ontology table
         // doesn't break the chain (extractor will produce
         // discovered-only entities until the ontology exists).
-        let ontology = match TagOntologyStore::open_at(&workstream.root_dir) {
+        let ontology = match TagOntologyStore::open_at(&lens.root_dir) {
             Ok(store) => store.tags().unwrap_or_default(),
             Err(e) => {
                 warn!(
-                    workstream = %workstream.name,
+                    lens = %lens.name,
                     error = %e,
                     "ontology unavailable; extracting with empty ontology"
                 );
@@ -99,13 +99,13 @@ impl ExtractionChain for CotChain {
         };
 
         // ── Stage 2: extract ────────────────────────────────────────────
-        let candidates = self.extract(workstream, row, &ontology).await?;
+        let candidates = self.extract(lens, row, &ontology).await?;
         if candidates.is_empty() {
             return Ok(ChainOutcome::default());
         }
 
         // ── Stage 3: link-by-name ───────────────────────────────────────
-        let link_proposals = self.link_by_name(workstream, &candidates).await?;
+        let link_proposals = self.link_by_name(lens, &candidates).await?;
 
         // ── Stage 4: write ──────────────────────────────────────────────
         self.write(row, &candidates, &link_proposals, kb, &ontology)
@@ -127,16 +127,16 @@ struct ClassifyResult {
 impl CotChain {
     async fn classify(
         &self,
-        ws: &Workstream,
+        ws: &Lens,
         row: &ProjectionRow,
     ) -> Result<ClassifyResult, ExtractionError> {
         let system = "You decide whether a piece of content belongs in a knowledge \
-                      base for a specific workstream. Output ONLY a JSON object: \
+                      base for a specific lens. Output ONLY a JSON object: \
                       {\"in_scope\": bool, \"reason\": short string}. \
-                      Be selective — a workstream is a tight scope (one person, \
+                      Be selective — a lens is a tight scope (one person, \
                       one project, one initiative). When in doubt, in_scope = false.";
         let user = format!(
-            "Workstream: {name}\n\
+            "Lens: {name}\n\
              Description: {desc}\n\n\
              Item (feed type: {feed_type}):\n\
              Title: {title}\n\
@@ -172,7 +172,7 @@ struct ExtractedCandidate {
     title: String,
     #[serde(default)]
     content: String,
-    /// LLM-emitted ontology tags. Filtered against the workstream's
+    /// LLM-emitted ontology tags. Filtered against the lens's
     /// declared ontology before writing — anything not in the list is
     /// dropped. Per ADR-0004 this is the substrate dust clusters on.
     #[serde(default)]
@@ -186,13 +186,12 @@ struct ExtractedCandidate {
 impl CotChain {
     async fn extract(
         &self,
-        ws: &Workstream,
+        ws: &Lens,
         row: &ProjectionRow,
         ontology: &[String],
     ) -> Result<Vec<ExtractedCandidate>, ExtractionError> {
         let ontology_block = if ontology.is_empty() {
-            "(empty — workstream has no ontology yet; emit only `tags_discovered` for now)"
-                .to_string()
+            "(empty — lens has no ontology yet; emit only `tags_discovered` for now)".to_string()
         } else {
             ontology.join(", ")
         };
@@ -203,7 +202,7 @@ impl CotChain {
                        \"title\": short, \
                        \"content\": optional longer text, \
                        \"tags_ontology\": array of tags drawn EXCLUSIVELY from \
-                       the workstream's declared ontology (see user prompt). \
+                       the lens's declared ontology (see user prompt). \
                        Pick the ontology tags that genuinely apply — empty \
                        array is fine if none fit. Do NOT mint new ontology \
                        tags here. \
@@ -215,10 +214,10 @@ impl CotChain {
                        appear.}\n\
                       \n\
                       Be conservative on entity emission — only entities that \
-                      genuinely belong in this workstream's KB. Empty array \
+                      genuinely belong in this lens's KB. Empty array \
                       is a valid answer.";
         let user = format!(
-            "Workstream: {name}\n\
+            "Lens: {name}\n\
              Description: {desc}\n\
              Declared ontology (use these EXACT strings for tags_ontology): {ontology_block}\n\
              \n\
@@ -259,14 +258,14 @@ struct LinkProposal {
 impl CotChain {
     async fn link_by_name(
         &self,
-        ws: &Workstream,
+        ws: &Lens,
         candidates: &[ExtractedCandidate],
     ) -> Result<Vec<LinkProposal>, ExtractionError> {
         if candidates.is_empty() {
             return Ok(Vec::new());
         }
         let system = "Propose relations between the new entities and entities \
-                      that may already exist in this workstream's KB. Output ONLY \
+                      that may already exist in this lens's KB. Output ONLY \
                       a JSON array; each: {\"from\": title of one of the new \
                       entities, \"rel\": one of [relates_to, supports, contradicts, \
                       supersedes, mentions, belongs_to], \"to_name\": title of \
@@ -283,7 +282,7 @@ impl CotChain {
                 .collect::<Vec<_>>(),
         )?;
         let user = format!(
-            "Workstream: {name}\nDescription: {desc}\n\nNew entities:\n{entities}\n",
+            "Lens: {name}\nDescription: {desc}\n\nNew entities:\n{entities}\n",
             name = ws.name,
             desc = if ws.description.is_empty() {
                 "(no description set)"
@@ -317,7 +316,7 @@ impl CotChain {
         ontology: &[String],
     ) -> Result<ChainOutcome, ExtractionError> {
         // Per ADR-0004: ontology tags emitted by the LLM are filtered
-        // against the workstream's declared ontology before writing.
+        // against the lens's declared ontology before writing.
         // Anything not in the list is dropped silently — the LLM
         // doesn't get to invent ontology tags here.
         let ontology_set: std::collections::HashSet<String> =
@@ -359,7 +358,7 @@ impl CotChain {
             // Anchor entity freshness to the source projection row's
             // `source_ts`, not to the extraction wall-clock. Three
             // payoffs:
-            //   1. Dust (`workstream_dust`) measures staleness via
+            //   1. Dust (`lens_dust`) measures staleness via
             //      `updated_at`. If we used now(), every freshly-
             //      extracted entity would look fresh — even when its
             //      source content is years old. That defeats dust's
@@ -418,7 +417,7 @@ impl CotChain {
             // entity lives in. Approximate via global (provenance is a
             // soft annotation; both tiers reach the entity anyway).
             let _ = kb
-                .workstream
+                .lens
                 .add_relation(eid, RelationType::ExtractedFrom, provenance_id);
         }
 
@@ -431,12 +430,12 @@ impl CotChain {
 }
 
 /// FTS-resolve a name against both KB tiers. Falls back to global tier
-/// if the workstream-tier search misses.
+/// if the lens-tier search misses.
 fn resolve_by_fts(kb: &MemoryManager, name: &str, _floor: f32) -> Option<(Uuid, Scope)> {
     // FTS5 quoting: wrap in double-quotes so special chars don't break parsing.
     let q = format!("\"{}\"", name.replace('"', "\"\""));
-    if let Some(hit) = first_fts_hit(&kb.workstream, &q) {
-        return Some((hit, Scope::Workstream));
+    if let Some(hit) = first_fts_hit(&kb.lens, &q) {
+        return Some((hit, Scope::Lens));
     }
     if let Some(hit) = first_fts_hit(&kb.global, &q) {
         return Some((hit, Scope::Global));
@@ -577,7 +576,7 @@ mod integration {
     use futures::stream;
     use serde_json::Value;
 
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use arawn_llm::{
         LlmError,
         types::{ChatChunk, ChatRequest},
@@ -683,8 +682,8 @@ mod integration {
 
     // ── Fixture helpers ──────────────────────────────────────────────────
 
-    fn ws(name: &str, desc: &str) -> Workstream {
-        let mut w = Workstream::new(name, std::env::temp_dir().join(name));
+    fn ws(name: &str, desc: &str) -> Lens {
+        let mut w = Lens::new(name, std::env::temp_dir().join(name));
         w.description = desc.to_string();
         w
     }
@@ -715,13 +714,13 @@ mod integration {
     fn setup() -> Fixture {
         let tmp = tempfile::tempdir().unwrap();
         let store = Store::open(tmp.path()).unwrap();
-        store.ensure_scratch_workstream().unwrap();
+        store.ensure_scratch_lens().unwrap();
         let store = Arc::new(std::sync::Mutex::new(store));
 
         let proj_path = tmp.path().join("projections.db");
         let proj = Arc::new(ProjectionStore::open(&proj_path).unwrap());
 
-        // Cache MemoryManagers per workstream so the test can reach into
+        // Cache MemoryManagers per lens so the test can reach into
         // the same KB the runner used (a fresh resolver instance would
         // open a new MemoryStore handle each call).
         let cache: Arc<std::sync::Mutex<std::collections::HashMap<String, Arc<MemoryManager>>>> =
@@ -733,7 +732,7 @@ mod integration {
             if let Some(existing) = guard.get(name) {
                 return Ok(Arc::clone(existing));
             }
-            let mgr = MemoryManager::for_workstream(&data_dir, name, None)
+            let mgr = MemoryManager::for_lens(&data_dir, name, None)
                 .map(Arc::new)
                 .map_err(|e| ExtractionError::Memory(e.to_string()))?;
             guard.insert(name.to_string(), Arc::clone(&mgr));
@@ -783,7 +782,7 @@ mod integration {
     // ── Scenarios ────────────────────────────────────────────────────────
 
     #[tokio::test]
-    async fn happy_path_extracts_into_workstream() {
+    async fn happy_path_extracts_into_lens() {
         let fx = setup();
         fx.proj
             .write_batch(&[fixture_proj("m1", "we picked Postgres for storage", 0)])
@@ -800,7 +799,7 @@ mod integration {
         );
         let runner = runner_with(&fx, mock, 50);
         let stats = runner
-            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .run_for_lens(&ws("pat", "pat's stuff"), "gmail_messages")
             .await
             .unwrap();
         assert_eq!(stats.processed, 1);
@@ -808,12 +807,12 @@ mod integration {
         assert_eq!(stats.entities_written, 1);
         assert!(fx.cursor("pat", "gmail_messages").is_some());
 
-        // Entity actually landed in the workstream KB.
+        // Entity actually landed in the lens KB.
         let kb = fx.kb("pat");
-        let hits = kb.workstream.search("postgres", 5).unwrap();
+        let hits = kb.lens.search("postgres", 5).unwrap();
         assert!(
             hits.iter().any(|e| e.title.contains("postgres")),
-            "expected entity in workstream KB; got {hits:?}"
+            "expected entity in lens KB; got {hits:?}"
         );
     }
 
@@ -829,7 +828,7 @@ mod integration {
         );
         let runner = runner_with(&fx, mock, 50);
         let stats = runner
-            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .run_for_lens(&ws("pat", "pat's stuff"), "gmail_messages")
             .await
             .unwrap();
         assert_eq!(stats.processed, 1);
@@ -844,12 +843,12 @@ mod integration {
     #[tokio::test]
     async fn link_by_name_resolves_to_existing_kb_entity() {
         let fx = setup();
-        // Pre-seed the workstream KB with a fact the link will target.
+        // Pre-seed the lens KB with a fact the link will target.
         {
             let kb = fx.kb("pat");
             let prior = Entity::new(EntityType::Fact, "open question: which auth library?")
                 .with_confidence(ConfidenceSource::Stated);
-            kb.workstream.store_fact(&prior).unwrap();
+            kb.lens.store_fact(&prior).unwrap();
         }
         fx.proj
             .write_batch(&[fixture_proj(
@@ -873,7 +872,7 @@ mod integration {
         );
         let runner = runner_with(&fx, mock, 50);
         let stats = runner
-            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .run_for_lens(&ws("pat", "pat's stuff"), "gmail_messages")
             .await
             .unwrap();
         assert_eq!(stats.kept, 1);
@@ -901,7 +900,7 @@ mod integration {
         );
         let runner = runner_with(&fx, mock, 50);
         let stats = runner
-            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .run_for_lens(&ws("pat", "pat's stuff"), "gmail_messages")
             .await
             .unwrap();
         assert_eq!(stats.entities_written, 1);
@@ -929,7 +928,7 @@ mod integration {
         );
         let runner = runner_with(&fx, mock, 2);
         let stats = runner
-            .run_for_workstream_until_exhausted(
+            .run_for_lens_until_exhausted(
                 &ws("pat", "pat's stuff"),
                 "gmail_messages",
                 std::time::Duration::from_secs(30),
@@ -956,12 +955,12 @@ mod integration {
         );
         let runner = runner_with(&fx, mock, 50);
         let first = runner
-            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .run_for_lens(&ws("pat", "pat's stuff"), "gmail_messages")
             .await
             .unwrap();
         assert_eq!(first.processed, 1);
         let second = runner
-            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .run_for_lens(&ws("pat", "pat's stuff"), "gmail_messages")
             .await
             .unwrap();
         assert_eq!(
@@ -971,13 +970,13 @@ mod integration {
     }
 
     #[tokio::test]
-    async fn two_workstreams_each_get_the_entity() {
+    async fn two_lenses_each_get_the_entity() {
         let fx = setup();
         fx.proj
             .write_batch(&[fixture_proj("m1", "shared message", 0)])
             .unwrap();
 
-        // Same default response works for both workstreams — classify
+        // Same default response works for both lenses — classify
         // is_scope=true, extract one entity, no links.
         let mock = Arc::new(
             KeyedMockLlm::new()
@@ -989,23 +988,19 @@ mod integration {
         );
         let runner = runner_with(&fx, mock, 50);
         let s1 = runner
-            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .run_for_lens(&ws("pat", "pat's stuff"), "gmail_messages")
             .await
             .unwrap();
         let s2 = runner
-            .run_for_workstream(&ws("auth-migration", "auth work"), "gmail_messages")
+            .run_for_lens(&ws("auth-migration", "auth work"), "gmail_messages")
             .await
             .unwrap();
         assert_eq!(s1.entities_written, 1);
         assert_eq!(s2.entities_written, 1);
 
         // Both KBs hold the entity independently.
-        let pat_hits = fx.kb("pat").workstream.search("shared", 5).unwrap();
-        let auth_hits = fx
-            .kb("auth-migration")
-            .workstream
-            .search("shared", 5)
-            .unwrap();
+        let pat_hits = fx.kb("pat").lens.search("shared", 5).unwrap();
+        let auth_hits = fx.kb("auth-migration").lens.search("shared", 5).unwrap();
         assert!(!pat_hits.is_empty(), "pat KB should contain the fact");
         assert!(
             !auth_hits.is_empty(),
@@ -1036,13 +1031,13 @@ mod integration {
         );
         let runner = runner_with(&fx, mock, 50);
         let stats = runner
-            .run_for_workstream(&ws("pat", "pat's stuff"), "gmail_messages")
+            .run_for_lens(&ws("pat", "pat's stuff"), "gmail_messages")
             .await
             .unwrap();
         assert_eq!(stats.kept, 1);
 
         let kb = fx.kb("pat");
-        let hits = kb.workstream.search("postgres", 5).unwrap();
+        let hits = kb.lens.search("postgres", 5).unwrap();
         let entity = hits
             .iter()
             .find(|e| e.title.contains("postgres"))

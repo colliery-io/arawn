@@ -10,6 +10,7 @@ pub mod file_read;
 pub mod file_write;
 pub mod glob;
 pub mod grep;
+pub mod lens;
 pub mod memory_search;
 pub mod memory_store;
 pub mod safe_env;
@@ -27,7 +28,6 @@ pub mod todo;
 pub mod web_fetch;
 pub mod web_search;
 pub mod weekly;
-pub mod workstream;
 
 pub use agent::AgentTool;
 pub use ask_user::AskUserTool;
@@ -46,6 +46,11 @@ pub use file_read::FileReadTool;
 pub use file_write::FileWriteTool;
 pub use glob::GlobTool;
 pub use grep::GrepTool;
+pub use lens::{
+    BindBackfillHook, LensBindTool, LensCreateTool, LensDeleteTool, LensDescribeTool, LensListTool,
+    LensPromoteTool, LensProposeOntologyTool, LensShowTool, LensSwitchTool, LensUnbindTool,
+    SessionLens, UnbindHook,
+};
 pub use memory_search::MemorySearchTool;
 pub use memory_store::MemoryStoreTool;
 pub use shell::ShellTool;
@@ -53,8 +58,7 @@ pub use signal::{SignalQueryTool, SignalSearchTool, SignalTimelineTool};
 pub use skill::SkillTool;
 pub use sleep::SleepTool;
 pub use steward::{
-    WorkstreamApplyTool, WorkstreamDustTool, WorkstreamJournalTool, WorkstreamRefineTool,
-    WorkstreamRollbackTool, WorkstreamTagTool,
+    LensApplyTool, LensDustTool, LensJournalTool, LensRefineTool, LensRollbackTool, LensTagTool,
 };
 pub use task_list::{TaskGetTool, TaskListTool};
 pub use task_output::TaskOutputTool;
@@ -69,9 +73,4 @@ pub use web_search::WebSearchTool;
 pub use weekly::{
     WeeklyAddPriorityTool, WeeklyConfirmPriorityTool, WeeklyCurrentTool, WeeklyListItemsTool,
     WeeklyListPrioritiesTool, WeeklyRejectPriorityTool, WeeklyRunTool,
-};
-pub use workstream::{
-    BindBackfillHook, SessionWorkstream, UnbindHook, WorkstreamBindTool, WorkstreamCreateTool,
-    WorkstreamDeleteTool, WorkstreamDescribeTool, WorkstreamListTool, WorkstreamPromoteTool,
-    WorkstreamProposeOntologyTool, WorkstreamShowTool, WorkstreamSwitchTool, WorkstreamUnbindTool,
 };

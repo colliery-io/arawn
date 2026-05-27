@@ -79,11 +79,11 @@ mod tests {
     fn in_memory_db_has_tables() {
         let db = Database::in_memory().unwrap();
 
-        // Verify workstreams table exists
+        // Verify lenses table exists
         let count: i64 = db
             .conn()
             .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='workstreams'",
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='lenses'",
                 [],
                 |row| row.get(0),
             )
@@ -167,7 +167,7 @@ mod tests {
         let db = Database::in_memory().unwrap();
         db.conn()
             .execute(
-                "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+                "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
                 [
                     "daily-2026-05-15",
@@ -181,7 +181,7 @@ mod tests {
             .unwrap();
         // Same (kind, period_key) collides on UNIQUE.
         let dup = db.conn().execute(
-            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+            "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             [
                 "daily-2026-05-15-dup",
@@ -200,7 +200,7 @@ mod tests {
         let db = Database::in_memory().unwrap();
         db.conn()
             .execute(
-                "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+                "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
                 [
                     "retro-2026-W20",

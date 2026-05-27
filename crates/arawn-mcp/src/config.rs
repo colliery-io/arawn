@@ -64,7 +64,9 @@ pub fn substitute_env_vars(input: &str) -> Result<String, String> {
                 name.push(nc);
             }
             if !closed {
-                return Err(format!("unterminated `${{` in env value (near `${{{name}`)"));
+                return Err(format!(
+                    "unterminated `${{` in env value (near `${{{name}`)"
+                ));
             }
             if name.is_empty() {
                 return Err("empty `${}` in env value".into());
@@ -192,7 +194,10 @@ max_iterations = 20
 
     #[test]
     fn substitute_escape_passes_literal() {
-        assert_eq!(substitute_env_vars(r"\${NOT_LOOKED_UP}").unwrap(), "${NOT_LOOKED_UP}");
+        assert_eq!(
+            substitute_env_vars(r"\${NOT_LOOKED_UP}").unwrap(),
+            "${NOT_LOOKED_UP}"
+        );
     }
 
     #[test]

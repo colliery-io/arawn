@@ -36,7 +36,7 @@ pub struct SignalRow {
     pub source_id: String,
     pub ts: DateTime<Utc>,
     pub summary: String,
-    pub workstream: Option<String>,
+    pub lens: Option<String>,
 }
 
 /// Read interface the daily plugin uses to pull today's calendar.

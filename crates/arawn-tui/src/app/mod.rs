@@ -5,11 +5,9 @@ mod history;
 
 use ratatui::layout::Rect;
 
-use arawn_service::{SessionInfo, WorkstreamInfo};
+use arawn_service::{LensInfo, SessionInfo};
 
-use crate::command::{
-    AutocompleteState, CommandRegistry, CommandResult,
-};
+use crate::command::{AutocompleteState, CommandRegistry, CommandResult};
 
 /// Tracks the screen regions of each panel from the last render.
 /// Used for mouse hit-testing.
@@ -18,7 +16,7 @@ pub struct LayoutRegions {
     pub sidebar: Option<Rect>,
     pub chat: Rect,
     pub input: Rect,
-    /// Sidebar workstreams section (for click-to-select).
+    /// Sidebar lenses section (for click-to-select).
     pub sidebar_ws: Option<Rect>,
     /// Thin sidebar tab strip (visible when sidebar is hidden).
     pub sidebar_tab: Option<Rect>,
@@ -40,14 +38,14 @@ pub enum Focus {
 /// Which sidebar section is active.
 ///
 /// I-0035 Phase 3 (T-0356) removed the `Sessions` variant — the
-/// sidebar is now Workstreams-only. Sessions are accessible via the
+/// sidebar is now Lenses-only. Sessions are accessible via the
 /// `/session list` slash command. The enum is retained as a
 /// single-variant placeholder so the focus/render code can still
 /// dispatch on it (and to give future sidebar sections an obvious
 /// place to hook in without re-introducing the variant).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SidebarSection {
-    Workstreams,
+    Lenses,
 }
 
 /// A message displayed in the chat area.
@@ -107,9 +105,9 @@ pub struct App {
     pub input_buffer: String,
     pub cursor_pos: usize,
     pub messages: Vec<ChatMessage>,
-    pub workstreams: Vec<WorkstreamInfo>,
+    pub lenses: Vec<LensInfo>,
     pub sessions: Vec<SessionInfo>,
-    pub current_workstream: Option<WorkstreamInfo>,
+    pub current_lens: Option<LensInfo>,
     pub current_session: Option<SessionInfo>,
     pub is_generating: bool,
     pub streaming_text: String,
@@ -247,14 +245,14 @@ impl App {
             input_buffer: String::new(),
             cursor_pos: 0,
             messages: Vec::new(),
-            workstreams: Vec::new(),
+            lenses: Vec::new(),
             sessions: Vec::new(),
-            current_workstream: None,
+            current_lens: None,
             current_session: None,
             is_generating: false,
             streaming_text: String::new(),
             scroll_offset: 0,
-            sidebar_section: SidebarSection::Workstreams,
+            sidebar_section: SidebarSection::Lenses,
             sidebar_ws_index: 0,
             sidebar_session_index: 0,
             should_quit: false,
@@ -292,19 +290,6 @@ impl App {
             pending_brief_refresh: false,
         }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     fn prev_char_boundary(&self) -> usize {
         let mut pos = self.cursor_pos.saturating_sub(1);
@@ -382,14 +367,14 @@ impl Default for App {
 
 /// T-0363 — pick the default `/export` path when the user invokes
 /// `/export` with no arg:
-/// `$HOME/.arawn/exports/<workstream>-<session-short>-<YYYYMMDD-HHMM>.md`.
+/// `$HOME/.arawn/exports/<lens>-<session-short>-<YYYYMMDD-HHMM>.md`.
 /// Falls back to the current directory when `$HOME` is unset.
 pub(super) fn default_export_path(app: &App) -> std::path::PathBuf {
     let home = std::env::var("HOME")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|_| std::path::PathBuf::from("."));
-    let workstream = app
-        .current_workstream
+    let lens = app
+        .current_lens
         .as_ref()
         .map(|w| w.name.clone())
         .unwrap_or_else(|| "scratch".to_string());
@@ -401,7 +386,7 @@ pub(super) fn default_export_path(app: &App) -> std::path::PathBuf {
     let stamp = chrono::Local::now().format("%Y%m%d-%H%M");
     home.join(".arawn")
         .join("exports")
-        .join(format!("{workstream}-{session_short}-{stamp}.md"))
+        .join(format!("{lens}-{session_short}-{stamp}.md"))
 }
 
 /// T-0363 — expand a leading `~` in a path to `$HOME`. Doesn't
@@ -422,14 +407,14 @@ pub(super) fn shellexpand_tilde(input: &str) -> String {
 }
 
 /// T-0363 — render the full transcript as a markdown document.
-/// YAML frontmatter carries workstream, session id, timestamp, and
+/// YAML frontmatter carries lens, session id, timestamp, and
 /// the message count; the body emits one `## <role>\n\n<content>`
 /// block per message. Tool calls and tool results are skipped —
 /// they're transient bookkeeping the user doesn't want preserved
 /// in an export.
 pub(super) fn render_conversation_markdown(app: &App) -> String {
-    let workstream = app
-        .current_workstream
+    let lens = app
+        .current_lens
         .as_ref()
         .map(|w| w.name.as_str())
         .unwrap_or("scratch");
@@ -441,12 +426,12 @@ pub(super) fn render_conversation_markdown(app: &App) -> String {
     let generated_at = chrono::Utc::now().to_rfc3339();
     let mut out = String::new();
     out.push_str("---\n");
-    out.push_str(&format!("workstream: {workstream}\n"));
+    out.push_str(&format!("lens: {lens}\n"));
     out.push_str(&format!("session_id: {session_id}\n"));
     out.push_str(&format!("generated_at: {generated_at}\n"));
     out.push_str(&format!("message_count: {}\n", app.messages.len()));
     out.push_str("---\n\n");
-    out.push_str(&format!("# Conversation — {workstream}\n\n"));
+    out.push_str(&format!("# Conversation — {lens}\n\n"));
     for m in &app.messages {
         let role = match &m.role {
             ChatRole::User => "User",
@@ -671,22 +656,22 @@ mod tests {
 
     #[test]
     fn sidebar_navigation() {
-        use arawn_service::WorkstreamInfo;
+        use arawn_service::LensInfo;
         use chrono::Utc;
         use std::path::PathBuf;
         use uuid::Uuid;
 
         let mut app = App::new();
         app.focus = Focus::Sidebar;
-        app.sidebar_section = SidebarSection::Workstreams;
-        app.workstreams = vec![
-            WorkstreamInfo {
+        app.sidebar_section = SidebarSection::Lenses;
+        app.lenses = vec![
+            LensInfo {
                 id: Uuid::new_v4(),
                 name: "scratch".into(),
                 root_dir: PathBuf::from("/tmp/a"),
                 created_at: Utc::now(),
             },
-            WorkstreamInfo {
+            LensInfo {
                 id: Uuid::new_v4(),
                 name: "project".into(),
                 root_dir: PathBuf::from("/tmp/b"),
@@ -892,7 +877,7 @@ mod tests {
         // Set up an in-progress generation on a session.
         let session = SessionInfo {
             id: uuid::Uuid::new_v4(),
-            workstream_id: None,
+            lens_id: None,
             created_at: chrono::Utc::now(),
         };
         app.current_session = Some(session.clone());
@@ -921,7 +906,7 @@ mod tests {
         let mut app = App::new();
         let session = SessionInfo {
             id: uuid::Uuid::new_v4(),
-            workstream_id: None,
+            lens_id: None,
             created_at: chrono::Utc::now(),
         };
         app.current_session = Some(session.clone());
@@ -971,8 +956,7 @@ mod tests {
     #[test]
     fn copy_last_response_warns_when_no_assistant_messages() {
         let mut app = App::new();
-        app.messages
-            .push(ChatMessage::new(ChatRole::User, "hi"));
+        app.messages.push(ChatMessage::new(ChatRole::User, "hi"));
         app.handle_copy_last_response();
         assert_eq!(app.toast_queue.len(), 1);
         let toast = app.toast_queue.front().unwrap();
@@ -1028,7 +1012,9 @@ mod tests {
         app.messages
             .push(ChatMessage::new(ChatRole::User, "list files"));
         app.messages.push(ChatMessage::new(
-            ChatRole::ToolCall { name: "shell".into() },
+            ChatRole::ToolCall {
+                name: "shell".into(),
+            },
             "ls -la",
         ));
         app.messages.push(ChatMessage::new(

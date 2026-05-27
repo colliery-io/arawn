@@ -434,7 +434,7 @@ mod tests {
             period_key: iso_week.into(),
             generated_at: "2026-05-15T16:00:00Z".into(),
             status: status.into(),
-            workstreams_scanned: json!([]),
+            lenses_scanned: json!([]),
             priorities_confirmed_at: None,
             recovered: false,
         }
@@ -588,7 +588,7 @@ mod tests {
             period_key: date.into(),
             generated_at: "2026-05-16T07:00:00Z".into(),
             status: status.into(),
-            workstreams_scanned: json!([]),
+            lenses_scanned: json!([]),
             priorities_confirmed_at: None,
             recovered: false,
         }
@@ -601,7 +601,7 @@ mod tests {
             period_key: iso_week.into(),
             generated_at: "2026-05-11T08:00:00Z".into(),
             status: status.into(),
-            workstreams_scanned: json!([]),
+            lenses_scanned: json!([]),
             priorities_confirmed_at: confirmed.map(String::from),
             recovered: false,
         }
@@ -800,7 +800,7 @@ mod tests {
             period_key: "2026-05-19".into(),
             generated_at: "2026-05-19T07:00:00Z".into(),
             status: "open".into(),
-            workstreams_scanned: json!([]),
+            lenses_scanned: json!([]),
             priorities_confirmed_at: None,
             recovered: false,
         };
@@ -827,7 +827,7 @@ mod tests {
             period_key: "2026-W21".into(),
             generated_at: "2026-05-18T07:00:00Z".into(),
             status: "open".into(),
-            workstreams_scanned: json!([]),
+            lenses_scanned: json!([]),
             priorities_confirmed_at: Some("2026-05-18T07:30:00Z".into()),
             recovered: false,
         };

@@ -103,12 +103,12 @@ impl Tool for EnterPlanModeTool {
 mod tests {
     use super::*;
     use crate::context::EngineToolContext;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use tempfile::TempDir;
     use uuid::Uuid;
 
     fn test_ctx(dir: &std::path::Path) -> EngineToolContext {
-        let ws = Workstream::scratch(dir);
+        let ws = Lens::scratch(dir);
         EngineToolContext::new(&ws, Uuid::new_v4())
     }
 

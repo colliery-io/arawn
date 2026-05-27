@@ -21,10 +21,7 @@ use arawn_storage::{ListFilter, NewTodo, Store, TodoEventSender, TodoPatch, Todo
 
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
-fn build_service<'a>(
-    store: &'a Store,
-    events: &Option<TodoEventSender>,
-) -> TodoService<'a> {
+fn build_service<'a>(store: &'a Store, events: &Option<TodoEventSender>) -> TodoService<'a> {
     let svc = TodoService::new(store.database());
     match events {
         Some(tx) => svc.with_events(tx.clone()),
@@ -66,7 +63,7 @@ impl Tool for TodoCreateTool {
          to ...\", \"I should ...\", or similar. `body` is required; \
          `kind` defaults to `\"user\"` (free-form text — future \
          kinds like `linear` or `github` will drop in here); \
-         `workstream` is optional and defaults to NULL (global). \
+         `lens` is optional and defaults to NULL (global). \
          Returns the new todo row. Surfaces in `/todo` and via \
          `todo_list`."
     }
@@ -81,7 +78,7 @@ impl Tool for TodoCreateTool {
             "properties": {
                 "body": {"type": "string", "description": "The todo text."},
                 "kind": {"type": "string", "description": "Discriminant; defaults to `user`."},
-                "workstream": {"type": "string", "description": "Optional workstream scope."},
+                "lens": {"type": "string", "description": "Optional lens scope."},
                 "due_at": {"type": "string", "description": "Optional RFC3339 due date."},
                 "rationale": {"type": "string", "description": "Optional why-line."}
             },
@@ -104,8 +101,8 @@ impl Tool for TodoCreateTool {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string())
             .unwrap_or_else(|| "user".into());
-        let workstream = params
-            .get("workstream")
+        let lens = params
+            .get("lens")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
         let rationale = params
@@ -123,7 +120,7 @@ impl Tool for TodoCreateTool {
             body,
             rationale,
             kind,
-            workstream,
+            lens,
             due_at,
             attrs: None,
         };
@@ -161,8 +158,8 @@ impl Tool for TodoListTool {
 
     fn description(&self) -> &str {
         "List todos. All filters are optional and combine as AND: \
-         `kind` matches the discriminant; `workstream` scopes to a \
-         single workstream; `open_only: true` returns only \
+         `kind` matches the discriminant; `lens` scopes to a \
+         single lens; `open_only: true` returns only \
          un-done. Defaults exclude archived rows. Returns an array \
          sorted by due_at NULLS LAST, then created_at desc."
     }
@@ -176,7 +173,7 @@ impl Tool for TodoListTool {
             "type": "object",
             "properties": {
                 "kind": {"type": "string"},
-                "workstream": {"type": "string"},
+                "lens": {"type": "string"},
                 "open_only": {"type": "boolean"},
                 "include_archived": {"type": "boolean"}
             },
@@ -194,8 +191,8 @@ impl Tool for TodoListTool {
                 .get("kind")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string()),
-            workstream: params
-                .get("workstream")
+            lens: params
+                .get("lens")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string()),
             open_only: params.get("open_only").and_then(|v| v.as_bool()),
@@ -444,7 +441,7 @@ impl Tool for TodoPatchTool {
 
     fn description(&self) -> &str {
         "Edit a todo. `patch` carries the optional fields to update \
-         — `body`, `rationale`, `workstream`, `due_at`. Anything \
+         — `body`, `rationale`, `lens`, `due_at`. Anything \
          omitted is left unchanged. Returns the updated row. Emits \
          `TodoEvent::Updated`."
     }
@@ -463,7 +460,7 @@ impl Tool for TodoPatchTool {
                     "properties": {
                         "body": {"type": "string"},
                         "rationale": {"type": "string"},
-                        "workstream": {"type": "string"},
+                        "lens": {"type": "string"},
                         "due_at": {"type": "string"}
                     },
                     "additionalProperties": false
@@ -568,12 +565,12 @@ impl Tool for TodoSearchTool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use tempfile::TempDir;
     use uuid::Uuid;
 
     fn ctx() -> crate::context::EngineToolContext {
-        let ws = Workstream::scratch("/tmp/test");
+        let ws = Lens::scratch("/tmp/test");
         crate::context::EngineToolContext::new(&ws, Uuid::new_v4())
     }
 
@@ -595,7 +592,7 @@ mod tests {
         let row: serde_json::Value = serde_json::from_str(&out.content).unwrap();
         assert_eq!(row["body"], "ship the tools");
         assert_eq!(row["kind"], "user");
-        assert!(row["workstream"].is_null());
+        assert!(row["lens"].is_null());
     }
 
     #[tokio::test]
@@ -619,10 +616,7 @@ mod tests {
             .await
             .unwrap();
         let list = TodoListTool::new(store.clone(), None);
-        let out = list
-            .execute(&ctx(), json!({"kind": "user"}))
-            .await
-            .unwrap();
+        let out = list.execute(&ctx(), json!({"kind": "user"})).await.unwrap();
         let rows: Vec<serde_json::Value> = serde_json::from_str(&out.content).unwrap();
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0]["body"], "a");

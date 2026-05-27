@@ -109,11 +109,7 @@ pub trait GithubFeedClient: Send + Sync {
     /// List all repositories in an organisation. Used by the org-
     /// expand-at-register step (T-0327) to fan a single `github:
     /// org:owner` binding into N per-repo feeds.
-    async fn list_org_repos(
-        &self,
-        owner: &str,
-        max_pages: u32,
-    ) -> Result<Vec<Value>, FeedError>;
+    async fn list_org_repos(&self, owner: &str, max_pages: u32) -> Result<Vec<Value>, FeedError>;
 }
 
 // ─── Production adapter ──────────────────────────────────────────────
@@ -200,9 +196,8 @@ impl GithubFeedClient for RealGithubClient {
             .client()
             .map_err(|e| FeedError::Auth(format!("github: {e}")))?;
         let encoded = urlencoding::encode(query);
-        let path = format!(
-            "/search/issues?q={encoded}&per_page={per_page}&sort=updated&order=desc",
-        );
+        let path =
+            format!("/search/issues?q={encoded}&per_page={per_page}&sort=updated&order=desc",);
         let mut out: Vec<Value> = Vec::new();
         let mut next_path: Option<String> = Some(path);
         let mut pages_fetched: u32 = 0;
@@ -332,11 +327,7 @@ impl GithubFeedClient for RealGithubClient {
             .await
     }
 
-    async fn list_org_repos(
-        &self,
-        owner: &str,
-        max_pages: u32,
-    ) -> Result<Vec<Value>, FeedError> {
+    async fn list_org_repos(&self, owner: &str, max_pages: u32) -> Result<Vec<Value>, FeedError> {
         let path = format!("/orgs/{owner}/repos?per_page=100&type=all&sort=updated");
         self.paginate_array(&path, max_pages, "list_org_repos")
             .await
@@ -430,7 +421,10 @@ pub fn parse_link_next_path(header: &str) -> Option<String> {
         // Format: <url>; rel="next"
         let semicolon = part.find(';')?;
         let (url_part, rel_part) = part.split_at(semicolon);
-        let url_trimmed = url_part.trim().trim_start_matches('<').trim_end_matches('>');
+        let url_trimmed = url_part
+            .trim()
+            .trim_start_matches('<')
+            .trim_end_matches('>');
         if rel_part.contains("rel=\"next\"") {
             // Strip the base — everything before the path segment.
             return Some(

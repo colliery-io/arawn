@@ -1,17 +1,18 @@
 //! `LocalService` inherent methods backing the `memory.*` portion of
 //! `ArawnService`. The trait shell in `super::mod` delegates to these.
 
-
 use arawn_service::{
-    ForgetCandidate, ForgetResult,
-    MemoryStoreResult, MemoryStoreSummary, MemorySummary, MemoryTypeCount, ServiceError,
+    ForgetCandidate, ForgetResult, MemoryStoreResult, MemoryStoreSummary, MemorySummary,
+    MemoryTypeCount, ServiceError,
 };
-
 
 use super::{LocalService, infer_entity_type};
 
 impl LocalService {
-    pub(super) async fn remember_fact_inner(&self, text: &str) -> Result<MemoryStoreResult, ServiceError> {
+    pub(super) async fn remember_fact_inner(
+        &self,
+        text: &str,
+    ) -> Result<MemoryStoreResult, ServiceError> {
         use arawn_memory::{ConfidenceSource, Entity};
 
         let memory = self
@@ -77,7 +78,7 @@ impl LocalService {
 
         for et in &types {
             let g = memory.global.count_by_type(*et).unwrap_or(0);
-            let w = memory.workstream.count_by_type(*et).unwrap_or(0);
+            let w = memory.lens.count_by_type(*et).unwrap_or(0);
             if g > 0 {
                 global_counts.push(MemoryTypeCount {
                     entity_type: et.as_str().to_string(),
@@ -97,24 +98,24 @@ impl LocalService {
                 total: memory.global.count_all().unwrap_or(0) as u64,
                 by_type: global_counts,
             },
-            workstream: MemoryStoreSummary {
-                total: memory.workstream.count_all().unwrap_or(0) as u64,
+            lens: MemoryStoreSummary {
+                total: memory.lens.count_all().unwrap_or(0) as u64,
                 by_type: ws_counts,
             },
         })
     }
 
-    pub(super) async fn forget_entity_inner(&self, query: &str) -> Result<ForgetResult, ServiceError> {
+    pub(super) async fn forget_entity_inner(
+        &self,
+        query: &str,
+    ) -> Result<ForgetResult, ServiceError> {
         let memory = self
             .memory_manager
             .as_ref()
             .ok_or_else(|| ServiceError::Internal("Memory system not available".into()))?;
 
         let mut candidates = Vec::new();
-        for (store, label) in [
-            (&memory.global, "global"),
-            (&memory.workstream, "workstream"),
-        ] {
+        for (store, label) in [(&memory.global, "global"), (&memory.lens, "lens")] {
             if let Ok(results) = store.search(query, 5) {
                 for e in results {
                     candidates.push((e, label));
@@ -133,7 +134,7 @@ impl LocalService {
             let store = if *label == "global" {
                 &memory.global
             } else {
-                &memory.workstream
+                &memory.lens
             };
             match store.delete_entity(entity.id) {
                 Ok(true) => Ok(ForgetResult::Deleted {
@@ -158,5 +159,4 @@ impl LocalService {
             })
         }
     }
-
 }

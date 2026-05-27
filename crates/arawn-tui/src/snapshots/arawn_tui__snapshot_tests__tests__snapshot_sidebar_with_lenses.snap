@@ -2,7 +2,7 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-┌ Workstreams ─────┐                                                    ┌ Today ───────────────────┐
+┌ Lenses ──────────┐                                                    ┌ Today ───────────────────┐
 │▸ scratch         │                                                    │Brief                     │
 │  home            │                                                    │(no brief yet — run /day t│
 │                  │                                                    │                          │

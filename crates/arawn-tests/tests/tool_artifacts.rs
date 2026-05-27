@@ -4,16 +4,16 @@
 //! These tests call tool.execute() directly with known-good parameters
 //! and validate the produced artifact (file exists, compiles, is searchable, etc.)
 
-use arawn_core::Workstream;
-use arawn_engine::Tool; // re-exported from arawn_tool
+use arawn_core::Lens;
 use arawn_engine::EngineToolContext;
+use arawn_engine::Tool; // re-exported from arawn_tool
 use arawn_tool::ToolContext; // the trait — needed for method dispatch
 use serde_json::json;
 use tempfile::TempDir;
 use uuid::Uuid;
 
 fn make_ctx(tmp: &TempDir) -> EngineToolContext {
-    let ws = Workstream::new("test", tmp.path());
+    let ws = Lens::new("test", tmp.path());
     EngineToolContext::new(&ws, Uuid::new_v4())
 }
 

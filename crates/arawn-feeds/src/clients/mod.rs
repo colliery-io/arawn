@@ -30,11 +30,11 @@ pub use atlassian::{
     JiraIssueDetail, JiraIssueMeta, JiraProjectMeta, RealAtlassianClient,
 };
 pub use calendar::{CalendarFeedClient, RealCalendarClient};
-pub use filesystem::{
-    FileFingerprint, FilesystemFeedCursor, FilesystemFeedParams, FilesystemFeedTemplate,
-};
 pub use drive::{
     DriveFeedClient, DriveFile, RealDriveClient, export_for, is_unsupported_google_native,
+};
+pub use filesystem::{
+    FileFingerprint, FilesystemFeedCursor, FilesystemFeedParams, FilesystemFeedTemplate,
 };
 pub use github::{GithubFeedClient, RealGithubClient};
 pub use gmail::{GmailFeedClient, RealGmailClient};

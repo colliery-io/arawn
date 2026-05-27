@@ -400,7 +400,7 @@ mod tests {
     use super::*;
     use crate::agent_defs::built_in_agents;
     use crate::context::EngineToolContext;
-    use arawn_core::Workstream;
+    use arawn_core::Lens;
     use arawn_llm::{MockLlmClient, MockResponse};
     use arawn_tool::ToolContext as _;
     use uuid::Uuid;
@@ -410,7 +410,7 @@ mod tests {
     ) -> (EngineToolContext, Arc<MockLlmClient>, Arc<ToolRegistry>) {
         let mock = Arc::new(MockLlmClient::new(responses));
         let registry = Arc::new(ToolRegistry::new());
-        let ws = Workstream::scratch("/tmp/test");
+        let ws = Lens::scratch("/tmp/test");
         let ctx = EngineToolContext::new(&ws, Uuid::new_v4())
             .with_llm(mock.clone(), "test-model".to_string());
         (ctx, mock, registry)
@@ -489,7 +489,7 @@ mod tests {
         let resolver = test_resolver(cheap_dyn, "cheap-model".into(), "cheap".into());
 
         let registry = Arc::new(ToolRegistry::new());
-        let ws = Workstream::scratch("/tmp/test");
+        let ws = Lens::scratch("/tmp/test");
         let ctx = EngineToolContext::new(&ws, Uuid::new_v4())
             .with_llm(parent.clone(), "parent-model".to_string())
             .with_llm_resolver(resolver);
@@ -512,7 +512,7 @@ mod tests {
         // No resolver attached — agent tool falls back to ctx.llm() (parent).
         let parent = Arc::new(MockLlmClient::new(vec![MockResponse::text("from parent")]));
         let registry = Arc::new(ToolRegistry::new());
-        let ws = Workstream::scratch("/tmp/test");
+        let ws = Lens::scratch("/tmp/test");
         let ctx = EngineToolContext::new(&ws, Uuid::new_v4())
             .with_llm(parent.clone(), "parent-model".to_string());
 
@@ -549,7 +549,7 @@ mod tests {
 
     #[tokio::test]
     async fn sub_agent_no_llm_errors() {
-        let ws = Workstream::scratch("/tmp/test");
+        let ws = Lens::scratch("/tmp/test");
         let ctx = EngineToolContext::new(&ws, Uuid::new_v4());
         let registry = Arc::new(ToolRegistry::new());
 
@@ -639,7 +639,7 @@ mod tests {
 
     #[test]
     fn for_sub_agent_increments_depth() {
-        let ws = Workstream::scratch("/tmp/test");
+        let ws = Lens::scratch("/tmp/test");
         let ctx = EngineToolContext::new(&ws, Uuid::new_v4());
         assert_eq!(ctx.agent_depth(), 0);
 

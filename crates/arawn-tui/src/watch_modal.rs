@@ -210,7 +210,10 @@ pub enum WatchOutcome {
     /// Open the discovery pick-list for a field whose choices aren't cached
     /// yet — the event loop calls `feed_discover` and feeds rows back via
     /// [`WatchModalState::set_field_choices`].
-    Discover { template: String, field_key: String },
+    Discover {
+        template: String,
+        field_key: String,
+    },
     /// Close the overlay with no side effects.
     Cancel,
 }
@@ -277,11 +280,13 @@ impl WatchModalState {
         let empty = choices.is_empty();
         self.fields[idx].choices = Some(choices);
         if empty {
-            self.last_error =
-                Some("No choices found — type the value instead.".to_string());
+            self.last_error = Some("No choices found — type the value instead.".to_string());
             self.picker = None;
         } else {
-            self.picker = Some(PickerState { field: idx, index: 0 });
+            self.picker = Some(PickerState {
+                field: idx,
+                index: 0,
+            });
         }
     }
 
@@ -442,13 +447,15 @@ impl WatchModalState {
         let idx = self.focus;
         match self.fields.get(idx).and_then(|f| f.choices.as_ref()) {
             Some(choices) if !choices.is_empty() => {
-                self.picker = Some(PickerState { field: idx, index: 0 });
+                self.picker = Some(PickerState {
+                    field: idx,
+                    index: 0,
+                });
                 WatchOutcome::None
             }
             Some(_) => {
                 // Already fetched, came back empty — free-text fallback.
-                self.last_error =
-                    Some("No choices found — type the value instead.".to_string());
+                self.last_error = Some("No choices found — type the value instead.".to_string());
                 WatchOutcome::None
             }
             None => WatchOutcome::Discover {
@@ -528,8 +535,7 @@ impl WatchModalState {
                         Ok(None) => {
                             // Empty optional — omit so the template default applies.
                             if f.spec.required {
-                                self.last_error =
-                                    Some(format!("{} is required.", f.spec.label));
+                                self.last_error = Some(format!("{} is required.", f.spec.label));
                                 return WatchOutcome::None;
                             }
                         }
@@ -658,7 +664,10 @@ fn render_picker_lines(state: &WatchModalState) -> Vec<Line<'static>> {
                 Span::styled(indicator, Style::default().fg(Color::Yellow)),
                 Span::styled(c.label.clone(), style),
                 Span::styled(
-                    c.hint.as_deref().map(|h| format!("  {h}")).unwrap_or_default(),
+                    c.hint
+                        .as_deref()
+                        .map(|h| format!("  {h}"))
+                        .unwrap_or_default(),
                     Style::default().fg(theme::OVERLAY1),
                 ),
             ]));
@@ -819,7 +828,12 @@ mod tests {
         }
     }
 
-    fn spec(key: &str, kind: FeedParamKindDto, required: bool, default: Option<Value>) -> FeedParamSpecDto {
+    fn spec(
+        key: &str,
+        kind: FeedParamKindDto,
+        required: bool,
+        default: Option<Value>,
+    ) -> FeedParamSpecDto {
         FeedParamSpecDto {
             key: key.into(),
             label: key.into(),
@@ -852,7 +866,12 @@ mod tests {
             "filesystem/folder",
             vec![
                 spec("root", FeedParamKindDto::Path, true, None),
-                spec("recursive", FeedParamKindDto::Bool, false, Some(json!(true))),
+                spec(
+                    "recursive",
+                    FeedParamKindDto::Bool,
+                    false,
+                    Some(json!(true)),
+                ),
                 spec(
                     "include",
                     FeedParamKindDto::List,
@@ -868,8 +887,14 @@ mod tests {
     #[test]
     fn pick_stage_navigates_and_selects() {
         let mut s = WatchModalState::new(vec![
-            TemplateChoice { name: "a/one".into(), description: String::new() },
-            TemplateChoice { name: "b/two".into(), description: String::new() },
+            TemplateChoice {
+                name: "a/one".into(),
+                description: String::new(),
+            },
+            TemplateChoice {
+                name: "b/two".into(),
+                description: String::new(),
+            },
         ]);
         assert_eq!(s.handle_key(key(KeyCode::Down)), WatchOutcome::None);
         assert_eq!(s.template_index, 1);
@@ -914,7 +939,12 @@ mod tests {
         typ(&mut s, "/Users/me/My Drive/Notes"); // spaced path, no quoting
         let outcome = s.handle_key(key(KeyCode::Enter));
         match outcome {
-            WatchOutcome::Submit { template, feed_id, params, cadence } => {
+            WatchOutcome::Submit {
+                template,
+                feed_id,
+                params,
+                cadence,
+            } => {
                 assert_eq!(template, "filesystem/folder");
                 assert_eq!(feed_id, "mynotes");
                 assert_eq!(params["root"], "/Users/me/My Drive/Notes");
@@ -963,7 +993,12 @@ mod tests {
         let mut s = WatchModalState::new(vec![]);
         s.enter_form(
             "gmail/inbox-archive",
-            vec![spec("days_back", FeedParamKindDto::Int, false, Some(json!(7)))],
+            vec![spec(
+                "days_back",
+                FeedParamKindDto::Int,
+                false,
+                Some(json!(7)),
+            )],
             "*/15 * * * *",
         );
         typ(&mut s, "id"); // feed_id
@@ -1019,8 +1054,18 @@ mod tests {
             "filesystem/folder",
             vec![
                 spec("root", FeedParamKindDto::Path, true, None),
-                spec("recursive", FeedParamKindDto::Bool, false, Some(json!(true))),
-                spec("include", FeedParamKindDto::List, false, Some(json!(["**/*"]))),
+                spec(
+                    "recursive",
+                    FeedParamKindDto::Bool,
+                    false,
+                    Some(json!(true)),
+                ),
+                spec(
+                    "include",
+                    FeedParamKindDto::List,
+                    false,
+                    Some(json!(["**/*"])),
+                ),
             ],
             "*/15 * * * *",
         );
@@ -1030,7 +1075,13 @@ mod tests {
         typ(&mut s, "/Users/me/My Drive/Notes"); // spaced path, no quoting
 
         let outcome = s.handle_key(key(KeyCode::Enter));
-        let WatchOutcome::Submit { template, feed_id, params, cadence } = outcome else {
+        let WatchOutcome::Submit {
+            template,
+            feed_id,
+            params,
+            cadence,
+        } = outcome
+        else {
             panic!("expected Submit, got {outcome:?}");
         };
 
@@ -1047,7 +1098,10 @@ mod tests {
         assert_eq!(spec.template, "filesystem/folder");
         assert_eq!(spec.feed_id, "mynotes");
         assert_eq!(spec.params["root"], "/Users/me/My Drive/Notes");
-        assert!(spec.cadence.is_none(), "unchanged cadence is not overridden");
+        assert!(
+            spec.cadence.is_none(),
+            "unchanged cadence is not overridden"
+        );
     }
 
     fn discoverable_form() -> WatchModalState {
@@ -1062,8 +1116,16 @@ mod tests {
 
     fn choices() -> Vec<DiscoveryChoice> {
         vec![
-            DiscoveryChoice { label: "#design".into(), hint: Some("C1".into()), value: "C1".into() },
-            DiscoveryChoice { label: "#eng".into(), hint: Some("C2".into()), value: "C2".into() },
+            DiscoveryChoice {
+                label: "#design".into(),
+                hint: Some("C1".into()),
+                value: "C1".into(),
+            },
+            DiscoveryChoice {
+                label: "#eng".into(),
+                hint: Some("C2".into()),
+                value: "C2".into(),
+            },
         ]
     }
 

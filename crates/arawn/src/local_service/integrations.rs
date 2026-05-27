@@ -5,7 +5,6 @@ use std::sync::Arc;
 
 use arawn_service::ServiceError;
 
-
 use super::{LocalService, OAuthFlowCtx, default_feed_for_service};
 
 impl LocalService {
@@ -160,7 +159,10 @@ impl LocalService {
         })
     }
 
-    pub(super) async fn disconnect_integration_inner(&self, service: &str) -> Result<(), ServiceError> {
+    pub(super) async fn disconnect_integration_inner(
+        &self,
+        service: &str,
+    ) -> Result<(), ServiceError> {
         let integration = self
             .integration_registry
             .read()
@@ -184,5 +186,4 @@ impl LocalService {
         });
         Ok(())
     }
-
 }

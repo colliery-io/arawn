@@ -16,9 +16,9 @@ use serde_json::{Value, json};
 
 use arawn_feeds::templates::calendar::UpcomingArchiveTemplate;
 use arawn_feeds::{
-    AtlassianFeedClient, GithubFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError,
-    FeedMeta, FeedTemplate, GmailFeedClient, MetaStore, SlackFeedClient, TemplateCtx,
-    TemplateParams,
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, FeedClients, FeedError,
+    FeedMeta, FeedTemplate, GithubFeedClient, GmailFeedClient, MetaStore, SlackFeedClient,
+    TemplateCtx, TemplateParams,
 };
 
 #[derive(Default)]

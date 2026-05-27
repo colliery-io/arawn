@@ -325,9 +325,7 @@ async fn permission_request_hook_fires_when_prompting() {
 async fn permission_denied_hook_fires_on_deny_rule() {
     // I-0056 T-C: PermissionDenied hook fires when a deny rule rejects a
     // tool call. Marker file proves the hook ran.
-    use arawn_engine::permissions::{
-        PermissionChecker, PermissionMode, PermissionRule, RuleKind,
-    };
+    use arawn_engine::permissions::{PermissionChecker, PermissionMode, PermissionRule, RuleKind};
 
     let tmp = TempDir::new().unwrap();
     let marker = tmp.path().join("denied_fired");

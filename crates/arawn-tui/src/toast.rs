@@ -94,13 +94,11 @@ pub fn write_osc52_clipboard(text: &str) {
 /// for one short string per `/copy` invocation. Pure, no padding
 /// shortcuts skipped.
 fn base64_encode(input: &[u8]) -> String {
-    const CHARS: &[u8; 64] =
-        b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::with_capacity((input.len() + 2) / 3 * 4);
+    const CHARS: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
     let mut i = 0;
     while i + 3 <= input.len() {
-        let n =
-            ((input[i] as u32) << 16) | ((input[i + 1] as u32) << 8) | (input[i + 2] as u32);
+        let n = ((input[i] as u32) << 16) | ((input[i + 1] as u32) << 8) | (input[i + 2] as u32);
         out.push(CHARS[((n >> 18) & 0x3F) as usize] as char);
         out.push(CHARS[((n >> 12) & 0x3F) as usize] as char);
         out.push(CHARS[((n >> 6) & 0x3F) as usize] as char);

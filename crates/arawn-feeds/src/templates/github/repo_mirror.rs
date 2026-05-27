@@ -90,8 +90,18 @@ impl FeedTemplate for RepoMirrorTemplate {
     fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
         use crate::param_schema::{ParamKind, ParamSpec};
         vec![
-            ParamSpec::required("owner", "Owner", ParamKind::Text, "GitHub repo owner (user or org)."),
-            ParamSpec::required("name", "Repo name", ParamKind::Text, "GitHub repository name."),
+            ParamSpec::required(
+                "owner",
+                "Owner",
+                ParamKind::Text,
+                "GitHub repo owner (user or org).",
+            ),
+            ParamSpec::required(
+                "name",
+                "Repo name",
+                ParamKind::Text,
+                "GitHub repository name.",
+            ),
         ]
     }
 
@@ -305,9 +315,8 @@ fn write_batch(
     if batch.is_empty() {
         return Ok((0, 0, None));
     }
-    std::fs::create_dir_all(kind_dir).map_err(|e| {
-        FeedError::Storage(format!("create {}: {e}", kind_dir.display()))
-    })?;
+    std::fs::create_dir_all(kind_dir)
+        .map_err(|e| FeedError::Storage(format!("create {}: {e}", kind_dir.display())))?;
     let mut count: u64 = 0;
     let mut bytes: u64 = 0;
     let mut latest: Option<String> = None;
@@ -362,13 +371,19 @@ fn advance(prev: Option<String>, latest: Option<String>) -> Option<String> {
 
 fn sanitize(s: &str) -> String {
     s.chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
 fn write_json(path: &PathBuf, v: &Value) -> Result<u64, FeedError> {
-    let body = serde_json::to_vec_pretty(v)
-        .map_err(|e| FeedError::Storage(format!("serialize: {e}")))?;
+    let body =
+        serde_json::to_vec_pretty(v).map_err(|e| FeedError::Storage(format!("serialize: {e}")))?;
     let len = body.len() as u64;
     let tmp = path.with_extension("json.tmp");
     std::fs::write(&tmp, &body)
@@ -584,7 +599,11 @@ mod tests {
 
     #[test]
     fn validate_requires_owner_and_name() {
-        assert!(RepoMirrorTemplate.validate(&TemplateParams::default()).is_err());
+        assert!(
+            RepoMirrorTemplate
+                .validate(&TemplateParams::default())
+                .is_err()
+        );
         let p = TemplateParams(json!({"owner": "x"}));
         assert!(RepoMirrorTemplate.validate(&p).is_err());
         let p = TemplateParams(json!({"owner": "", "name": "x"}));
@@ -595,7 +614,10 @@ mod tests {
 
     #[test]
     fn defaults_use_30min_cadence() {
-        assert_eq!(RepoMirrorTemplate.defaults(&params()).cadence, "*/30 * * * *");
+        assert_eq!(
+            RepoMirrorTemplate.defaults(&params()).cadence,
+            "*/30 * * * *"
+        );
     }
 
     #[tokio::test]
@@ -722,8 +744,14 @@ mod tests {
             advance(Some("2026-05-18".into()), Some("2026-05-10".into())),
             Some("2026-05-18".into())
         );
-        assert_eq!(advance(None, Some("2026-05-10".into())), Some("2026-05-10".into()));
-        assert_eq!(advance(Some("2026-05-10".into()), None), Some("2026-05-10".into()));
+        assert_eq!(
+            advance(None, Some("2026-05-10".into())),
+            Some("2026-05-10".into())
+        );
+        assert_eq!(
+            advance(Some("2026-05-10".into()), None),
+            Some("2026-05-10".into())
+        );
         assert_eq!(advance(None, None), None);
     }
 }

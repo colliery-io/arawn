@@ -88,10 +88,10 @@ impl CommandRegistry {
             description: "Set permission posture (ask|edits|full|plan)".into(),
             kind: CommandKind::BuiltIn,
         });
-        // Workstream/session management
+        // Lens/session management
         self.commands.push(CommandInfo {
-            name: "workstream".into(),
-            description: "Manage workstreams (create, list, switch)".into(),
+            name: "lens".into(),
+            description: "Manage lenses (create, list, switch)".into(),
             kind: CommandKind::BuiltIn,
         });
         self.commands.push(CommandInfo {
@@ -101,7 +101,7 @@ impl CommandRegistry {
         });
         self.commands.push(CommandInfo {
             name: "promote".into(),
-            description: "Promote scratch session to a workstream".into(),
+            description: "Promote scratch session to a lens".into(),
             kind: CommandKind::BuiltIn,
         });
         // Inventory commands
@@ -330,17 +330,17 @@ pub enum CommandResult {
     MemorySummary,
     /// Forget/delete an entity via /forget.
     ForgetEntity(String),
-    /// Create a new workstream.
-    WorkstreamCreate(String),
-    /// List all workstreams.
-    WorkstreamList,
-    /// Switch to a workstream by name.
-    WorkstreamSwitch(String),
-    /// Create a new session in the current workstream.
+    /// Create a new lens.
+    LensCreate(String),
+    /// List all lenses.
+    LensList,
+    /// Switch to a lens by name.
+    LensSwitch(String),
+    /// Create a new session in the current lens.
     SessionNew,
-    /// List sessions in the current workstream.
+    /// List sessions in the current lens.
     SessionList,
-    /// Promote current scratch session to a workstream.
+    /// Promote current scratch session to a lens.
     PromoteSession(String),
     /// Set permission mode. Mode string: "ask" | "edits" | "full" | "plan"
     /// (matches the `PermissionMode` enum's serde representation).
@@ -677,28 +677,28 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                     CommandResult::SystemMessage(help)
                 }
                 "clear" => CommandResult::ClearChat,
-                "workstream" => {
+                "lens" => {
                     let parts: Vec<&str> = cmd.args.splitn(2, char::is_whitespace).collect();
                     match parts.first().copied() {
                         Some("create") => {
                             let name = parts.get(1).unwrap_or(&"").trim();
                             if name.is_empty() {
-                                CommandResult::SystemMessage("Usage: /workstream create <name>".into())
+                                CommandResult::SystemMessage("Usage: /lens create <name>".into())
                             } else {
-                                CommandResult::WorkstreamCreate(name.to_string())
+                                CommandResult::LensCreate(name.to_string())
                             }
                         }
-                        Some("list") => CommandResult::WorkstreamList,
+                        Some("list") => CommandResult::LensList,
                         Some("switch") => {
                             let name = parts.get(1).unwrap_or(&"").trim();
                             if name.is_empty() {
-                                CommandResult::SystemMessage("Usage: /workstream switch <name>".into())
+                                CommandResult::SystemMessage("Usage: /lens switch <name>".into())
                             } else {
-                                CommandResult::WorkstreamSwitch(name.to_string())
+                                CommandResult::LensSwitch(name.to_string())
                             }
                         }
                         _ => CommandResult::SystemMessage(
-                            "Usage: /workstream <create|list|switch> [name]\n\n  create <name>  Create a new workstream\n  list           List all workstreams\n  switch <name>  Switch to a workstream".into()
+                            "Usage: /lens <create|list|switch> [name]\n\n  create <name>  Create a new lens\n  list           List all lenses\n  switch <name>  Switch to a lens".into()
                         ),
                     }
                 }
@@ -708,13 +708,13 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                         "new" => CommandResult::SessionNew,
                         "list" => CommandResult::SessionList,
                         _ => CommandResult::SystemMessage(
-                            "Usage: /session <new|list>\n\n  new   Create a new session\n  list  List sessions in current workstream".into()
+                            "Usage: /session <new|list>\n\n  new   Create a new session\n  list  List sessions in current lens".into()
                         ),
                     }
                 }
                 "promote" => {
                     if cmd.args.is_empty() {
-                        CommandResult::SystemMessage("Usage: /promote <workstream-name>".into())
+                        CommandResult::SystemMessage("Usage: /promote <lens-name>".into())
                     } else {
                         CommandResult::PromoteSession(cmd.args.clone())
                     }
@@ -901,7 +901,10 @@ mod tests {
         // the fix instead of just "is not key=value".
         let err = parse_watch_args("filesystem/folder notes root=/Users/me/My Drive/Meet")
             .expect_err("unquoted spaces cannot be tokenized");
-        assert!(err.contains("quote it"), "error should hint at quoting: {err}");
+        assert!(
+            err.contains("quote it"),
+            "error should hint at quoting: {err}"
+        );
     }
 
     /// Omitting the feed_id makes the first `key=value` get consumed as the

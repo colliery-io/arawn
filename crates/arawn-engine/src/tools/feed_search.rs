@@ -1,5 +1,5 @@
 //! `feed_search` — cross-feed semantic + structured search over
-//! `arawn-projections`. Phase 2 of I-0040: no workstream needed.
+//! `arawn-projections`. Phase 2 of I-0040: no lens needed.
 //!
 //! Today this runs FTS5 only (embedding pipeline is a separate
 //! follow-up — see `<feed_type>_embeddings` in arawn-projections).
@@ -66,7 +66,7 @@ impl Tool for FeedSearchTool {
 
     fn description(&self) -> &str {
         "Search across continual data feeds (gmail, slack, drive, jira, confluence, calendar). \
-         Use this for cross-feed lookups when no workstream is declared. Ranks by hybrid \
+         Use this for cross-feed lookups when no lens is declared. Ranks by hybrid \
          FTS5 + semantic similarity (RRF-fused) when an embedder is configured.\n\n\
          **Use this (not `daily_list_items`) when the user asks to \"summarize my inbox\", \
          \"read my gmail\", \"what's in slack today\", etc.** — `feed_search` reads the raw \
@@ -318,7 +318,7 @@ mod tests {
 
     /// T-0345: cross-feed search must include every GitHub projection
     /// table by default, otherwise `/feed_search "RFC postgres"` skips
-    /// every GitHub hit on a workstream that has GitHub feeds wired.
+    /// every GitHub hit on a lens that has GitHub feeds wired.
     #[test]
     fn known_feed_types_contains_all_github_tables() {
         let github_tables = [

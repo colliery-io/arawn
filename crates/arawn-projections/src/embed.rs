@@ -38,7 +38,7 @@ pub const EMBEDDABLE_FEED_TYPES: &[&str] = &[
     "github_notifications",
     // Repo-scoped feeds (I-0050 T-0324). Each kind has substantive
     // text (commit messages, issue/PR body, comment bodies) worth
-    // embedding for semantic recall in workstream KBs.
+    // embedding for semantic recall in lens KBs.
     "github_repo_commits",
     "github_repo_issues",
     "github_repo_prs",

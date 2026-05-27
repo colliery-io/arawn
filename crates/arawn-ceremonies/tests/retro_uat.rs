@@ -9,8 +9,8 @@
 //! Two scenarios:
 //! - **Full history (4 weeks).** Pattern detectors with
 //!   `require_history_weeks ≤ 3` (priority_completion, rollover_heat,
-//!   workstream_neglect) all run; the run produces ≥ 1 pattern row.
-//! - **Bootstrap (no prior history).** `workstream_neglect` skips;
+//!   lens_neglect) all run; the run produces ≥ 1 pattern row.
+//! - **Bootstrap (no prior history).** `lens_neglect` skips;
 //!   the retro still ships and the `what_happened` section
 //!   populates from the daily tablets seeded for the current week.
 
@@ -56,7 +56,7 @@ fn mock_compose_response(citations: &[(&str, &str, &str)]) -> Arc<MockLlmClient>
 fn seed_daily_tablet(conn: &ConnHandle, id: &str, date: &str, item_id: &str, todo_body: &str) {
     let c = conn.0.lock().unwrap();
     c.execute(
-        "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+        "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
          VALUES (?1, 'daily', ?2, ?3, 'reviewed', '[]')",
         params![id, date, format!("{date}T07:00:00Z")],
     )
@@ -82,7 +82,7 @@ fn seed_weekly_tablet_with_priorities(
 ) {
     let c = conn.0.lock().unwrap();
     c.execute(
-        "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, workstreams_scanned) \
+        "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned) \
          VALUES (?1, 'weekly', ?2, '2026-05-11T07:00:00Z', 'reviewed', '[]')",
         params![id, iso_week],
     )
@@ -90,7 +90,7 @@ fn seed_weekly_tablet_with_priorities(
     for (i, (pid, confirmed, done)) in priorities.iter().enumerate() {
         let todo_id = format!("td-{pid}");
         c.execute(
-            "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+            "INSERT INTO todos (id, body, rationale, kind, lens, created_at, \
                                 due_at, done_at, archived_at, attrs) \
              VALUES (?1, 'body', 'rationale', 'weekly_priority', NULL, '2026-05-11T07:00:00Z', \
                      NULL, ?2, NULL, '{}')",
@@ -126,7 +126,7 @@ fn seed_weekly_tablet_with_priorities(
 fn seed_rollup_row(conn: &ConnHandle, iso_week: &str, ws: &str, key: &str, val: f64) {
     let c = conn.0.lock().unwrap();
     c.execute(
-        "INSERT INTO ceremony_activity_rollup (iso_week, workstream, metric_key, value) \
+        "INSERT INTO ceremony_activity_rollup (iso_week, lens, metric_key, value) \
          VALUES (?1, ?2, ?3, ?4)",
         params![iso_week, ws, key, val],
     )
@@ -142,14 +142,18 @@ fn seed_rolling_todo(
 ) {
     let c = conn.0.lock().unwrap();
     c.execute(
-        "INSERT INTO todos (id, body, rationale, kind, workstream, created_at, \
+        "INSERT INTO todos (id, body, rationale, kind, lens, created_at, \
                             due_at, done_at, archived_at, attrs) \
          VALUES (?1, 'rolled-over', NULL, 'rollover', NULL, ?2, NULL, ?3, NULL, \
                  json_object('origin_tablet_id', ?4, 'last_seen_tablet_id', ?4))",
         params![
             id,
             created_at,
-            if done { Some("2026-05-15T17:00:00Z") } else { None },
+            if done {
+                Some("2026-05-15T17:00:00Z")
+            } else {
+                None
+            },
             last_seen_tablet,
         ],
     )
@@ -164,7 +168,7 @@ async fn uat_4_week_retro_with_pattern_detection() {
     // test is stable across time.
     let now = Utc::now();
     let iso_now = RetroCeremony::iso_week(now);
-    // Seed prior 3 weeks of rollup so workstream_neglect's
+    // Seed prior 3 weeks of rollup so lens_neglect's
     // require_history_weeks = 3 is satisfied.
     let prior_weeks: Vec<String> = (1..=3)
         .map(|i| {
@@ -176,7 +180,7 @@ async fn uat_4_week_retro_with_pattern_detection() {
         seed_rollup_row(&conn, w, "proj-a", "emails_sent", 5.0);
         seed_rollup_row(&conn, w, "proj-b", "meetings_attended", 2.0);
     }
-    // This week: proj-a is active; proj-b is *not* (workstream_neglect
+    // This week: proj-a is active; proj-b is *not* (lens_neglect
     // fires for proj-b).
     seed_rollup_row(&conn, &iso_now, "proj-a", "emails_sent", 5.0);
 
@@ -329,7 +333,7 @@ async fn uat_4_week_retro_with_pattern_detection() {
 
 #[tokio::test]
 async fn uat_bootstrap_no_history_still_ships_retro() {
-    // Only one week of data — workstream_neglect (require_history=3)
+    // Only one week of data — lens_neglect (require_history=3)
     // is skipped by the registry. priority_completion (require=0)
     // and rollover_heat (require=0) run but quietly return empty
     // when there's no signal.
@@ -361,7 +365,7 @@ async fn uat_bootstrap_no_history_still_ships_retro() {
     let outcome = dispatcher.dispatch("retro").await.unwrap();
     assert!(matches!(outcome, DispatchOutcome::Generated { .. }));
 
-    // No errors, no pattern rows (workstream_neglect skipped;
+    // No errors, no pattern rows (lens_neglect skipped;
     // others fire-empty).
     let c = conn.0.lock().unwrap();
     let pattern_count: i64 = c

@@ -281,26 +281,26 @@ async fn main() -> Result<()> {
         }
     }
 
-    // Ensure scratch workstream exists
-    // Note: scratch sessions get per-session workspaces, but the workstream root_dir
+    // Ensure scratch lens exists
+    // Note: scratch sessions get per-session workspaces, but the lens root_dir
     // is a placeholder — the actual workspace is resolved per-session at runtime.
-    let _scratch_dir = std::path::PathBuf::from(&data_dir).join("workstreams/scratch");
-    let workstream = match store.find_workstream_by_name("scratch")? {
+    let _scratch_dir = std::path::PathBuf::from(&data_dir).join("lenses/scratch");
+    let lens = match store.find_lens_by_name("scratch")? {
         Some(ws) => {
-            debug!("reusing existing scratch workstream");
+            debug!("reusing existing scratch lens");
             ws
         }
         None => {
             // Scratch is reserved; create via the dedicated path.
-            let ws = store.ensure_scratch_workstream()?;
-            info!("created scratch workstream");
+            let ws = store.ensure_scratch_lens()?;
+            info!("created scratch lens");
             ws
         }
     };
 
     // Handle --list-sessions
     if list_sessions {
-        let sessions = store.list_sessions_for_workstream(workstream.id)?;
+        let sessions = store.list_sessions_for_lens(lens.id)?;
         let scratch = store.list_scratch_sessions()?;
         if sessions.is_empty() && scratch.is_empty() {
             println!("No sessions found.");
@@ -401,7 +401,7 @@ async fn main() -> Result<()> {
         };
 
         // Initialize memory system (two-tier KB) with optional embedder
-        let ws_dir = arawn_storage::workstream_dir_name(&workstream.name, workstream.id);
+        let ws_dir = arawn_storage::lens_dir_name(&lens.name, lens.id);
         let memory_manager: Option<Arc<arawn_memory::MemoryManager>> =
             match arawn_memory::MemoryManager::open(
                 std::path::Path::new(&data_dir),
@@ -412,7 +412,7 @@ async fn main() -> Result<()> {
                     if let Some(ref emb) = embedder {
                         mgr = mgr.with_embedder(Arc::clone(emb));
                     }
-                    info!("memory system initialized (global + workstream KB)");
+                    info!("memory system initialized (global + lens KB)");
                     Some(Arc::new(mgr))
                 }
                 Err(e) => {
@@ -425,14 +425,14 @@ async fn main() -> Result<()> {
         let bg_manager = Arc::new(arawn_engine::BackgroundTaskManager::new());
         let plan_state = Arc::new(arawn_engine::PlanModeState::new());
 
-        // I-0056 T-A: build the hook runner here (after workstream is
+        // I-0056 T-A: build the hook runner here (after lens is
         // known, before tools register). T-D needs it during
         // register_default_tools to attach to AgentTool + BackgroundTaskManager;
         // T-A/B/C use the same Arc for LocalService + QueryEngine attachment
         // further down.
         let hook_runner = arawn_bin::startup::load_and_build_hook_runner(
             std::path::Path::new(&data_dir),
-            &workstream.root_dir,
+            &lens.root_dir,
         );
 
         arawn_bin::startup::register_default_tools(
@@ -444,32 +444,31 @@ async fn main() -> Result<()> {
             Some(Arc::clone(&hook_runner)),
         );
 
-        // Active-workstream shim shared between workstream slash
+        // Active-lens shim shared between lens slash
         // commands and the memory router. T-0250 routes memory tools
-        // through this primitive so `/workstream switch` redirects
-        // memory_store / memory_search to the new workstream's KB
+        // through this primitive so `/lens switch` redirects
+        // memory_store / memory_search to the new lens's KB
         // on subsequent calls.
-        let active_workstream = arawn_engine::SessionWorkstream::scratch();
+        let active_lens = arawn_engine::SessionLens::scratch();
 
-        // Workstream memory router — hoisted to outer scope so the
-        // per-workstream extractor (T-0251) can resolve KBs through
+        // Lens memory router — hoisted to outer scope so the
+        // per-lens extractor (T-0251) can resolve KBs through
         // the same cache as the memory tools.
-        let workstream_router: Option<Arc<arawn_engine::WorkstreamMemoryRouter>> =
-            if memory_manager.is_some() {
-                Some(Arc::new(arawn_engine::WorkstreamMemoryRouter::new(
-                    std::path::PathBuf::from(&data_dir),
-                    Some(embed_config.dimensions),
-                    embedder.clone(),
-                    active_workstream.clone(),
-                )))
-            } else {
-                None
-            };
+        let lens_router: Option<Arc<arawn_engine::LensMemoryRouter>> = if memory_manager.is_some() {
+            Some(Arc::new(arawn_engine::LensMemoryRouter::new(
+                std::path::PathBuf::from(&data_dir),
+                Some(embed_config.dimensions),
+                embedder.clone(),
+                active_lens.clone(),
+            )))
+        } else {
+            None
+        };
 
         // Register memory tools (if memory system is available).
-        // Use the routed handle so the active workstream determines
+        // Use the routed handle so the active lens determines
         // which KB the tools read/write.
-        if let Some(ref router) = workstream_router {
+        if let Some(ref router) = lens_router {
             registry.register(Box::new(arawn_engine::MemoryStoreTool::new(
                 Arc::clone(router),
                 embedder.clone(),
@@ -488,7 +487,7 @@ async fn main() -> Result<()> {
             registry.register(Box::new(arawn_engine::SignalTimelineTool::new(Arc::clone(
                 router,
             ))));
-            info!("memory + signal tools registered (workstream-routed)");
+            info!("memory + signal tools registered (lens-routed)");
         }
 
         // Shared projection store — feed_search, embed pass, feed
@@ -572,9 +571,10 @@ async fn main() -> Result<()> {
         // surface reload outcomes in the TUI.
 
         // Connect MCP servers (config + plugins)
-        let mcp_manager = arawn_bin::startup::connect_mcp_servers(&data_dir, &plugin_result, &registry).await;
+        let mcp_manager =
+            arawn_bin::startup::connect_mcp_servers(&data_dir, &plugin_result, &registry).await;
 
-        let mut engine_config = arawn_bin::startup::build_engine_config(&config, &workstream, &data_dir);
+        let mut engine_config = arawn_bin::startup::build_engine_config(&config, &lens, &data_dir);
 
         // Inject KB memories into the system prompt
         if let Some(ref mgr) = memory_manager {
@@ -600,8 +600,7 @@ async fn main() -> Result<()> {
 
         // Load permission rules + starting autonomy (T-0347) from config.
         let config_path = std::path::PathBuf::from(&data_dir).join("arawn.toml");
-        let permissions_cfg =
-            arawn_engine::permissions::load_permissions_from_file(&config_path);
+        let permissions_cfg = arawn_engine::permissions::load_permissions_from_file(&config_path);
         let permission_starting_mode = permissions_cfg
             .autonomy
             .unwrap_or(arawn_engine::permissions::PermissionMode::Ask);
@@ -623,24 +622,24 @@ async fn main() -> Result<()> {
         .with_plugin_registry(Arc::clone(&plugin_runtime.registry))
         .with_plan_state(plan_state)
         .with_background_tasks(bg_manager)
-        .with_active_workstream(active_workstream.clone())
+        .with_active_lens(active_lens.clone())
         .with_hook_runner(hook_runner);
 
         if let Some(ref mgr) = memory_manager {
             service = service.with_memory_manager(Arc::clone(mgr));
         }
 
-        // Build the per-workstream extractor up-front so the
-        // /workstream bind hook can spawn a backfill on first
+        // Build the per-lens extractor up-front so the
+        // /lens bind hook can spawn a backfill on first
         // binding. Requires both the projection store and the memory
         // router. StubChain for now; T-0254's tests swap in CotChain.
         let extractor_runner: Option<Arc<arawn_extractor::ExtractorRunner>> =
-            match (projections.as_ref(), workstream_router.as_ref()) {
+            match (projections.as_ref(), lens_router.as_ref()) {
                 (Some(proj), Some(router)) => {
                     let router_clone = Arc::clone(router);
                     let memory_resolver: arawn_extractor::runner::MemoryResolver =
                         Arc::new(move |name: &str| {
-                            router_clone.for_workstream(name).map_err(|e| {
+                            router_clone.for_lens(name).map_err(|e| {
                                 arawn_extractor::ExtractionError::Memory(e.to_string())
                             })
                         });
@@ -656,21 +655,21 @@ async fn main() -> Result<()> {
                 _ => None,
             };
 
-        // Steward — T-0256 scaffolding. Walks every active workstream
+        // Steward — T-0256 scaffolding. Walks every active lens
         // on a coarse cadence; identity subroutine only until
         // T-0257/T-0258 land the real ones. Spawned only when the
-        // workstream router is available (steward writes per-workstream
+        // lens router is available (steward writes per-lens
         // journals into each KB).
-        if let Some(ref router) = workstream_router {
+        if let Some(ref router) = lens_router {
             let router_clone = Arc::clone(router);
             let mem_resolver: arawn_steward::runner::MemoryResolver =
                 Arc::new(move |name: &str| {
                     router_clone
-                        .for_workstream(name)
+                        .for_lens(name)
                         .map_err(|e| arawn_steward::StewardError::Memory(e.to_string()))
                 });
             // Reshelve uses the engine LLM by default. Cursor factory
-            // opens a fresh CursorStore per workstream against the
+            // opens a fresh CursorStore per lens against the
             // same data dir.
             let data_dir_clone = std::path::PathBuf::from(&data_dir);
             let cursor_factory: Arc<
@@ -696,13 +695,13 @@ async fn main() -> Result<()> {
                 map_model,
                 Arc::clone(&cursor_factory),
             ));
-            // Door-watch needs cross-workstream visibility: pass it the
+            // Door-watch needs cross-lens visibility: pass it the
             // shared Store + the same memory resolver the runner uses.
             let dw_resolver: arawn_steward::runner::MemoryResolver = {
                 let router_clone = Arc::clone(router);
                 Arc::new(move |name: &str| {
                     router_clone
-                        .for_workstream(name)
+                        .for_lens(name)
                         .map_err(|e| arawn_steward::StewardError::Memory(e.to_string()))
                 })
             };
@@ -717,7 +716,7 @@ async fn main() -> Result<()> {
             ));
             // T-0265: tag-promoter subroutine (Suggest stage of ADR-0004).
             // Counts `tags_discovered` frequencies and proposes promotion
-            // of recurring tags into the workstream's declared ontology.
+            // of recurring tags into the lens's declared ontology.
             // Pure-stats subroutine — no LLM client needed.
             let tag_promoter = Arc::new(arawn_steward::TagPromoterSubroutine::default());
             let subs: Vec<Arc<dyn arawn_steward::StewardSubroutine>> =
@@ -739,7 +738,7 @@ async fn main() -> Result<()> {
                     tick.tick().await;
                     match steward_runner.run_pass_for_all().await {
                         Ok(s) if s.actions_journaled > 0 || s.errors > 0 => info!(
-                            workstreams = s.workstreams_visited,
+                            lenses = s.lenses_visited,
                             actions = s.actions_journaled,
                             errors = s.errors,
                             "steward pass"
@@ -752,35 +751,30 @@ async fn main() -> Result<()> {
             info!("steward scheduled (every 1h, reshelve + map + doorwatch)");
         }
 
-        // Register workstream tools (need the shared store from the service).
-        // The active-workstream shim is shared across the switch/show/list/delete
+        // Register lens tools (need the shared store from the service).
+        // The active-lens shim is shared across the switch/show/list/delete
         // tools AND the memory router so they observe the same session-level state.
-        // Idempotently materialize the scratch workstream so first-boot users
+        // Idempotently materialize the scratch lens so first-boot users
         // land in a valid scope.
-        if let Err(e) = service
-            .shared_store()
-            .lock()
-            .unwrap()
-            .ensure_scratch_workstream()
-        {
-            warn!(error = %e, "failed to ensure scratch workstream");
+        if let Err(e) = service.shared_store().lock().unwrap().ensure_scratch_lens() {
+            warn!(error = %e, "failed to ensure scratch lens");
         }
-        registry.register(Box::new(arawn_engine::WorkstreamCreateTool::new(
+        registry.register(Box::new(arawn_engine::LensCreateTool::new(
             service.shared_store(),
         )));
         registry.register(Box::new(
-            arawn_engine::WorkstreamListTool::new(service.shared_store())
-                .with_active(active_workstream.clone()),
+            arawn_engine::LensListTool::new(service.shared_store())
+                .with_active(active_lens.clone()),
         ));
-        registry.register(Box::new(arawn_engine::WorkstreamSwitchTool::new(
+        registry.register(Box::new(arawn_engine::LensSwitchTool::new(
             service.shared_store(),
-            active_workstream.clone(),
+            active_lens.clone(),
         )));
-        registry.register(Box::new(arawn_engine::WorkstreamShowTool::new(
+        registry.register(Box::new(arawn_engine::LensShowTool::new(
             service.shared_store(),
-            active_workstream.clone(),
+            active_lens.clone(),
         )));
-        registry.register(Box::new(arawn_engine::WorkstreamDescribeTool::new(
+        registry.register(Box::new(arawn_engine::LensDescribeTool::new(
             service.shared_store(),
         )));
 
@@ -822,8 +816,8 @@ async fn main() -> Result<()> {
             registry.register(Box::new(arawn_engine::TodoSearchTool::new(s, ev)));
         }
 
-        // T-0264: LLM-backed initial-ontology proposer for `/workstream-create`.
-        registry.register(Box::new(arawn_engine::WorkstreamProposeOntologyTool::new(
+        // T-0264: LLM-backed initial-ontology proposer for `/lens-create`.
+        registry.register(Box::new(arawn_engine::LensProposeOntologyTool::new(
             llm_pool.engine(),
             llm_pool.engine_config().model.clone(),
         )));
@@ -839,14 +833,13 @@ async fn main() -> Result<()> {
         // can register / unregister cron schedules without waiting for
         // a process restart. Populated after `arawn_feeds::start`
         // returns. None means hot register/unregister is a no-op.
-        let feed_runtime_for_hooks: Arc<
-            std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>,
-        > = Arc::new(std::sync::RwLock::new(None));
+        let feed_runtime_for_hooks: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> =
+            Arc::new(std::sync::RwLock::new(None));
 
         {
-            let mut bind_tool = arawn_engine::WorkstreamBindTool::new(service.shared_store());
+            let mut bind_tool = arawn_engine::LensBindTool::new(service.shared_store());
             if let Some(ref runner) = extractor_runner {
-                // BindBackfillHook impl: on `/workstream bind`, look up
+                // BindBackfillHook impl: on `/lens bind`, look up
                 // the feed_id in the feed store, map template →
                 // projection feed_types, and spawn the extractor
                 // backfill. Soft-fails when the feed isn't in the
@@ -860,18 +853,16 @@ async fn main() -> Result<()> {
                             Option<Arc<arawn_integrations::github::GithubIntegration>>,
                         >,
                     >,
-                    feed_runtime: Arc<
-                        std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>,
-                    >,
+                    feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>>,
                 }
                 impl arawn_engine::BindBackfillHook for ExtractorBindHook {
-                    fn on_bind(&self, workstream_name: &str, feed_id: &str) {
+                    fn on_bind(&self, lens_name: &str, feed_id: &str) {
                         // I-0045 T-0322 — github scope-bindings
                         // (github:repo:* / github:org:*) are synthetic
                         // ids; short-circuit to the three github feed
                         // types so existing projection rows get walked
                         // through the chain.
-                        if arawn_engine::tools::workstream::is_github_scope_binding(feed_id) {
+                        if arawn_engine::tools::lens::is_github_scope_binding(feed_id) {
                             // I-0050 — backfill walks the user-scoped
                             // feeds (morning-brief signal) AND the
                             // four repo-mirror tables (commits/issues/
@@ -886,21 +877,22 @@ async fn main() -> Result<()> {
                                 "github_issue_or_pr_comments".to_string(),
                             ];
                             Arc::clone(&self.runner)
-                                .spawn_backfill(workstream_name.to_string(), feed_types);
+                                .spawn_backfill(lens_name.to_string(), feed_types);
                             // I-0050 T-0327 — for org binds, kick off
                             // a list_org_repos expansion that registers
                             // one github-repo:owner/name feed per repo.
-                            match arawn_engine::tools::workstream::parse_github_scope(feed_id) {
-                                Some(arawn_engine::tools::workstream::GithubScope::Org {
-                                    owner,
-                                }) => {
+                            match arawn_engine::tools::lens::parse_github_scope(feed_id) {
+                                Some(arawn_engine::tools::lens::GithubScope::Org { owner }) => {
                                     let gh = self.github.read().unwrap().clone();
                                     if let Some(gh) = gh {
                                         let store = Arc::clone(&self.store);
                                         let frt = self.feed_runtime.read().unwrap().clone();
-                                        let ws = workstream_name.to_string();
+                                        let ws = lens_name.to_string();
                                         tokio::spawn(async move {
-                                            arawn_bin::startup::expand_github_org(gh, store, frt, ws, owner).await;
+                                            arawn_bin::startup::expand_github_org(
+                                                gh, store, frt, ws, owner,
+                                            )
+                                            .await;
                                         });
                                     } else {
                                         debug!(
@@ -910,7 +902,7 @@ async fn main() -> Result<()> {
                                         );
                                     }
                                 }
-                                Some(arawn_engine::tools::workstream::GithubScope::Repo {
+                                Some(arawn_engine::tools::lens::GithubScope::Repo {
                                     owner,
                                     name,
                                 }) => {
@@ -921,10 +913,14 @@ async fn main() -> Result<()> {
                                     let frt = self.feed_runtime.read().unwrap().clone();
                                     if let Some(frt) = frt {
                                         let store = Arc::clone(&self.store);
-                                        let feed_id_full =
-                                            format!("github-repo:{owner}/{name}");
+                                        let feed_id_full = format!("github-repo:{owner}/{name}");
                                         tokio::spawn(async move {
-                                            arawn_bin::startup::register_one_feed(frt, store, &feed_id_full).await;
+                                            arawn_bin::startup::register_one_feed(
+                                                frt,
+                                                store,
+                                                &feed_id_full,
+                                            )
+                                            .await;
                                         });
                                     }
                                 }
@@ -956,8 +952,7 @@ async fn main() -> Result<()> {
                             );
                             return;
                         }
-                        Arc::clone(&self.runner)
-                            .spawn_backfill(workstream_name.to_string(), feed_types);
+                        Arc::clone(&self.runner).spawn_backfill(lens_name.to_string(), feed_types);
                     }
                 }
                 let hook: Arc<dyn arawn_engine::BindBackfillHook> = Arc::new(ExtractorBindHook {
@@ -971,13 +966,11 @@ async fn main() -> Result<()> {
             registry.register(Box::new(bind_tool));
         }
         {
-            let mut unbind_tool =
-                arawn_engine::WorkstreamUnbindTool::new(service.shared_store());
+            let mut unbind_tool = arawn_engine::LensUnbindTool::new(service.shared_store());
             // T-0329 — drop the live cron schedule for each feed_id
             // the unbind removed from the feeds table.
             struct FeedRuntimeUnbindHook {
-                feed_runtime:
-                    Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>>,
+                feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>>,
             }
             impl arawn_engine::UnbindHook for FeedRuntimeUnbindHook {
                 fn on_unbind(&self, removed_feed_ids: &[String]) {
@@ -995,59 +988,58 @@ async fn main() -> Result<()> {
                     }
                 }
             }
-            let hook: Arc<dyn arawn_engine::UnbindHook> =
-                Arc::new(FeedRuntimeUnbindHook {
-                    feed_runtime: Arc::clone(&feed_runtime_for_hooks),
-                });
+            let hook: Arc<dyn arawn_engine::UnbindHook> = Arc::new(FeedRuntimeUnbindHook {
+                feed_runtime: Arc::clone(&feed_runtime_for_hooks),
+            });
             unbind_tool = unbind_tool.with_unbind_hook(hook);
             registry.register(Box::new(unbind_tool));
         }
-        registry.register(Box::new(arawn_engine::WorkstreamDeleteTool::new(
+        registry.register(Box::new(arawn_engine::LensDeleteTool::new(
             service.shared_store(),
-            active_workstream.clone(),
+            active_lens.clone(),
         )));
         // Steward surface — journal / refine / rollback. Routed
-        // through the existing workstream memory router so default-to-
-        // active behavior matches the rest of the workstream tools.
-        if let Some(ref router) = workstream_router {
-            registry.register(Box::new(arawn_engine::WorkstreamJournalTool::new(
+        // through the existing lens memory router so default-to-
+        // active behavior matches the rest of the lens tools.
+        if let Some(ref router) = lens_router {
+            registry.register(Box::new(arawn_engine::LensJournalTool::new(
                 std::path::PathBuf::from(&data_dir),
                 Arc::clone(router),
             )));
-            registry.register(Box::new(arawn_engine::WorkstreamRefineTool::new(
+            registry.register(Box::new(arawn_engine::LensRefineTool::new(
                 std::path::PathBuf::from(&data_dir),
                 Arc::clone(router),
             )));
-            registry.register(Box::new(arawn_engine::WorkstreamRollbackTool::new(
+            registry.register(Box::new(arawn_engine::LensRollbackTool::new(
                 std::path::PathBuf::from(&data_dir),
                 Arc::clone(router),
             )));
-            registry.register(Box::new(arawn_engine::WorkstreamApplyTool::new(
+            registry.register(Box::new(arawn_engine::LensApplyTool::new(
                 std::path::PathBuf::from(&data_dir),
                 Arc::clone(router),
             )));
-            registry.register(Box::new(arawn_engine::WorkstreamDustTool::new(
+            registry.register(Box::new(arawn_engine::LensDustTool::new(
                 std::path::PathBuf::from(&data_dir),
                 Arc::clone(router),
                 llm_pool.engine(),
                 llm_pool.engine_config().model.clone(),
             )));
             // T-0266: manual ontology CRUD outside the propose/accept cycle.
-            registry.register(Box::new(arawn_engine::WorkstreamTagTool::new(
+            registry.register(Box::new(arawn_engine::LensTagTool::new(
                 std::path::PathBuf::from(&data_dir),
                 Arc::clone(router),
             )));
         }
-        // workstream_promote needs the router so it can reach into
-        // arbitrary workstream KBs (not just the active one).
+        // lens_promote needs the router so it can reach into
+        // arbitrary lens KBs (not just the active one).
         if memory_manager.is_some() {
-            let promote_router = Arc::new(arawn_engine::WorkstreamMemoryRouter::new(
+            let promote_router = Arc::new(arawn_engine::LensMemoryRouter::new(
                 std::path::PathBuf::from(&data_dir),
                 Some(embed_config.dimensions),
                 embedder.clone(),
-                active_workstream.clone(),
+                active_lens.clone(),
             ));
-            registry.register(Box::new(arawn_engine::WorkstreamPromoteTool::new(
+            registry.register(Box::new(arawn_engine::LensPromoteTool::new(
                 service.shared_store(),
                 promote_router,
             )));
@@ -1086,7 +1078,11 @@ async fn main() -> Result<()> {
         }
 
         // Register workflow tools (before config watcher takes registry ownership)
-        arawn_bin::startup::register_workflow_tools(&registry, workflows_dir, Arc::clone(&shared_runner));
+        arawn_bin::startup::register_workflow_tools(
+            &registry,
+            workflows_dir,
+            Arc::clone(&shared_runner),
+        );
 
         // Continual data feeds (I-0039). See `startup::feeds`.
         arawn_bin::startup::feeds::wire_continual_feeds(
@@ -1097,7 +1093,8 @@ async fn main() -> Result<()> {
             extractor_runner.as_ref(),
             &mut service,
             &feed_runtime_for_hooks,
-        ).await;
+        )
+        .await;
 
         // Ceremony engine (I-0043 + I-0041). See `startup::ceremonies`.
         arawn_bin::startup::ceremonies::wire_ceremony_engine(
@@ -1108,7 +1105,8 @@ async fn main() -> Result<()> {
             projections.as_ref(),
             &registry,
             &mut service,
-        ).await;
+        )
+        .await;
 
         // I-0056 T-C: Notification hook forwarder. Subscribes to the
         // shared `notice_tx` broadcast; for every notice, fires the
@@ -1256,15 +1254,6 @@ async fn main() -> Result<()> {
     arawn_bin::startup::run_cli_via_server(&server_url, &user_input, session_id).await
 }
 
-
-
-
-
-
-
 // T-0362: `render_usage_human` moved to
 // `arawn_llm::usage::render_usage_human` so the TUI `/usage`
 // slash command and the `arawn usage` CLI share a renderer.
-
-
-

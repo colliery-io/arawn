@@ -1,4 +1,4 @@
-CREATE TABLE workstreams (
+CREATE TABLE lenses (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     root_dir TEXT NOT NULL,
@@ -7,11 +7,11 @@ CREATE TABLE workstreams (
 
 CREATE TABLE sessions (
     id TEXT PRIMARY KEY,
-    workstream_id TEXT,
+    lens_id TEXT,
     created_at TEXT NOT NULL,
     input_tokens INTEGER NOT NULL DEFAULT 0,
     output_tokens INTEGER NOT NULL DEFAULT 0,
     turns INTEGER NOT NULL DEFAULT 0,
     tool_calls INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY (workstream_id) REFERENCES workstreams(id)
+    FOREIGN KEY (lens_id) REFERENCES lenses(id)
 );

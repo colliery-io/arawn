@@ -74,7 +74,7 @@ impl MemoryStore {
         // defensive and idempotent for that one-time transition.
         //
         // CRITICAL: do NOT drop `entities_fts` here. `MemoryStore::open`
-        // runs on every workstream KB load — dropping the FTS table on
+        // runs on every lens KB load — dropping the FTS table on
         // reopen wipes the index for every entity ever extracted. The
         // CREATE below is `IF NOT EXISTS` precisely so a re-open is a
         // no-op when the schema is already current. (Bug landed during

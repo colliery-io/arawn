@@ -30,7 +30,7 @@ Ok(())
 ```
 
 ### Decision tasks — agent-powered reasoning
-Call back to the arawn server's decision endpoint for multi-turn agent sessions with workstream context.
+Call back to the arawn server's decision endpoint for multi-turn agent sessions with lens context.
 
 ```rust
 let client = reqwest::Client::new();
@@ -38,7 +38,7 @@ let upstream = context.get("data").cloned().unwrap_or(serde_json::json!(null));
 let resp = client.post("http://127.0.0.1:3100/api/decision")
     .json(&serde_json::json!({
         "prompt": "Triage these items and decide which need attention",
-        "workstream": "my-project",
+        "lens": "my-project",
         "upstream_data": upstream,
     }))
     .send()
@@ -90,7 +90,7 @@ When the user describes a recurring automation, use `workflow_create` with:
     {
       "id": "summarize",
       "dependencies": ["fetch"],
-      "body": "let client = reqwest::Client::new();\nlet upstream = context.get(\"updates\").cloned().unwrap_or(serde_json::json!(null));\nlet resp = client.post(\"http://127.0.0.1:3100/api/decision\").json(&serde_json::json!({\"prompt\": \"Summarize these updates into a concise daily briefing\", \"workstream\": \"scratch\", \"upstream_data\": upstream})).send().await.map_err(|e| TaskError::ExecutionFailed { message: e.to_string(), task_id: \"summarize\".into(), timestamp: chrono::Utc::now() })?;\nlet result: serde_json::Value = resp.json().await.map_err(|e| TaskError::ExecutionFailed { message: e.to_string(), task_id: \"summarize\".into(), timestamp: chrono::Utc::now() })?;\ncontext.insert(\"summary\", result)?;\nOk(())"
+      "body": "let client = reqwest::Client::new();\nlet upstream = context.get(\"updates\").cloned().unwrap_or(serde_json::json!(null));\nlet resp = client.post(\"http://127.0.0.1:3100/api/decision\").json(&serde_json::json!({\"prompt\": \"Summarize these updates into a concise daily briefing\", \"lens\": \"scratch\", \"upstream_data\": upstream})).send().await.map_err(|e| TaskError::ExecutionFailed { message: e.to_string(), task_id: \"summarize\".into(), timestamp: chrono::Utc::now() })?;\nlet result: serde_json::Value = resp.json().await.map_err(|e| TaskError::ExecutionFailed { message: e.to_string(), task_id: \"summarize\".into(), timestamp: chrono::Utc::now() })?;\ncontext.insert(\"summary\", result)?;\nOk(())"
     }
   ],
   "cron": "0 8 * * 1-5"

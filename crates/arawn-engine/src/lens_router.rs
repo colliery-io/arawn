@@ -1,8 +1,8 @@
-//! Workstream-scoped memory routing.
+//! Lens-scoped memory routing.
 //!
-//! `WorkstreamMemoryRouter` opens a fresh `MemoryManager` per workstream
+//! `LensMemoryRouter` opens a fresh `MemoryManager` per lens
 //! on first access and caches it for subsequent reads. Memory tools
-//! consult the active `SessionWorkstream` to pick which manager to use
+//! consult the active `SessionLens` to pick which manager to use
 //! at execute time.
 //!
 //! Test code passes `MemoryHandle::Fixed(Arc<MemoryManager>)` so the
@@ -15,23 +15,23 @@ use std::sync::{Arc, Mutex};
 use arawn_embed::Embedder;
 use arawn_memory::{MemoryError, MemoryManager};
 
-use crate::tools::SessionWorkstream;
+use crate::tools::SessionLens;
 
-/// Lazy + cached map of workstream-name → `MemoryManager`.
-pub struct WorkstreamMemoryRouter {
+/// Lazy + cached map of lens-name → `MemoryManager`.
+pub struct LensMemoryRouter {
     data_dir: PathBuf,
     embedding_dims: Option<usize>,
     embedder: Option<Arc<dyn Embedder>>,
-    session: SessionWorkstream,
+    session: SessionLens,
     cache: Mutex<HashMap<String, Arc<MemoryManager>>>,
 }
 
-impl WorkstreamMemoryRouter {
+impl LensMemoryRouter {
     pub fn new(
         data_dir: impl Into<PathBuf>,
         embedding_dims: Option<usize>,
         embedder: Option<Arc<dyn Embedder>>,
-        session: SessionWorkstream,
+        session: SessionLens,
     ) -> Self {
         Self {
             data_dir: data_dir.into(),
@@ -42,24 +42,24 @@ impl WorkstreamMemoryRouter {
         }
     }
 
-    /// Resolve the active workstream's memory manager. Opens (and
+    /// Resolve the active lens's memory manager. Opens (and
     /// caches) the KB on first touch.
     pub fn current(&self) -> Result<Arc<MemoryManager>, MemoryError> {
         let name = self.session.current();
-        self.for_workstream(&name)
+        self.for_lens(&name)
     }
 
-    /// Name of the active workstream — useful for tools that need to
-    /// open external per-workstream stores (e.g. the steward journal).
+    /// Name of the active lens — useful for tools that need to
+    /// open external per-lens stores (e.g. the steward journal).
     pub fn current_name(&self) -> String {
         self.session.current()
     }
 
-    pub fn for_workstream(&self, name: &str) -> Result<Arc<MemoryManager>, MemoryError> {
+    pub fn for_lens(&self, name: &str) -> Result<Arc<MemoryManager>, MemoryError> {
         if let Some(existing) = self.cache.lock().unwrap().get(name).cloned() {
             return Ok(existing);
         }
-        let mut mgr = MemoryManager::for_workstream(&self.data_dir, name, self.embedding_dims)?;
+        let mut mgr = MemoryManager::for_lens(&self.data_dir, name, self.embedding_dims)?;
         if let Some(e) = self.embedder.as_ref() {
             mgr = mgr.with_embedder(Arc::clone(e));
         }
@@ -73,17 +73,17 @@ impl WorkstreamMemoryRouter {
 }
 
 /// Memory tools depend on one of these. `Fixed` is for tests and
-/// any caller that doesn't care about workstream routing. `Routed`
+/// any caller that doesn't care about lens routing. `Routed`
 /// is the production wiring.
 #[derive(Clone)]
 pub enum MemoryHandle {
     Fixed(Arc<MemoryManager>),
-    Routed(Arc<WorkstreamMemoryRouter>),
+    Routed(Arc<LensMemoryRouter>),
 }
 
 impl MemoryHandle {
     /// Resolve the active manager. For `Fixed`, always the same one;
-    /// for `Routed`, the one matching the current `SessionWorkstream`.
+    /// for `Routed`, the one matching the current `SessionLens`.
     pub fn manager(&self) -> Result<Arc<MemoryManager>, MemoryError> {
         match self {
             MemoryHandle::Fixed(m) => Ok(Arc::clone(m)),
@@ -98,8 +98,8 @@ impl From<Arc<MemoryManager>> for MemoryHandle {
     }
 }
 
-impl From<Arc<WorkstreamMemoryRouter>> for MemoryHandle {
-    fn from(r: Arc<WorkstreamMemoryRouter>) -> Self {
+impl From<Arc<LensMemoryRouter>> for MemoryHandle {
+    fn from(r: Arc<LensMemoryRouter>) -> Self {
         MemoryHandle::Routed(r)
     }
 }
@@ -109,10 +109,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn router_caches_per_workstream() {
+    fn router_caches_per_lens() {
         let tmp = tempfile::tempdir().unwrap();
-        let session = SessionWorkstream::scratch();
-        let router = WorkstreamMemoryRouter::new(tmp.path(), None, None, session.clone());
+        let session = SessionLens::scratch();
+        let router = LensMemoryRouter::new(tmp.path(), None, None, session.clone());
 
         let m1 = router.current().unwrap();
         let m2 = router.current().unwrap();
@@ -125,7 +125,7 @@ mod tests {
         let m3 = router.current().unwrap();
         assert!(
             !Arc::ptr_eq(&m1, &m3),
-            "different workstream should get a different manager"
+            "different lens should get a different manager"
         );
     }
 

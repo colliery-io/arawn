@@ -10,7 +10,7 @@ use tokio::net::TcpListener;
 use tokio_tungstenite::connect_async;
 use tokio_tungstenite::tungstenite::Message as TungsteniteMessage;
 
-use arawn_core::Workstream;
+use arawn_core::Lens;
 use arawn_engine::{FileReadTool, QueryEngineConfig, ShellTool, ThinkTool, ToolRegistry};
 use arawn_llm::{MockLlmClient, MockResponse};
 use arawn_storage::Store;
@@ -20,9 +20,9 @@ async fn start_test_server(mock_responses: Vec<MockResponse>) -> (String, TempDi
     let tmp = TempDir::new().unwrap();
     let store = Store::open(tmp.path()).unwrap();
 
-    // Create scratch workstream
-    let ws = Workstream::scratch(tmp.path());
-    store.create_workstream(&ws).unwrap();
+    // Create scratch lens
+    let ws = Lens::scratch(tmp.path());
+    store.create_lens(&ws).unwrap();
 
     let llm: Arc<dyn arawn_llm::LlmClient> = Arc::new(MockLlmClient::new(mock_responses));
     let registry = Arc::new(ToolRegistry::new());
@@ -95,7 +95,7 @@ async fn send_request(
 }
 
 #[tokio::test]
-async fn list_workstreams_returns_scratch() {
+async fn list_lenses_returns_scratch() {
     let (url, _tmp) = start_test_server(vec![]).await;
     let (ws_stream, _) = connect_async(&url).await.unwrap();
     let (mut write, mut read) = ws_stream.split();
@@ -103,14 +103,14 @@ async fn list_workstreams_returns_scratch() {
     let resp = send_request(
         &mut write,
         &mut read,
-        json!({"id": 1, "method": "list_workstreams"}),
+        json!({"id": 1, "method": "list_lenses"}),
     )
     .await;
 
     assert!(resp["result"].is_array());
-    let workstreams = resp["result"].as_array().unwrap();
-    assert!(!workstreams.is_empty());
-    assert_eq!(workstreams[0]["name"], "scratch");
+    let lenses = resp["result"].as_array().unwrap();
+    assert!(!lenses.is_empty());
+    assert_eq!(lenses[0]["name"], "scratch");
 }
 
 #[tokio::test]
@@ -123,7 +123,7 @@ async fn create_and_load_session() {
     let resp = send_request(
         &mut write,
         &mut read,
-        json!({"id": 1, "method": "create_session", "params": {"workstream_id": null}}),
+        json!({"id": 1, "method": "create_session", "params": {"lens_id": null}}),
     )
     .await;
 
@@ -188,7 +188,7 @@ async fn send_message_streams_complete_event() {
     let resp = send_request(
         &mut write,
         &mut read,
-        json!({"id": 1, "method": "create_session", "params": {"workstream_id": null}}),
+        json!({"id": 1, "method": "create_session", "params": {"lens_id": null}}),
     )
     .await;
     let session_id = resp["result"]["id"].as_str().unwrap().to_string();
@@ -248,7 +248,7 @@ async fn send_message_with_tool_call_streams_events() {
     let resp = send_request(
         &mut write,
         &mut read,
-        json!({"id": 1, "method": "create_session", "params": {"workstream_id": null}}),
+        json!({"id": 1, "method": "create_session", "params": {"lens_id": null}}),
     )
     .await;
     let session_id = resp["result"]["id"].as_str().unwrap().to_string();
@@ -314,24 +314,24 @@ async fn list_sessions_via_ws() {
     let resp1 = send_request(
         &mut write,
         &mut read,
-        json!({"id": 1, "method": "create_session", "params": {"workstream_id": null}}),
+        json!({"id": 1, "method": "create_session", "params": {"lens_id": null}}),
     )
     .await;
     let resp2 = send_request(
         &mut write,
         &mut read,
-        json!({"id": 2, "method": "create_session", "params": {"workstream_id": null}}),
+        json!({"id": 2, "method": "create_session", "params": {"lens_id": null}}),
     )
     .await;
 
     let id1 = resp1["result"]["id"].as_str().unwrap();
     let id2 = resp2["result"]["id"].as_str().unwrap();
 
-    // List scratch sessions (workstream_id: null = scratch)
+    // List scratch sessions (lens_id: null = scratch)
     let resp = send_request(
         &mut write,
         &mut read,
-        json!({"id": 3, "method": "list_sessions", "params": {"workstream_id": null}}),
+        json!({"id": 3, "method": "list_sessions", "params": {"lens_id": null}}),
     )
     .await;
 
@@ -386,18 +386,18 @@ async fn send_message_missing_id_returns_error() {
 }
 
 #[tokio::test]
-async fn create_workstream_via_ws() {
+async fn create_lens_via_ws() {
     let (url, tmp) = start_test_server(vec![]).await;
     let (ws_stream, _) = connect_async(&url).await.unwrap();
     let (mut write, mut read) = ws_stream.split();
 
-    let root_dir = tmp.path().join("workstreams/ws-test");
+    let root_dir = tmp.path().join("lenses/ws-test");
     let resp = send_request(
         &mut write,
         &mut read,
         json!({
             "id": 1,
-            "method": "create_workstream",
+            "method": "create_lens",
             "params": {"name": "ws-test", "root_dir": root_dir.to_str().unwrap()}
         }),
     )
@@ -405,7 +405,7 @@ async fn create_workstream_via_ws() {
 
     assert!(
         resp["result"]["id"].is_string(),
-        "expected workstream id, got: {resp}"
+        "expected lens id, got: {resp}"
     );
     assert_eq!(resp["result"]["name"], "ws-test");
 
@@ -413,7 +413,7 @@ async fn create_workstream_via_ws() {
     let list_resp = send_request(
         &mut write,
         &mut read,
-        json!({"id": 2, "method": "list_workstreams"}),
+        json!({"id": 2, "method": "list_lenses"}),
     )
     .await;
 
@@ -423,10 +423,7 @@ async fn create_workstream_via_ws() {
         .iter()
         .filter_map(|w| w["name"].as_str())
         .collect();
-    assert!(
-        names.contains(&"ws-test"),
-        "new workstream should appear in list"
-    );
+    assert!(names.contains(&"ws-test"), "new lens should appear in list");
 }
 
 #[tokio::test]
@@ -477,7 +474,7 @@ async fn multi_turn_conversation_over_ws() {
     let resp = send_request(
         &mut write,
         &mut read,
-        json!({"id": 1, "method": "create_session", "params": {"workstream_id": null}}),
+        json!({"id": 1, "method": "create_session", "params": {"lens_id": null}}),
     )
     .await;
     let session_id = resp["result"]["id"].as_str().unwrap().to_string();
@@ -552,9 +549,7 @@ async fn rapid_fire_requests_same_connection() {
     for i in 1..=3 {
         write
             .send(TungsteniteMessage::Text(
-                json!({"id": i, "method": "list_workstreams"})
-                    .to_string()
-                    .into(),
+                json!({"id": i, "method": "list_lenses"}).to_string().into(),
             ))
             .await
             .unwrap();

@@ -1,9 +1,5 @@
-
-
-
-use super::{App, ChatMessage, ChatRole};
 use super::format_tool_input;
-
+use super::{App, ChatMessage, ChatRole};
 
 impl App {
     /// Apply a streaming engine event to the app state (testable without network).

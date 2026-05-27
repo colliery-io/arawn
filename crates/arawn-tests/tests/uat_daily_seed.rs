@@ -49,7 +49,7 @@ pub fn apply(data_dir: &Path) -> Result<DailySeedSummary, String> {
         .to_rfc3339();
     conn.execute(
         "INSERT OR IGNORE INTO ceremony_tablets \
-         (id, kind, period_key, generated_at, status, workstreams_scanned) \
+         (id, kind, period_key, generated_at, status, lenses_scanned) \
          VALUES (?1, 'daily', ?2, ?3, 'reviewed', '[\"proj-a\",\"proj-b\",\"proj-c\"]')",
         params![
             &origin_id,
@@ -80,7 +80,7 @@ pub fn apply(data_dir: &Path) -> Result<DailySeedSummary, String> {
     for (id, body) in todos {
         conn.execute(
             "INSERT OR IGNORE INTO todos \
-             (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+             (id, body, rationale, kind, lens, created_at, due_at, done_at, archived_at, attrs) \
              VALUES (?1, ?2, NULL, 'rollover', NULL, ?3, NULL, NULL, NULL, \
                      json_object('origin_tablet_id', ?4, 'last_seen_tablet_id', ?4))",
             params![id, body, &created_at, &origin_id],
@@ -94,7 +94,7 @@ pub fn apply(data_dir: &Path) -> Result<DailySeedSummary, String> {
     let weekly_generated = (now - Duration::days(2)).to_rfc3339();
     conn.execute(
         "INSERT OR IGNORE INTO ceremony_tablets \
-         (id, kind, period_key, generated_at, status, workstreams_scanned, priorities_confirmed_at) \
+         (id, kind, period_key, generated_at, status, lenses_scanned, priorities_confirmed_at) \
          VALUES (?1, 'weekly', ?2, ?3, 'reviewed', '[\"proj-a\",\"proj-b\",\"proj-c\"]', ?3)",
         params![&weekly_id, &cur_iso, &weekly_generated],
     )
@@ -115,7 +115,7 @@ pub fn apply(data_dir: &Path) -> Result<DailySeedSummary, String> {
         let todo_id = format!("td-{id}");
         conn.execute(
             "INSERT OR IGNORE INTO todos \
-             (id, body, rationale, kind, workstream, created_at, due_at, done_at, archived_at, attrs) \
+             (id, body, rationale, kind, lens, created_at, due_at, done_at, archived_at, attrs) \
              VALUES (?1, ?2, ?3, 'weekly_priority', NULL, ?4, NULL, NULL, NULL, '{}')",
             params![&todo_id, body, rationale, &weekly_generated],
         )

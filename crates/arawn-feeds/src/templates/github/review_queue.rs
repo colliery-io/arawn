@@ -64,9 +64,8 @@ impl FeedTemplate for ReviewQueueTemplate {
             .ok_or_else(|| FeedError::Auth("github integration not connected".into()))?;
 
         let dir = feed_dir.join("review_queue");
-        std::fs::create_dir_all(&dir).map_err(|e| {
-            FeedError::Storage(format!("create {}: {e}", dir.display()))
-        })?;
+        std::fs::create_dir_all(&dir)
+            .map_err(|e| FeedError::Storage(format!("create {}: {e}", dir.display())))?;
 
         let items = github
             .search_issues(QUERY, DEFAULT_PER_PAGE, MAX_PAGES)
@@ -141,13 +140,19 @@ fn path_for_item(item: &Value, dir: &Path) -> Option<PathBuf> {
 
 fn sanitize(s: &str) -> String {
     s.chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
 fn write_json(path: &PathBuf, v: &Value) -> Result<u64, FeedError> {
-    let body = serde_json::to_vec_pretty(v)
-        .map_err(|e| FeedError::Storage(format!("serialize: {e}")))?;
+    let body =
+        serde_json::to_vec_pretty(v).map_err(|e| FeedError::Storage(format!("serialize: {e}")))?;
     let len = body.len() as u64;
     let tmp = path.with_extension("json.tmp");
     std::fs::write(&tmp, &body)
@@ -299,8 +304,18 @@ mod tests {
         assert_eq!(q.len(), 1);
         assert!(q[0].contains("review-requested:@me"));
         assert!(q[0].contains("is:pr"));
-        assert!(tmp.path().join("review_queue").join("o__r__1.json").exists());
-        assert!(tmp.path().join("review_queue").join("o__r__2.json").exists());
+        assert!(
+            tmp.path()
+                .join("review_queue")
+                .join("o__r__1.json")
+                .exists()
+        );
+        assert!(
+            tmp.path()
+                .join("review_queue")
+                .join("o__r__2.json")
+                .exists()
+        );
     }
 
     #[tokio::test]
@@ -324,7 +339,9 @@ mod tests {
     #[test]
     fn defaults_have_30min_cadence() {
         assert_eq!(
-            ReviewQueueTemplate.defaults(&TemplateParams::default()).cadence,
+            ReviewQueueTemplate
+                .defaults(&TemplateParams::default())
+                .cadence,
             "*/30 * * * *"
         );
     }

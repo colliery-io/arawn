@@ -298,9 +298,8 @@ mod tests {
 
     #[test]
     fn api_error_failed_to_call_a_function_is_retryable() {
-        let err = LlmError::Api(
-            "HTTP 400: Failed to call a function. Please adjust your prompt.".into(),
-        );
+        let err =
+            LlmError::Api("HTTP 400: Failed to call a function. Please adjust your prompt.".into());
         assert!(err.is_retryable());
     }
 

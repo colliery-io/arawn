@@ -18,10 +18,10 @@ use crate::journal::JournalRow;
 
 /// Context handed to the rollback dispatch — mirrors `accept::AcceptCtx`.
 /// Some inverses need ontology access (the tag-promoter promotion
-/// reversal removes the tag from the workstream's ontology table).
+/// reversal removes the tag from the lens's ontology table).
 pub struct RollbackCtx<'a> {
     pub kb: &'a Arc<MemoryManager>,
-    pub workstream_root: &'a Path,
+    pub lens_root: &'a Path,
 }
 
 /// Apply the inverse mutation described by `row.outputs_json`.
@@ -65,7 +65,7 @@ struct PromoteTagOutputs {
 fn tag_promoter_inverse(row: &JournalRow, ctx: &RollbackCtx<'_>) -> Result<(), StewardError> {
     let payload: PromoteTagOutputs = serde_json::from_str(&row.outputs_json)
         .map_err(|e| StewardError::Parse(format!("tag-promoter/promote_tag payload: {e}")))?;
-    let ontology = TagOntologyStore::open_at(ctx.workstream_root).map_err(StewardError::from)?;
+    let ontology = TagOntologyStore::open_at(ctx.lens_root).map_err(StewardError::from)?;
     let removed = ontology.remove(&payload.tag)?;
     debug!(tag = %payload.tag, removed, "rollback: tag promotion reverted");
     Ok(())
@@ -83,11 +83,11 @@ fn reshelve_merge_inverse(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(
     let payload: MergeOutputs = serde_json::from_str(&row.outputs_json)
         .map_err(|e| StewardError::Parse(format!("reshelve/merge payload: {e}")))?;
     // 1. Restore survivor's pre-merge state.
-    kb.workstream.update_entity(&payload.pre_survivor)?;
+    kb.lens.update_entity(&payload.pre_survivor)?;
     // 2. Restore deprecated's pre-merge state (clears superseded).
-    kb.workstream.update_entity(&payload.pre_deprecated)?;
+    kb.lens.update_entity(&payload.pre_deprecated)?;
     // 3. Remove the SUPERSEDES edge we added.
-    kb.workstream.delete_relation(
+    kb.lens.delete_relation(
         payload.survivor_id,
         RelationType::Supersedes,
         payload.deprecated_id,
@@ -116,7 +116,7 @@ struct DustSummarizeOutputs {
 fn dust_summarize_inverse(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError> {
     let payload: DustSummarizeOutputs = serde_json::from_str(&row.outputs_json)
         .map_err(|e| StewardError::Parse(format!("dust/summarize payload: {e}")))?;
-    let removed = kb.workstream.delete_entity(payload.summary.id)?;
+    let removed = kb.lens.delete_entity(payload.summary.id)?;
     debug!(
         summary = %payload.summary.id,
         removed,
@@ -128,7 +128,7 @@ fn dust_summarize_inverse(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(
 fn reshelve_delete_inverse(row: &JournalRow, kb: &Arc<MemoryManager>) -> Result<(), StewardError> {
     let payload: DeleteOutputs = serde_json::from_str(&row.outputs_json)
         .map_err(|e| StewardError::Parse(format!("reshelve/delete payload: {e}")))?;
-    kb.workstream.insert_entity(&payload.entity)?;
+    kb.lens.insert_entity(&payload.entity)?;
     debug!(id = %payload.entity.id, "rollback: reshelve delete reverted");
     Ok(())
 }
@@ -145,7 +145,7 @@ mod tests {
     }
 
     fn ws_root(tmp: &tempfile::TempDir) -> std::path::PathBuf {
-        tmp.path().join("workstreams").join("ws")
+        tmp.path().join("lenses").join("ws")
     }
 
     #[test]
@@ -168,7 +168,7 @@ mod tests {
             &row,
             &RollbackCtx {
                 kb: &kb,
-                workstream_root: &root,
+                lens_root: &root,
             },
         )
         .unwrap();
@@ -196,11 +196,11 @@ mod tests {
             &row,
             &RollbackCtx {
                 kb: &kb,
-                workstream_root: &root,
+                lens_root: &root,
             },
         )
         .unwrap();
-        let fetched = kb.workstream.get_entity(e.id).unwrap().unwrap();
+        let fetched = kb.lens.get_entity(e.id).unwrap().unwrap();
         assert_eq!(fetched.title, "restore me");
     }
 
@@ -209,8 +209,8 @@ mod tests {
         let (tmp, kb) = setup_kb();
         let summary = Entity::new(EntityType::Note, "summary of falcon")
             .with_content("the falcon project, distilled");
-        kb.workstream.insert_entity(&summary).unwrap();
-        assert!(kb.workstream.get_entity(summary.id).unwrap().is_some());
+        kb.lens.insert_entity(&summary).unwrap();
+        assert!(kb.lens.get_entity(summary.id).unwrap().is_some());
 
         let payload = serde_json::json!({
             "cluster_key": "falcon",
@@ -235,11 +235,11 @@ mod tests {
             &row,
             &RollbackCtx {
                 kb: &kb,
-                workstream_root: &root,
+                lens_root: &root,
             },
         )
         .unwrap();
-        assert!(kb.workstream.get_entity(summary.id).unwrap().is_none());
+        assert!(kb.lens.get_entity(summary.id).unwrap().is_none());
     }
 
     #[test]
@@ -269,7 +269,7 @@ mod tests {
             &row,
             &RollbackCtx {
                 kb: &kb,
-                workstream_root: &root,
+                lens_root: &root,
             },
         )
         .unwrap();
@@ -297,7 +297,7 @@ mod tests {
             &row,
             &RollbackCtx {
                 kb: &kb,
-                workstream_root: &root,
+                lens_root: &root,
             },
         )
         .unwrap_err();

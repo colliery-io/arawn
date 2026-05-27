@@ -82,8 +82,8 @@ pub fn register_default_tools(
 
     let agents_dir = std::path::PathBuf::from(data_dir).join("agents");
     let agent_defs = arawn_engine::agent_defs::get_all_agents(Some(&agents_dir));
-    let agent_tool =
-        AgentTool::new(Arc::clone(registry), agent_defs).with_background_manager(Arc::clone(&bg_manager));
+    let agent_tool = AgentTool::new(Arc::clone(registry), agent_defs)
+        .with_background_manager(Arc::clone(&bg_manager));
     if let Some(ref runner) = hook_runner {
         agent_tool.set_hook_runner(Arc::clone(runner));
     }

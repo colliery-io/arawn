@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use tracing::{debug, info, warn};
 
-use crate::{ArawnConfig, LocalService, LlmClientPool};
+use crate::{ArawnConfig, LlmClientPool, LocalService};
 
 /// Wire the ceremony engine: build the connection, plugin registry, dispatcher,
 /// service, runner, register per-plugin cron schedules, set the ceremony
@@ -87,10 +87,8 @@ pub async fn wire_ceremony_engine(
                     if cadence == arawn_ceremonies::RetroCadence::Biweekly && anchor.is_none() {
                         use chrono::Datelike;
                         let today = chrono::Utc::now().date_naive();
-                        let weekday_offset =
-                            today.weekday().num_days_from_monday() as i64;
-                        let this_monday =
-                            today - chrono::Duration::days(weekday_offset);
+                        let weekday_offset = today.weekday().num_days_from_monday() as i64;
+                        let this_monday = today - chrono::Duration::days(weekday_offset);
                         anchor = Some(this_monday);
                         if let Err(e) = arawn_ceremonies::RetroCeremony::save_cadence(
                             &conn_handle,
@@ -154,10 +152,8 @@ pub async fn wire_ceremony_engine(
 
                 let daily_tz =
                     resolve_ceremony_tz("daily", daily_cfg.and_then(|c| c.timezone.as_deref()));
-                let weekly_tz = resolve_ceremony_tz(
-                    "weekly",
-                    weekly_cfg.and_then(|c| c.timezone.as_deref()),
-                );
+                let weekly_tz =
+                    resolve_ceremony_tz("weekly", weekly_cfg.and_then(|c| c.timezone.as_deref()));
 
                 let attention_source: Option<Arc<dyn arawn_ceremonies::AttentionSource>> =
                     if (daily_actually_enabled || weekly_actually_enabled)
@@ -174,10 +170,8 @@ pub async fn wire_ceremony_engine(
                 let daily_calendar: Option<Arc<dyn arawn_ceremonies::CalendarSource>> =
                     if daily_actually_enabled && let Some(projections) = projections.as_ref() {
                         Some(Arc::new(
-                            arawn_engine::ProjectionsCalendarSource::new(Arc::clone(
-                                projections,
-                            ))
-                            .with_tz(daily_tz),
+                            arawn_engine::ProjectionsCalendarSource::new(Arc::clone(projections))
+                                .with_tz(daily_tz),
                         ))
                     } else {
                         None
@@ -185,10 +179,8 @@ pub async fn wire_ceremony_engine(
                 let weekly_calendar: Option<Arc<dyn arawn_ceremonies::CalendarSource>> =
                     if weekly_actually_enabled && let Some(projections) = projections.as_ref() {
                         Some(Arc::new(
-                            arawn_engine::ProjectionsCalendarSource::new(Arc::clone(
-                                projections,
-                            ))
-                            .with_tz(weekly_tz),
+                            arawn_engine::ProjectionsCalendarSource::new(Arc::clone(projections))
+                                .with_tz(weekly_tz),
                         ))
                     } else {
                         None
@@ -271,30 +263,26 @@ pub async fn wire_ceremony_engine(
                                     let message = serde_json::to_string(&ev)
                                         .unwrap_or_else(|_| "{}".to_string());
                                     let now = chrono::Utc::now().to_rfc3339();
-                                    let _ = notice_tx_cer.send(
-                                        arawn_service::ServerNotice {
-                                            level: "info".into(),
-                                            category: "ceremony_event".into(),
-                                            message: message.clone(),
-                                            timestamp: now.clone(),
-                                        },
-                                    );
+                                    let _ = notice_tx_cer.send(arawn_service::ServerNotice {
+                                        level: "info".into(),
+                                        category: "ceremony_event".into(),
+                                        message: message.clone(),
+                                        timestamp: now.clone(),
+                                    });
                                     if let arawn_ceremonies::CeremonyEvent::TabletGenerated {
                                         kind,
                                         period_key,
                                         ..
                                     } = &ev
                                     {
-                                        let _ = notice_tx_cer.send(
-                                            arawn_service::ServerNotice {
-                                                level: "info".into(),
-                                                category: "briefing_ready".into(),
-                                                message: format!(
-                                                    "Brief updated — {kind} tablet for {period_key}"
-                                                ),
-                                                timestamp: now,
-                                            },
-                                        );
+                                        let _ = notice_tx_cer.send(arawn_service::ServerNotice {
+                                            level: "info".into(),
+                                            category: "briefing_ready".into(),
+                                            message: format!(
+                                                "Brief updated — {kind} tablet for {period_key}"
+                                            ),
+                                            timestamp: now,
+                                        });
                                     }
                                 }
                                 Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
@@ -324,8 +312,7 @@ pub async fn wire_ceremony_engine(
                 let backfill_lookback = config.backfill.ceremony_lookback_days;
                 let backfill_registry = plugin_reg.clone();
                 let backfill_dispatcher: Arc<dyn arawn_ceremonies::CeremonyDispatcher> =
-                    Arc::clone(&dispatcher)
-                        as Arc<dyn arawn_ceremonies::CeremonyDispatcher>;
+                    Arc::clone(&dispatcher) as Arc<dyn arawn_ceremonies::CeremonyDispatcher>;
                 tokio::spawn(async move {
                     match arawn_ceremonies::backfill::run(
                         &backfill_registry,
@@ -349,8 +336,7 @@ pub async fn wire_ceremony_engine(
                 let cer_service = Arc::new(
                     arawn_ceremonies::CeremonyService::new(
                         conn_handle.clone(),
-                        Arc::clone(&dispatcher)
-                            as Arc<dyn arawn_ceremonies::CeremonyDispatcher>,
+                        Arc::clone(&dispatcher) as Arc<dyn arawn_ceremonies::CeremonyDispatcher>,
                     )
                     .with_events(event_tx),
                 );
@@ -405,8 +391,7 @@ pub async fn wire_ceremony_engine(
                     tokio::spawn(async move {
                         let mut interval =
                             tokio::time::interval(std::time::Duration::from_secs(3600));
-                        interval
-                            .set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+                        interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
                         loop {
                             interval.tick().await;
                             match arawn_ceremonies::sweep_unreviewed_retros(&sweep_handle) {
@@ -425,18 +410,18 @@ pub async fn wire_ceremony_engine(
                     registry.register(Box::new(arawn_engine::RetroRunTool::new(Arc::clone(
                         &cer_service,
                     ))));
-                    registry.register(Box::new(arawn_engine::RetroCurrentTool::new(
-                        Arc::clone(&cer_service),
-                    )));
-                    registry.register(Box::new(arawn_engine::RetroListItemsTool::new(
-                        Arc::clone(&cer_service),
-                    )));
-                    registry.register(Box::new(arawn_engine::RetroSaveDiaryTool::new(
-                        Arc::clone(&cer_service),
-                    )));
-                    registry.register(Box::new(arawn_engine::RetroPatchItemTool::new(
-                        Arc::clone(&cer_service),
-                    )));
+                    registry.register(Box::new(arawn_engine::RetroCurrentTool::new(Arc::clone(
+                        &cer_service,
+                    ))));
+                    registry.register(Box::new(arawn_engine::RetroListItemsTool::new(Arc::clone(
+                        &cer_service,
+                    ))));
+                    registry.register(Box::new(arawn_engine::RetroSaveDiaryTool::new(Arc::clone(
+                        &cer_service,
+                    ))));
+                    registry.register(Box::new(arawn_engine::RetroPatchItemTool::new(Arc::clone(
+                        &cer_service,
+                    ))));
                     registry.register(Box::new(arawn_engine::RetroSetCadenceTool::new(
                         Arc::clone(&cer_service),
                     )));
@@ -447,18 +432,18 @@ pub async fn wire_ceremony_engine(
                     registry.register(Box::new(arawn_engine::DailyRunTool::new(Arc::clone(
                         &cer_service,
                     ))));
-                    registry.register(Box::new(arawn_engine::DailyCurrentTool::new(
-                        Arc::clone(&cer_service),
-                    )));
-                    registry.register(Box::new(arawn_engine::DailyListItemsTool::new(
-                        Arc::clone(&cer_service),
-                    )));
-                    registry.register(Box::new(arawn_engine::DailyPatchItemTool::new(
-                        Arc::clone(&cer_service),
-                    )));
-                    registry.register(Box::new(arawn_engine::DailyAddTodoTool::new(
-                        Arc::clone(&cer_service),
-                    )));
+                    registry.register(Box::new(arawn_engine::DailyCurrentTool::new(Arc::clone(
+                        &cer_service,
+                    ))));
+                    registry.register(Box::new(arawn_engine::DailyListItemsTool::new(Arc::clone(
+                        &cer_service,
+                    ))));
+                    registry.register(Box::new(arawn_engine::DailyPatchItemTool::new(Arc::clone(
+                        &cer_service,
+                    ))));
+                    registry.register(Box::new(arawn_engine::DailyAddTodoTool::new(Arc::clone(
+                        &cer_service,
+                    ))));
                 }
 
                 // Weekly agent tools (gated on weekly_actually_enabled).
@@ -466,9 +451,9 @@ pub async fn wire_ceremony_engine(
                     registry.register(Box::new(arawn_engine::WeeklyRunTool::new(Arc::clone(
                         &cer_service,
                     ))));
-                    registry.register(Box::new(arawn_engine::WeeklyCurrentTool::new(
-                        Arc::clone(&cer_service),
-                    )));
+                    registry.register(Box::new(arawn_engine::WeeklyCurrentTool::new(Arc::clone(
+                        &cer_service,
+                    ))));
                     registry.register(Box::new(arawn_engine::WeeklyListItemsTool::new(
                         Arc::clone(&cer_service),
                     )));
@@ -501,5 +486,4 @@ pub async fn wire_ceremony_engine(
             "ceremony engine skipped — workflow runner not available or all ceremonies disabled"
         );
     }
-
 }

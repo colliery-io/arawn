@@ -7,8 +7,8 @@ use std::sync::RwLock;
 
 use tracing::{debug, info, warn};
 
-use crate::LocalService;
 use super::integrations::IntegrationsForFeeds;
+use crate::LocalService;
 
 /// Wire the continual data-feed runtime. Returns silently (with log)
 /// if the workflow runner is unavailable.
@@ -34,7 +34,7 @@ pub async fn wire_continual_feeds(
                 // arawn-storage and was applied when `Store::open`
                 // ran above).
                 let feeds_conn = Arc::new(tokio::sync::Mutex::new(conn));
-                let feeds_layout = Arc::new(arawn_feeds::DataLayout::new(&data_dir));
+                let feeds_layout = Arc::new(arawn_feeds::DataLayout::new(data_dir));
                 let feeds_registry = Arc::new(arawn_feeds::default_registry());
 
                 let mut clients = arawn_feeds::RealClients::new();
@@ -83,8 +83,7 @@ pub async fn wire_continual_feeds(
                         // T-0329 — also expose the runtime to the
                         // bind/unbind hooks so they can hot-add or
                         // hot-remove cron schedules.
-                        *feed_runtime_for_hooks.write().unwrap() =
-                            Some(Arc::clone(&runtime));
+                        *feed_runtime_for_hooks.write().unwrap() = Some(Arc::clone(&runtime));
                         info!("feed runtime started");
                     }
                     Err(e) => warn!(error = %e, "feed runtime failed to start"),
@@ -96,5 +95,4 @@ pub async fn wire_continual_feeds(
     } else {
         debug!("feed runtime skipped — workflow runner not available");
     }
-
 }

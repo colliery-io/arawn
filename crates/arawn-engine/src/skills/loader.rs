@@ -30,10 +30,7 @@ impl SkillRegistry {
     fn register_builtins(&self) {
         let builtins: &[(&str, &str)] = &[
             ("workflows", include_str!("builtin/workflows.md")),
-            (
-                "workstream-create",
-                include_str!("builtin/workstream-create.md"),
-            ),
+            ("lens-create", include_str!("builtin/lens-create.md")),
         ];
 
         for (default_name, content) in builtins {

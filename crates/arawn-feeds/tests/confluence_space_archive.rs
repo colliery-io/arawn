@@ -9,9 +9,10 @@ use serde_json::{Value, json};
 
 use arawn_feeds::templates::confluence::SpaceArchiveTemplate;
 use arawn_feeds::{
-    AtlassianFeedClient, GithubFeedClient, CalendarFeedClient, ConfluencePageBody, ConfluencePageMeta, DataLayout,
-    DriveFeedClient, FeedClients, FeedError, FeedMeta, FeedTemplate, GmailFeedClient,
-    JiraIssueDetail, JiraIssueMeta, MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
+    AtlassianFeedClient, CalendarFeedClient, ConfluencePageBody, ConfluencePageMeta, DataLayout,
+    DriveFeedClient, FeedClients, FeedError, FeedMeta, FeedTemplate, GithubFeedClient,
+    GmailFeedClient, JiraIssueDetail, JiraIssueMeta, MetaStore, SlackFeedClient, TemplateCtx,
+    TemplateParams,
 };
 
 #[derive(Default)]

@@ -1,14 +1,14 @@
 //! Per-feed-type projection layer for arawn.
 //!
 //! Projections sit between raw feed mirrors (on-disk files) and the
-//! workstream palaces (typed entity graphs). Each feed item type
+//! lens palaces (typed entity graphs). Each feed item type
 //! (gmail message, slack message, drive file, …) becomes a normalized
 //! sqlite row, FTS5-indexed for text search and vector-indexed for
 //! semantic search.
 //!
 //! Why this layer exists (per I-0040):
-//! - Cross-feed semantic search without any workstream declared.
-//! - A stable, queryable input to the per-workstream extractor in
+//! - Cross-feed semantic search without any lens declared.
+//! - A stable, queryable input to the per-lens extractor in
 //!   Phase 4.
 //! - Decouples feed-side fidelity (raw mirror) from query-side shape.
 
@@ -17,8 +17,8 @@ pub mod calendar;
 pub mod dispatch;
 pub mod drive;
 pub mod embed;
-pub mod filesystem;
 pub mod error;
+pub mod filesystem;
 pub mod github;
 pub mod gmail;
 pub mod schema;

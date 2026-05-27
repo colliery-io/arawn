@@ -1,9 +1,9 @@
-//! CRUD over the workstream registry (`workstreams` table).
+//! CRUD over the lens registry (`lenses` table).
 //!
 //! Phase 3 (I-0040) turned this from a small bookkeeping table into the
-//! primary scope abstraction. Every workstream gets its own KB under
-//! `<data_dir>/workstreams/<name>/memory.db`, and sessions bind to a
-//! workstream by name. The `id` (Uuid) column is retained for
+//! primary scope abstraction. Every lens gets its own KB under
+//! `<data_dir>/lenses/<name>/memory.db`, and sessions bind to a
+//! lens by name. The `id` (Uuid) column is retained for
 //! session-FK compatibility but `name` is the addressing primitive
 //! for users.
 
@@ -13,35 +13,35 @@ use chrono::{DateTime, Utc};
 use rusqlite::OptionalExtension;
 use uuid::Uuid;
 
-use arawn_core::{IdentityProfile, SCRATCH_NAME, Workstream, WorkstreamNameError, validate_name};
+use arawn_core::{IdentityProfile, Lens, LensNameError, SCRATCH_NAME, validate_name};
 
 use crate::database::Database;
 use crate::error::StorageError;
 
-/// Workstream registry. Wraps the `workstreams` table.
-pub struct WorkstreamStore<'a> {
+/// Lens registry. Wraps the `lenses` table.
+pub struct LensStore<'a> {
     db: &'a Database,
 }
 
-impl<'a> WorkstreamStore<'a> {
+impl<'a> LensStore<'a> {
     pub fn new(db: &'a Database) -> Self {
         Self { db }
     }
 
-    /// Idempotently create the `scratch` workstream at the given root.
+    /// Idempotently create the `scratch` lens at the given root.
     /// Safe to call on every boot — does nothing if scratch already exists.
-    pub fn ensure_scratch(&self, scratch_root: &Path) -> Result<Workstream, StorageError> {
+    pub fn ensure_scratch(&self, scratch_root: &Path) -> Result<Lens, StorageError> {
         if let Some(existing) = self.find_by_name(SCRATCH_NAME)? {
             return Ok(existing);
         }
-        let ws = Workstream::scratch(scratch_root);
+        let ws = Lens::scratch(scratch_root);
         self.insert_row(&ws)?;
         Ok(ws)
     }
 
-    /// Create a new workstream. Validates the name, refuses `scratch`,
+    /// Create a new lens. Validates the name, refuses `scratch`,
     /// and errors on duplicate names.
-    pub fn create(&self, ws: &Workstream) -> Result<(), StorageError> {
+    pub fn create(&self, ws: &Lens) -> Result<(), StorageError> {
         if ws.name == SCRATCH_NAME {
             return Err(StorageError::InvalidOperation(
                 "the name 'scratch' is reserved".into(),
@@ -50,14 +50,14 @@ impl<'a> WorkstreamStore<'a> {
         validate_name(&ws.name).map_err(name_err)?;
         if self.find_by_name(&ws.name)?.is_some() {
             return Err(StorageError::InvalidOperation(format!(
-                "workstream '{}' already exists",
+                "lens '{}' already exists",
                 ws.name
             )));
         }
         self.insert_row(ws)
     }
 
-    fn insert_row(&self, ws: &Workstream) -> Result<(), StorageError> {
+    fn insert_row(&self, ws: &Lens) -> Result<(), StorageError> {
         let bindings_json = serde_json::to_string(&ws.bindings)
             .map_err(|e| StorageError::InvalidOperation(format!("serialize bindings: {e}")))?;
         let display_name = if ws.display_name.is_empty() {
@@ -66,7 +66,7 @@ impl<'a> WorkstreamStore<'a> {
             &ws.display_name
         };
         self.db.conn().execute(
-            "INSERT INTO workstreams \
+            "INSERT INTO lenses \
                 (id, name, root_dir, created_at, display_name, description, \
                  bindings, archived, updated_at, identity_profile) \
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
@@ -86,47 +86,47 @@ impl<'a> WorkstreamStore<'a> {
         Ok(())
     }
 
-    pub fn get(&self, id: Uuid) -> Result<Option<Workstream>, StorageError> {
+    pub fn get(&self, id: Uuid) -> Result<Option<Lens>, StorageError> {
         Ok(self
             .db
             .conn()
             .query_row(SELECT_COLS_WHERE_ID, [id.to_string()], |row| {
-                row_to_workstream(row).map_err(rusqlite_map_err)
+                row_to_lens(row).map_err(rusqlite_map_err)
             })
             .optional()?)
     }
 
-    pub fn find_by_name(&self, name: &str) -> Result<Option<Workstream>, StorageError> {
+    pub fn find_by_name(&self, name: &str) -> Result<Option<Lens>, StorageError> {
         Ok(self
             .db
             .conn()
             .query_row(SELECT_COLS_WHERE_NAME, [name], |row| {
-                row_to_workstream(row).map_err(rusqlite_map_err)
+                row_to_lens(row).map_err(rusqlite_map_err)
             })
             .optional()?)
     }
 
-    /// List active (non-archived) workstreams, newest update first.
-    pub fn list(&self) -> Result<Vec<Workstream>, StorageError> {
+    /// List active (non-archived) lenses, newest update first.
+    pub fn list(&self) -> Result<Vec<Lens>, StorageError> {
         self.list_with_archived(false)
     }
 
-    /// List all workstreams including soft-deleted (archived) ones.
-    pub fn list_all(&self) -> Result<Vec<Workstream>, StorageError> {
+    /// List all lenses including soft-deleted (archived) ones.
+    pub fn list_all(&self) -> Result<Vec<Lens>, StorageError> {
         self.list_with_archived(true)
     }
 
-    fn list_with_archived(&self, include_archived: bool) -> Result<Vec<Workstream>, StorageError> {
+    fn list_with_archived(&self, include_archived: bool) -> Result<Vec<Lens>, StorageError> {
         let mut stmt = self.db.conn().prepare(if include_archived {
             "SELECT id, name, root_dir, created_at, display_name, description, \
              bindings, archived, updated_at, identity_profile \
-             FROM workstreams ORDER BY updated_at DESC"
+             FROM lenses ORDER BY updated_at DESC"
         } else {
             "SELECT id, name, root_dir, created_at, display_name, description, \
              bindings, archived, updated_at, identity_profile \
-             FROM workstreams WHERE archived = 0 ORDER BY updated_at DESC"
+             FROM lenses WHERE archived = 0 ORDER BY updated_at DESC"
         })?;
-        let rows = stmt.query_map([], |row| row_to_workstream(row).map_err(rusqlite_map_err))?;
+        let rows = stmt.query_map([], |row| row_to_lens(row).map_err(rusqlite_map_err))?;
         let mut out = Vec::new();
         for r in rows {
             out.push(r?);
@@ -140,12 +140,12 @@ impl<'a> WorkstreamStore<'a> {
         profile: IdentityProfile,
     ) -> Result<(), StorageError> {
         let updated = self.db.conn().execute(
-            "UPDATE workstreams SET identity_profile = ?1, updated_at = ?2 WHERE name = ?3",
+            "UPDATE lenses SET identity_profile = ?1, updated_at = ?2 WHERE name = ?3",
             (profile.as_str(), Utc::now().to_rfc3339(), name),
         )?;
         if updated == 0 {
             return Err(StorageError::InvalidOperation(format!(
-                "workstream '{name}' not found"
+                "lens '{name}' not found"
             )));
         }
         Ok(())
@@ -153,12 +153,12 @@ impl<'a> WorkstreamStore<'a> {
 
     pub fn update_description(&self, name: &str, description: &str) -> Result<(), StorageError> {
         let updated = self.db.conn().execute(
-            "UPDATE workstreams SET description = ?1, updated_at = ?2 WHERE name = ?3",
+            "UPDATE lenses SET description = ?1, updated_at = ?2 WHERE name = ?3",
             (description, Utc::now().to_rfc3339(), name),
         )?;
         if updated == 0 {
             return Err(StorageError::InvalidOperation(format!(
-                "workstream '{name}' not found"
+                "lens '{name}' not found"
             )));
         }
         Ok(())
@@ -168,21 +168,21 @@ impl<'a> WorkstreamStore<'a> {
         let json = serde_json::to_string(bindings)
             .map_err(|e| StorageError::InvalidOperation(format!("serialize bindings: {e}")))?;
         let updated = self.db.conn().execute(
-            "UPDATE workstreams SET bindings = ?1, updated_at = ?2 WHERE name = ?3",
+            "UPDATE lenses SET bindings = ?1, updated_at = ?2 WHERE name = ?3",
             (json, Utc::now().to_rfc3339(), name),
         )?;
         if updated == 0 {
             return Err(StorageError::InvalidOperation(format!(
-                "workstream '{name}' not found"
+                "lens '{name}' not found"
             )));
         }
         Ok(())
     }
 
     pub fn add_binding(&self, name: &str, feed_id: &str) -> Result<(), StorageError> {
-        let ws = self.find_by_name(name)?.ok_or_else(|| {
-            StorageError::InvalidOperation(format!("workstream '{name}' not found"))
-        })?;
+        let ws = self
+            .find_by_name(name)?
+            .ok_or_else(|| StorageError::InvalidOperation(format!("lens '{name}' not found")))?;
         let mut bindings = ws.bindings;
         if !bindings.iter().any(|b| b == feed_id) {
             bindings.push(feed_id.to_string());
@@ -191,9 +191,9 @@ impl<'a> WorkstreamStore<'a> {
     }
 
     pub fn remove_binding(&self, name: &str, feed_id: &str) -> Result<(), StorageError> {
-        let ws = self.find_by_name(name)?.ok_or_else(|| {
-            StorageError::InvalidOperation(format!("workstream '{name}' not found"))
-        })?;
+        let ws = self
+            .find_by_name(name)?
+            .ok_or_else(|| StorageError::InvalidOperation(format!("lens '{name}' not found")))?;
         let bindings: Vec<String> = ws.bindings.into_iter().filter(|b| b != feed_id).collect();
         self.set_bindings(name, &bindings)
     }
@@ -204,32 +204,31 @@ impl<'a> WorkstreamStore<'a> {
     pub fn soft_delete(&self, name: &str) -> Result<(), StorageError> {
         if name == SCRATCH_NAME {
             return Err(StorageError::InvalidOperation(
-                "the 'scratch' workstream cannot be deleted".into(),
+                "the 'scratch' lens cannot be deleted".into(),
             ));
         }
         let updated = self.db.conn().execute(
-            "UPDATE workstreams SET archived = 1, updated_at = ?1 WHERE name = ?2",
+            "UPDATE lenses SET archived = 1, updated_at = ?1 WHERE name = ?2",
             (Utc::now().to_rfc3339(), name),
         )?;
         if updated == 0 {
             return Err(StorageError::InvalidOperation(format!(
-                "workstream '{name}' not found"
+                "lens '{name}' not found"
             )));
         }
         Ok(())
     }
-
 }
 
 const SELECT_COLS_WHERE_ID: &str = "SELECT id, name, root_dir, created_at, display_name, description, \
      bindings, archived, updated_at, identity_profile \
-     FROM workstreams WHERE id = ?1";
+     FROM lenses WHERE id = ?1";
 
 const SELECT_COLS_WHERE_NAME: &str = "SELECT id, name, root_dir, created_at, display_name, description, \
      bindings, archived, updated_at, identity_profile \
-     FROM workstreams WHERE name = ?1";
+     FROM lenses WHERE name = ?1";
 
-fn row_to_workstream(row: &rusqlite::Row<'_>) -> Result<Workstream, StorageError> {
+fn row_to_lens(row: &rusqlite::Row<'_>) -> Result<Lens, StorageError> {
     let id_str: String = row.get(0)?;
     let name: String = row.get(1)?;
     let root_dir: String = row.get(2)?;
@@ -253,7 +252,7 @@ fn row_to_workstream(row: &rusqlite::Row<'_>) -> Result<Workstream, StorageError
         .map_err(|e| StorageError::InvalidOperation(format!("invalid bindings JSON: {e}")))?;
     let identity_profile: IdentityProfile = identity_profile_str.parse().unwrap_or_default();
 
-    Ok(Workstream {
+    Ok(Lens {
         id,
         name: name.clone(),
         display_name: if display_name.is_empty() {
@@ -281,7 +280,7 @@ fn rusqlite_map_err(e: StorageError) -> rusqlite::Error {
     rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::other(e.to_string())))
 }
 
-fn name_err(e: WorkstreamNameError) -> StorageError {
+fn name_err(e: LensNameError) -> StorageError {
     StorageError::InvalidOperation(e.to_string())
 }
 
@@ -296,8 +295,8 @@ mod tests {
     #[test]
     fn create_and_roundtrip() {
         let db = setup();
-        let store = WorkstreamStore::new(&db);
-        let mut ws = Workstream::new("pat", "/tmp/pat");
+        let store = LensStore::new(&db);
+        let mut ws = Lens::new("pat", "/tmp/pat");
         ws.description = "skip-level for pat".into();
         ws.bindings = vec!["slack-pat-dm".into(), "calendar-pat-1on1".into()];
         store.create(&ws).unwrap();
@@ -311,8 +310,8 @@ mod tests {
     #[test]
     fn create_rejects_scratch() {
         let db = setup();
-        let store = WorkstreamStore::new(&db);
-        let ws = Workstream::new(SCRATCH_NAME, "/tmp/scratch");
+        let store = LensStore::new(&db);
+        let ws = Lens::new(SCRATCH_NAME, "/tmp/scratch");
         let err = store.create(&ws).unwrap_err();
         assert!(format!("{err}").contains("reserved"));
     }
@@ -320,13 +319,13 @@ mod tests {
     #[test]
     fn create_rejects_invalid_slug() {
         let db = setup();
-        let store = WorkstreamStore::new(&db);
+        let store = LensStore::new(&db);
         // Leading capital → BadLeading
-        let ws_upper = Workstream::new("BadName", "/tmp/bad");
+        let ws_upper = Lens::new("BadName", "/tmp/bad");
         let err = store.create(&ws_upper).unwrap_err();
         assert!(format!("{err}").contains("lowercase letter or digit"));
         // Space in body → BadChar(' ')
-        let ws_space = Workstream::new("bad name", "/tmp/bad");
+        let ws_space = Lens::new("bad name", "/tmp/bad");
         let err = store.create(&ws_space).unwrap_err();
         assert!(format!("{err}").contains("invalid character"));
     }
@@ -334,18 +333,16 @@ mod tests {
     #[test]
     fn create_rejects_duplicate() {
         let db = setup();
-        let store = WorkstreamStore::new(&db);
-        store.create(&Workstream::new("dupe", "/tmp/a")).unwrap();
-        let err = store
-            .create(&Workstream::new("dupe", "/tmp/b"))
-            .unwrap_err();
+        let store = LensStore::new(&db);
+        store.create(&Lens::new("dupe", "/tmp/a")).unwrap();
+        let err = store.create(&Lens::new("dupe", "/tmp/b")).unwrap_err();
         assert!(format!("{err}").contains("already exists"));
     }
 
     #[test]
     fn ensure_scratch_idempotent() {
         let db = setup();
-        let store = WorkstreamStore::new(&db);
+        let store = LensStore::new(&db);
         let s1 = store.ensure_scratch(Path::new("/tmp/scratch")).unwrap();
         let s2 = store.ensure_scratch(Path::new("/tmp/scratch")).unwrap();
         assert_eq!(s1.id, s2.id, "scratch should be the same row on re-ensure");
@@ -355,8 +352,8 @@ mod tests {
     #[test]
     fn update_description() {
         let db = setup();
-        let store = WorkstreamStore::new(&db);
-        store.create(&Workstream::new("proj", "/tmp/p")).unwrap();
+        let store = LensStore::new(&db);
+        store.create(&Lens::new("proj", "/tmp/p")).unwrap();
         store.update_description("proj", "auth migration").unwrap();
         let loaded = store.find_by_name("proj").unwrap().unwrap();
         assert_eq!(loaded.description, "auth migration");
@@ -365,8 +362,8 @@ mod tests {
     #[test]
     fn bindings_add_and_remove() {
         let db = setup();
-        let store = WorkstreamStore::new(&db);
-        store.create(&Workstream::new("proj", "/tmp/p")).unwrap();
+        let store = LensStore::new(&db);
+        store.create(&Lens::new("proj", "/tmp/p")).unwrap();
         store.add_binding("proj", "slack-eng").unwrap();
         store.add_binding("proj", "slack-eng").unwrap(); // dedup
         store.add_binding("proj", "drive-design").unwrap();
@@ -380,8 +377,8 @@ mod tests {
     #[test]
     fn soft_delete_marks_archived() {
         let db = setup();
-        let store = WorkstreamStore::new(&db);
-        store.create(&Workstream::new("temp", "/tmp/t")).unwrap();
+        let store = LensStore::new(&db);
+        store.create(&Lens::new("temp", "/tmp/t")).unwrap();
         store.soft_delete("temp").unwrap();
         // `list` excludes archived
         let active = store.list().unwrap();
@@ -394,17 +391,17 @@ mod tests {
     #[test]
     fn soft_delete_refuses_scratch() {
         let db = setup();
-        let store = WorkstreamStore::new(&db);
+        let store = LensStore::new(&db);
         store.ensure_scratch(Path::new("/tmp/scratch")).unwrap();
         let err = store.soft_delete(SCRATCH_NAME).unwrap_err();
         assert!(format!("{err}").contains("scratch"));
     }
 
     #[test]
-    fn new_workstream_defaults_to_assistant_profile() {
+    fn new_lens_defaults_to_assistant_profile() {
         let db = setup();
-        let store = WorkstreamStore::new(&db);
-        store.create(&Workstream::new("life", "/tmp/life")).unwrap();
+        let store = LensStore::new(&db);
+        store.create(&Lens::new("life", "/tmp/life")).unwrap();
         let loaded = store.find_by_name("life").unwrap().unwrap();
         assert_eq!(loaded.identity_profile, IdentityProfile::Assistant);
     }
@@ -412,8 +409,8 @@ mod tests {
     #[test]
     fn update_identity_profile_round_trips() {
         let db = setup();
-        let store = WorkstreamStore::new(&db);
-        store.create(&Workstream::new("code", "/tmp/code")).unwrap();
+        let store = LensStore::new(&db);
+        store.create(&Lens::new("code", "/tmp/code")).unwrap();
         store
             .update_identity_profile("code", IdentityProfile::Coding)
             .unwrap();
@@ -430,10 +427,10 @@ mod tests {
     #[test]
     fn list_orders_by_updated_at_desc() {
         let db = setup();
-        let store = WorkstreamStore::new(&db);
-        store.create(&Workstream::new("old", "/tmp/o")).unwrap();
+        let store = LensStore::new(&db);
+        store.create(&Lens::new("old", "/tmp/o")).unwrap();
         std::thread::sleep(std::time::Duration::from_millis(10));
-        store.create(&Workstream::new("new", "/tmp/n")).unwrap();
+        store.create(&Lens::new("new", "/tmp/n")).unwrap();
         let listed = store.list().unwrap();
         assert_eq!(listed[0].name, "new");
         assert_eq!(listed[1].name, "old");

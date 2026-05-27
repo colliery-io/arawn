@@ -127,7 +127,7 @@ impl FeedRuntime {
     ///
     /// Does NOT delete the feed row or the on-disk feed_dir — the
     /// caller is responsible for that (typically already done by
-    /// `WorkstreamUnbindTool`'s raw-SQL row delete). Idempotent: if
+    /// `LensUnbindTool`'s raw-SQL row delete). Idempotent: if
     /// no cron schedule matches, returns Ok.
     pub async fn unregister_cron(&self, feed_id: &str) -> Result<(), FeedError> {
         delete_schedule_for(&self.runner, &feed_workflow_name(feed_id)).await
@@ -802,7 +802,7 @@ async fn register_one(
     runtime.register_workflow(workflow_name.clone(), constructor);
 
     // 4. Schedule it. UTC for now — feed cadences are absolute, the
-    // user expresses cron in UTC. (A future task may wire workstream
+    // user expresses cron in UTC. (A future task may wire lens
     // / user timezone in.)
     //
     // Idempotency: cloacina's `register_cron_workflow` always inserts

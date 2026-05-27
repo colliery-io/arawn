@@ -181,8 +181,7 @@ pub fn sign_app_jwt(app: &GithubAppConfig) -> Result<String, IntegrationError> {
     let header = Header::new(Algorithm::RS256);
     let key = EncodingKey::from_rsa_pem(app.private_key_pem.as_bytes())
         .map_err(|e| IntegrationError::Provider(format!("invalid RSA private key: {e}")))?;
-    encode(&header, &claims, &key)
-        .map_err(|e| IntegrationError::Provider(format!("JWT sign: {e}")))
+    encode(&header, &claims, &key).map_err(|e| IntegrationError::Provider(format!("JWT sign: {e}")))
 }
 
 #[cfg(test)]

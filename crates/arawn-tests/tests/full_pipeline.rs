@@ -70,7 +70,7 @@ async fn full_pipeline_all_subsystems_wired() {
         .with_permission_checker(checker)
         .with_hook_runner(runner)
         .with_skill_registry(skill_registry)
-        .with_workstream_file("data.txt", "important data")
+        .with_lens_file("data.txt", "important data")
         .with_script(vec![
             // Turn 1: think → allowed by permission rule, no PreToolUse hook match
             MockResponse::tool_call("c1", "think", r#"{"thought":"planning my approach"}"#),

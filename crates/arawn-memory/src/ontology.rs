@@ -1,13 +1,13 @@
-//! Per-workstream tag ontology — the closed list of tags an extractor
+//! Per-lens tag ontology — the closed list of tags an extractor
 //! may emit into an entity's `tags_ontology` field. Colocated with the
-//! workstream's `memory.db` so the ontology travels with the KB.
+//! lens's `memory.db` so the ontology travels with the KB.
 //!
-//! Per ADR-0004 the ontology is required at workstream creation. Tags
+//! Per ADR-0004 the ontology is required at lens creation. Tags
 //! are added via two paths:
 //!
-//! - Manual: `workstream_tag add <tag>` (audited via `added_via = 'manual'`).
+//! - Manual: `lens_tag add <tag>` (audited via `added_via = 'manual'`).
 //! - Promotion: the `tag-promoter` steward subroutine proposes; the
-//!   user accepts via `workstream_apply <id>`; the accept-path inserts
+//!   user accepts via `lens_apply <id>`; the accept-path inserts
 //!   with `added_via = 'promotion'`.
 
 use std::path::Path;
@@ -49,9 +49,9 @@ impl AddedVia {
     }
 }
 
-/// Read/write surface over the `workstream_tag_ontology` table.
+/// Read/write surface over the `lens_tag_ontology` table.
 ///
-/// Opens its own rusqlite connection to the workstream's `memory.db`.
+/// Opens its own rusqlite connection to the lens's `memory.db`.
 /// Multiple connections to the same sqlite file are fine — graphqlite +
 /// steward + ontology each maintain their own.
 pub struct TagOntologyStore {
@@ -59,21 +59,21 @@ pub struct TagOntologyStore {
 }
 
 impl TagOntologyStore {
-    /// Open (or create) the ontology table inside the workstream's
-    /// `memory.db`. Path resolution mirrors `MemoryManager::for_workstream`:
-    /// `<data_dir>/workstreams/<name>/memory.db`.
-    pub fn open(data_dir: &Path, workstream_name: &str) -> Result<Self, MemoryError> {
-        let ws_dir = data_dir.join("workstreams").join(workstream_name);
+    /// Open (or create) the ontology table inside the lens's
+    /// `memory.db`. Path resolution mirrors `MemoryManager::for_lens`:
+    /// `<data_dir>/lenses/<name>/memory.db`.
+    pub fn open(data_dir: &Path, lens_name: &str) -> Result<Self, MemoryError> {
+        let ws_dir = data_dir.join("lenses").join(lens_name);
         Self::open_at(&ws_dir)
     }
 
-    /// Open at an explicit workstream directory (the one that contains
+    /// Open at an explicit lens directory (the one that contains
     /// `memory.db`). Useful for callers that already have the
-    /// workstream's root path on a `Workstream` record and don't want
+    /// lens's root path on a `Lens` record and don't want
     /// to re-derive `data_dir + name`.
     pub fn open_at(ws_dir: &Path) -> Result<Self, MemoryError> {
         std::fs::create_dir_all(ws_dir)
-            .map_err(|e| MemoryError::Storage(format!("create workstream dir: {e}")))?;
+            .map_err(|e| MemoryError::Storage(format!("create lens dir: {e}")))?;
         let conn = Connection::open(ws_dir.join("memory.db"))
             .map_err(|e| MemoryError::Storage(format!("open ontology db: {e}")))?;
         ensure_schema(&conn)?;
@@ -91,7 +91,7 @@ impl TagOntologyStore {
         }
         let conn = self.conn.lock().unwrap();
         conn.execute(
-            "INSERT OR IGNORE INTO workstream_tag_ontology \
+            "INSERT OR IGNORE INTO lens_tag_ontology \
              (tag, added_at, added_via) VALUES (?1, ?2, ?3)",
             params![tag, Utc::now().to_rfc3339(), via.as_str()],
         )
@@ -100,7 +100,7 @@ impl TagOntologyStore {
     }
 
     /// Bulk-add — every tag in the list, all using the same `via`. Used
-    /// at workstream creation to seed the initial ontology.
+    /// at lens creation to seed the initial ontology.
     pub fn add_many<I: IntoIterator<Item = String>>(
         &self,
         tags: I,
@@ -117,10 +117,7 @@ impl TagOntologyStore {
         let tag = normalize_tag(tag);
         let conn = self.conn.lock().unwrap();
         let n = conn
-            .execute(
-                "DELETE FROM workstream_tag_ontology WHERE tag = ?1",
-                params![tag],
-            )
+            .execute("DELETE FROM lens_tag_ontology WHERE tag = ?1", params![tag])
             .map_err(|e| MemoryError::Storage(format!("ontology delete: {e}")))?;
         Ok(n > 0)
     }
@@ -130,7 +127,7 @@ impl TagOntologyStore {
         let conn = self.conn.lock().unwrap();
         let count: i64 = conn
             .query_row(
-                "SELECT COUNT(*) FROM workstream_tag_ontology WHERE tag = ?1",
+                "SELECT COUNT(*) FROM lens_tag_ontology WHERE tag = ?1",
                 params![tag],
                 |r| r.get(0),
             )
@@ -142,7 +139,7 @@ impl TagOntologyStore {
     pub fn list(&self) -> Result<Vec<OntologyEntry>, MemoryError> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn
-            .prepare("SELECT tag, added_at, added_via FROM workstream_tag_ontology ORDER BY tag")
+            .prepare("SELECT tag, added_at, added_via FROM lens_tag_ontology ORDER BY tag")
             .map_err(|e| MemoryError::Storage(format!("ontology list prepare: {e}")))?;
         let rows = stmt
             .query_map([], |r| Ok(parse_row(r)))
@@ -163,9 +160,7 @@ impl TagOntologyStore {
     pub fn count(&self) -> Result<usize, MemoryError> {
         let conn = self.conn.lock().unwrap();
         let n: i64 = conn
-            .query_row("SELECT COUNT(*) FROM workstream_tag_ontology", [], |r| {
-                r.get(0)
-            })
+            .query_row("SELECT COUNT(*) FROM lens_tag_ontology", [], |r| r.get(0))
             .map_err(|e| MemoryError::Storage(format!("ontology count: {e}")))?;
         Ok(n.max(0) as usize)
     }
@@ -176,7 +171,7 @@ impl TagOntologyStore {
         let conn = self.conn.lock().unwrap();
         let row: Option<Result<OntologyEntry, MemoryError>> = conn
             .query_row(
-                "SELECT tag, added_at, added_via FROM workstream_tag_ontology WHERE tag = ?1",
+                "SELECT tag, added_at, added_via FROM lens_tag_ontology WHERE tag = ?1",
                 params![tag],
                 |r| Ok(parse_row(r)),
             )
@@ -190,7 +185,7 @@ impl TagOntologyStore {
     }
 
     /// Filter `candidates` to the subset present in the ontology.
-    /// Returns an empty vector when the ontology is empty (workstream
+    /// Returns an empty vector when the ontology is empty (lens
     /// would not have been creatable, but defensive). Tags are
     /// normalized before lookup so case/whitespace variants resolve.
     pub fn filter(&self, candidates: &[String]) -> Result<Vec<String>, MemoryError> {
@@ -214,13 +209,13 @@ pub fn normalize_tag(tag: &str) -> String {
 
 fn ensure_schema(conn: &Connection) -> Result<(), MemoryError> {
     conn.execute_batch(
-        "CREATE TABLE IF NOT EXISTS workstream_tag_ontology (
+        "CREATE TABLE IF NOT EXISTS lens_tag_ontology (
             tag TEXT PRIMARY KEY,
             added_at TEXT NOT NULL,
             added_via TEXT NOT NULL CHECK (added_via IN ('manual','promotion'))
         );
         CREATE INDEX IF NOT EXISTS idx_ontology_added_at
-            ON workstream_tag_ontology(added_at);",
+            ON lens_tag_ontology(added_at);",
     )
     .map_err(|e| MemoryError::Storage(format!("ontology schema: {e}")))?;
     Ok(())
