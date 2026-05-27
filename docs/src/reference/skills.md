@@ -46,7 +46,7 @@ The `skill` tool (source: `crates/arawn-engine/src/tools/skill.rs`) lets the age
 ```json
 {
   "tool": "skill",
-  "arguments": { "skill": "workstream-create", "args": "work --description 'platform team'" }
+  "arguments": { "skill": "lens-create", "args": "work --description 'platform team'" }
 }
 ```
 
@@ -75,7 +75,7 @@ When `user-invocable: true`, the skill registers as a slash command. Typing `/sk
 
 Three sources, all merged into the registry at startup:
 
-1. **Built-in skills** — compiled into `crates/arawn-engine/src/skills/builtin/`. Currently: `workflows.md`, `workstream-create.md`. The engine reads these from include_str at compile time.
+1. **Built-in skills** — compiled into `crates/arawn-engine/src/skills/builtin/`. Currently: `workflows.md`, `lens-create.md`. The engine reads these from include_str at compile time.
 2. **User skills** — `<data_dir>/skills/` (loaded by `crates/arawn-engine/src/skills/loader.rs`).
 3. **Plugin skills** — declared in a plugin manifest's `skills:` path. See [plugins reference](./plugins.md).
 
@@ -103,9 +103,9 @@ The `skill` tool itself is gated by the active permission mode like any other to
 
 Recipe for composing a workflow from a conversational description. The user typically asks "build me a daily PR briefing"; the agent invokes the `workflows` skill, which produces the workflow JSON spec and calls `workflow_create`.
 
-### `workstream-create` (built-in)
+### `lens-create` (built-in)
 
-Recipe for creating a workstream — proposes an ontology, confirms with the user, writes the workstream. The `/workstream create` slash command routes through this skill.
+Recipe for creating a lens — proposes an ontology, confirms with the user, writes the lens. The `/lens create` slash command routes through this skill.
 
 ## Related
 

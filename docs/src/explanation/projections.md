@@ -10,18 +10,18 @@ For the schemas, see [projection tables reference](../reference/projection-table
 
 Two things:
 
-1. **Cross-feed semantic search.** `feed_search "what did the team decide about postgres?"` walks every projection table — gmail, slack, jira, confluence, drive — and returns ranked hits. No workstream required. The feeds layer can't do this; it's file-on-disk, no FTS, no embedding.
+1. **Cross-feed semantic search.** `feed_search "what did the team decide about postgres?"` walks every projection table — gmail, slack, jira, confluence, drive — and returns ranked hits. No lens required. The feeds layer can't do this; it's file-on-disk, no FTS, no embedding.
 2. **A flat substrate the extractor can walk.** The palace extractor (`arawn_extractor::cot::CotChain`) reads projection rows in `source_ts` order via a cursor and turns them into typed entities. It needs a relational table, not a file tree.
 
 ## Why flat
 
 Projections have **no relations between rows**. Two emails are two rows; if one quotes the other, the projection layer doesn't know. Why design it that way?
 
-- **Relations are interpretation, not data.** Two Slack messages might be a reply chain that matters for workstream A and noise for workstream B. Encoding the relation at the projection layer would lock in one workstream's view.
+- **Relations are interpretation, not data.** Two Slack messages might be a reply chain that matters for lens A and noise for lens B. Encoding the relation at the projection layer would lock in one lens's view.
 - **The query patterns benefit from flatness.** Cross-feed FTS works at table-scan speed because there's no edge traversal. Vector search works because the embedding column is a per-row property, not a per-edge one.
 - **The extractor wants flat input.** The CoT chain processes rows sequentially with a `WHERE source_ts > cursor` filter. A graph-shaped substrate would force expensive traversal at extractor entry.
 
-Relations belong in the palace layer, where they're typed (`supersedes`, `relates_to`, `mentions`) and per-workstream.
+Relations belong in the palace layer, where they're typed (`supersedes`, `relates_to`, `mentions`) and per-lens.
 
 ## Why an embedding column
 
@@ -67,9 +67,9 @@ The price is a small write per entity. Cheap.
 |---|---|---|
 | What did the message *say* literally? | feeds (file read) | The bytes are there; no transformation needed. |
 | Find any content that mentions X across all feeds. | projections (`feed_search`) | Cross-feed FTS + vector is what projections give you. |
-| Find an entity / decision / convention in *one workstream*. | palace (`signal_search`) | Typed entities are a palace-layer thing. |
+| Find an entity / decision / convention in *one lens*. | palace (`signal_search`) | Typed entities are a palace-layer thing. |
 | Filter entities by type or tag. | palace (`signal_query`) | Same. |
-| Chronological "what happened in workstream X." | palace (`signal_timeline`) | Same. |
+| Chronological "what happened in lens X." | palace (`signal_timeline`) | Same. |
 | Hydrate a specific entity back to its source content. | palace → projections → feeds | Walk the `EXTRACTED_FROM` edge → `ProjectionStore::get_row` → file read. |
 
 The walk-down-the-stack pattern is rare but supported. Most queries live in one layer.
@@ -78,11 +78,11 @@ The walk-down-the-stack pattern is rare but supported. Most queries live in one 
 
 - **Relations.** Edge-shaped data lives in the palace.
 - **User curation.** Projections are mechanical — raw item from upstream becomes a projection row. The user doesn't refine them.
-- **Workstream scope.** A projection row isn't "for" any workstream — it's a per-feed-type fact. Workstream binding determines which extractors process it, not which projection rows exist.
+- **Lens scope.** A projection row isn't "for" any lens — it's a per-feed-type fact. Lens binding determines which extractors process it, not which projection rows exist.
 
 ## Why a separate DB file
 
-`projections.db` is its own SQLite file, separate from per-workstream `memory.db` and global `memory.db`. Trade-offs considered:
+`projections.db` is its own SQLite file, separate from per-lens `memory.db` and global `memory.db`. Trade-offs considered:
 
 - **Single shared DB**: simpler, but locking issues at high write rates (Slack channel-archive fires every 15 min across many channels).
 - **One DB per feed**: clean isolation, but cross-feed search would need to ATTACH every DB on every query.

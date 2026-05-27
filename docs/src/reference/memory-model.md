@@ -2,7 +2,7 @@
 
 *Reference. Entity types + relations + confidence + storage layout for the global knowledge base.*
 
-The memory model is the **global-tier** knowledge base — the things true across every workstream. Per-workstream palaces are the workstream-tier version, sharing the same entity/relation vocabulary; see [palace types reference](./palace-types.md). For the rationale (why two tiers, what's scope-locked), see [memory design explanation](../explanation/memory-design.md).
+The memory model is the **global-tier** knowledge base — the things true across every lens. Per-lens palaces are the lens-tier version, sharing the same entity/relation vocabulary; see [palace types reference](./palace-types.md). For the rationale (why two tiers, what's scope-locked), see [memory design explanation](../explanation/memory-design.md).
 
 Source: `crates/arawn-memory/`.
 
@@ -10,10 +10,10 @@ Source: `crates/arawn-memory/`.
 
 | Scope | Lives in | Holds |
 |---|---|---|
-| **Global** | `<data_dir>/memory.db` (+ `memory.graph.db`) | Things true across every workstream — preferences, important people, system-wide decisions. |
-| **Workstream** | `<data_dir>/workstreams/<name>/memory.db` | Project-scoped facts, decisions, conventions, notes. |
+| **Global** | `<data_dir>/memory.db` (+ `memory.graph.db`) | Things true across every lens — preferences, important people, system-wide decisions. |
+| **Lens** | `<data_dir>/lenses/<name>/memory.db` | Project-scoped facts, decisions, conventions, notes. |
 
-Some entity types are scope-locked: `preference` and `person` always go to global; `decision`, `convention`, `note`, and `fact` always go to workstream.
+Some entity types are scope-locked: `preference` and `person` always go to global; `decision`, `convention`, `note`, and `fact` always go to lens.
 
 ## Entity types
 
@@ -21,12 +21,12 @@ Same closed set as palace entities:
 
 | Type | Default scope | Use |
 |---|---|---|
-| `fact` | workstream | Observed facts — "config lives at `~/.arawn/arawn.toml`" |
-| `decision` | workstream | Resolved choices with rationale — "we use TOML, not env vars, for config" |
-| `convention` | workstream | Project rules — "tests live inline" |
+| `fact` | lens | Observed facts — "config lives at `~/.arawn/arawn.toml`" |
+| `decision` | lens | Resolved choices with rationale — "we use TOML, not env vars, for config" |
+| `convention` | lens | Project rules — "tests live inline" |
 | `preference` | global | User preferences — "prefers terse responses" |
 | `person` | global | People — "Alice is the security lead" |
-| `note` | workstream | Free-form notes |
+| `note` | lens | Free-form notes |
 
 See [palace types reference](./palace-types.md) for entity fields and confidence levels.
 
@@ -76,9 +76,9 @@ Slash commands:
 <data_dir>/
 ├── memory.db                              # global KB (entities + FTS index)
 ├── memory.graph.db                        # global KB graph relations (graphqlite)
-└── workstreams/
-    └── <workstream>/
-        └── memory.db                      # workstream KB (entities, graph, FTS, vec)
+└── lenses/
+    └── <lens>/
+        └── memory.db                      # lens KB (entities, graph, FTS, vec)
 ```
 
 `*-shm` and `*-wal` files alongside each `.db` are SQLite's write-ahead-log files; safe to ignore but don't delete while arawn is running.
@@ -103,6 +103,6 @@ Next session, agent calls memory_search({ "query": "async runtime preference" })
 ## Related
 
 - [Memory design explanation](../explanation/memory-design.md) — two-tier rationale, FTS-vs-vector trade-off.
-- [Palace types reference](./palace-types.md) — the workstream-tier equivalent.
+- [Palace types reference](./palace-types.md) — the lens-tier equivalent.
 - [Slash commands reference](./slash-commands.md) — `/remember`, `/memory`, `/forget`.
 - [Agent tools reference](./agent-tools.md) — `memory_store`, `memory_search`.

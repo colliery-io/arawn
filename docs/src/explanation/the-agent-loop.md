@@ -11,11 +11,11 @@ You type a message.
    │
    ▼
 1. System prompt assembly
-   - identity prompt (assistant vs coding — workstream-dependent)
-   - active workstream metadata
+   - identity prompt (assistant vs coding — lens-dependent)
+   - active lens metadata
    - memory entries that match the user's text
    - the live tool registry (built-ins + integration tools + plugin tools + MCP tools)
-   - any `arawn.md` directives in the workstream root or data_dir
+   - any `arawn.md` directives in the lens root or data_dir
    │
    ▼
 2. LLM call
@@ -27,7 +27,7 @@ You type a message.
    b. If ask, user is prompted; allow_once / allow_always / deny.
    c. If allowed, dispatch:
       - shell tools → OS sandbox (sandbox-exec / bubblewrap)
-      - file tools  → workstream workspace path enforcement
+      - file tools  → lens workspace path enforcement
       - integration → cached creds + retry/refresh
    d. Result returns to the loop as a tool result.
    │
@@ -40,10 +40,10 @@ You type a message.
 
 The system prompt isn't static. Several pieces change between turns:
 
-- The **active workstream** can change with `/workstream switch`. Identity prompts switch with it (assistant vs coding — see [identity by workstream](./identity-by-workstream.md)).
+- The **active lens** can change with `/lens switch`. Identity prompts switch with it (assistant vs coding — see [identity by lens](./identity-by-lens.md)).
 - **Memory entries** that match the current user message get injected as context. If you ask "what did we decide about Postgres?", the memory loader pre-fetches relevant entities so the LLM sees them in-context.
 - **Tools** change as integrations connect/disconnect, plugins load/unload, MCP servers come and go. Hot-reload means the registry can change mid-session.
-- **`arawn.md` files** in the workstream root and the data directory carry persistent behavioral directives. They're injected into every turn so the agent stays consistent across sessions.
+- **`arawn.md` files** in the lens root and the data directory carry persistent behavioral directives. They're injected into every turn so the agent stays consistent across sessions.
 
 The cost: a few hundred bytes of redundant assembly per turn. The win: the agent's view of the world is always current.
 

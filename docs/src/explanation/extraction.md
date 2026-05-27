@@ -2,7 +2,7 @@
 
 *Explanation. The 4-stage CoT chain, the two-tag rationale, and what failed in UAT before the design settled.*
 
-The extractor turns [projection rows](./projections.md) into typed entities in a [workstream palace](./palaces.md). It's a 4-stage chain-of-thought process that runs whenever new projection rows arrive for a workstream that has bound the producing feed.
+The extractor turns [projection rows](./projections.md) into typed entities in a [lens palace](./palaces.md). It's a 4-stage chain-of-thought process that runs whenever new projection rows arrive for a lens that has bound the producing feed.
 
 ## The 4 stages
 
@@ -18,11 +18,11 @@ classify  →  extract  →  link-by-name  →  write
    │           └─ Pull typed entities out of the row's content
    │              (decisions, conventions, facts, notes, people).
    │
-   └─ Is this row in scope for this workstream? Out-of-scope rows
-      get skipped; the workstream's description gates the call.
+   └─ Is this row in scope for this lens? Out-of-scope rows
+      get skipped; the lens's description gates the call.
 ```
 
-Each stage is one LLM call. The chain reads the workstream's
+Each stage is one LLM call. The chain reads the lens's
 **description** and **declared tag ontology** to scope decisions and
 constrain tag emission. The whole flow is implemented in
 `arawn_extractor::cot::CotChain`.
@@ -32,7 +32,7 @@ constrain tag emission. The whole flow is implemented in
 Every entity carries two tag fields:
 
 - **`tags_ontology`** — closed list, drawn exclusively from the
-  workstream's declared ontology. The extractor's prompt shows the
+  lens's declared ontology. The extractor's prompt shows the
   current ontology and the LLM is told to use the exact strings.
   Rust-side filtering drops anything the LLM emits that isn't in the
   list. This is the substrate dust and `signal_query` cluster on.
@@ -47,7 +47,7 @@ We tried free-form-only first. UAT showed it failed two ways:
   across rows. Clustering broke.
 - With "prefer existing tags" pressure, the LLM over-corrected:
   generic tags (`infrastructure`, `eng-org`) absorbed everything
-  specific. Half of the dnd workstream had empty tags.
+  specific. Half of the dnd lens had empty tags.
 
 The hybrid is the recovery. The closed ontology gives clustering a deterministic substrate. The free-form set keeps the LLM's recall intact and provides growth signal for the [Extract→Suggest→Add cycle](../reference/steward-subroutines.md#extract--suggest--add-the-canonical-example).
 
@@ -69,7 +69,7 @@ The LLM emits a JSON array; each item is:
 
 The Rust write step:
 
-1. Filter `tags_ontology` against the workstream's declared list
+1. Filter `tags_ontology` against the lens's declared list
    (lowercase + trim before lookup). Anything outside the list drops
    silently — the LLM doesn't get to invent ontology tags here.
 2. Normalize `tags_discovered` (lowercase + trim) and drop empties.
@@ -94,7 +94,7 @@ between them and any existing entities, by *name* not by id:
 ```
 
 Rust resolves `to_name` via FTS (`MemoryStore::search` against the
-workstream tier first, then global). If a high-enough match exists,
+lens tier first, then global). If a high-enough match exists,
 the relation gets written. Unresolved links are dropped silently —
 the LLM doesn't see UUIDs, only titles.
 
@@ -116,7 +116,7 @@ data path is intact.
 
 ## Cursor + idempotency
 
-The extractor tracks a per-(workstream, feed_type) cursor in
+The extractor tracks a per-(lens, feed_type) cursor in
 `extractor_cursors`. Each pass walks `WHERE source_ts > cursor LIMIT
 batch_size`, processes the batch, advances the cursor to the latest
 processed row's `source_ts`. A crash mid-batch leaves the cursor
@@ -126,7 +126,7 @@ Two run modes:
 
 - **Steady-state**: triggered by the feed dispatch hook after new
   projection rows land. Runs one batch (no loop).
-- **Backfill**: triggered by `/workstream bind` when a workstream
+- **Backfill**: triggered by `/lens bind` when a lens
   attaches to a feed that already has projection rows. Runs the
   batch loop until exhausted or a 10-minute wall-clock cap hits.
   Subsequent triggers resume cleanly via the cursor.
@@ -148,6 +148,6 @@ If unset, falls back to the engine LLM.
 
 - [Steward](./steward.md) — the curation subroutines that maintain what the extractor produces.
 - [Projections](./projections.md) — what the extractor reads.
-- [Workstream tools reference](../reference/workstream-tools.md) — how the agent queries the resulting palace.
-- [Memory design](./memory-design.md) — the two-tier scope (global vs workstream) the entities land in.
+- [Lens tools reference](../reference/lens-tools.md) — how the agent queries the resulting palace.
+- [Memory design](./memory-design.md) — the two-tier scope (global vs lens) the entities land in.
 - [Palaces](./palaces.md) — the layer above.

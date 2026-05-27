@@ -319,13 +319,13 @@ github/review-queue/<feed_id>/
 
 ### `github/repo-mirror`
 
-Full snapshot of a repo's commits, open issues, PRs, and issue/PR comments. Used by the `github:repo:owner/name` and `github:org:owner` workstream binding schemes — bind expands org URIs to one `repo-mirror` per repo.
+Full snapshot of a repo's commits, open issues, PRs, and issue/PR comments. Used by the `github:repo:owner/name` and `github:org:owner` lens binding schemes — bind expands org URIs to one `repo-mirror` per repo.
 
 | Field | Value |
 |---|---|
 | Required | `owner: string`, `name: string` (two separate params, NOT a combined `owner/name` string) |
 | Default cadence | `*/30 * * * *` |
-| Auto-create | No (registered by `workstream_bind` with a GitHub URI) |
+| Auto-create | No (registered by `lens_bind` with a GitHub URI) |
 
 ```text
 github/repo-mirror/<feed_id>/<owner>/<name>/
@@ -417,7 +417,7 @@ Each `signals.jsonl` line is one change event:
 | `github/notifications` | every 30 min | No |
 | `github/issues-and-prs` | every 30 min | No |
 | `github/review-queue` | every 30 min | No |
-| `github/repo-mirror` | every 30 min | No (registered by workstream bind) |
+| `github/repo-mirror` | every 30 min | No (registered by lens bind) |
 | `filesystem/folder` | every 15 min | No |
 
 ## Related
@@ -425,4 +425,4 @@ Each `signals.jsonl` line is one change event:
 - [Feeds overview reference](./feeds-overview.md) — on-disk layout, status states, backfill.
 - [`feed_search` tool reference](./feed-search-tool.md).
 - [Create a feed how-to](../how-to/create-a-feed.md).
-- [Bind a workstream to a feed how-to](../how-to/bind-a-workstream-to-a-feed.md).
+- [Bind a lens to a feed how-to](../how-to/bind-a-lens-to-a-feed.md).

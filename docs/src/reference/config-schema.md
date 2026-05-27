@@ -60,7 +60,7 @@ Context compaction (when the conversation approaches the model's context window)
 
 ## `[extraction]`
 
-The per-workstream extractor that builds palaces.
+The per-lens extractor that builds palaces.
 
 | Key | Type | Default | Description |
 |---|---|---|---|

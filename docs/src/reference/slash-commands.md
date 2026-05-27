@@ -6,7 +6,7 @@ Source: `crates/arawn-tui/src/command.rs::register_builtins` (~line 72).
 
 ## Quick alphabetical index
 
-`/agents` · `/autonomy` · `/brief` · `/clear` · `/connect` · `/copy` · `/disconnect` · `/export` · `/feeds` · `/forget` · `/help` · `/integrations` · `/mcp` · `/memory` · `/permissions` · `/plugins` · `/promote` · `/remember` · `/retro` · `/session` · `/skills` · `/today` · `/todo` · `/tools` · `/usage` · `/watch` · `/week` · `/workflows` · `/workstream`
+`/agents` · `/autonomy` · `/brief` · `/clear` · `/connect` · `/copy` · `/disconnect` · `/export` · `/feeds` · `/forget` · `/help` · `/integrations` · `/lens` · `/mcp` · `/memory` · `/permissions` · `/plugins` · `/promote` · `/remember` · `/retro` · `/session` · `/skills` · `/today` · `/todo` · `/tools` · `/usage` · `/watch` · `/week` · `/workflows`
 
 Plus any `/skill-name` registered by user-invocable skills (see [skills reference](./skills.md)).
 
@@ -66,7 +66,17 @@ Show the list of registered slash commands plus a short description for each.
 
 List registered integrations and their connection state. Shows tool count per connected integration. Takes no subcommands — use `/connect <svc>` and `/disconnect <svc>` for state changes.
 
-> **Note:** all extended workstream lifecycle operations (bind, unbind, show, describe, delete) are agent tools, not slash subcommands — ask the agent to perform them.
+> **Note:** all extended lens lifecycle operations (bind, unbind, show, describe, delete) are agent tools, not slash subcommands — ask the agent to perform them.
+
+### `/lens create <name> | list | switch <name>`
+
+Manage lenses. The TUI dispatcher accepts three subcommands:
+
+- `/lens create <name>` — create a lens; agent walks through ontology proposal.
+- `/lens list` — list active lenses.
+- `/lens switch <name>` — set the active lens.
+
+Other lifecycle operations (bind, unbind, show, describe, delete) are exposed as agent tools — ask the agent in chat (e.g. *"bind the `work` lens to feed `gmail-inbox-me`"*) and it calls `lens_bind`, `lens_unbind`, etc. See [lens tools reference](./lens-tools.md) and [lens CLI reference](./lens-cli.md).
 
 ### `/mcp`
 
@@ -74,7 +84,7 @@ List connected MCP servers. See [MCP reference](./mcp.md).
 
 ### `/memory`
 
-Show a summary of the knowledge base for the current scope (global + active workstream). See [memory model reference](./memory-model.md).
+Show a summary of the knowledge base for the current scope (global + active lens). See [memory model reference](./memory-model.md).
 
 ### `/permissions`
 
@@ -86,7 +96,7 @@ List loaded plugins. See [plugins reference](./plugins.md).
 
 ### `/promote <name>`
 
-Promote a scratch session to a named workstream. The session's history, memory, and feed bindings move under the new workstream.
+Promote a scratch session to a named lens. The session's history, memory, and feed bindings move under the new lens.
 
 ### `/remember <fact>`
 
@@ -100,7 +110,7 @@ Show this week's retro ceremony tablet. See [ceremonies tools reference](./cerem
 
 Manage sessions.
 
-- `/session new` — start a fresh session within the current workstream.
+- `/session new` — start a fresh session within the current lens.
 - `/session list` — list resumable sessions.
 
 ### `/skills`
@@ -139,13 +149,3 @@ Show this week's weekly ceremony tablet. See [ceremonies tools reference](./cere
 ### `/workflows [list | status <name>]`
 
 Show installed workflows and their execution status. Detailed inspection via the `workflow_status` agent tool. See [workflow tools reference](./workflow-tools.md).
-
-### `/workstream create <name> | list | switch <name>`
-
-Manage workstreams. The TUI dispatcher accepts three subcommands:
-
-- `/workstream create <name>` — create a workstream; agent walks through ontology proposal.
-- `/workstream list` — list active workstreams.
-- `/workstream switch <name>` — set the active workstream.
-
-Other lifecycle operations (bind, unbind, show, describe, delete) are exposed as agent tools — ask the agent in chat (e.g. *"bind the `work` workstream to feed `gmail-inbox-me`"*) and it calls `workstream_bind`, `workstream_unbind`, etc. See [workstream tools reference](./workstream-tools.md) and [workstream CLI reference](./workstream-cli.md).

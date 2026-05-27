@@ -4,14 +4,14 @@
 
 Source: `crates/arawn-engine/src/tools/todo.rs`. Persistence: `arawn.db`. UI: the `/todo` modal in the TUI.
 
-Todos are a generic surface (introduced in I-0049 / T-0314): the agent uses them for ceremony follow-ups, the user creates them directly via `/todo`, and they're queryable across workstreams.
+Todos are a generic surface (introduced in I-0049 / T-0314): the agent uses them for ceremony follow-ups, the user creates them directly via `/todo`, and they're queryable across lenses.
 
 ## Tools
 
 | Tool | Description |
 |---|---|
-| `todo_create` | Create a todo. Fields: title (required), body, workstream, source, due_at, tags. |
-| `todo_list` | List todos. Optional filters: workstream, status, source, tags. |
+| `todo_create` | Create a todo. Fields: title (required), body, lens, source, due_at, tags. |
+| `todo_list` | List todos. Optional filters: lens, status, source, tags. |
 | `todo_get` | Get one todo by short code. |
 | `todo_done` | Mark a todo done. |
 | `todo_undo` | Un-mark a done todo back to open. |
@@ -28,7 +28,7 @@ The `todos` table (source: `crates/arawn-storage` migrations V8 / V11):
 | `short_code` | string | Stable id like `T-0042`. |
 | `title` | string | Display title. |
 | `body` | string | Optional longer description. |
-| `workstream` | string | Owning workstream slug. Can be `scratch`. |
+| `lens` | string | Owning lens slug. Can be `scratch`. |
 | `source` | string | Free-form origin tag — `ceremony/daily`, `ceremony/weekly/priority`, `user`, etc. |
 | `status` | enum | `open` / `done` / `archived`. |
 | `due_at` | RFC3339 | Optional due date. |
@@ -49,9 +49,9 @@ Todos can come from anywhere — that's the point of the generic surface:
 
 The source string is preserved through the lifecycle. Filtering by source (`todo_list { source: "ceremony/daily" }`) lets you see "what did the daily ceremony surface?" without scanning everything.
 
-## Workstream binding
+## Lens binding
 
-Todos belong to a workstream. The `/todo` modal shows todos for the active workstream by default; pass `--all` to see across workstreams. The agent tools default to the active workstream too, with an explicit `workstream` argument for cross-workstream queries.
+Todos belong to a lens. The `/todo` modal shows todos for the active lens by default; pass `--all` to see across lenses. The agent tools default to the active lens too, with an explicit `lens` argument for cross-lens queries.
 
 ## Migration history
 

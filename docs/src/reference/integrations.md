@@ -185,12 +185,12 @@ arawn uses the **classic scope set** (not granular). If a scope above doesn't ap
 
 **Feed templates:** `github/notifications`, `github/issues-and-prs`, `github/review-queue`, `github/repo-mirror`.
 
-**Workstream binding:** GitHub has two URI schemes for `workstream_bind`:
+**Lens binding:** GitHub has two URI schemes for `lens_bind`:
 
 - `github:repo:owner/name` — single repository.
 - `github:org:owner` — entire organization (expands to one `github/repo-mirror` feed per repo).
 
-Org binds supersede per-repo binds in the same workstream. See [bind a workstream to a feed](../how-to/bind-a-workstream-to-a-feed.md).
+Org binds supersede per-repo binds in the same lens. See [bind a lens to a feed](../how-to/bind-a-lens-to-a-feed.md).
 
 ## Storage
 

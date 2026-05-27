@@ -64,7 +64,7 @@ Why this much ceremony?
 
 - **Type-safety.** Task inputs and outputs are typed; cloacina's macros enforce the DAG. Errors are compile errors, not runtime crashes.
 - **Performance.** Compiled Rust is fast. A workflow that processes 1000 GitHub issues in a "data" task finishes in seconds, not minutes.
-- **Sandboxing isn't free.** If workflow task bodies ran in a sandbox (Wasm, JS, scripted), we'd lose direct access to arawn's internal services (the `DecisionService`, the workstream router). Compiled Rust runs in-process.
+- **Sandboxing isn't free.** If workflow task bodies ran in a sandbox (Wasm, JS, scripted), we'd lose direct access to arawn's internal services (the `DecisionService`, the lens router). Compiled Rust runs in-process.
 
 The cost: first creation in a project warms the compiler cache (~30s). Subsequent ones are faster. The agent's `workflow_create` handles this transparently; you wait once.
 

@@ -20,10 +20,10 @@ Reference pages are dense and complete. They don't teach concepts — that's [Ex
 - **[Shell sandbox](./shell-sandbox.md)** — sandbox enforcement + safe-env allowlist.
 - **[Integrations](./integrations.md)** — per-provider scopes, tools, permission-prompt rules.
 
-## Workstreams, ceremonies, todos
+## Lenses, ceremonies, todos
 
-- **[Workstream CLI](./workstream-cli.md)** — `/workstream {create,list,switch,bind,unbind,promote,delete}` + slug validation + `identity_profile`.
-- **[Workstream tools](./workstream-tools.md)** — the 10 lifecycle + 3 signal tools the agent uses.
+- **[Lens CLI](./lens-cli.md)** — `/lens {create,list,switch,bind,unbind,promote,delete}` + slug validation + `identity_profile`.
+- **[Lens tools](./lens-tools.md)** — the 10 lifecycle + 3 signal tools the agent uses.
 - **[Steward subroutines](./steward-subroutines.md)** — refine/apply/rollback machinery.
 - **[Ceremonies tools](./ceremonies-tools.md)** — daily / weekly / retro tool family + cron defaults + retro detectors.
 - **[Todos tools](./todos-tools.md)** — the 8 `todo_*` tools.

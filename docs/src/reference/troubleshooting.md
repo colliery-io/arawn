@@ -43,7 +43,7 @@ See [debug OAuth failures](../how-to/debug-oauth-failures.md) for the full table
 | `/feeds` shows a feed but `last_status = backfill-rate-limited` | Backfill hit the 5-minute rate-limit cap | Cron will resume from the persisted cursor on the next tick. Be patient or `/feeds run <id>` later. |
 | `last_status = auth failed: ...` | Provider token revoked or scope removed | `/disconnect <svc>` then `/connect <svc>`. |
 | `last_status = backfill-failed: <reason>` | Backfill couldn't recover from a transient error | Inspect `meta.json` in the feed directory; usually the reason is informative. `/feeds run <id>` to retry. |
-| `signal_search` returns nothing on a freshly-bound workstream | Extraction hasn't run yet | `/feeds run <feed_id>` to force an immediate run, then re-query. |
+| `signal_search` returns nothing on a freshly-bound lens | Extraction hasn't run yet | `/feeds run <feed_id>` to force an immediate run, then re-query. |
 | Disk growing fast under `data/<provider>/...` | Noisy day in the feed (bot run, backup) | Inspect per-day partitions to find the culprit; consider tighter feed parameters. |
 
 ## Workflows

@@ -6,7 +6,7 @@
 
 - [Overview](./tutorials/index.md)
 - [Your first chat session](./tutorials/first-chat.md)
-- [Your first workstream](./tutorials/first-workstream.md)
+- [Your first lens](./tutorials/first-lens.md)
 
 # How-to guides
 
@@ -16,8 +16,8 @@
 - [Connect Atlassian (Jira + Confluence)](./how-to/connect-atlassian.md)
 - [Connect GitHub](./how-to/connect-github.md)
 - [Create a feed](./how-to/create-a-feed.md)
-- [Bind a workstream to a feed](./how-to/bind-a-workstream-to-a-feed.md)
-- [Curate a workstream](./how-to/curate-a-workstream.md)
+- [Bind a lens to a feed](./how-to/bind-a-lens-to-a-feed.md)
+- [Curate a lens](./how-to/curate-a-lens.md)
 - [Read feeds with the agent](./how-to/read-feeds-with-the-agent.md)
 - [Lock down permissions](./how-to/lock-down-permissions.md)
 - [Author a workflow by hand](./how-to/author-a-workflow-by-hand.md)
@@ -40,8 +40,8 @@
 - [Shell sandbox](./reference/shell-sandbox.md)
 - [Integrations](./reference/integrations.md)
 - [Integrations config](./reference/integrations-config.md)
-- [Workstream CLI](./reference/workstream-cli.md)
-- [Workstream tools](./reference/workstream-tools.md)
+- [Lens CLI](./reference/lens-cli.md)
+- [Lens tools](./reference/lens-tools.md)
 - [Steward subroutines](./reference/steward-subroutines.md)
 - [Ceremonies tools](./reference/ceremonies-tools.md)
 - [Todos tools](./reference/todos-tools.md)
@@ -68,8 +68,8 @@
 - [Palaces](./explanation/palaces.md)
 - [Extraction](./explanation/extraction.md)
 - [The Steward](./explanation/steward.md)
-- [Workstreams](./explanation/workstreams.md)
-- [Identity by workstream](./explanation/identity-by-workstream.md)
+- [Lenses](./explanation/lenses.md)
+- [Identity by lens](./explanation/identity-by-lens.md)
 - [Memory design](./explanation/memory-design.md)
 - [Workflows](./explanation/workflows.md)
 - [Permission model](./explanation/permission-model.md)

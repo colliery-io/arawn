@@ -1,10 +1,10 @@
-# Your first workstream
+# Your first lens
 
 *Tutorial — about twenty minutes to take a connected integration and turn it into a queryable knowledge graph the agent can reason over.*
 
 By the end of this tutorial you'll have:
 
-- A workstream named `work` with a small tag ontology.
+- A lens named `work` with a small tag ontology.
 - A feed bound to it (we'll use Gmail in the worked example).
 - A few extracted **decisions**, **conventions**, or **facts** the extractor pulled out of recent emails.
 - Working `signal_search` queries answering questions about your own data.
@@ -19,21 +19,21 @@ If something here feels abstract, the [explanation pages](../explanation/three-l
 
 ## Concept in one paragraph
 
-A **workstream** is a logical container for one ongoing concern in your life — a project, a job, a team, a campaign. Sessions, feeds, and the extracted knowledge graph all belong to a workstream. Binding a **feed** (a continually-mirrored source like your inbox) to a workstream tells arawn: *"watch this source, and use it to populate this workstream's knowledge graph."* The extractor reads each new feed item and writes typed entities — decisions, conventions, facts, references — that you can query with `signal_search`.
+A **lens** is a logical container for one ongoing concern in your life — a project, a job, a team, a campaign. Sessions, feeds, and the extracted knowledge graph all belong to a lens. Binding a **feed** (a continually-mirrored source like your inbox) to a lens tells arawn: *"watch this source, and use it to populate this lens's knowledge graph."* The extractor reads each new feed item and writes typed entities — decisions, conventions, facts, references — that you can query with `signal_search`.
 
-## 1. Create the workstream
+## 1. Create the lens
 
 In the TUI:
 
 ```
-/workstream create work
+/lens create work
 ```
 
-The agent walks you through a short ontology-proposal flow. It asks what the workstream is about, looks at the connected integrations, and proposes 5-12 tags — things like `architecture`, `hiring`, `vendor-meta` for a typical software-team workstream. Confirm or edit the list.
+The agent walks you through a short ontology-proposal flow. It asks what the lens is about, looks at the connected integrations, and proposes 5-12 tags — things like `architecture`, `hiring`, `vendor-meta` for a typical software-team lens. Confirm or edit the list.
 
-> **About the ontology:** these tags are the *closed list* the extractor will use to label entities. Keep them broad enough to cover what shows up regularly. The steward can suggest new tags later via [`workstream_refine`](../reference/steward-subroutines.md) — you don't need to get it perfect now.
+> **About the ontology:** these tags are the *closed list* the extractor will use to label entities. Keep them broad enough to cover what shows up regularly. The steward can suggest new tags later via [`lens_refine`](../reference/steward-subroutines.md) — you don't need to get it perfect now.
 
-Once you confirm, the workstream is created and arawn switches to it. The status bar shows `work` as the active workstream.
+Once you confirm, the lens is created and arawn switches to it. The status bar shows `work` as the active lens.
 
 ## 2. Bind a feed
 
@@ -46,10 +46,10 @@ List your feeds:
 You should see at least one Gmail feed (the auto-created `gmail/inbox-archive` from `/connect gmail`). Note its `feed_id`. Then ask the agent to bind it:
 
 ```
-bind the work workstream to <feed_id>
+bind the work lens to <feed_id>
 ```
 
-The agent calls `workstream_bind { workstream: "work", uri: "<feed_id>" }`. (Binding is an agent tool, not a slash subcommand — see [bind a workstream to a feed](../how-to/bind-a-workstream-to-a-feed.md).) Other URI schemes work too — for example, `github:repo:owner/name` if you have GitHub connected.
+The agent calls `lens_bind { lens: "work", uri: "<feed_id>" }`. (Binding is an agent tool, not a slash subcommand — see [bind a lens to a feed](../how-to/bind-a-lens-to-a-feed.md).) Other URI schemes work too — for example, `github:repo:owner/name` if you have GitHub connected.
 
 After bind, extraction starts on the next feed run (or immediately for already-mirrored rows via the backfill loop).
 
@@ -61,7 +61,7 @@ You can wait for the next scheduled run, or kick it now:
 /feeds run <feed_id>
 ```
 
-This forces a fresh poll and, because the feed is bound to a workstream, also runs the extractor over any new projection rows.
+This forces a fresh poll and, because the feed is bound to a lens, also runs the extractor over any new projection rows.
 
 In the server log you'll see lines like `extraction.run feed=… rows=N entities=M`. The `entities=M` is what the extractor pulled out.
 
@@ -85,7 +85,7 @@ What did we decide about postgres recently?
 Who's been asking about the new hire process?
 ```
 
-The agent will call `signal_search` or `signal_query` under the hood. You can call the tools directly too — they're documented in [workstream tools](../reference/workstream-tools.md).
+The agent will call `signal_search` or `signal_query` under the hood. You can call the tools directly too — they're documented in [lens tools](../reference/lens-tools.md).
 
 ## 5. Look at the typed structure
 
@@ -111,16 +111,16 @@ Shows the last 10 entities the extractor wrote, in order.
 Periodically the **steward** proposes maintenance — suggesting new ontology tags for entities it had to label with a low-confidence catch-all, proposing relations between entities, summarizing cold material into "dust" digests. To see what's pending:
 
 ```
-workstream_refine
+lens_refine
 ```
 
 This returns a list of proposals. Each has a unique journal id. You can review them with:
 
 ```
-workstream_apply <journal_id>
+lens_apply <journal_id>
 ```
 
-…or undo with `workstream_rollback <journal_id>`. The full flow is in [curate a workstream](../how-to/curate-a-workstream.md).
+…or undo with `lens_rollback <journal_id>`. The full flow is in [curate a lens](../how-to/curate-a-lens.md).
 
 ## What just happened
 
@@ -134,7 +134,7 @@ The agent reads the palace, not the raw inbox — that's what makes `signal_sear
 
 ## What's next
 
-- **Curate.** As the steward suggests new tags or relations, review with `workstream_refine`. See [curate a workstream](../how-to/curate-a-workstream.md).
-- **Connect more sources.** Bind more feeds to the same workstream — Slack channels, Jira projects, Drive folders. Each new feed feeds the same palace.
+- **Curate.** As the steward suggests new tags or relations, review with `lens_refine`. See [curate a lens](../how-to/curate-a-lens.md).
+- **Connect more sources.** Bind more feeds to the same lens — Slack channels, Jira projects, Drive folders. Each new feed feeds the same palace.
 - **Understand the parts.** [Palaces](../explanation/palaces.md), [extraction](../explanation/extraction.md), [steward](../explanation/steward.md), and the [three-layer data model](../explanation/three-layer-data-model.md) all live in the explanation quadrant.
-- **Look up tools.** [workstream tools](../reference/workstream-tools.md) lists all `workstream_*` and `signal_*` operations.
+- **Look up tools.** [lens tools](../reference/lens-tools.md) lists all `lens_*` and `signal_*` operations.

@@ -67,7 +67,7 @@ The retro's gather phase runs a set of detectors that look back over the week's 
 |---|---|
 | `priority_completion_ratio` | Which of last week's priorities actually progressed; which stalled. |
 | `rollover_heat` | Items that have rolled over multiple weeks (potentially stalled or wrongly-scoped). |
-| `workstream_neglect` | Workstreams that haven't been touched all week. |
+| `lens_neglect` | Lenses that haven't been touched all week. |
 
 Detector output lands as retro items; you confirm / reject / patch in the modal.
 
@@ -135,7 +135,7 @@ An hourly tokio task (`sweep_unreviewed_retros`) transitions stale `open` retro 
 
 Tablets and items live in `arawn.db`:
 
-- `ceremonies` — tablet metadata (kind, date, workstream).
+- `ceremonies` — tablet metadata (kind, date, lens).
 - `ceremony_items` — per-item rows (title, body, status, source).
 - `ceremony_priorities` — weekly priorities.
 - `ceremony_events` — append-only event log for replay/debugging.

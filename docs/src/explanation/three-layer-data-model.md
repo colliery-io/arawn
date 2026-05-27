@@ -5,7 +5,7 @@
 ```
 Feeds        →  raw bytes from upstream (Slack, Gmail, Drive, Jira, …)
 Projections  →  per-feed-type normalized rows in a single sqlite db
-Palaces      →  per-workstream graphqlite KB of typed entities + relations
+Palaces      →  per-lens graphqlite KB of typed entities + relations
 ```
 
 Three layers because each answers a different kind of question. The agent reaches for the lowest layer that answers what you asked.
@@ -16,7 +16,7 @@ Three layers because each answers a different kind of question. The agent reache
 |---|---|---|---|
 | **Feeds** | Files on disk under `~/.arawn/data/<provider>/<template>/<feed_id>/` | Fidelity — bytes look like what the provider returned. | The feed runtime (cloacina cron job per feed). |
 | **Projections** | `projections.db` (SQLite + sqlite-vec), one table per feed type | Findability — cross-feed semantic + structured search. | The feed dispatcher writes a row per fetched item. |
-| **Palaces** (workstream KBs) | `<data_dir>/workstreams/<name>/memory.db` (SQLite + graphqlite) | Curated meaning — typed entities + relations, with provenance back to projection rows. | The per-workstream extractor on each new projection row + the steward on a cadence. |
+| **Palaces** (lens KBs) | `<data_dir>/lenses/<name>/memory.db` (SQLite + graphqlite) | Curated meaning — typed entities + relations, with provenance back to projection rows. | The per-lens extractor on each new projection row + the steward on a cadence. |
 
 Each layer can be queried independently. The agent reaches for the lowest layer that answers the question:
 
@@ -48,9 +48,9 @@ Disk usage grows with what you mirror, but you choose what to mirror via `/watch
 
 **No relations between projection rows.** Two emails are two rows; if one quotes the other, the projection layer doesn't know. Why?
 
-- Relations are a property of the *workstream's interpretation*, not of the data. A reply chain in #design that matters for workstream A is noise for workstream B.
+- Relations are a property of the *lens's interpretation*, not of the data. A reply chain in #design that matters for lens A is noise for lens B.
 - Projections are the substrate for cross-feed search and the extractor's input. Both want flat tables — one for FTS5 indexing, one for cursor walks.
-- Relations as edges live in the palace layer where they're typed (`supersedes`, `contradicts`, `relates_to`) and per-workstream.
+- Relations as edges live in the palace layer where they're typed (`supersedes`, `contradicts`, `relates_to`) and per-lens.
 
 [Projections explanation](./projections.md) goes deeper.
 
@@ -62,15 +62,15 @@ Relations between entities (`supersedes`, `contradicts`, `supports`, `mentions`,
 
 [Palaces explanation](./palaces.md) covers the metaphor and lifecycle.
 
-## Per-workstream palaces, not one global palace
+## Per-lens palaces, not one global palace
 
-Each workstream gets its own palace at `<data_dir>/workstreams/<name>/memory.db`. Why not one global graph?
+Each lens gets its own palace at `<data_dir>/lenses/<name>/memory.db`. Why not one global graph?
 
-- **Locality.** A decision in your "work" workstream shouldn't pollute a query in your "home" workstream. Cross-contamination would make the search worse.
-- **Ontology.** Each workstream has its own closed tag ontology (5-12 slugs). One ontology can't reasonably span "ledger service" and "kid's soccer schedule."
-- **Operability.** Backing up, archiving, or deleting a workstream is `rm -rf` the directory. No graph surgery.
+- **Locality.** A decision in your "work" lens shouldn't pollute a query in your "home" lens. Cross-contamination would make the search worse.
+- **Ontology.** Each lens has its own closed tag ontology (5-12 slugs). One ontology can't reasonably span "ledger service" and "kid's soccer schedule."
+- **Operability.** Backing up, archiving, or deleting a lens is `rm -rf` the directory. No graph surgery.
 
-Per-workstream isolation does mean cross-workstream identity is something the steward has to opt into via the `doorwatch` subroutine — but that's the steward's job, not the storage layer's.
+Per-lens isolation does mean cross-lens identity is something the steward has to opt into via the `doorwatch` subroutine — but that's the steward's job, not the storage layer's.
 
 ## How the layers compose at read time
 
@@ -96,7 +96,7 @@ Feed cron tick:
   ProjectionStore.write_batch(items) → projections.db
        │
        ▼
-  For each workstream bound to this feed:
+  For each lens bound to this feed:
        extractor.run(new rows)
             │
             ▼
@@ -107,7 +107,7 @@ The dispatcher (`arawn_feeds::dispatch::run_feed`) is the only writer for projec
 
 ## When to bother with palaces
 
-Palaces aren't free — extraction costs LLM calls. They pay off when you'll ask the agent about a workstream's state *repeatedly*. A one-off "what did X mean by Y" is a feeds question; a recurring "what's the state of our migration to Postgres" is a palace question.
+Palaces aren't free — extraction costs LLM calls. They pay off when you'll ask the agent about a lens's state *repeatedly*. A one-off "what did X mean by Y" is a feeds question; a recurring "what's the state of our migration to Postgres" is a palace question.
 
 [When palaces make sense](./palaces.md#when-a-palace-makes-sense) has the trade-off table.
 
@@ -117,4 +117,4 @@ Palaces aren't free — extraction costs LLM calls. They pay off when you'll ask
 - [Projections explanation](./projections.md) — layer 2.
 - [Palaces explanation](./palaces.md) — layer 3.
 - [Extraction explanation](./extraction.md) — how layer 2 becomes layer 3.
-- [Workstreams explanation](./workstreams.md) — the container layer 3 lives inside.
+- [Lenses explanation](./lenses.md) — the container layer 3 lives inside.

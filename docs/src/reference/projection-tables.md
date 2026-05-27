@@ -2,7 +2,7 @@
 
 *Reference. Per-feed-type schemas + the `ProjectionRow` struct + embedding mechanics.*
 
-Projections are the middle layer between raw [feeds](./feeds-overview.md) and curated [workstream palaces](./palace-types.md). After a feed fetches content from upstream, the dispatcher writes a normalized row into `projections.db` — one table per feed type, with shared columns plus a per-type `metadata` JSON blob.
+Projections are the middle layer between raw [feeds](./feeds-overview.md) and curated [lens palaces](./palace-types.md). After a feed fetches content from upstream, the dispatcher writes a normalized row into `projections.db` — one table per feed type, with shared columns plus a per-type `metadata` JSON blob.
 
 For the conceptual framing, see [projections explanation](../explanation/projections.md). For the agent-facing search interface, see [`feed_search` tool reference](./feed-search-tool.md).
 
@@ -75,7 +75,7 @@ pub struct ProjectionRow {
 }
 ```
 
-Every projection row that backs a workstream entity has an `EXTRACTED_FROM` edge from the entity to a UUID derived from `projection_id`. That's the provenance link the agent (and the journal-based rollback) uses to trace any palace entity back to the content that spawned it.
+Every projection row that backs a lens entity has an `EXTRACTED_FROM` edge from the entity to a UUID derived from `projection_id`. That's the provenance link the agent (and the journal-based rollback) uses to trace any palace entity back to the content that spawned it.
 
 ## How rows get written
 
@@ -85,7 +85,7 @@ The dispatcher (`arawn_feeds::dispatch::run_feed`) is the only writer. When a fe
 2. Each item is materialized as a typed projection struct (`GmailMessageProjection`, `SlackMessageProjection`, etc.).
 3. The struct implements `Projection::row()` which produces the type-erased `ProjectionRow`.
 4. `ProjectionStore::write_batch` inserts rows in one transaction.
-5. After the write, the dispatcher fires the extractor hook for every active workstream that has the feed bound — the per-workstream extractor picks up the new rows via its cursor.
+5. After the write, the dispatcher fires the extractor hook for every active lens that has the feed bound — the per-lens extractor picks up the new rows via its cursor.
 
 Rows are **append-only** from the projections layer's perspective. They get rewritten only when a feed re-fetches the same `source_id` (idempotent on `id` primary key — same content, same row).
 
@@ -103,9 +103,9 @@ If the embedder isn't installed (`<data_dir>/models/all-MiniLM-L6-v2/model.onnx`
 |---|---|
 | What did the message *say*? | Raw feed file (see [feed templates reference](./feed-templates.md)) |
 | Find any content that mentions X across all feeds | [`feed_search`](./feed-search-tool.md) (projections) |
-| Find an entity / decision / convention in *one workstream* | `signal_search` (palace, see [workstream tools reference](./workstream-tools.md)) |
-| Filter entities by type or tag in one workstream | `signal_query` (palace) |
-| Chronological "what happened in workstream X" | `signal_timeline` (palace) |
+| Find an entity / decision / convention in *one lens* | `signal_search` (palace, see [lens tools reference](./lens-tools.md)) |
+| Filter entities by type or tag in one lens | `signal_query` (palace) |
+| Chronological "what happened in lens X" | `signal_timeline` (palace) |
 | Hydrate a specific projection row from an entity's `EXTRACTED_FROM` edge | Resolve the UUID back to `projection_id`, then `ProjectionStore::get_row` |
 
 Projections are deliberately **flat**. There are no relations between projection rows. The graph structure (entities + edges) is the palace's job — projections feed it.

@@ -168,4 +168,4 @@ A few Google-specific gotchas worth pre-empting:
 
 - [Integrations overview](../explanation/integrations-overview.md) — what arawn does with the tokens, where they live.
 - [Integrations reference](../reference/integrations.md) — every tool that lands for each Google service.
-- [Bind a workstream to a feed](./bind-a-workstream-to-a-feed.md) — turn your Gmail/Drive into a local knowledge base.
+- [Bind a lens to a feed](./bind-a-lens-to-a-feed.md) — turn your Gmail/Drive into a local knowledge base.

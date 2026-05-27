@@ -3,8 +3,8 @@
 `feed_search` is the agent-facing read surface over the projection
 layer (see [feeds overview](./feeds-overview.md) and [feeds
 explanation](../explanation/feeds.md) for context). It's the
-no-workstream fallback: when an agent needs to look up something
-across all configured feeds without first declaring a workstream
+no-lens fallback: when an agent needs to look up something
+across all configured feeds without first declaring a lens
 scope, this is the tool to reach for.
 
 Under the hood it queries per-feed-type sqlite tables in
@@ -168,14 +168,14 @@ greppable.
 
 ## What `feed_search` is **not** for
 
-- **Workstream-scoped knowledge.** Use `memory_search` for facts /
+- **Lens-scoped knowledge.** Use `memory_search` for facts /
   decisions / preferences the agent has explicitly stored, or
   `signal_search` for entities the extractor has built inside a
-  workstream palace (see [workstream tools](./workstream-tools.md)).
+  lens palace (see [lens tools](./lens-tools.md)).
 - **Cross-projection JOINs.** "Which jira issue does this slack
-  message reference?" needs the per-workstream extractor (see
+  message reference?" needs the per-lens extractor (see
   [extraction explanation](../explanation/extraction.md)). Without a
-  bound workstream, the agent has to do that linking manually by
+  bound lens, the agent has to do that linking manually by
   reading the slack message and checking the result text for issue
   keys.
 - **Bulk listing.** For "all gmail from alice" without a content

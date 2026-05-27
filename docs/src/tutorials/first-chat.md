@@ -88,15 +88,15 @@ Three things just happened:
 2. **It chose a tool** — `shell` — and a command, then waited for permission.
 3. **You granted permission** and the result fed back into the LLM, which composed the human-readable answer you see.
 
-That tool-call → permission → execute → respond loop is the whole agent. Everything else arawn does — integrations, workstreams, ceremonies — is variations on it.
+That tool-call → permission → execute → respond loop is the whole agent. Everything else arawn does — integrations, lenses, ceremonies — is variations on it.
 
 ## What's next
 
 Now that you have a working session:
 
 - **Connect external tools.** The agent gets a lot more useful when it can read your Gmail, Slack, Calendar, or GitHub. Pick one and follow the matching how-to: [Google](../how-to/connect-google.md), [Slack](../how-to/connect-slack.md), [Atlassian](../how-to/connect-atlassian.md), [GitHub](../how-to/connect-github.md).
-- **Track a workstream end-to-end.** Once you have at least one integration connected, work through [your first workstream](./first-workstream.md) — it walks through create → bind → extraction → `signal_search` and shows the three-layer data model in action.
+- **Track a lens end-to-end.** Once you have at least one integration connected, work through [your first lens](./first-lens.md) — it walks through create → bind → extraction → `signal_search` and shows the three-layer data model in action.
 - **Look something up.** The [reference](../reference/index.md) catalogs every CLI flag, slash command, config key, and agent tool.
-- **Understand why arawn works this way.** The [explanation](../explanation/index.md) pages cover the agent loop, the data model, and the design decisions behind workstreams and permissions.
+- **Understand why arawn works this way.** The [explanation](../explanation/index.md) pages cover the agent loop, the data model, and the design decisions behind lenses and permissions.
 
 Press `Ctrl+C` in the TUI to quit; the server keeps running. To stop it too, `Ctrl+C` the server terminal.

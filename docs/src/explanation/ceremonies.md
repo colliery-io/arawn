@@ -14,7 +14,7 @@ Ceremonies are the bridge. They're scheduled moments when the agent looks at wha
 
 - **Daily** — every weekday morning. "Here's what changed since yesterday. Calendar conflicts? Stale tickets? Items from priorities you haven't moved?"
 - **Weekly** — Monday morning. "What are the 3-5 priorities for this week? Carry over the unfinished ones. Surface new ones from the past week's activity."
-- **Retro** — Friday afternoon. "Which of last week's priorities actually progressed? Which stalled? Anything roll over multiple weeks? What workstreams went neglected?"
+- **Retro** — Friday afternoon. "Which of last week's priorities actually progressed? Which stalled? Anything roll over multiple weeks? What lenses went neglected?"
 
 Without the ceremonies, the mirrored data is just storage. With them, it's an ambient awareness loop.
 
@@ -58,7 +58,7 @@ The retro's gather phase runs a small set of **detectors** — Rust code that lo
 |---|---|
 | `priority_completion_ratio` | Which of last week's priorities actually progressed; which stalled. |
 | `rollover_heat` | Items that have rolled over multiple weeks (potentially stalled or wrongly-scoped). |
-| `workstream_neglect` | Workstreams that haven't been touched all week. |
+| `lens_neglect` | Lenses that haven't been touched all week. |
 
 Why detectors instead of asking the LLM "look at this week and tell me what you notice"?
 
@@ -141,7 +141,7 @@ You *can* disable a ceremony in `arawn.toml`:
 enabled = false
 ```
 
-This stops the plugin from registering — no cron, no RPC, no tools. But the ceremony surfaces aren't pluggable in a deep sense — the engine assumes daily and retro exist when wiring the workstream router, the todo system's source enum has `ceremony/daily` and `ceremony/weekly/priority` entries, and the TUI has `/today` / `/week` / `/retro` modals that try to load. Disabling a ceremony works but is a low-test path.
+This stops the plugin from registering — no cron, no RPC, no tools. But the ceremony surfaces aren't pluggable in a deep sense — the engine assumes daily and retro exist when wiring the lens router, the todo system's source enum has `ceremony/daily` and `ceremony/weekly/priority` entries, and the TUI has `/today` / `/week` / `/retro` modals that try to load. Disabling a ceremony works but is a low-test path.
 
 The opinionated stance: ceremonies are part of arawn's identity, not a feature you bolt on. The user picks personas (via `identity_profile`) and providers (via `/connect`); they don't customize the reflection cadence to anything weirder than tweaking cron expressions and skipping ceremonies they don't want.
 
@@ -156,5 +156,5 @@ The opinionated stance: ceremonies are part of arawn's identity, not a feature y
 - [Ceremonies tools reference](../reference/ceremonies-tools.md) — the tool family.
 - [Todos tools reference](../reference/todos-tools.md) — how ceremony items become todos.
 - [Workflows explanation](./workflows.md) — workflows are the daily ceremony's gather-phase engine.
-- [Workstreams explanation](./workstreams.md) — each ceremony scopes to the active workstream.
+- [Lenses explanation](./lenses.md) — each ceremony scopes to the active lens.
 - [What is arawn?](./what-is-arawn.md) — the vision ceremonies operationalize.

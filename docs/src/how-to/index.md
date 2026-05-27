@@ -11,11 +11,11 @@ Each how-to has one concrete goal and concrete steps. They're not for teaching; 
 - **[Connect Atlassian (Jira + Confluence)](./connect-atlassian.md)** — 3LO OAuth, cloud-id auto-discovery.
 - **[Connect GitHub](./connect-github.md)** — GitHub App model (not OAuth), App ID + slug + private key.
 
-## Working with feeds and workstreams
+## Working with feeds and lenses
 
 - **[Create a feed](./create-a-feed.md)** — `/watch` syntax and per-template parameters.
-- **[Bind a workstream to a feed](./bind-a-workstream-to-a-feed.md)** — direct feed bind plus `github:repo:` and `github:org:` URI schemes.
-- **[Curate a workstream](./curate-a-workstream.md)** — refine / apply / rollback flow over steward proposals.
+- **[Bind a lens to a feed](./bind-a-lens-to-a-feed.md)** — direct feed bind plus `github:repo:` and `github:org:` URI schemes.
+- **[Curate a lens](./curate-a-lens.md)** — refine / apply / rollback flow over steward proposals.
 - **[Read feeds with the agent](./read-feeds-with-the-agent.md)** — prompt patterns that get useful answers out of mirrored data.
 
 ## Configuration and runtime

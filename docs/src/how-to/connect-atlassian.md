@@ -169,5 +169,5 @@ See [debug OAuth failures](./debug-oauth-failures.md) for the symptom → cause 
 ## What's next
 
 - [Integrations reference](../reference/integrations.md) — every Jira and Confluence tool the agent has.
-- [Bind a workstream to a feed](./bind-a-workstream-to-a-feed.md) — turn a Jira project into a local archive.
+- [Bind a lens to a feed](./bind-a-lens-to-a-feed.md) — turn a Jira project into a local archive.
 - [Create a feed](./create-a-feed.md) — `/watch jira/project-tracker` for ongoing mirroring.

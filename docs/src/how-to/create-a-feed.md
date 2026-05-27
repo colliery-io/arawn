@@ -113,6 +113,6 @@ The backfill loop walks pagination from `since` forward, persisting the cursor a
 
 ## What's next
 
-- Bind a feed to a workstream so its data becomes a typed knowledge graph: [bind a workstream to a feed](./bind-a-workstream-to-a-feed.md).
+- Bind a feed to a lens so its data becomes a typed knowledge graph: [bind a lens to a feed](./bind-a-lens-to-a-feed.md).
 - Read feed data with the agent: [read feeds with the agent](./read-feeds-with-the-agent.md).
 - Full feed reference (mechanics, cadences, disk-usage estimates): [feeds overview](../reference/feeds-overview.md).

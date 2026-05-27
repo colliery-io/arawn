@@ -8,10 +8,10 @@ Hooks let you extend or modify arawn's behavior without writing Rust. Arawn fire
 
 Arawn loads hooks at startup from two paths, merged:
 
-- **User-level**: `~/.arawn/settings.json` — applies to every workstream.
-- **Project-level**: `<workstream-root>/.arawn/settings.json` — applies only when that workstream is active.
+- **User-level**: `~/.arawn/settings.json` — applies to every lens.
+- **Project-level**: `<lens-root>/.arawn/settings.json` — applies only when that lens is active.
 
-Both files are optional. Missing files are silently treated as "no hooks for this scope." Hook subprocesses run with `cwd = workstream root` so your scripts can reference project files with relative paths.
+Both files are optional. Missing files are silently treated as "no hooks for this scope." Hook subprocesses run with `cwd = lens root` so your scripts can reference project files with relative paths.
 
 ## File shape
 

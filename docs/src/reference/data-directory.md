@@ -9,17 +9,17 @@ Source: `crates/arawn-storage/src/layout.rs::DataLayout::v1` plus `.join(` greps
 ```
 <data_dir>/
 ├── arawn.toml                 # configuration
-├── arawn.db                   # core SQLite — sessions, workstreams, feeds registry + run state, todos, ceremony state
+├── arawn.db                   # core SQLite — sessions, lenses, feeds registry + run state, todos, ceremony state
 ├── memory.db                  # global knowledge-base entities, relations, FTS, vectors (all colocated)
 ├── projections.db             # palace projections (SQLite + sqlite-vec)
 ├── workflows.db               # cloacina state — workflow runs, schedules, attempts
 ├── settings.json              # plugin enable/disable + per-plugin user_config
 │
-├── workstreams/               # per-workstream data (created on workstream create)
+├── lenses/               # per-lens data (created on lens create)
 │   ├── <name>/
-│   │   ├── memory.db          # workstream-scoped knowledge base
+│   │   ├── memory.db          # lens-scoped knowledge base
 │   │   └── workspace/         # FS-isolated working directory for shell + file tools
-│   └── scratch/               # default workstream for one-off sessions
+│   └── scratch/               # default lens for one-off sessions
 │
 ├── data/                      # feed-mirrored content
 │   └── <provider>/<template>/<feed_id>/
@@ -57,14 +57,14 @@ Source: `crates/arawn-storage/src/layout.rs::DataLayout::v1` plus `.join(` greps
 
 ## What gets created when
 
-The `DataLayout::v1` reconciler eagerly creates `workstreams/`, `plugins/tools/`, `plugins/build/`, and `prompts/` on first startup. The other directories appear lazily as their owning subsystem first writes (e.g. `tokens/` appears on first `/connect`, `data/` on first feed run, `models/` if you've installed the embedder).
+The `DataLayout::v1` reconciler eagerly creates `lenses/`, `plugins/tools/`, `plugins/build/`, and `prompts/` on first startup. The other directories appear lazily as their owning subsystem first writes (e.g. `tokens/` appears on first `/connect`, `data/` on first feed run, `models/` if you've installed the embedder).
 
 ## What's safe to delete
 
 | Path | Safe to delete? | Effect |
 |---|---|---|
 | `arawn.toml` | yes (regenerates with defaults) | Loses your config — provider keys, integrations, permission rules. |
-| `arawn.db` | NO while server is running | Loses all sessions, workstream metadata, feed registry + run state, todos. Server must be stopped first. |
+| `arawn.db` | NO while server is running | Loses all sessions, lens metadata, feed registry + run state, todos. Server must be stopped first. |
 | `memory.db` | yes | Wipes global knowledge base (entities + graph + FTS + vectors are all in this one file). |
 | `projections.db` | yes (will rebuild from feed data on next extraction run) | Wipes palace state. |
 | `workflows.db` | NO while server is running | Loses workflow schedule state. |
@@ -76,11 +76,11 @@ The `DataLayout::v1` reconciler eagerly creates `workstreams/`, `plugins/tools/`
 | `models/all-MiniLM-L6-v2/` | yes (degrades to FTS-only) | Memory falls back to keyword search until you reinstall the model. |
 | `logs/` | yes | Loses logs. |
 
-## Workstream FS isolation
+## Lens FS isolation
 
-The `workstreams/<name>/workspace/` directory is the sandbox root for shell + file tools when that workstream is active. Writes outside `workspace/` are blocked by the shell sandbox (see [shell sandbox reference](./shell-sandbox.md)).
+The `lenses/<name>/workspace/` directory is the sandbox root for shell + file tools when that lens is active. Writes outside `workspace/` are blocked by the shell sandbox (see [shell sandbox reference](./shell-sandbox.md)).
 
-`workstreams/scratch/` is the default workstream — created idempotently on startup. Sessions that haven't been promoted to a named workstream live here.
+`lenses/scratch/` is the default lens — created idempotently on startup. Sessions that haven't been promoted to a named lens live here.
 
 ## Encrypted blobs
 

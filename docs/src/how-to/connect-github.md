@@ -78,11 +78,11 @@ arawn publishes the public install URL (`https://github.com/apps/<slug>/installa
 /integrations
 ```
 
-GitHub should appear as `connected`. Then bind it to a workstream and the agent can use it via [bind a workstream to a feed](./bind-a-workstream-to-a-feed.md) and [create a feed](./create-a-feed.md):
+GitHub should appear as `connected`. Then bind it to a lens and the agent can use it via [bind a lens to a feed](./bind-a-lens-to-a-feed.md) and [create a feed](./create-a-feed.md):
 
 ```
-/workstream bind <ws> github:repo:owner/name
-/workstream bind <ws> github:org:owner
+/lens bind <ws> github:repo:owner/name
+/lens bind <ws> github:org:owner
 /watch github/notifications
 ```
 
@@ -110,12 +110,12 @@ Four feed templates are shipped:
 - `github/notifications` — your `/notifications` inbox.
 - `github/issues-and-prs` — open + recently-closed issues and PRs you authored or are assigned to.
 - `github/review-queue` — PRs where you're a requested reviewer.
-- `github/repo-mirror` — full snapshot of a repo's open issues + PRs (used when you bind a workstream via `github:repo:` or `github:org:`).
+- `github/repo-mirror` — full snapshot of a repo's open issues + PRs (used when you bind a lens via `github:repo:` or `github:org:`).
 
-Bind them to workstreams via `/workstream bind <ws> github:repo:owner/name` or `/workstream bind <ws> github:org:owner`. The org form expands to one `repo-mirror` feed per repo in the org and supersedes any per-repo binds in that workstream.
+Bind them to lenses via `/lens bind <ws> github:repo:owner/name` or `/lens bind <ws> github:org:owner`. The org form expands to one `repo-mirror` feed per repo in the org and supersedes any per-repo binds in that lens.
 
 ## What's next
 
-- Bind a repo or org to a workstream: [bind a workstream to a feed](./bind-a-workstream-to-a-feed.md).
+- Bind a repo or org to a lens: [bind a lens to a feed](./bind-a-lens-to-a-feed.md).
 - All 4 GitHub feed templates with parameters: [feed templates reference](../reference/feed-templates.md).
 - Why a GitHub App instead of OAuth: [integrations reference](../reference/integrations.md).

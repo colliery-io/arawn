@@ -20,9 +20,9 @@ Explanation pages answer "why does arawn work this way?" They're not how-tos (no
 
 ## Organizing principles
 
-- **[Workstreams](./workstreams.md)** — what they are; when to create one vs. scratch.
-- **[Identity by workstream](./identity-by-workstream.md)** — why arawn's persona is a workstream attribute; assistant vs. coding profile.
-- **[Memory design](./memory-design.md)** — global vs. workstream; FTS vs. vector; scope-locking.
+- **[Lenses](./lenses.md)** — what they are; when to create one vs. scratch.
+- **[Identity by lens](./identity-by-lens.md)** — why arawn's persona is a lens attribute; assistant vs. coding profile.
+- **[Memory design](./memory-design.md)** — global vs. lens; FTS vs. vector; scope-locking.
 - **[Permission model](./permission-model.md)** — deny > allow > ask; plan-mode philosophy.
 - **[Workflows](./workflows.md)** — when to workflow vs. converse; why a DAG; cloacina rationale.
 - **[Ceremonies](./ceremonies.md)** — morning brief / weekly / retro; the "watch, check, summarize, nudge" thesis.

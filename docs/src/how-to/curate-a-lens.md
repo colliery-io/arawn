@@ -1,19 +1,19 @@
-# Curate a workstream
+# Curate a lens
 
 *How-to. Review the steward's proposals — tag suggestions, new relations, dust summaries — and accept the ones you want.*
 
-The **steward** is the maintenance loop for a workstream's knowledge graph. Periodically it looks at what the extractor has been writing and proposes changes: a new tag for entities the extractor labeled with a low-confidence catch-all, a relation between two entities it sees co-occurring, a "dust" summary that compresses cold material.
+The **steward** is the maintenance loop for a lens's knowledge graph. Periodically it looks at what the extractor has been writing and proposes changes: a new tag for entities the extractor labeled with a low-confidence catch-all, a relation between two entities it sees co-occurring, a "dust" summary that compresses cold material.
 
 Steward proposals are *journaled* — every one has a unique id and can be rolled back. Nothing changes the palace until you apply.
 
 ## Prerequisites
 
-- A workstream with at least one bound feed that's been running long enough for the steward to have something to say (usually a day or two of activity).
+- A lens with at least one bound feed that's been running long enough for the steward to have something to say (usually a day or two of activity).
 
 ## 1. See what's pending
 
 ```
-workstream_refine
+lens_refine
 ```
 
 Returns a list of pending proposals. Each row has:
@@ -28,7 +28,7 @@ You can call this tool directly or just ask the agent: *"what's the steward sugg
 ## 2. Apply a proposal
 
 ```
-workstream_apply <journal_id>
+lens_apply <journal_id>
 ```
 
 The proposal lands in the palace. The journal records the change with full before/after state.
@@ -36,7 +36,7 @@ The proposal lands in the palace. The journal records the change with full befor
 ## 3. Rollback if you change your mind
 
 ```
-workstream_rollback <journal_id>
+lens_rollback <journal_id>
 ```
 
 Reverses the apply. The journal records the rollback as another entry; the original proposal is still there (in case you want to re-apply later).
@@ -64,7 +64,7 @@ Apply this when you don't need full detail on the cold tail but want to keep the
 ## Reviewing without applying
 
 ```
-workstream_journal
+lens_journal
 ```
 
 Shows the journal — every change ever applied or rolled back, in order. Useful for "what did I accept last week?"
@@ -73,4 +73,4 @@ Shows the journal — every change ever applied or rolled back, in order. Useful
 
 - See the full list of steward subroutines: [steward subroutines reference](../reference/steward-subroutines.md).
 - Understand why steward is bounded + journaled: [explanation: steward](../explanation/steward.md).
-- Bind more feeds to grow the palace: [bind a workstream to a feed](./bind-a-workstream-to-a-feed.md).
+- Bind more feeds to grow the palace: [bind a lens to a feed](./bind-a-lens-to-a-feed.md).

@@ -15,7 +15,7 @@ In practice:
 - **Watch.** Connect Gmail, Slack, Calendar, Atlassian, GitHub. arawn mirrors slices of those services to local disk on a cadence — your inbox, the channels you participate in, your assigned tickets, your review queue.
 - **Check.** When you open arawn (or when a ceremony fires), the agent has already seen what's new. You don't trigger a fetch; the fetch already happened.
 - **Summarize.** The agent reads the mirrored data with `Read`/`Glob`/`Grep` and answers questions like "what did I miss in #design today?" or "what's on my plate?"
-- **Nudge.** Daily, weekly, and retro ceremonies produce structured tablets. Detectors surface stale priorities, neglected workstreams, calendar conflicts. Todos from one ceremony roll into the next.
+- **Nudge.** Daily, weekly, and retro ceremonies produce structured tablets. Detectors surface stale priorities, neglected lenses, calendar conflicts. Todos from one ceremony roll into the next.
 
 ## The self-hosted thesis
 
@@ -37,8 +37,8 @@ Every turn:
 User message
    │
    │   System prompt assembly:
-   │   - identity (workstream-dependent — assistant or coding persona)
-   │   - active workstream context
+   │   - identity (lens-dependent — assistant or coding persona)
+   │   - active lens context
    │   - relevant memory entries
    │   - available tools
    │
@@ -64,18 +64,18 @@ Most of arawn's value is in how it organizes external data:
 ```
 Feeds        →  raw bytes mirrored from upstream
 Projections  →  typed, searchable rows in a single SQLite DB
-Palaces      →  per-workstream knowledge graph of typed entities + relations
+Palaces      →  per-lens knowledge graph of typed entities + relations
 ```
 
 Each layer answers a different kind of question. [The three-layer data model explanation](./three-layer-data-model.md) covers the rationale.
 
 ## What it isn't
 
-- **Not a coding tool.** The default persona is the personal-assistant role. There's an opt-in `coding` workstream profile for engineering work, but arawn isn't aimed at being a Claude Code / Cursor replacement.
+- **Not a coding tool.** The default persona is the personal-assistant role. There's an opt-in `coding` lens profile for engineering work, but arawn isn't aimed at being a Claude Code / Cursor replacement.
 - **Not multi-user.** Single-user only. Your machine, your data, your provider keys.
 - **Not a chat-only tool.** Watchers and ceremonies run autonomously. Conversations are one of several surfaces.
 - **Not cloud-resident.** There's no arawn server in the cloud. The "server" in `arawn serve` is your local Rust process.
-- **Not opinion-free.** arawn has views — workstreams as the organizing primitive, the steward as a proactive curator, ceremonies as scheduled reflection. You're welcome to disable any of those, but they're the default shape.
+- **Not opinion-free.** arawn has views — lenses as the organizing primitive, the steward as a proactive curator, ceremonies as scheduled reflection. You're welcome to disable any of those, but they're the default shape.
 
 ## Status
 
@@ -85,6 +85,6 @@ arawn is **alpha**. APIs, config schema, and CLI flags change between commits. T
 
 - [The agent loop](./the-agent-loop.md)
 - [The three-layer data model](./three-layer-data-model.md)
-- [Workstreams](./workstreams.md)
-- [Identity by workstream](./identity-by-workstream.md)
+- [Lenses](./lenses.md)
+- [Identity by lens](./identity-by-lens.md)
 - [Ceremonies](./ceremonies.md)

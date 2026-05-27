@@ -109,7 +109,7 @@ Rules can come from:
 
 1. `~/.arawn/arawn.toml` — `[permissions]` section.
 2. A per-project `.arawn/permissions.toml` (if present in the working directory).
-3. The active workstream's `arawn.md` (rare; used for workstream-specific exceptions).
+3. The active lens's `arawn.md` (rare; used for lens-specific exceptions).
 
 The three sources are merged at load time. See `crates/arawn-engine/src/permissions/config.rs::load_merged_permissions`.
 

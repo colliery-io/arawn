@@ -72,7 +72,7 @@ See [memory model reference](./memory-model.md).
 
 ## Signal (palace query)
 
-Operate on the active workstream's palace.
+Operate on the active lens's palace.
 
 | Tool | Source | Description |
 |---|---|---|
@@ -88,24 +88,24 @@ Operate on the active workstream's palace.
 
 See [feed_search tool reference](./feed-search-tool.md).
 
-## Workstream lifecycle
+## Lens lifecycle
 
-Source: `workstream.rs`.
+Source: `lens.rs`.
 
 | Tool | Description |
 |---|---|
-| `workstream_new` | Create a workstream + ontology. |
-| `workstream_list` | List active workstreams. |
-| `workstream_switch` | Set active workstream. |
-| `workstream_show` | Show workstream details + bindings. |
-| `workstream_describe` | Update description / display_name / identity_profile. |
-| `workstream_bind` | Bind a feed (direct or `github:repo:` / `github:org:` URI). |
-| `workstream_unbind` | Remove a binding. |
-| `workstream_promote` | Promote scratch session to a workstream. |
-| `workstream_delete` | Soft-delete (archives). |
-| `workstream_propose_ontology` | Helper used by the create flow. |
+| `lens_new` | Create a lens + ontology. |
+| `lens_list` | List active lenses. |
+| `lens_switch` | Set active lens. |
+| `lens_show` | Show lens details + bindings. |
+| `lens_describe` | Update description / display_name / identity_profile. |
+| `lens_bind` | Bind a feed (direct or `github:repo:` / `github:org:` URI). |
+| `lens_unbind` | Remove a binding. |
+| `lens_promote` | Promote scratch session to a lens. |
+| `lens_delete` | Soft-delete (archives). |
+| `lens_propose_ontology` | Helper used by the create flow. |
 
-See [workstream tools reference](./workstream-tools.md) and [workstream CLI reference](./workstream-cli.md).
+See [lens tools reference](./lens-tools.md) and [lens CLI reference](./lens-cli.md).
 
 ## Steward
 
@@ -113,12 +113,12 @@ Source: `steward.rs`.
 
 | Tool | Description |
 |---|---|
-| `workstream_refine` | List pending steward proposals. |
-| `workstream_apply` | Apply a proposal by journal id. |
-| `workstream_rollback` | Rollback an applied proposal. |
-| `workstream_dust` | Trigger the dust-summarizer subroutine. |
-| `workstream_journal` | View change history. |
-| `workstream_tag` | Tag management (promote / merge / split). |
+| `lens_refine` | List pending steward proposals. |
+| `lens_apply` | Apply a proposal by journal id. |
+| `lens_rollback` | Rollback an applied proposal. |
+| `lens_dust` | Trigger the dust-summarizer subroutine. |
+| `lens_journal` | View change history. |
+| `lens_tag` | Tag management (promote / merge / split). |
 
 See [steward subroutines reference](./steward-subroutines.md).
 
@@ -198,7 +198,7 @@ See [workflow tools reference](./workflow-tools.md).
 
 | Tool | Source | Description |
 |---|---|---|
-| `skill` | `skill.rs` | Invoke a named skill by id. Built-in skills: `workflows`, `workstream-create`. |
+| `skill` | `skill.rs` | Invoke a named skill by id. Built-in skills: `workflows`, `lens-create`. |
 
 See [skills reference](./skills.md).
 
