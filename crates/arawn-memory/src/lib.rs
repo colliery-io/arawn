@@ -3,6 +3,7 @@
 //! Provides graph-backed entity storage with FTS5 search, typed relations,
 //! confidence scoring, tag support, and search-before-create deduplication.
 
+pub mod cross_lens;
 pub mod cypher_schema;
 pub mod error;
 pub mod inject;
@@ -14,6 +15,7 @@ pub mod store;
 pub mod types;
 pub mod vector;
 
+pub use cross_lens::{LabeledHit, rrf, search_labeled_stores};
 pub use error::MemoryError;
 pub use inject::load_memories_for_injection;
 pub use manager::{MemoryManager, try_open_memory};

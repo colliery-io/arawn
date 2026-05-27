@@ -11,10 +11,10 @@ archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
-exit_criteria_met: false
+exit_criteria_met: true
 initiative_id: ARAWN-I-0060
 ---
 
@@ -67,4 +67,16 @@ Root of the initiative; blocks [[ARAWN-T-0431]].
 
 ## Status Updates
 
-*To be added during implementation*
+**2026-05-27 — Done.** Branch `feat/lens-agnostic-chat`.
+- New `arawn-memory/src/cross_lens.rs`: `LabeledHit`, `rrf` (RRF_K=60, matches
+  signal/feed search), and `search_labeled_stores(stores, query, query_embedding,
+  limit)` — hybrid FTS + optional vector, RRF-fused across all provided labeled
+  stores, capped, each hit tagged with its source lens. Synchronous (caller
+  passes the precomputed query embedding); enumeration of lenses is the caller's
+  job (T-B), since arawn-memory doesn't depend on the lens registry.
+- Exported `LabeledHit`/`rrf`/`search_labeled_stores` from lib.
+- Tests (3): fuses+labels across two lens stores, honors limit, empty input.
+  `angreal check workspace` clean.
+
+Lifted the canonical RRF from `signal.rs` into the crate; T-B will have the tools
+call this and delete their local copy.
