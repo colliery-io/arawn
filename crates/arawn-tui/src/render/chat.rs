@@ -29,7 +29,10 @@ pub(super) fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layou
 
     // Pre-compute per-message flags to avoid borrow conflicts in the loop.
     // For each tool call: does the next message have a result? Is it an error?
-    let tool_call_flags: Vec<(bool, bool)> = (0..num_messages)
+    // And once it does, what was the actual call→result duration? (Frozen at
+    // result time — otherwise rendering would keep advancing the "1.2s" tag
+    // forever after the tool finished.)
+    let tool_call_flags: Vec<(bool, bool, Option<std::time::Duration>)> = (0..num_messages)
         .map(|i| {
             let next_is_result = i + 1 < num_messages
                 && matches!(app.messages[i + 1].role, ChatRole::ToolResult { .. });
@@ -38,7 +41,16 @@ pub(super) fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layou
                     app.messages[i + 1].role,
                     ChatRole::ToolResult { is_error: true, .. }
                 );
-            (next_is_result, next_is_error)
+            let call_duration = if next_is_result {
+                Some(
+                    app.messages[i + 1]
+                        .created_at
+                        .saturating_duration_since(app.messages[i].created_at),
+                )
+            } else {
+                None
+            };
+            (next_is_result, next_is_error, call_duration)
         })
         .collect();
 
@@ -125,7 +137,7 @@ pub(super) fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layou
             ChatRole::ToolCall { name } => {
                 let chrome = Style::default().fg(theme::CHROME);
 
-                let (next_is_result, next_is_error) = tool_call_flags[msg_idx];
+                let (next_is_result, next_is_error, call_duration) = tool_call_flags[msg_idx];
                 let is_running = !next_is_result && app.is_generating;
 
                 // Collapsed by default; expand when the user has toggled
@@ -169,7 +181,8 @@ pub(super) fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layou
                             Style::default().fg(theme::GENERATING),
                         ));
                     } else if next_is_result {
-                        let elapsed = msg.created_at.elapsed().as_secs_f64();
+                        // Freeze the timer at the actual call→result duration.
+                        let elapsed = call_duration.unwrap_or_default().as_secs_f64();
                         spans.push(Span::styled(" · ", chrome));
                         spans.push(Span::styled(
                             format!("{elapsed:.1}s"),

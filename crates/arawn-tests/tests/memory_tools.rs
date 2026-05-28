@@ -92,9 +92,9 @@ async fn memory_store_inserts_entity() {
     assert_eq!(calls.len(), 1);
     assert_eq!(calls[0].0, "memory_store");
 
-    // Entity should exist in the lens KB
-    let entities = mgr.lens.search("PostgreSQL", 5).unwrap();
-    assert!(!entities.is_empty(), "entity should be stored in lens KB");
+    // ARAWN-I-0061: memory writes are global, not per-lens.
+    let entities = mgr.global.search("PostgreSQL", 5).unwrap();
+    assert!(!entities.is_empty(), "entity should be stored in global memory");
     assert_eq!(entities[0].title, "Project uses PostgreSQL 15");
     assert_eq!(
         entities[0].content.as_deref(),
@@ -194,8 +194,8 @@ async fn memory_store_deduplicates_on_reinsertion() {
             );
         }
         arawn_memory::StoreFactResult::Inserted { .. } => {
-            // Check if we at least have only 1 entity
-            let entities = mgr.lens.search("\"Axum\"", 5).unwrap();
+            // Check if we at least have only 1 entity (ARAWN-I-0061: global tier)
+            let entities = mgr.global.search("\"Axum\"", 5).unwrap();
             assert_eq!(
                 entities.len(),
                 1,
@@ -218,7 +218,8 @@ async fn memory_search_finds_stored_entity() {
     )
     .with_confidence(arawn_memory::ConfidenceSource::Stated)
     .with_content("All cache keys expire after 5 minutes. Session data uses 24 hour TTL.");
-    mgr.lens.insert_entity(&entity).unwrap();
+    // ARAWN-I-0061: memory_search reads global only — seed the global tier.
+    mgr.global.insert_entity(&entity).unwrap();
 
     let harness = TestHarness::builder()
         .with_tool(Box::new(MemorySearchTool::new(
@@ -257,14 +258,14 @@ async fn memory_search_finds_stored_entity() {
 async fn memory_search_filters_by_type() {
     let (mgr, embedder) = setup_memory_manager();
 
-    // Store a fact and a decision
-    mgr.lens
+    // ARAWN-I-0061: memory_search reads global; seed both into global memory.
+    mgr.global
         .insert_entity(&arawn_memory::Entity::new(
             arawn_memory::EntityType::Fact,
             "Rust is fast",
         ))
         .unwrap();
-    mgr.lens
+    mgr.global
         .insert_entity(&arawn_memory::Entity::new(
             arawn_memory::EntityType::Decision,
             "We decided to use Rust",
@@ -411,7 +412,7 @@ async fn memory_store_with_tags() {
         .run("Convention: always run clippy before merging")
         .await;
 
-    let entities = mgr.lens.search("clippy", 5).unwrap();
+    let entities = mgr.global.search("clippy", 5).unwrap();
     assert!(!entities.is_empty());
     assert_eq!(entities[0].tags, vec!["ci", "rust", "quality"]);
 }

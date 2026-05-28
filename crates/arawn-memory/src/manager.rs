@@ -319,35 +319,24 @@ mod tests {
 
     #[test]
     fn scope_routing() {
+        // ARAWN-I-0061: memory is global, so `store_for_type` routes every
+        // entity type to the global tier. Per-lens stores hold extractor-
+        // written *signals*, which the extractor writes directly to the lens
+        // KB — not through `store_for_type`.
         let (_tmp, mgr) = setup();
-
-        // Preferences → global
-        assert!(std::ptr::eq(
-            Arc::as_ptr(mgr.store_for_type(EntityType::Preference)),
-            Arc::as_ptr(&mgr.global)
-        ));
-        assert!(std::ptr::eq(
-            Arc::as_ptr(mgr.store_for_type(EntityType::Person)),
-            Arc::as_ptr(&mgr.global)
-        ));
-
-        // Decisions → lens
-        assert!(std::ptr::eq(
-            Arc::as_ptr(mgr.store_for_type(EntityType::Decision)),
-            Arc::as_ptr(&mgr.lens)
-        ));
-        assert!(std::ptr::eq(
-            Arc::as_ptr(mgr.store_for_type(EntityType::Convention)),
-            Arc::as_ptr(&mgr.lens)
-        ));
-        assert!(std::ptr::eq(
-            Arc::as_ptr(mgr.store_for_type(EntityType::Fact)),
-            Arc::as_ptr(&mgr.lens)
-        ));
-        assert!(std::ptr::eq(
-            Arc::as_ptr(mgr.store_for_type(EntityType::Note)),
-            Arc::as_ptr(&mgr.lens)
-        ));
+        for et in [
+            EntityType::Preference,
+            EntityType::Person,
+            EntityType::Decision,
+            EntityType::Convention,
+            EntityType::Fact,
+            EntityType::Note,
+        ] {
+            assert!(
+                std::ptr::eq(Arc::as_ptr(mgr.store_for_type(et)), Arc::as_ptr(&mgr.global)),
+                "expected {et:?} to route to the global store under the global-memory model",
+            );
+        }
     }
 
     #[test]
