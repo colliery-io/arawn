@@ -32,16 +32,19 @@ impl Tool for MemoryStoreTool {
     }
 
     fn description(&self) -> &str {
-        "Store knowledge in the knowledge base for cross-session memory. Uses search-before-create \
-         to avoid duplicates — if the same fact already exists, it's reinforced instead of duplicated.\n\n\
+        "Store a memory — a global statement of fact or behavioral tuning that should be generally \
+         known across every session and lens (e.g. \"Pat Collins is someone I manage\"). Memories are \
+         always global; they are not filed into a lens. Uses search-before-create to avoid \
+         duplicates — if the same fact already exists, it's reinforced instead of duplicated.\n\n\
          Entity types:\n\
-         - **fact**: Extracted knowledge (\"project uses PostgreSQL 15\")\n\
+         - **fact**: Known facts (\"project uses PostgreSQL 15\")\n\
          - **decision**: Choices made (\"went with microservices architecture\")\n\
          - **convention**: Patterns/rules (\"tests go inline, not in separate files\")\n\
-         - **preference**: User preferences (\"prefers terse responses\") — stored globally\n\
-         - **person**: Team members (\"Alice — backend lead\") — stored globally\n\
+         - **preference**: User preferences (\"prefers terse responses\")\n\
+         - **person**: People (\"Alice — backend lead\")\n\
          - **note**: Freeform annotations\n\n\
-         Use this when you learn something worth remembering across sessions."
+         Use this when you learn something worth remembering across sessions. (Signals extracted \
+         from feeds are a separate concern and are written by the extractor, not this tool.)"
     }
 
     fn category(&self) -> ToolCategory {
@@ -69,11 +72,6 @@ impl Tool for MemoryStoreTool {
                     "type": "array",
                     "items": { "type": "string" },
                     "description": "Categorization tags for filtering"
-                },
-                "scope": {
-                    "type": "string",
-                    "enum": ["global", "lens"],
-                    "description": "Which KB tier to store in. Defaults based on entity_type: preference/person → global, others → lens."
                 }
             },
             "required": ["title", "entity_type"]
@@ -111,15 +109,8 @@ impl Tool for MemoryStoreTool {
             })
             .unwrap_or_default();
 
-        let scope = params
-            .get("scope")
-            .and_then(|v| v.as_str())
-            .and_then(|s| match s {
-                "global" => Some(Scope::Global),
-                "lens" => Some(Scope::Lens),
-                _ => None,
-            })
-            .unwrap_or_else(|| entity_type.default_scope());
+        // ARAWN-I-0061: memory is always global. No lens write-target.
+        let scope = Scope::Global;
 
         // Build entity
         let mut entity = Entity::new(entity_type, title)
@@ -131,7 +122,7 @@ impl Tool for MemoryStoreTool {
             entity = entity.with_content(c);
         }
 
-        // Route to appropriate store for the active lens
+        // Memory is global (ARAWN-I-0061): route to the global store, never a lens.
         let manager = self
             .memory
             .manager()
@@ -246,7 +237,9 @@ mod tests {
 
         assert!(!result.is_error);
         assert!(result.content.contains("Stored new fact"));
-        assert_eq!(mgr.lens.count_all().unwrap(), 1);
+        // ARAWN-I-0061: memory is global.
+        assert_eq!(mgr.global.count_all().unwrap(), 1);
+        assert_eq!(mgr.lens.count_all().unwrap(), 0);
     }
 
     #[tokio::test]
@@ -266,7 +259,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn store_decision_goes_lens() {
+    async fn store_decision_goes_global() {
         let (_tmp, mgr, ctx) = setup();
         let tool = MemoryStoreTool::new(mgr.clone(), None);
 
@@ -277,8 +270,9 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(mgr.global.count_all().unwrap(), 0);
-        assert_eq!(mgr.lens.count_all().unwrap(), 1);
+        // ARAWN-I-0061: all memory is global, including decisions.
+        assert_eq!(mgr.global.count_all().unwrap(), 1);
+        assert_eq!(mgr.lens.count_all().unwrap(), 0);
     }
 
     #[tokio::test]
@@ -302,7 +296,7 @@ mod tests {
             .unwrap();
 
         assert!(result.content.contains("Reinforced"));
-        assert_eq!(mgr.lens.count_all().unwrap(), 1);
+        assert_eq!(mgr.global.count_all().unwrap(), 1);
     }
 
     #[tokio::test]
@@ -317,24 +311,7 @@ mod tests {
         .await
         .unwrap();
 
-        let results = mgr.lens.search_by_tags(&["rust".into()], 10).unwrap();
+        let results = mgr.global.search_by_tags(&["rust".into()], 10).unwrap();
         assert_eq!(results.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn store_with_explicit_scope_override() {
-        let (_tmp, mgr, ctx) = setup();
-        let tool = MemoryStoreTool::new(mgr.clone(), None);
-
-        // Fact defaults to lens, but override to global
-        tool.execute(
-            &ctx,
-            json!({"title": "Global fact", "entity_type": "fact", "scope": "global"}),
-        )
-        .await
-        .unwrap();
-
-        assert_eq!(mgr.global.count_all().unwrap(), 1);
-        assert_eq!(mgr.lens.count_all().unwrap(), 0);
     }
 }

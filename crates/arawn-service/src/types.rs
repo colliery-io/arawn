@@ -119,11 +119,13 @@ pub enum MemoryStoreResult {
     },
 }
 
-/// Summary of the knowledge base.
+/// Summary of the global memory store.
+///
+/// ARAWN-I-0061: memory is global. Per-lens KBs hold extracted signals (visible
+/// via `signal_*`), not memory — they don't belong in this summary.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemorySummary {
     pub global: MemoryStoreSummary,
-    pub lens: MemoryStoreSummary,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -181,13 +183,6 @@ pub struct CommandInfo {
     pub name: String,
     pub description: String,
     pub kind: String,
-}
-
-/// Result of promoting a scratch session to a lens.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PromotionResult {
-    pub lens_id: String,
-    pub lens_name: String,
 }
 
 /// Info about a workflow.

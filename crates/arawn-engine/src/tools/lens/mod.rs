@@ -1,23 +1,22 @@
 //! Lens slash commands.
 //!
-//! Eight tools that cover the lens lifecycle: new, list, switch,
-//! show, describe, bind, unbind, delete. Each is a `Tool` impl with a
-//! `lens_*` name so the slash dispatcher routes naturally.
+//! Tools that cover the lens lifecycle: new, list, show, describe, bind,
+//! unbind, delete. Each is a `Tool` impl with a `lens_*` name so the slash
+//! dispatcher routes naturally.
 //!
-//! Session-active lens is held by `SessionLens` (a shared
-//! `Arc<Mutex<String>>`) — T-0250 replaces this with the real
-//! `Session::lens_name` field once sessions gain it.
+//! ARAWN-I-0061: there is no `lens_switch` — lenses are standing, memory-aware
+//! signal extractors, not a place you switch into. `SessionLens` remains only as
+//! an internal default-context shim (pinned to `scratch`), not a user-switchable
+//! write target.
 
 mod bind;
 mod create;
 mod delete;
 mod describe;
 mod list;
-mod promote;
 mod propose_ontology;
 mod session;
 mod show;
-mod switch;
 mod unbind;
 pub(crate) mod util;
 
@@ -26,11 +25,9 @@ pub use create::LensCreateTool;
 pub use delete::LensDeleteTool;
 pub use describe::LensDescribeTool;
 pub use list::LensListTool;
-pub use promote::LensPromoteTool;
 pub use propose_ontology::LensProposeOntologyTool;
 pub use session::SessionLens;
 pub use show::LensShowTool;
-pub use switch::LensSwitchTool;
 pub use unbind::{LensUnbindTool, UnbindHook};
 pub use util::{
     GithubScope, is_github_scope_binding, parse_github_scope, validate_github_scope_scheme,
@@ -40,7 +37,7 @@ pub use util::{
 mod tests {
     use super::util::*;
     use super::*;
-    use arawn_core::{Lens, SCRATCH_NAME};
+    use arawn_core::Lens;
     use arawn_storage::Store;
     use arawn_tool::Tool;
     use serde_json::json;
@@ -158,34 +155,6 @@ mod tests {
         assert!(ont.contains("ledger").unwrap());
     }
 
-    #[tokio::test]
-    async fn switch_updates_active() {
-        let (tmp, store, active) = setup();
-        store
-            .lock()
-            .unwrap()
-            .create_lens(&Lens::new("pat", tmp.path().join("lenses/pat")))
-            .unwrap();
-        let tool = LensSwitchTool::new(store.clone(), active.clone());
-        let result = tool
-            .execute(&test_ctx(&tmp), json!({"name": "pat"}))
-            .await
-            .unwrap();
-        assert!(!result.is_error);
-        assert_eq!(active.current(), "pat");
-    }
-
-    #[tokio::test]
-    async fn switch_unknown_errors() {
-        let (tmp, store, active) = setup();
-        let tool = LensSwitchTool::new(store.clone(), active);
-        let result = tool
-            .execute(&test_ctx(&tmp), json!({"name": "ghost"}))
-            .await
-            .unwrap();
-        assert!(result.is_error);
-        assert!(result.content.contains("not found"));
-    }
 
     #[tokio::test]
     async fn show_defaults_to_active() {
@@ -799,70 +768,6 @@ mod tests {
         assert!(found.archived);
     }
 
-    #[tokio::test]
-    async fn promote_moves_entity_from_scratch_to_target() {
-        use crate::lens_router::LensMemoryRouter;
-        use arawn_memory::{Entity, EntityType};
-
-        let (tmp, store, _) = setup();
-        // Create the target lens.
-        store
-            .lock()
-            .unwrap()
-            .create_lens(&Lens::new("pat", tmp.path().join("ws/pat")))
-            .unwrap();
-
-        // Seed scratch with a fact via the router so the promote tool
-        // walks the same surface that prod uses.
-        let scratch_session = SessionLens::scratch();
-        let router = Arc::new(LensMemoryRouter::new(
-            tmp.path(),
-            None,
-            None,
-            scratch_session.clone(),
-        ));
-        let scratch_mgr = router.for_lens(SCRATCH_NAME).unwrap();
-        let entity = Entity::new(EntityType::Fact, "pat 1on1 ran long today");
-        scratch_mgr.lens.store_fact(&entity).unwrap();
-
-        let tool = LensPromoteTool::new(store.clone(), router.clone());
-        let result = tool
-            .execute(
-                &test_ctx(&tmp),
-                json!({"entity_id": entity.id.to_string(), "target": "pat"}),
-            )
-            .await
-            .unwrap();
-        assert!(!result.is_error, "got: {}", result.content);
-
-        // Target now has it.
-        let pat_mgr = router.for_lens("pat").unwrap();
-        assert!(pat_mgr.lens.get_entity(entity.id).unwrap().is_some());
-        // Scratch no longer.
-        assert!(scratch_mgr.lens.get_entity(entity.id).unwrap().is_none());
-    }
-
-    #[tokio::test]
-    async fn promote_refuses_unknown_target() {
-        use crate::lens_router::LensMemoryRouter;
-        let (tmp, store, _) = setup();
-        let router = Arc::new(LensMemoryRouter::new(
-            tmp.path(),
-            None,
-            None,
-            SessionLens::scratch(),
-        ));
-        let tool = LensPromoteTool::new(store.clone(), router);
-        let result = tool
-            .execute(
-                &test_ctx(&tmp),
-                json!({"entity_id": uuid::Uuid::new_v4().to_string(), "target": "ghost"}),
-            )
-            .await
-            .unwrap();
-        assert!(result.is_error);
-        assert!(result.content.contains("not found"));
-    }
 
     #[tokio::test]
     async fn show_includes_ontology() {

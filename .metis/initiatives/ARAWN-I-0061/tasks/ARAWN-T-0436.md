@@ -4,14 +4,14 @@ level: task
 title: "T-A: Memory goes global — /remember and memory_store write to the global store"
 short_code: "ARAWN-T-0436"
 created_at: 2026-05-27T20:18:49.413618+00:00
-updated_at: 2026-05-27T20:18:49.413618+00:00
+updated_at: 2026-05-28T01:05:42.169529+00:00
 parent: ARAWN-I-0061
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -39,6 +39,10 @@ is someone I manage") — always known, never lens-filed. Route `/remember` and 
   write path); land them together if cleaner.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] `/remember <fact>` and `memory_store` write to the global store regardless of
       any lens state.
 - [ ] No memory-write path consults SessionLens / active lens for its destination.
@@ -50,4 +54,16 @@ Pairs with [[ARAWN-T-0437]] (removing the write-target) and [[ARAWN-T-0438]]
 (un-smearing memory_search). Land the trio together.
 
 ## Status Updates
-*To be added during implementation*
+
+**2026-05-27 — Done.** Made memory global at the production layer:
+- `arawn-memory/src/types.rs` — `EntityType::default_scope()` now returns
+  `Scope::Global` for every type (was preference/person→global, others→lens).
+  Drives both `/remember` (`store_fact_embedded(entity, None)`) and the
+  `memory_store` tool. Updated the `default_scopes` test.
+- `arawn-engine/src/tools/memory_store.rs` — removed the `scope` param (memory has
+  no lens); `execute` forces `Scope::Global`. Reworded the description; updated
+  tests (`store_decision_goes_global` renamed, asserts `mgr.global`); dropped
+  `store_with_explicit_scope_override`.
+- Per-lens stores stay for extractor-written **signals** (`cot.rs` unchanged).
+- Tests green: `arawn-memory::default_scopes`, `arawn-engine` `memory_store` 5/5.
+  Destination no longer depends on lens; full SessionLens removal lands in T-B.

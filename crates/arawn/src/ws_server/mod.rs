@@ -38,7 +38,6 @@ const RPC_METHODS: &[&str] = &[
     "send_message",
     "cancel",
     "user_input_response",
-    "promote_session",
     "query_inventory",
     "list_commands",
     "list_workflows",
@@ -911,43 +910,10 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .await;
             }
 
-            "promote_session" => {
-                let session_id = request
-                    .params
-                    .get("session_id")
-                    .and_then(|v| v.as_str())
-                    .and_then(|s| uuid::Uuid::parse_str(s).ok());
-                let lens_name = request
-                    .params
-                    .get("lens_name")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                debug!(id, session_id = ?session_id, %lens_name, "promote_session");
-
-                let resp = match session_id {
-                    Some(sid) => match service.promote_session(sid, &lens_name).await {
-                        Ok(result) => {
-                            debug!(id, "promote_session ok");
-                            Response::success(id, serde_json::to_value(&result).unwrap())
-                        }
-                        Err(e) => {
-                            warn!(id, error = %e, "promote_session failed");
-                            Response::from_service_error(id, &e)
-                        }
-                    },
-                    None => {
-                        warn!(id, "promote_session missing session_id");
-                        Response::error(id, "invalid_params", "missing session_id".into())
-                    }
-                };
-                let _ = sender
-                    .send(WsMessage::Text(
-                        serde_json::to_string(&resp).unwrap().into(),
-                    ))
-                    .await;
-            }
-
+            // ARAWN-I-0061: `promote_session` route removed — there is no
+            // "promotion" into a lens. Lenses are standing extractors; memory is
+            // global. (The internal service method is orphaned, pending a session
+            // -model cleanup.)
             "query_inventory" => {
                 let kind = request
                     .params

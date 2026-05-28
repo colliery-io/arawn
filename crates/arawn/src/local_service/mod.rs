@@ -16,7 +16,7 @@ use arawn_engine::{
 use arawn_llm::LlmClient;
 use arawn_service::{
     ArawnService, CommandInfo, EngineEvent, ForgetResult, InventoryItem, LensInfo,
-    MemoryStoreResult, MemorySummary, PermissionModeInfo, PromotionResult, ServiceError,
+    MemoryStoreResult, MemorySummary, PermissionModeInfo, ServiceError,
     SessionDetail, SessionInfo, WorkflowInfo,
 };
 use arawn_storage::{Store, lens_dir_name};
@@ -635,13 +635,6 @@ impl ArawnService for LocalService {
     }
     async fn cancel(&self, session_id: Uuid) -> Result<(), ServiceError> {
         self.cancel_inner(session_id).await
-    }
-    async fn promote_session(
-        &self,
-        session_id: Uuid,
-        lens_name: &str,
-    ) -> Result<PromotionResult, ServiceError> {
-        self.promote_session_inner(session_id, lens_name).await
     }
     async fn resolve_user_input(
         &self,

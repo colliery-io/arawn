@@ -128,24 +128,6 @@ impl<'a> SessionStore<'a> {
         Ok(())
     }
 
-    pub fn update_lens_id(&self, session_id: Uuid, new_ws_id: Uuid) -> Result<bool, StorageError> {
-        let affected = self.db.conn().execute(
-            "UPDATE sessions SET lens_id = ?1 WHERE id = ?2 AND lens_id IS NULL",
-            (new_ws_id.to_string(), session_id.to_string()),
-        )?;
-        Ok(affected > 0)
-    }
-
-    /// Update the persisted lens slug for a session. Called when
-    /// `/lens switch` lands in a new lens so resumption
-    /// can re-establish the active lens without a JOIN.
-    pub fn update_lens_name(&self, session_id: Uuid, new_name: &str) -> Result<bool, StorageError> {
-        let affected = self.db.conn().execute(
-            "UPDATE sessions SET lens_name = ?1 WHERE id = ?2",
-            (new_name, session_id.to_string()),
-        )?;
-        Ok(affected > 0)
-    }
 }
 
 /// Session metadata as stored in SQLite (no messages — those are in JSONL).
@@ -308,39 +290,4 @@ mod tests {
         assert!(scratches.iter().all(|s| s.lens_id.is_none()));
     }
 
-    #[test]
-    fn update_lens_id_promotes_scratch() {
-        let db = setup();
-        let ss = SessionStore::new(&db);
-        let ws_store = LensStore::new(&db);
-
-        let ws = arawn_core::Lens::new("target", "/tmp/target");
-        ws_store.create(&ws).unwrap();
-
-        let session = Session::scratch();
-        ss.create(&session).unwrap();
-
-        assert!(ss.update_lens_id(session.id, ws.id).unwrap());
-
-        let meta = ss.get(session.id).unwrap().unwrap();
-        assert_eq!(meta.lens_id, Some(ws.id));
-    }
-
-    #[test]
-    fn update_lens_id_on_bound_session_returns_false() {
-        let db = setup();
-        let ss = SessionStore::new(&db);
-        let ws_store = LensStore::new(&db);
-
-        let ws = arawn_core::Lens::new("ws", "/tmp/ws");
-        ws_store.create(&ws).unwrap();
-
-        let session = Session::new(ws.id);
-        ss.create(&session).unwrap();
-
-        // Already bound — should not update
-        let new_ws = arawn_core::Lens::new("new", "/tmp/new");
-        ws_store.create(&new_ws).unwrap();
-        assert!(!ss.update_lens_id(session.id, new_ws.id).unwrap());
-    }
 }

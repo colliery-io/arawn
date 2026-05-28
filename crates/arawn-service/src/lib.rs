@@ -14,7 +14,7 @@ pub use types::{
     FeedRegisterSpec, FeedRemoveDto, FeedSchemaDto, FeedSummaryDto, FeedTemplateInfo,
     ForgetCandidate, ForgetResult, IntegrationStatus, InventoryItem, LensInfo, MemoryStoreResult,
     MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption, OAuthFlowStarted,
-    PermissionAuditEntry, PermissionModeInfo, PermissionsStatus, PromotionResult,
+    PermissionAuditEntry, PermissionModeInfo, PermissionsStatus,
     ServerCapabilities, ServerNotice, SessionDetail, SessionInfo, WorkflowInfo,
 };
 
@@ -74,13 +74,6 @@ pub trait ArawnService: Send + Sync {
     async fn cancel(&self, session_id: Uuid) -> Result<(), ServiceError>;
 
     // --- Session Management ---
-
-    /// Promote a scratch session to a named lens.
-    async fn promote_session(
-        &self,
-        session_id: Uuid,
-        lens_name: &str,
-    ) -> Result<PromotionResult, ServiceError>;
 
     /// Resolve a pending user input modal by delivering the selected index.
     async fn resolve_user_input(

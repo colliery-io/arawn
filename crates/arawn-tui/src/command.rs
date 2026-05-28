@@ -91,17 +91,12 @@ impl CommandRegistry {
         // Lens/session management
         self.commands.push(CommandInfo {
             name: "lens".into(),
-            description: "Manage lenses (create, list, switch)".into(),
+            description: "Manage lenses (create, list)".into(),
             kind: CommandKind::BuiltIn,
         });
         self.commands.push(CommandInfo {
             name: "session".into(),
             description: "Manage sessions (new, list)".into(),
-            kind: CommandKind::BuiltIn,
-        });
-        self.commands.push(CommandInfo {
-            name: "promote".into(),
-            description: "Promote scratch session to a lens".into(),
             kind: CommandKind::BuiltIn,
         });
         // Inventory commands
@@ -334,14 +329,10 @@ pub enum CommandResult {
     LensCreate(String),
     /// List all lenses.
     LensList,
-    /// Switch to a lens by name.
-    LensSwitch(String),
     /// Create a new session in the current lens.
     SessionNew,
     /// List sessions in the current lens.
     SessionList,
-    /// Promote current scratch session to a lens.
-    PromoteSession(String),
     /// Set permission mode. Mode string: "ask" | "edits" | "full" | "plan"
     /// (matches the `PermissionMode` enum's serde representation).
     SetPermissionMode(String),
@@ -689,16 +680,8 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                             }
                         }
                         Some("list") => CommandResult::LensList,
-                        Some("switch") => {
-                            let name = parts.get(1).unwrap_or(&"").trim();
-                            if name.is_empty() {
-                                CommandResult::SystemMessage("Usage: /lens switch <name>".into())
-                            } else {
-                                CommandResult::LensSwitch(name.to_string())
-                            }
-                        }
                         _ => CommandResult::SystemMessage(
-                            "Usage: /lens <create|list|switch> [name]\n\n  create <name>  Create a new lens\n  list           List all lenses\n  switch <name>  Switch to a lens".into()
+                            "Usage: /lens <create|list> [name]\n\n  create <name>  Create a new lens (a standing, memory-aware extractor)\n  list           List all lenses\n\nLenses aren't switched into — chat reads signals across every lens, and memories are global.".into()
                         ),
                     }
                 }
@@ -710,13 +693,6 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                         _ => CommandResult::SystemMessage(
                             "Usage: /session <new|list>\n\n  new   Create a new session\n  list  List sessions in current lens".into()
                         ),
-                    }
-                }
-                "promote" => {
-                    if cmd.args.is_empty() {
-                        CommandResult::SystemMessage("Usage: /promote <lens-name>".into())
-                    } else {
-                        CommandResult::PromoteSession(cmd.args.clone())
                     }
                 }
                 // T-0347: unified permission posture. `ask` is the

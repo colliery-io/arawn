@@ -41,12 +41,15 @@ impl EntityType {
         }
     }
 
-    /// Default scope for this entity type.
+    /// Default scope for a deliberately-stored memory entity.
+    ///
+    /// ARAWN-I-0061: memory is **global**. A memory is a statement of fact /
+    /// behavioral tuning that should be generally known (e.g. "Pat Collins is
+    /// someone I manage"), independent of any lens. Per-lens stores hold
+    /// extracted *signals*, which the extractor writes to the lens KB directly —
+    /// not through this default.
     pub fn default_scope(&self) -> Scope {
-        match self {
-            Self::Preference | Self::Person => Scope::Global,
-            Self::Decision | Self::Convention | Self::Note | Self::Fact => Scope::Lens,
-        }
+        Scope::Global
     }
 }
 
@@ -375,11 +378,12 @@ mod tests {
 
     #[test]
     fn default_scopes() {
+        // ARAWN-I-0061: memory is global for every entity type.
         assert_eq!(EntityType::Preference.default_scope(), Scope::Global);
         assert_eq!(EntityType::Person.default_scope(), Scope::Global);
-        assert_eq!(EntityType::Decision.default_scope(), Scope::Lens);
-        assert_eq!(EntityType::Convention.default_scope(), Scope::Lens);
-        assert_eq!(EntityType::Fact.default_scope(), Scope::Lens);
-        assert_eq!(EntityType::Note.default_scope(), Scope::Lens);
+        assert_eq!(EntityType::Decision.default_scope(), Scope::Global);
+        assert_eq!(EntityType::Convention.default_scope(), Scope::Global);
+        assert_eq!(EntityType::Fact.default_scope(), Scope::Global);
+        assert_eq!(EntityType::Note.default_scope(), Scope::Global);
     }
 }

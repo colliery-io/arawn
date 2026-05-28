@@ -766,10 +766,8 @@ async fn main() -> Result<()> {
             arawn_engine::LensListTool::new(service.shared_store())
                 .with_active(active_lens.clone()),
         ));
-        registry.register(Box::new(arawn_engine::LensSwitchTool::new(
-            service.shared_store(),
-            active_lens.clone(),
-        )));
+        // ARAWN-I-0061: no lens_switch tool — lenses are standing extractors, not
+        // a place you switch into; memory is global.
         registry.register(Box::new(arawn_engine::LensShowTool::new(
             service.shared_store(),
             active_lens.clone(),
@@ -1030,20 +1028,8 @@ async fn main() -> Result<()> {
                 Arc::clone(router),
             )));
         }
-        // lens_promote needs the router so it can reach into
-        // arbitrary lens KBs (not just the active one).
-        if memory_manager.is_some() {
-            let promote_router = Arc::new(arawn_engine::LensMemoryRouter::new(
-                std::path::PathBuf::from(&data_dir),
-                Some(embed_config.dimensions),
-                embedder.clone(),
-                active_lens.clone(),
-            ));
-            registry.register(Box::new(arawn_engine::LensPromoteTool::new(
-                service.shared_store(),
-                promote_router,
-            )));
-        }
+        // ARAWN-I-0061: no lens_promote — there is no "promotion" into a lens.
+        // Lenses are standing extractors over the corpus; memory is global.
 
         // OAuth integrations (Gmail, Calendar, Drive, Atlassian, GitHub, Slack).
         // See `startup::integrations`.

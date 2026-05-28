@@ -9,7 +9,7 @@ use arawn_core::Lens;
 use arawn_engine::{QueryEngineConfig, ThinkTool, ToolRegistry};
 use arawn_llm::{MockLlmClient, MockResponse};
 use arawn_service::{ArawnService, EngineEvent};
-use arawn_storage::{JsonlMessageStore, Store};
+use arawn_storage::Store;
 
 fn setup_service(responses: Vec<MockResponse>) -> (TempDir, arawn_bin::LocalService) {
     let tmp = TempDir::new().unwrap();
@@ -222,82 +222,6 @@ async fn create_lens_with_default_root_dir() {
     assert!(
         all.iter().any(|w| w.name == "test-project"),
         "new lens should appear in list"
-    );
-}
-
-#[tokio::test]
-async fn promote_scratch_session_to_lens() {
-    let (tmp, service) = setup_service(vec![MockResponse::text("Reply in scratch")]);
-
-    // Create a target lens
-    service
-        .create_lens("finances".into(), tmp.path().join("lenses/finances"))
-        .await
-        .unwrap();
-
-    // Create a scratch session and send a message
-    let session = service.create_session(None).await.unwrap();
-    let mut stream = service
-        .send_message(session.id, "Track my expenses".into())
-        .await
-        .unwrap();
-    while let Some(_) = stream.next().await {}
-
-    // Verify message is in scratch
-    let loaded_before = service.load_session(session.id).await.unwrap();
-    assert!(
-        loaded_before.messages.len() >= 2,
-        "scratch session should have messages"
-    );
-
-    // Promote to finances lens
-    let result = service
-        .promote_session(session.id, "finances")
-        .await
-        .unwrap();
-    assert_eq!(result.lens_name, "finances");
-
-    // Session should still load with its messages from the new location
-    let loaded_after = service.load_session(session.id).await.unwrap();
-    assert_eq!(
-        loaded_before.messages.len(),
-        loaded_after.messages.len(),
-        "messages should survive promotion"
-    );
-
-    // JSONL should exist in the lens dir, not scratch
-    let ws_id: uuid::Uuid = result.lens_id.parse().unwrap();
-    let ws_dir = arawn_storage::lens_dir_name("finances", ws_id);
-    let msg_store = JsonlMessageStore::new(tmp.path());
-    let messages = msg_store.load(session.id, &ws_dir).await.unwrap();
-    assert!(
-        !messages.is_empty(),
-        "JSONL should exist in lens dir after promotion"
-    );
-}
-
-#[tokio::test]
-async fn promote_non_scratch_session_fails() {
-    let (tmp, service) = setup_service(vec![]);
-
-    // Create a lens and a session bound to it
-    let ws = service
-        .create_lens("project-a".into(), tmp.path().join("lenses/project-a"))
-        .await
-        .unwrap();
-    let session = service.create_session(Some(ws.id)).await.unwrap();
-
-    // Create another lens
-    service
-        .create_lens("project-b".into(), tmp.path().join("lenses/project-b"))
-        .await
-        .unwrap();
-
-    // Promoting a non-scratch session should fail
-    let result = service.promote_session(session.id, "project-b").await;
-    assert!(
-        result.is_err(),
-        "promoting a non-scratch session should fail"
     );
 }
 

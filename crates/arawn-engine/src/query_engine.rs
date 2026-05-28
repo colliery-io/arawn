@@ -1932,13 +1932,13 @@ mod tests {
     // when the user message contains no lens keywords.
     #[test]
     fn lens_tools_visible_with_empty_user_message() {
-        assert_tool_visible(arawn_tool::ToolCategory::Lens, "lens_switch", "x");
+        assert_tool_visible(arawn_tool::ToolCategory::Lens, "lens_show", "x");
     }
     #[test]
     fn lens_tools_visible_with_unrelated_user_message() {
         assert_tool_visible(
             arawn_tool::ToolCategory::Lens,
-            "lens_switch",
+            "lens_show",
             "what's on my agenda", // Ceremony-keyword prompt — Lens still surfaces
         );
     }

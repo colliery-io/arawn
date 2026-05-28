@@ -42,12 +42,6 @@ impl Fixture {
         session
     }
 
-    fn scratch_session(&self) -> Session {
-        let session = Session::scratch();
-        self.store.create_session(&session).unwrap();
-        session
-    }
-
     fn context(&self, session: &Session) -> EngineToolContext {
         EngineToolContext::new(&self.lens, session.id)
     }
@@ -239,64 +233,6 @@ async fn tool_results_persisted_with_content() {
     }
 }
 
-#[tokio::test]
-async fn scratch_session_promotion_preserves_messages() {
-    let fix = Fixture::new();
-    let registry = fix.registry();
-
-    let mut session = fix.scratch_session();
-    let ctx = fix.context(&session);
-
-    let mock = Arc::new(MockLlmClient::new(vec![MockResponse::text(
-        "Scratch answer.",
-    )]));
-    let mut engine = fix.engine(mock, registry);
-
-    let user_msg = Message::User {
-        content: "Scratch question".into(),
-    };
-    session.add_message(user_msg.clone());
-    fix.store
-        .append_message(session.id, "scratch", &user_msg)
-        .await
-        .unwrap();
-
-    let msgs_before = session.messages().len();
-    engine.run(&mut session, &ctx).await.unwrap();
-
-    for msg in &session.messages()[msgs_before..] {
-        fix.store
-            .append_message(session.id, "scratch", msg)
-            .await
-            .unwrap();
-    }
-
-    let before_promote = fix
-        .store
-        .load_messages(session.id, "scratch")
-        .await
-        .unwrap();
-    assert_eq!(before_promote.len(), 2);
-
-    fix.store
-        .promote_session(session.id, fix.lens.id)
-        .await
-        .unwrap();
-
-    let after_promote = fix
-        .store
-        .load_messages(session.id, &fix.ws_dir)
-        .await
-        .unwrap();
-    assert_eq!(after_promote.len(), 2);
-
-    let scratch_after = fix
-        .store
-        .load_messages(session.id, "scratch")
-        .await
-        .unwrap();
-    assert!(scratch_after.is_empty());
-}
 
 #[tokio::test]
 async fn multiple_sessions_isolated() {

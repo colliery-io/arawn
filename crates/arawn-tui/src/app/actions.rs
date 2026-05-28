@@ -227,10 +227,8 @@ impl App {
                             | CommandResult::ForgetEntity(_)
                             | CommandResult::LensCreate(_)
                             | CommandResult::LensList
-                            | CommandResult::LensSwitch(_)
                             | CommandResult::SessionNew
                             | CommandResult::SessionList
-                            | CommandResult::PromoteSession(_)
                             | CommandResult::SetPermissionMode(_)
                             | CommandResult::WorkflowList
                             | CommandResult::WorkflowStatus(_)

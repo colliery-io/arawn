@@ -73,22 +73,16 @@ impl LocalService {
             EntityType::Note,
         ];
 
+        // ARAWN-I-0061: memory is global. Per-lens stores hold extractor-written
+        // signals (recallable via `signal_*`), not memory — so this summary
+        // covers global only.
         let mut global_counts = Vec::new();
-        let mut ws_counts = Vec::new();
-
         for et in &types {
             let g = memory.global.count_by_type(*et).unwrap_or(0);
-            let w = memory.lens.count_by_type(*et).unwrap_or(0);
             if g > 0 {
                 global_counts.push(MemoryTypeCount {
                     entity_type: et.as_str().to_string(),
                     count: g as u64,
-                });
-            }
-            if w > 0 {
-                ws_counts.push(MemoryTypeCount {
-                    entity_type: et.as_str().to_string(),
-                    count: w as u64,
                 });
             }
         }
@@ -97,10 +91,6 @@ impl LocalService {
             global: MemoryStoreSummary {
                 total: memory.global.count_all().unwrap_or(0) as u64,
                 by_type: global_counts,
-            },
-            lens: MemoryStoreSummary {
-                total: memory.lens.count_all().unwrap_or(0) as u64,
-                by_type: ws_counts,
             },
         })
     }
@@ -114,14 +104,15 @@ impl LocalService {
             .as_ref()
             .ok_or_else(|| ServiceError::Internal("Memory system not available".into()))?;
 
-        let mut candidates = Vec::new();
-        for (store, label) in [(&memory.global, "global"), (&memory.lens, "lens")] {
-            if let Ok(results) = store.search(query, 5) {
-                for e in results {
-                    candidates.push((e, label));
-                }
-            }
-        }
+        // ARAWN-I-0061: memory is global; /forget only operates on global memory.
+        // (Extracted signals in per-lens KBs are managed via signal/extraction
+        // tools, not /forget.)
+        let candidates: Vec<_> = memory
+            .global
+            .search(query, 5)
+            .unwrap_or_default()
+            .into_iter()
+            .collect();
 
         if candidates.is_empty() {
             return Err(ServiceError::NotFound(format!(
@@ -130,17 +121,12 @@ impl LocalService {
         }
 
         if candidates.len() == 1 {
-            let (entity, label) = &candidates[0];
-            let store = if *label == "global" {
-                &memory.global
-            } else {
-                &memory.lens
-            };
-            match store.delete_entity(entity.id) {
+            let entity = &candidates[0];
+            match memory.global.delete_entity(entity.id) {
                 Ok(true) => Ok(ForgetResult::Deleted {
                     title: entity.title.clone(),
                     entity_type: entity.entity_type.as_str().to_string(),
-                    scope: label.to_string(),
+                    scope: "global".into(),
                 }),
                 Ok(false) => Err(ServiceError::NotFound("Entity not found".into())),
                 Err(e) => Err(e.into()),
@@ -149,11 +135,11 @@ impl LocalService {
             Ok(ForgetResult::Ambiguous {
                 candidates: candidates
                     .iter()
-                    .map(|(e, label)| ForgetCandidate {
+                    .map(|e| ForgetCandidate {
                         id: e.id.to_string(),
                         title: e.title.clone(),
                         entity_type: e.entity_type.as_str().to_string(),
-                        scope: label.to_string(),
+                        scope: "global".into(),
                     })
                     .collect(),
             })

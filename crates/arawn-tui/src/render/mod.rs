@@ -1053,7 +1053,9 @@ mod tests {
     }
 
     #[test]
-    fn status_bar_shows_lens_name() {
+    fn status_bar_has_no_write_target_lens_indicator() {
+        // ARAWN-I-0061: lenses aren't switched into and memory is global, so the
+        // status bar no longer shows a write-target lens (the old `✎ <lens>`).
         use arawn_service::LensInfo;
         use chrono::Utc;
         use std::path::PathBuf;
@@ -1074,8 +1076,8 @@ mod tests {
         let h = terminal.backend().buffer().area.height;
         let status = buffer_to_string(&terminal, h - 1);
         assert!(
-            status.contains("Home Maintenance"),
-            "status bar should show lens name, got:\n{status}"
+            !status.contains("Home Maintenance") && !status.contains('✎'),
+            "status bar must not show a write-target lens, got:\n{status}"
         );
     }
 

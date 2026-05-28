@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use tracing::{info, warn};
+use tracing::info;
 use uuid::Uuid;
 
 use arawn_core::{Lens, Message, Session};
@@ -162,18 +162,6 @@ impl Store {
         SessionStore::new(&self.db).list_scratch()
     }
 
-    /// Persist a session's active lens name. Called by
-    /// `LensSwitchTool` so the active lens survives the
-    /// session-load auto-restore on the next turn (without this,
-    /// switches are in-memory only and revert).
-    pub fn update_session_lens_name(
-        &self,
-        session_id: Uuid,
-        lens_name: &str,
-    ) -> Result<bool, StorageError> {
-        SessionStore::new(&self.db).update_lens_name(session_id, lens_name)
-    }
-
     /// Remove SQLite session records whose JSONL files no longer exist on disk.
     /// Call on startup to clean up after manual filesystem deletions.
     pub fn reconcile_sessions(&self) -> Result<usize, StorageError> {
@@ -271,111 +259,10 @@ impl Store {
         self.messages.load(session_id, lens_dir).await
     }
 
-    // --- Promotion ---
-
-    /// Promote a scratch session to a lens.
-    /// Updates SQLite metadata, moves the JSONL file, and merges the workspace.
-    pub async fn promote_session(
-        &self,
-        session_id: Uuid,
-        new_ws_id: Uuid,
-    ) -> Result<(), StorageError> {
-        let ws = LensStore::new(&self.db)
-            .get(new_ws_id)?
-            .ok_or_else(|| StorageError::InvalidOperation(format!("lens {new_ws_id} not found")))?;
-        let ws_dir = lens_dir_name(&ws.name, ws.id);
-
-        // Update SQLite — only works if session is currently scratch (lens_id IS NULL)
-        let updated = SessionStore::new(&self.db).update_lens_id(session_id, new_ws_id)?;
-        if !updated {
-            return Err(StorageError::InvalidOperation(
-                "session is not a scratch session or does not exist".into(),
-            ));
-        }
-
-        // Move JSONL file from scratch to lens directory
-        if let Err(e) = self
-            .messages
-            .move_session(session_id, "scratch", &ws_dir)
-            .await
-        {
-            warn!(
-                session_id = %session_id,
-                ws_dir = %ws_dir,
-                error = %e,
-                "failed to move JSONL file after SQLite promotion — inconsistent state"
-            );
-            return Err(e);
-        }
-
-        // Move scratch session workspace/ → lens workspace/ (if it exists)
-        let scratch_session_dir = self.messages.sandbox_dir("scratch", session_id, true);
-        let scratch_workspace = scratch_session_dir.join("workspace");
-        let target_workspace = self
-            .messages
-            .sandbox_dir(&ws_dir, session_id, false)
-            .join("workspace");
-        if scratch_workspace.exists() {
-            if let Err(e) = tokio::fs::create_dir_all(&target_workspace).await {
-                warn!(error = %e, "failed to create target workspace dir");
-            }
-            if let Err(e) = copy_dir_contents(&scratch_workspace, &target_workspace).await {
-                warn!(error = %e, "failed to copy workspace contents during promotion");
-            }
-            let _ = tokio::fs::remove_dir_all(&scratch_workspace).await;
-        }
-
-        Ok(())
-    }
-
     /// Resolve the sandbox root for a session.
     pub fn sandbox_for(&self, lens_dir: &str, session_id: Uuid, is_scratch: bool) -> PathBuf {
         self.messages.sandbox_dir(lens_dir, session_id, is_scratch)
     }
-
-    /// Sync-only part of session promotion: update SQLite lens_id.
-    /// Returns Err if the session isn't scratch or doesn't exist.
-    pub fn promote_session_metadata(
-        &self,
-        session_id: Uuid,
-        new_ws_id: Uuid,
-    ) -> Result<(), StorageError> {
-        let updated = SessionStore::new(&self.db).update_lens_id(session_id, new_ws_id)?;
-        if !updated {
-            return Err(StorageError::InvalidOperation(
-                "session is not a scratch session or does not exist".into(),
-            ));
-        }
-        Ok(())
-    }
-
-    /// Async part of session promotion: move the JSONL file between lens dirs.
-    pub async fn move_session_jsonl(
-        &self,
-        session_id: Uuid,
-        from_ws_dir: &str,
-        to_ws_dir: &str,
-    ) -> Result<(), StorageError> {
-        self.messages
-            .move_session(session_id, from_ws_dir, to_ws_dir)
-            .await
-    }
-}
-
-/// Recursively copy directory contents from src to dst.
-async fn copy_dir_contents(src: &Path, dst: &Path) -> Result<(), StorageError> {
-    let mut entries = tokio::fs::read_dir(src).await?;
-    while let Some(entry) = entries.next_entry().await? {
-        let src_path = entry.path();
-        let dst_path = dst.join(entry.file_name());
-        if entry.file_type().await?.is_dir() {
-            tokio::fs::create_dir_all(&dst_path).await?;
-            Box::pin(copy_dir_contents(&src_path, &dst_path)).await?;
-        } else {
-            tokio::fs::copy(&src_path, &dst_path).await?;
-        }
-    }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -462,65 +349,6 @@ mod tests {
         assert_eq!(loaded.id, session.id);
         assert_eq!(loaded.lens_id(), Some(ws.id));
         assert_eq!(loaded.messages().len(), 1);
-    }
-
-    #[tokio::test]
-    async fn promote_session_full_flow() {
-        let (_tmp, store) = setup();
-
-        // Create target lens
-        let ws = Lens::new("target", "/tmp/target");
-        store.create_lens(&ws).unwrap();
-
-        // Create scratch session with messages
-        let session = Session::scratch();
-        store.create_session(&session).unwrap();
-
-        store
-            .append_message(
-                session.id,
-                "scratch",
-                &Message::User {
-                    content: "before promotion".into(),
-                },
-            )
-            .await
-            .unwrap();
-
-        // Promote
-        store.promote_session(session.id, ws.id).await.unwrap();
-
-        // Verify: session now bound to lens in SQLite
-        let meta = store.get_session_meta(session.id).unwrap().unwrap();
-        assert_eq!(meta.lens_id, Some(ws.id));
-
-        // Verify: messages loadable from new lens location
-        let messages = store.load_messages(session.id, "target").await.unwrap();
-        assert_eq!(messages.len(), 1);
-        match &messages[0] {
-            Message::User { content } => assert_eq!(content, "before promotion"),
-            _ => panic!("expected User"),
-        }
-
-        // Verify: old scratch location is empty
-        let scratch_msgs = store.load_messages(session.id, "scratch").await.unwrap();
-        assert!(scratch_msgs.is_empty());
-    }
-
-    #[tokio::test]
-    async fn promote_bound_session_fails() {
-        let (_tmp, store) = setup();
-        let ws = Lens::new("ws", "/tmp/ws");
-        store.create_lens(&ws).unwrap();
-
-        let session = Session::new(ws.id);
-        store.create_session(&session).unwrap();
-
-        let ws2 = Lens::new("ws2", "/tmp/ws2");
-        store.create_lens(&ws2).unwrap();
-
-        let result = store.promote_session(session.id, ws2.id).await;
-        assert!(result.is_err());
     }
 
     #[tokio::test]

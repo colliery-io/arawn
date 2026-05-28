@@ -5,7 +5,7 @@ use std::pin::Pin;
 
 use arawn_core::{Message, Session};
 use arawn_service::{
-    ArawnService, EngineEvent, PromotionResult, ServiceError, SessionDetail, SessionInfo,
+    ArawnService, EngineEvent, ServiceError, SessionDetail, SessionInfo,
 };
 use arawn_storage::JsonlMessageStore;
 use tokio::sync::mpsc;
@@ -359,58 +359,6 @@ impl LocalService {
                 Ok(())
             }
         }
-    }
-
-    pub(super) async fn promote_session_inner(
-        &self,
-        session_id: Uuid,
-        lens_name: &str,
-    ) -> Result<PromotionResult, ServiceError> {
-        let (ws_id, ws_name, ws_dir, scratch_workspace, target_workspace) = {
-            let store = self.store.lock().unwrap();
-            let ws = store
-                .find_lens_by_name(lens_name)?
-                .ok_or_else(|| ServiceError::NotFound(format!("lens '{lens_name}'")))?;
-
-            let ws_dir = arawn_storage::lens_dir_name(&ws.name, ws.id);
-            let scratch_ws = store
-                .sandbox_for("scratch", session_id, true)
-                .join("workspace");
-            let target_ws = store
-                .sandbox_for(&ws_dir, session_id, false)
-                .join("workspace");
-
-            (ws.id, ws.name, ws_dir, scratch_ws, target_ws)
-        };
-
-        let msg_store = arawn_storage::JsonlMessageStore::new(&self.data_dir);
-        msg_store
-            .move_session(session_id, "scratch", &ws_dir)
-            .await?;
-
-        let sqlite_result = {
-            let store = self.store.lock().unwrap();
-            store.promote_session_metadata(session_id, ws_id)
-        };
-        if let Err(e) = sqlite_result {
-            warn!(error = %e, "SQLite update failed during promotion, rolling back file move");
-            let _ = msg_store.move_session(session_id, &ws_dir, "scratch").await;
-            return Err(e.into());
-        }
-
-        if scratch_workspace.exists() {
-            let _ =
-                tokio::fs::create_dir_all(target_workspace.parent().unwrap_or(&target_workspace))
-                    .await;
-            if let Err(e) = tokio::fs::rename(&scratch_workspace, &target_workspace).await {
-                warn!(error = %e, "workspace rename failed during promotion, files remain in scratch");
-            }
-        }
-
-        Ok(PromotionResult {
-            lens_id: ws_id.to_string(),
-            lens_name: ws_name,
-        })
     }
 
     pub(super) async fn resolve_user_input_inner(

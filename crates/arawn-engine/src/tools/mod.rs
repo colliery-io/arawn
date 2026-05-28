@@ -48,7 +48,7 @@ pub use glob::GlobTool;
 pub use grep::GrepTool;
 pub use lens::{
     BindBackfillHook, LensBindTool, LensCreateTool, LensDeleteTool, LensDescribeTool, LensListTool,
-    LensPromoteTool, LensProposeOntologyTool, LensShowTool, LensSwitchTool, LensUnbindTool,
+    LensProposeOntologyTool, LensShowTool, LensUnbindTool,
     SessionLens, UnbindHook,
 };
 pub use memory_search::MemorySearchTool;

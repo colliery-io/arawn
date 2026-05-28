@@ -8,27 +8,23 @@ use tracing::debug;
 use arawn_embed::Embedder;
 use arawn_memory::{Entity, EntityType, MemoryStore, RelationType};
 
-use crate::lens_router::{LensMemoryRouter, MemoryHandle};
+use crate::lens_router::MemoryHandle;
 use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput};
 
-/// Tool that searches the knowledge base using composite retrieval:
+/// Tool that searches the global memory store using composite retrieval:
 /// semantic similarity + FTS5 text search + tag filtering + graph expansion.
+///
+/// ARAWN-I-0061: memory is global; this tool intentionally does NOT roam lens
+/// KBs. `signal_*` owns the cross-lens read path.
 pub struct MemorySearchTool {
     memory: MemoryHandle,
-    router: Option<Arc<LensMemoryRouter>>,
     embedder: Option<Arc<dyn Embedder>>,
 }
 
 impl MemorySearchTool {
     pub fn new(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self {
-        let memory = memory.into();
-        let router = match &memory {
-            MemoryHandle::Routed(r) => Some(Arc::clone(r)),
-            MemoryHandle::Fixed(_) => None,
-        };
         Self {
-            memory,
-            router,
+            memory: memory.into(),
             embedder,
         }
     }
@@ -41,11 +37,12 @@ impl Tool for MemorySearchTool {
     }
 
     fn description(&self) -> &str {
-        "Search the knowledge base for stored facts, decisions, conventions, preferences, and notes \
-         **across all your lenses** plus the global tier; each hit shows the lens it came from. \
-         Uses semantic similarity + text search for best recall. Pass `scope` (a lens name, \
-         `global`, or `lens`) to narrow.\n\n\
-         Use this when you need to check what's already known before making assumptions."
+        "Search global **memory** — facts, decisions, conventions, preferences, people, and notes \
+         deliberately remembered as generally-known statements about the user / their world. \
+         Memory is global; it is not scoped to a lens. Uses semantic similarity + text search for \
+         best recall.\n\n\
+         Use this to check what's already known before making assumptions. To recall extracted \
+         activity from feeds across lenses, use `signal_search` instead."
     }
 
     fn is_read_only(&self) -> bool {
@@ -73,12 +70,6 @@ impl Tool for MemorySearchTool {
                     "type": "array",
                     "items": { "type": "string" },
                     "description": "Filter by tag intersection"
-                },
-                "scope": {
-                    "type": "string",
-                    "description": "What to search: 'all' (global + every lens, default), \
-                                    'global' (shared tier only), 'lens' (every lens, no global), \
-                                    or a lens name to restrict to one"
                 },
                 "limit": {
                     "type": "integer",
@@ -114,11 +105,6 @@ impl Tool for MemorySearchTool {
                 .collect()
         });
 
-        let scope = params
-            .get("scope")
-            .and_then(|v| v.as_str())
-            .unwrap_or("all");
-
         let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
 
         let include_related = params
@@ -126,140 +112,88 @@ impl Tool for MemorySearchTool {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
-        // Collect results from each store, keyed by entity ID to deduplicate
+        // ARAWN-I-0061: memory is global. Search the global store only; the
+        // cross-lens read path lives on the `signal_*` tools.
+        let manager = self
+            .memory
+            .manager()
+            .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?;
+        let store: &Arc<MemoryStore> = &manager.global;
+
+        // Collect results, keyed by entity ID to deduplicate FTS + semantic.
         let mut scored: HashMap<uuid::Uuid, ScoredEntity> = HashMap::new();
 
-        // Resolve which stores to search (ARAWN-I-0060: lens-agnostic reads).
-        //   "global"        → global tier only
-        //   "lens"          → every lens KB (no global)
-        //   "all" | "both"  → global + every lens  (default)
-        //   <lens-name>     → that one lens's KB
-        // Routed handles enumerate all lenses; a Fixed handle (tests) falls back
-        // to its single manager's tiers.
-        let stores_to_search: Vec<(String, Arc<MemoryStore>)> =
-            if let Some(router) = self.router.as_ref() {
-                let global = || -> Result<Arc<MemoryStore>, ToolError> {
-                    router
-                        .current()
-                        .map(|m| Arc::clone(&m.global))
-                        .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))
-                };
-                let all_lenses = || {
-                    router
-                        .all_lens_managers()
-                        .into_iter()
-                        .map(|(name, mgr)| (name, Arc::clone(&mgr.lens)))
-                        .collect::<Vec<_>>()
-                };
-                match scope {
-                    "global" => vec![("global".to_string(), global()?)],
-                    "lens" => all_lenses(),
-                    "all" | "both" => {
-                        let mut v = vec![("global".to_string(), global()?)];
-                        v.extend(all_lenses());
-                        v
-                    }
-                    name => {
-                        let mgr = router.for_lens(name).map_err(|e| {
-                            ToolError::ExecutionFailed(format!("lens `{name}`: {e}"))
+        // FTS5 search.
+        let fts_results = if let Some(et) = entity_type {
+            store.search_by_type(query, et, limit * 2)
+        } else {
+            store.search(query, limit * 2)
+        }
+        .map_err(|e| ToolError::ExecutionFailed(format!("FTS search error: {e}")))?;
+
+        for (rank, entity) in fts_results.iter().enumerate() {
+            let fts_score = 1.0 / (1.0 + rank as f32); // rank-based score
+            let confidence = entity.confidence_score();
+            let entry = scored.entry(entity.id).or_insert_with(|| ScoredEntity {
+                entity: entity.clone(),
+                fts_score: 0.0,
+                semantic_score: 0.0,
+                confidence,
+                related: Vec::new(),
+            });
+            entry.fts_score = fts_score;
+        }
+
+        // Semantic search (if embedder available).
+        if let Some(ref embedder) = self.embedder {
+            match embedder.embed(query).await {
+                Ok(query_embedding) => {
+                    let sim_results = store
+                        .search_similar(&query_embedding, limit * 2)
+                        .map_err(|e| {
+                            ToolError::ExecutionFailed(format!("vector search error: {e}"))
                         })?;
-                        vec![(name.to_string(), Arc::clone(&mgr.lens))]
-                    }
-                }
-            } else {
-                // Fixed handle (tests / non-routed): legacy single-manager tiers.
-                let manager = self
-                    .memory
-                    .manager()
-                    .map_err(|e| ToolError::ExecutionFailed(format!("memory routing: {e}")))?;
-                match scope {
-                    "global" => vec![("global".to_string(), Arc::clone(&manager.global))],
-                    "lens" => vec![("lens".to_string(), Arc::clone(&manager.lens))],
-                    _ => vec![
-                        ("global".to_string(), Arc::clone(&manager.global)),
-                        ("lens".to_string(), Arc::clone(&manager.lens)),
-                    ],
-                }
-            };
 
-        for (lens_label, store) in &stores_to_search {
-            // FTS5 search
-            let fts_results = if let Some(et) = entity_type {
-                store.search_by_type(query, et, limit * 2)
-            } else {
-                store.search(query, limit * 2)
-            }
-            .map_err(|e| ToolError::ExecutionFailed(format!("FTS search error: {e}")))?;
-
-            for (rank, entity) in fts_results.iter().enumerate() {
-                let fts_score = 1.0 / (1.0 + rank as f32); // rank-based score
-                let confidence = entity.confidence_score();
-                let entry = scored.entry(entity.id).or_insert_with(|| ScoredEntity {
-                    entity: entity.clone(),
-                    lens: lens_label.clone(),
-                    fts_score: 0.0,
-                    semantic_score: 0.0,
-                    confidence,
-                    related: Vec::new(),
-                });
-                entry.fts_score = fts_score;
-            }
-
-            // Semantic search (if embedder available)
-            if let Some(ref embedder) = self.embedder {
-                match embedder.embed(query).await {
-                    Ok(query_embedding) => {
-                        let sim_results = store
-                            .search_similar(&query_embedding, limit * 2)
-                            .map_err(|e| {
-                                ToolError::ExecutionFailed(format!("vector search error: {e}"))
-                            })?;
-
-                        for result in &sim_results {
-                            let semantic_score = 1.0 / (1.0 + result.distance);
-                            if let Ok(Some(entity)) = store.get_entity(result.entity_id) {
-                                if entity.superseded {
-                                    continue;
-                                }
-                                if let Some(et) = entity_type
-                                    && entity.entity_type != et
-                                {
-                                    continue;
-                                }
-                                let confidence = entity.confidence_score();
-                                let entry =
-                                    scored.entry(entity.id).or_insert_with(|| ScoredEntity {
-                                        entity: entity.clone(),
-                                        lens: lens_label.clone(),
-                                        fts_score: 0.0,
-                                        semantic_score: 0.0,
-                                        confidence,
-                                        related: Vec::new(),
-                                    });
-                                entry.semantic_score = semantic_score;
+                    for result in &sim_results {
+                        let semantic_score = 1.0 / (1.0 + result.distance);
+                        if let Ok(Some(entity)) = store.get_entity(result.entity_id) {
+                            if entity.superseded {
+                                continue;
                             }
+                            if let Some(et) = entity_type
+                                && entity.entity_type != et
+                            {
+                                continue;
+                            }
+                            let confidence = entity.confidence_score();
+                            let entry = scored.entry(entity.id).or_insert_with(|| ScoredEntity {
+                                entity: entity.clone(),
+                                fts_score: 0.0,
+                                semantic_score: 0.0,
+                                confidence,
+                                related: Vec::new(),
+                            });
+                            entry.semantic_score = semantic_score;
                         }
                     }
-                    Err(e) => {
-                        debug!(error = %e, "semantic search failed (falling back to FTS only)");
-                    }
                 }
-            }
-
-            // Tag filter
-            if let Some(ref tag_list) = tags {
-                let tag_results = store
-                    .search_by_tags(tag_list, limit * 2)
-                    .map_err(|e| ToolError::ExecutionFailed(format!("tag search error: {e}")))?;
-
-                // Remove entities that don't match tags
-                let tag_ids: std::collections::HashSet<_> =
-                    tag_results.iter().map(|e| e.id).collect();
-                scored.retain(|id, _| tag_ids.contains(id));
+                Err(e) => {
+                    debug!(error = %e, "semantic search failed (falling back to FTS only)");
+                }
             }
         }
 
-        // Compute composite score and sort
+        // Tag filter.
+        if let Some(ref tag_list) = tags {
+            let tag_results = store
+                .search_by_tags(tag_list, limit * 2)
+                .map_err(|e| ToolError::ExecutionFailed(format!("tag search error: {e}")))?;
+
+            let tag_ids: std::collections::HashSet<_> = tag_results.iter().map(|e| e.id).collect();
+            scored.retain(|id, _| tag_ids.contains(id));
+        }
+
+        // Compute composite score and sort.
         let mut results: Vec<ScoredEntity> = scored.into_values().collect();
         results.sort_by(|a, b| {
             b.composite()
@@ -268,22 +202,20 @@ impl Tool for MemorySearchTool {
         });
         results.truncate(limit);
 
-        // Graph expansion
+        // Graph expansion (still scoped to the global store).
         if include_related && !results.is_empty() {
             for result in &mut results {
-                for (_lens, store) in &stores_to_search {
-                    if let Ok(relations) = store.get_relations(result.entity.id) {
-                        for rel in relations {
-                            let neighbor_id = if rel.source_id == result.entity.id {
-                                rel.target_id
-                            } else {
-                                rel.source_id
-                            };
-                            if let Ok(Some(neighbor)) = store.get_entity(neighbor_id) {
-                                result
-                                    .related
-                                    .push((rel.relation_type, neighbor.title.clone()));
-                            }
+                if let Ok(relations) = store.get_relations(result.entity.id) {
+                    for rel in relations {
+                        let neighbor_id = if rel.source_id == result.entity.id {
+                            rel.target_id
+                        } else {
+                            rel.source_id
+                        };
+                        if let Ok(Some(neighbor)) = store.get_entity(neighbor_id) {
+                            result
+                                .related
+                                .push((rel.relation_type, neighbor.title.clone()));
                         }
                     }
                 }
@@ -308,11 +240,10 @@ impl Tool for MemorySearchTool {
             };
 
             output.push_str(&format!(
-                "{}. **[{}]** {} (lens: {}, score: {:.2}, confidence: {:.2}, reinforced: {}x){}\n",
+                "{}. **[{}]** {} (score: {:.2}, confidence: {:.2}, reinforced: {}x){}\n",
                 i + 1,
                 r.entity.entity_type.as_str(),
                 r.entity.title,
-                r.lens,
                 r.composite(),
                 r.confidence,
                 r.entity.reinforcement_count,
@@ -335,8 +266,6 @@ impl Tool for MemorySearchTool {
 
 struct ScoredEntity {
     entity: Entity,
-    /// Source lens for this hit ("global" for the shared tier).
-    lens: String,
     fts_score: f32,
     semantic_score: f32,
     confidence: f32,
@@ -371,10 +300,11 @@ mod tests {
     }
 
     fn populate(mgr: &MemoryManager) {
-        mgr.lens
+        // ARAWN-I-0061: memory is global; seed all into the global tier.
+        mgr.global
             .insert_entity(&Entity::new(EntityType::Fact, "Rust ownership model"))
             .unwrap();
-        mgr.lens
+        mgr.global
             .insert_entity(
                 &Entity::new(EntityType::Decision, "Use Rust for backend")
                     .with_content("Decided in sprint 5"),
@@ -386,7 +316,7 @@ mod tests {
                     .with_confidence(ConfidenceSource::Stated),
             )
             .unwrap();
-        mgr.lens
+        mgr.global
             .insert_entity(
                 &Entity::new(EntityType::Fact, "Python GIL limitations")
                     .with_tags(vec!["python".into()]),
@@ -395,7 +325,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn search_fts_both_tiers() {
+    async fn search_finds_global_memory() {
         let (_tmp, mgr, ctx) = setup();
         populate(&mgr);
         let tool = MemorySearchTool::new(mgr, None);
@@ -423,17 +353,21 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn search_global_only() {
+    async fn search_ignores_lens_tier() {
+        // ARAWN-I-0061: anything in the per-lens KB (extractor signals) must NOT
+        // surface through memory_search — that's signal_* territory.
         let (_tmp, mgr, ctx) = setup();
-        populate(&mgr);
+        mgr.lens
+            .insert_entity(&Entity::new(EntityType::Fact, "Signal in a lens"))
+            .unwrap();
         let tool = MemorySearchTool::new(mgr, None);
 
         let result = tool
-            .execute(&ctx, json!({"query": "terse", "scope": "global"}))
+            .execute(&ctx, json!({"query": "Signal"}))
             .await
             .unwrap();
 
-        assert!(result.content.contains("terse"));
+        assert!(result.content.contains("No matching"));
     }
 
     #[tokio::test]

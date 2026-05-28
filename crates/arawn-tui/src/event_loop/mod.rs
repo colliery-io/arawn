@@ -426,20 +426,20 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                             crate::command::CommandResult::MemorySummary => {
                                 if let Ok(resp) = client.request_response("get_memory_summary", serde_json::json!({})).await
                                     && let Some(result) = resp.get("result") {
-                                            let mut output = String::from("**Knowledge Base**\n\n");
-                                            for (label, key) in [("Global", "global"), ("Lens", "lens")] {
-                                                if let Some(tier) = result.get(key) {
-                                                    let total = tier.get("total").and_then(|t| t.as_u64()).unwrap_or(0);
-                                                    output.push_str(&format!("| {label} | {total} entities |\n|---|---|\n"));
-                                                    if let Some(by_type) = tier.get("by_type").and_then(|b| b.as_array()) {
-                                                        for entry in by_type {
-                                                            let et = entry.get("type").and_then(|t| t.as_str()).unwrap_or("?");
-                                                            let count = entry.get("count").and_then(|c| c.as_u64()).unwrap_or(0);
-                                                            output.push_str(&format!("| {et} | {count} |\n"));
-                                                        }
+                                            // ARAWN-I-0061: memory is global; no per-lens summary
+                                            // (signals live in lens KBs and are surfaced via signal_*).
+                                            let mut output = String::from("**Memory** (global statements of fact and behavioral tuning)\n\n");
+                                            if let Some(tier) = result.get("global") {
+                                                let total = tier.get("total").and_then(|t| t.as_u64()).unwrap_or(0);
+                                                output.push_str(&format!("| Global | {total} entities |\n|---|---|\n"));
+                                                if let Some(by_type) = tier.get("by_type").and_then(|b| b.as_array()) {
+                                                    for entry in by_type {
+                                                        let et = entry.get("type").and_then(|t| t.as_str()).unwrap_or("?");
+                                                        let count = entry.get("count").and_then(|c| c.as_u64()).unwrap_or(0);
+                                                        output.push_str(&format!("| {et} | {count} |\n"));
                                                     }
-                                                    output.push('\n');
                                                 }
+                                                output.push('\n');
                                             }
                                             app.messages.push(ChatMessage::new(ChatRole::System, output));
                                         }
@@ -506,36 +506,6 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 }
                                 app.dirty = true;
                             }
-                            crate::command::CommandResult::LensSwitch(name) => {
-                                // Refresh lens list and find by name
-                                if let Ok(lenses) = client.list_lenses().await {
-                                    app.lenses = lenses;
-                                    if let Some(ws) = app.lenses.iter().find(|w| w.name == name).cloned() {
-                                        app.current_lens = Some(ws.clone());
-                                        if let Ok(sessions) = client.list_sessions(Some(ws.id)).await {
-                                            app.sessions = sessions;
-                                        }
-                                        if app.sessions.is_empty() {
-                                            if let Ok(session) = client.create_session(Some(ws.id)).await {
-                                                app.current_session = Some(session.clone());
-                                                app.sessions.push(session);
-                                                app.messages.clear();
-                                                app.streaming_text.clear();
-                                            }
-                                        } else {
-                                            let session = app.sessions[0].clone();
-                                            app.current_session = Some(session.clone());
-                                            if let Ok(detail) = client.load_session(session.id).await {
-                                                app.load_session_messages(&detail);
-                                            }
-                                        }
-                                        app.messages.push(ChatMessage::new(ChatRole::System, format!("Switched to lens '{name}'")));
-                                    } else {
-                                        app.messages.push(ChatMessage::new(ChatRole::System, format!("Lens '{name}' not found")));
-                                    }
-                                }
-                                app.dirty = true;
-                            }
                             crate::command::CommandResult::SessionNew => {
                                 let ws_id = app.current_lens.as_ref().map(|ws| ws.id);
                                 if let Ok(session) = client.create_session(ws_id).await {
@@ -558,34 +528,6 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                     output.push_str(&format!("{marker}{id_short}  {date}\n"));
                                 }
                                 app.messages.push(ChatMessage::new(ChatRole::System, output));
-                                app.dirty = true;
-                            }
-                            crate::command::CommandResult::PromoteSession(ws_name) => {
-                                if let Some(ref session) = app.current_session {
-                                    let params = serde_json::json!({
-                                        "session_id": session.id.to_string(),
-                                        "lens_name": ws_name,
-                                    });
-                                    if let Ok(resp) = client.request_response("promote_session", params).await {
-                                            if resp.get("result").and_then(|r| r.get("status")).and_then(|s| s.as_str()) == Some("promoted") {
-                                                // Refresh state
-                                                if let Ok(lenses) = client.list_lenses().await {
-                                                    app.lenses = lenses;
-                                                    if let Some(ws) = app.lenses.iter().find(|w| w.name == ws_name).cloned() {
-                                                        app.current_lens = Some(ws.clone());
-                                                        if let Ok(sessions) = client.list_sessions(Some(ws.id)).await {
-                                                            app.sessions = sessions;
-                                                        }
-                                                    }
-                                                }
-                                                app.messages.push(ChatMessage::new(ChatRole::System, format!("Session promoted to lens '{ws_name}'")));
-                                            } else if let Some(err) = resp.get("error").and_then(|e| e.get("message")).and_then(|m| m.as_str()) {
-                                                app.messages.push(ChatMessage::new(ChatRole::System, format!("Error: {err}")));
-                                            }
-                                        }
-                                } else {
-                                    app.messages.push(ChatMessage::new(ChatRole::System, "No active session to promote".to_string()));
-                                }
                                 app.dirty = true;
                             }
                             crate::command::CommandResult::SetPermissionMode(mode) => {
