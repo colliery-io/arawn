@@ -2,13 +2,12 @@
 
 *Explanation. Why arawn's persona is a lens attribute. ARAWN-I-0035's design.*
 
-> **Superseded for the chat persona (ARAWN-I-0060).** Since chat became
-> lens-agnostic — a conversation reads across *all* lenses rather than sitting
-> inside one — there is no single "active lens" to take a persona from. The chat
-> now always uses the default `assistant` persona. The `identity_profile` column
-> below still exists and is settable (and stays meaningful for the multi-user
-> AWEN model), but it **no longer drives the chat system prompt**. The rest of
-> this page documents the original ARAWN-I-0035 design for context.
+> **Historical — the chat persona is always `assistant` (ARAWN-I-0060 / I-0061).**
+> Chat is not lens-scoped: every session reads signals across all lenses and
+> draws on global memory. There is no "active lens" for the chat to take a
+> persona from, and the `identity_profile` column no longer drives the system
+> prompt. The column itself is dropped from the lens model; what follows is the
+> original ARAWN-I-0035 design, kept for context.
 
 A few months into building arawn, three parallel design reviews (visual, interaction, identity) all converged on the same root finding: arawn read like a coding REPL with OAuth buttons bolted on, not the personal agentic assistant the vision describes. The system prompt opened with the assistant frame and then immediately reframed everything in terms of software engineering tasks. The CLI's `--help` literally said "LLM-powered coding assistant." The status bar surfaced model + token usage, never the user's life.
 

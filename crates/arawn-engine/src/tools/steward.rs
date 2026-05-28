@@ -2,10 +2,10 @@
 //! — agent-facing surface over the steward's journal. Phase 5 of I-0040
 //! (T-0259).
 //!
-//! All three operate on the active lens by default and accept an
-//! optional `lens` arg to target a named one. Rollback is the
-//! only one that mutates state; it dispatches per-subroutine inverse
-//! via `arawn_steward::rollback::apply_inverse`.
+//! All three default to the session's current lens (which defaults to
+//! `scratch`) and accept an optional `lens` arg to target a named one.
+//! Rollback is the only one that mutates state; it dispatches per-subroutine
+//! inverse via `arawn_steward::rollback::apply_inverse`.
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -119,9 +119,9 @@ impl Tool for LensJournalTool {
     }
 
     fn description(&self) -> &str {
-        "List recent steward actions for the active lens (or one passed via `lens`). \
-         Shows merges, deletes, and pending proposals with enough payload to inspect what the \
-         steward did."
+        "List recent steward actions for a lens (defaults to the session's current lens — \
+         `scratch` if none — or pass `lens=<name>`). Shows merges, deletes, and pending proposals \
+         with enough payload to inspect what the steward did."
     }
 
     fn is_read_only(&self) -> bool {

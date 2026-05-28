@@ -2,7 +2,7 @@
 
 *Reference. The agent tools that read from and curate a lens's palace.*
 
-These tools default to the **active** lens (set via `/lens switch <name>`) and accept an explicit `lens` argument to query a different one ad-hoc.
+These tools read **across every lens** by default (each hit labeled with the source lens) and accept an explicit `lens` argument to narrow to one.
 
 For the CLI side (slash commands + slug rules), see [lens CLI reference](./lens-cli.md). For curation walkthroughs, see [curate a lens](../how-to/curate-a-lens.md).
 
@@ -43,15 +43,15 @@ Chronological slice. Orders by `created_at` desc within an optional `since`/`unt
 signal_timeline { "since": "2026-04-01T00:00:00Z", "limit": 25 }
 ```
 
-Useful for "what's been happening in this lens lately."
+Useful for "what's been happening across my lenses lately."
 
 ### `lens_show`
 
-Returns a lens's metadata — description, bindings, tag ontology, identity profile. Defaults to the session's write-target lens; pass a name for another.
+Returns a lens's metadata — description, bindings, tag ontology. Pass a lens name to inspect a specific one.
 
 ```text
-lens_show { } → { name, display_name, description, bindings,
-                        archived, tags_ontology: [...], identity_profile, ... }
+lens_show { "name": "work" } → { name, display_name, description, bindings,
+                                  archived, tags_ontology: [...], ... }
 ```
 
 Useful before a tag-filtered search when you're not sure what tags exist.
@@ -64,11 +64,9 @@ Source: `crates/arawn-engine/src/tools/lens.rs`.
 |---|---|
 | `lens_new` | Create a lens and walk through ontology proposal. |
 | `lens_list` | List active (non-archived) lenses. |
-| `lens_switch` | Set the write-target lens (where new learnings file; reads stay cross-lens). |
-| `lens_describe` | Update description, display_name, or `identity_profile`. |
+| `lens_describe` | Update description or display_name. |
 | `lens_bind` | Bind a feed by id, or `github:repo:owner/name` / `github:org:owner`. |
 | `lens_unbind` | Remove a binding. |
-| `lens_promote` | Promote scratch session to a named lens. |
 | `lens_delete` | Soft-delete (sets `archived = true`). Reversible by re-adding. |
 
 `lens_propose_ontology` is a helper used internally by the `lens_new` flow; the agent rarely calls it directly.

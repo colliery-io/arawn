@@ -6,7 +6,7 @@ Source: `crates/arawn-tui/src/command.rs::register_builtins` (~line 72).
 
 ## Quick alphabetical index
 
-`/agents` · `/autonomy` · `/brief` · `/clear` · `/connect` · `/copy` · `/disconnect` · `/export` · `/feeds` · `/forget` · `/help` · `/integrations` · `/lens` · `/mcp` · `/memory` · `/permissions` · `/plugins` · `/promote` · `/remember` · `/retro` · `/session` · `/skills` · `/today` · `/todo` · `/tools` · `/usage` · `/watch` · `/week` · `/workflows`
+`/agents` · `/autonomy` · `/brief` · `/clear` · `/connect` · `/copy` · `/disconnect` · `/export` · `/feeds` · `/forget` · `/help` · `/integrations` · `/lens` · `/mcp` · `/memory` · `/permissions` · `/plugins` · `/remember` · `/retro` · `/session` · `/skills` · `/today` · `/todo` · `/tools` · `/usage` · `/watch` · `/week` · `/workflows`
 
 Plus any `/skill-name` registered by user-invocable skills (see [skills reference](./skills.md)).
 
@@ -68,15 +68,14 @@ List registered integrations and their connection state. Shows tool count per co
 
 > **Note:** all extended lens lifecycle operations (bind, unbind, show, describe, delete) are agent tools, not slash subcommands — ask the agent to perform them.
 
-### `/lens create <name> | list | switch <name>`
+### `/lens create <name> | list`
 
-Manage lenses. The TUI dispatcher accepts three subcommands:
+Manage lenses. The TUI dispatcher accepts two subcommands:
 
-- `/lens create <name>` — create a lens; agent walks through ontology proposal.
+- `/lens create <name>` — create a lens (standing, memory-aware extractor); the agent walks through ontology proposal.
 - `/lens list` — list active lenses.
-- `/lens switch <name>` — set the write-target lens (where new learnings file). Reads stay cross-lens.
 
-Other lifecycle operations (bind, unbind, show, describe, delete) are exposed as agent tools — ask the agent in chat (e.g. *"bind the `work` lens to feed `gmail-inbox-me`"*) and it calls `lens_bind`, `lens_unbind`, etc. See [lens tools reference](./lens-tools.md) and [lens CLI reference](./lens-cli.md).
+Lenses are not switched into — chat reads signals across every lens, and memory is global. Other lifecycle operations (bind, unbind, show, describe, delete) are exposed as agent tools — ask the agent in chat (e.g. *"bind the `work` lens to feed `gmail-inbox-me`"*) and it calls `lens_bind`, `lens_unbind`, etc. See [lens tools reference](./lens-tools.md) and [lens CLI reference](./lens-cli.md).
 
 ### `/mcp`
 
@@ -84,7 +83,7 @@ List connected MCP servers. See [MCP reference](./mcp.md).
 
 ### `/memory`
 
-Show a summary of the knowledge base for the current scope (global + active lens). See [memory model reference](./memory-model.md).
+Show a summary of the global memory store — statements of fact and behavioral tuning the agent treats as always-known. (Signals extracted from feeds into lens KBs are surfaced separately via `signal_*`; they don't appear here.) See [memory model reference](./memory-model.md).
 
 ### `/permissions`
 
@@ -93,10 +92,6 @@ Show the active permission rules and recent allow/deny/ask decisions for the ses
 ### `/plugins`
 
 List loaded plugins. See [plugins reference](./plugins.md).
-
-### `/promote <name>`
-
-Promote a scratch session to a named lens. The session's history, memory, and feed bindings move under the new lens.
 
 ### `/remember <fact>`
 

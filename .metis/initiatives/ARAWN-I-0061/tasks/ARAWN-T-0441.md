@@ -4,14 +4,14 @@ level: task
 title: "T-F: Truth-up tool descriptions and docs to the memory/signal/lens model"
 short_code: "ARAWN-T-0441"
 created_at: 2026-05-27T20:18:49.413618+00:00
-updated_at: 2026-05-27T20:18:49.413618+00:00
+updated_at: 2026-05-28T14:48:58.420475+00:00
 parent: ARAWN-I-0061
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -47,6 +47,10 @@ view" / write-target / "reads-all-writes-one" framing.
   is documented once, canonically.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] `rg -i "active (lens|workstream)|scoped to|write-target|reads-all" docs/src crates`
       returns only correct/intentional usages.
 - [ ] `signal_*` descriptions say cross-lens + source-labeled; no "active lens."
@@ -58,4 +62,41 @@ Follows the behavior tasks ([[ARAWN-T-0436]], [[ARAWN-T-0437]], [[ARAWN-T-0438]]
 so docs describe shipped behavior.
 
 ## Status Updates
-*To be added during implementation*
+
+**2026-05-28 — Done.** Truth-up across user/LLM-facing surfaces.
+
+LLM-facing descriptions: `signal.rs` module doc + `signal_query` +
+`signal_timeline` rewritten (cross-lens, source-labeled, `lens=` narrows);
+`steward.rs` module doc and `lens_journal` description reframed away from "the
+active lens" to "the session's current lens (defaults to `scratch`)".
+
+Canonical docs:
+- `explanation/lenses.md` rewritten around memory/signal/lens — a lens is a
+  standing, memory-aware extractor; reads roam every lens's signal stream;
+  lenses aren't switched into.
+- `explanation/memory-design.md` rewritten — memory is one global store, signals
+  are extracted into per-lens palaces, the two are different concerns. Replaced
+  the old two-tier scope-locking discussion with a comparison table.
+- `explanation/the-agent-loop.md` system-prompt section reframed — persona
+  always `assistant`, only global memory injected, no write-target language.
+- `explanation/what-is-arawn.md` agent-loop diagram updated.
+- `explanation/identity-by-lens.md` banner sharpened — fully historical.
+- `explanation/ceremonies.md` "scopes to the active lens" → "runs per-lens".
+
+Reference docs: `lens-tools.md` opener + `lens_show` defaults + lifecycle
+table; `lens-cli.md` (drop `/lens switch` and `/promote` sections, reword
+scratch); `slash-commands.md` (drop `/promote` from index + body, drop
+`/lens switch`, reword `/memory`); `agent-tools.md` (Signal table reframed
+cross-lens, lifecycle drops switch/promote); `todos-tools.md`,
+`shell-sandbox.md` "active lens" → "session's current lens (defaults to
+scratch)"; `tutorials/first-lens.md` stale status-bar line replaced.
+
+UAT scenarios (`tests/uat.rs`): every "Switch to/back to" / "First call
+lens_switch" instruction rewritten to either pass `lens=<name>` on the read
+tools or phrase as "working in the `<name>` lens"; expectations updated.
+
+Residual `rg` matches: plural list-context "active lenses" (= non-archived)
+and internal-infrastructure comments about `SessionLens` as a session-default
+shim. Both correct/intentional.
+
+Verification: `angreal check workspace` exit 0; `angreal docs build` clean.

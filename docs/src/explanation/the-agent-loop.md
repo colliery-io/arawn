@@ -11,11 +11,10 @@ You type a message.
    │
    ▼
 1. System prompt assembly
-   - identity prompt (assistant vs coding — lens-dependent)
-   - active lens metadata
-   - memory entries that match the user's text
+   - identity prompt (always `assistant` — persona is not per-lens)
+   - global memory entries that match the user's text
    - the live tool registry (built-ins + integration tools + plugin tools + MCP tools)
-   - any `arawn.md` directives in the lens root or data_dir
+   - any `arawn.md` directives in the data_dir
    │
    ▼
 2. LLM call
@@ -40,10 +39,9 @@ You type a message.
 
 The system prompt isn't static. Several pieces change between turns:
 
-- The **write-target lens** can change with `/lens switch` — it directs where new learnings file, not what the chat reads (search is always cross-lens). The chat persona is always the default `assistant` and does **not** switch with the lens (see [identity by lens](./identity-by-lens.md)).
-- **Memory entries** that match the current user message get injected as context. If you ask "what did we decide about Postgres?", the memory loader pre-fetches relevant entities so the LLM sees them in-context.
+- **Global memory entries** that match the current user message get injected as context. If you ask "what did we decide about Postgres?", the memory loader pre-fetches relevant entities so the LLM sees them in-context. (The chat persona is always `assistant`; lenses do not change it — see [identity by lens](./identity-by-lens.md).)
 - **Tools** change as integrations connect/disconnect, plugins load/unload, MCP servers come and go. Hot-reload means the registry can change mid-session.
-- **`arawn.md` files** in the lens root and the data directory carry persistent behavioral directives. They're injected into every turn so the agent stays consistent across sessions.
+- **`arawn.md` files** in the data directory carry persistent behavioral directives. They're injected into every turn so the agent stays consistent across sessions.
 
 The cost: a few hundred bytes of redundant assembly per turn. The win: the agent's view of the world is always current.
 

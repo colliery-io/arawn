@@ -23,7 +23,7 @@ Examples — valid: `work`, `home`, `arawn-dev`, `q3_2026`, `7-falcon`. Invalid:
 
 ## Reserved slugs
 
-- `scratch` — the default lens for one-off / ad-hoc sessions. Auto-created on first boot at `<data_dir>/lenses/scratch/`. Cannot be deleted. Sessions in scratch can be promoted to a named lens via `/promote <name>` or `lens_promote`.
+- `scratch` — the default session context for one-off / ad-hoc chats. Auto-created on first boot at `<data_dir>/lenses/scratch/`. Cannot be deleted. Unlike a named lens, scratch runs no standing extractor of its own — it's just where a session lives when it isn't anchored to a topic.
 
 ## Lifecycle
 
@@ -41,8 +41,6 @@ Calls `lens_new`. The agent walks through an ontology proposal flow — proposes
   └── workspace/       # FS-isolated working directory for shell + file tools
 ```
 
-`identity_profile` defaults to `assistant` on create.
-
 ### List
 
 ```
@@ -51,24 +49,16 @@ Calls `lens_new`. The agent walks through an ontology proposal flow — proposes
 
 Calls `lens_list`. Returns active lenses. To include archived: use `lens_list { include_archived: true }` directly.
 
-### Switch
-
-```
-/lens switch <slug>
-```
-
-Sets the session's **write-target** lens — where new learnings file — until you switch again. It does **not** scope reads: `signal_*` / `memory_search` always search across every lens (pass `lens=` to narrow). Switching only redirects where future writes land.
-
 ### Show / bind / unbind / describe / delete (agent tools, not slash subcommands)
 
-The TUI dispatcher accepts only `/lens create | list | switch`. The remaining lifecycle operations are agent tools — ask the agent in chat ("bind the `work` lens to feed `gmail-inbox-me`") and it calls the matching `lens_*` tool. The tools and their JSON shapes:
+The TUI dispatcher accepts only `/lens create | list`. Lenses are not switched into — chat reads `signal_*` across every lens, and memory is global. The remaining lifecycle operations are agent tools — ask the agent in chat ("bind the `work` lens to feed `gmail-inbox-me`") and it calls the matching `lens_*` tool. The tools and their JSON shapes:
 
 | Tool | What it does |
 |---|---|
-| `lens_show { name }` | Returns metadata: description, bindings, tag ontology, identity profile, root_dir, archived state. |
+| `lens_show { name }` | Returns metadata: description, bindings, tag ontology, root_dir, archived state. |
 | `lens_bind { lens, uri }` | Bind a feed or GitHub URI (see schemes below). |
 | `lens_unbind { lens, uri }` | Remove a binding. |
-| `lens_describe { lens, ... }` | Update `description`, `display_name`, or `identity_profile`. |
+| `lens_describe { lens, ... }` | Update `description` or `display_name`. |
 | `lens_delete { lens }` | Soft-delete (sets `archived = true`). The data on disk is untouched. |
 
 URI schemes accepted by `lens_bind`:
@@ -80,14 +70,6 @@ URI schemes accepted by `lens_bind`:
 | `github:org:owner` | List all repos in the org, register one `github/repo-mirror` per repo, bind all. Org binds **supersede** per-repo binds in the same lens. |
 
 See [bind a lens to a feed](../how-to/bind-a-lens-to-a-feed.md).
-
-### Promote
-
-```
-/promote <slug>
-```
-
-Calls `lens_promote`. Takes the current scratch session and moves it under the named lens. Session history, memory entries created in this session, and the session's feed bindings all rebase. Useful when an ad-hoc session turns into ongoing work.
 
 ## Metadata fields
 

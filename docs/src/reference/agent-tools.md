@@ -72,13 +72,13 @@ See [memory model reference](./memory-model.md).
 
 ## Signal (palace query)
 
-Operate on the active lens's palace.
+Read across **every lens's** signal palace; each hit is labeled with its source lens. Pass `lens` to narrow to one.
 
 | Tool | Source | Description |
 |---|---|---|
-| `signal_search` | `signal.rs` | Hybrid search across extracted entities. |
-| `signal_query` | `signal.rs` | Filter by entity_type / tags / time window. |
-| `signal_timeline` | `signal.rs` | Chronological view of recent entities. |
+| `signal_search` | `signal.rs` | Hybrid search across extracted entities, cross-lens. |
+| `signal_query` | `signal.rs` | Filter by entity_type / tags / time window, cross-lens. |
+| `signal_timeline` | `signal.rs` | Chronological view of recent entities, cross-lens. |
 
 ## Feed search
 
@@ -96,12 +96,10 @@ Source: `lens.rs`.
 |---|---|
 | `lens_new` | Create a lens + ontology. |
 | `lens_list` | List active lenses. |
-| `lens_switch` | Set active lens. |
 | `lens_show` | Show lens details + bindings. |
-| `lens_describe` | Update description / display_name / identity_profile. |
+| `lens_describe` | Update description / display_name. |
 | `lens_bind` | Bind a feed (direct or `github:repo:` / `github:org:` URI). |
 | `lens_unbind` | Remove a binding. |
-| `lens_promote` | Promote scratch session to a lens. |
 | `lens_delete` | Soft-delete (archives). |
 | `lens_propose_ontology` | Helper used by the create flow. |
 

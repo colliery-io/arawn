@@ -156,5 +156,5 @@ The opinionated stance: ceremonies are part of arawn's identity, not a feature y
 - [Ceremonies tools reference](../reference/ceremonies-tools.md) — the tool family.
 - [Todos tools reference](../reference/todos-tools.md) — how ceremony items become todos.
 - [Workflows explanation](./workflows.md) — workflows are the daily ceremony's gather-phase engine.
-- [Lenses explanation](./lenses.md) — each ceremony scopes to the active lens.
+- [Lenses explanation](./lenses.md) — each ceremony runs per-lens over that lens's signal stream.
 - [What is arawn?](./what-is-arawn.md) — the vision ceremonies operationalize.

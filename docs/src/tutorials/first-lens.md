@@ -33,7 +33,7 @@ The agent walks you through a short ontology-proposal flow. It asks what the len
 
 > **About the ontology:** these tags are the *closed list* the extractor will use to label entities. Keep them broad enough to cover what shows up regularly. The steward can suggest new tags later via [`lens_refine`](../reference/steward-subroutines.md) — you don't need to get it perfect now.
 
-Once you confirm, the lens is created and arawn switches to it. The status bar shows `work` as the active lens.
+Once you confirm, the lens is created. It runs as a standing extractor over any feeds you bind to it — you don't need to "switch" into it. The chat reads signals from every lens (`signal_*`), so the `work` lens will surface in searches immediately.
 
 ## 2. Bind a feed
 

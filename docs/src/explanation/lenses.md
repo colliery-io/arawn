@@ -1,17 +1,41 @@
 # Lenses
 
-*Explanation. What a lens is, when to create one, how it relates to sessions/feeds/palaces/identity, and what scratch is for.*
+*Explanation. What a lens is, how memory / signals / lenses relate, when to create one, and what scratch is for.*
 
-A **lens** is a *refined view of your knowledge* — one ongoing concern (work, home, a project), defined by its own tag ontology and its own curated knowledge base. Feeds flow in; the extractor files typed entities under the relevant lens.
+A **lens** is a *standing, memory-aware extractor over your corpus*. You define
+one around an ongoing concern (work, home, a project, the people you manage)
+with its own prompt, tag ontology, and (optionally) the feeds it's bound to.
+Feeds flow into the system, and each lens's extractor continuously decides which
+incoming items are in its scope and what typed entities — its **signals** — they
+contribute to that lens's KB.
 
-The key thing about a lens is how a chat uses it: **reads roam, writes file into one.**
+You don't switch into a lens. There's no "active" lens for the chat. Lenses just
+*run*.
 
-- **Reading is lens-agnostic.** When you ask a question, search (`signal_search`, `memory_search`, …) spans **every lens** and the global tier at once, ranks the hits together, and labels each with the lens it came from. You don't "enter" a lens to see its knowledge — the chat sees across all of them and narrows only if you ask (`lens=<name>`).
-- **Writing goes to one lens.** New learnings (memory writes, extraction) file into the session's **write-target** lens — the one set by `/lens switch`. That's the only thing "switching" a lens changes: where new knowledge lands, not what you can recall.
+## Memory vs. signals vs. lenses
 
-So a lens is a *destination for knowledge and a vocabulary for it*, not a box you sit inside. (The multi-user, single-corpus version of this model is the separate **AWEN** project; in ARAWN each lens is still backed by its own on-disk KB.)
+The three concepts mean different things and stay separate:
 
-For the slug rules, lifecycle CLI, and metadata fields, see [lens CLI reference](../reference/lens-cli.md). For the agent-facing tools, see [lens tools reference](../reference/lens-tools.md). This page is about *why* lenses.
+- **Memory** is global. *Statements of fact and behavioral tuning that should be
+  generally known* — "Pat Collins is someone I manage", "prefer terse
+  responses", "we use Postgres 16 in production". Stored in `<data_dir>/memory.db`,
+  available to the chat and to every lens's extractor. `/remember` writes
+  memories; `/memory` views them; `memory_search` recalls them. **Memory has no
+  lens.**
+- **Signals** are extracted from your **corpus** (feeds) by each lens. They're
+  the typed entities — decisions, facts, notes, events, mentions — that
+  accumulate as feeds bring in new material. They live in the lens that
+  extracted them (`<data_dir>/lenses/<slug>/memory.db`). The agent reads them
+  with `signal_search` / `signal_query` / `signal_timeline` across *every* lens
+  at once; each hit is labeled with its source lens.
+- **A lens** is the standing extractor that produces those signals. It carries a
+  prompt + ontology that say "here's what's in scope, and these are the tags we
+  organize it under." It **reads from memory** when it decides scope ("Pat
+  Collins is a direct report, so this 1:1 transcript is in scope for the people-
+  I-manage lens"). It does not own memory.
+
+Concretely: lenses pull (signals) from memory's standing facts; they don't store
+memory of their own.
 
 ## What a lens actually is
 
@@ -19,7 +43,7 @@ A directory plus a database row.
 
 ```
 <data_dir>/lenses/<slug>/
-  ├── memory.db         # the lens's knowledge base (palace)
+  ├── memory.db         # this lens's signal store (the palace)
   └── workspace/        # FS-isolated working directory for shell + file tools
 ```
 
@@ -28,26 +52,40 @@ Plus a row in the global `lenses` table carrying:
 - `name` (slug), `display_name`, `description`
 - `bindings[]` (feeds and/or URI schemes attached to this lens)
 - `tags_ontology[]` (the closed list the extractor may use)
-- `identity_profile` (`assistant` default, or `coding`)
 - `archived` flag
 
-The directory is where the agent's writes land (in `workspace/`) and where the extractor builds the palace. The DB row is the configuration.
+The directory is where the extractor builds the lens's signal palace. The DB row
+is the configuration that drives extraction.
 
 ## Why lenses exist
 
-Two problems they solve:
+### 1. Per-topic vocabulary + organized signals
 
-### 1. Per-topic vocabulary + organized knowledge
+Each lens has its own tag ontology — typically 5–12 slugs the extractor uses to
+tag entities. A "work" lens's ontology (`postgres`, `ledger`, `migration`,
+`hiring`) is its own; a "home" lens's is different. One global ontology can't
+reasonably span both, and filing each new entity under the lens whose ontology
+fits keeps the signal stream organized at extraction time.
 
-Each lens has its own tag ontology — 5-12 slugs the extractor uses to tag entities. A "work" lens's ontology (`postgres`, `ledger`, `migration`, `hiring`) is its own; a "home" lens's is different. One global ontology can't reasonably span both, and filing each new entity under the lens whose ontology fits keeps the knowledge organized at write time.
-
-The ontology is declared at lens creation (the `lens_propose_ontology` step in the create flow) and grows via the `tag-promoter` steward subroutine. See [palaces explanation](./palaces.md).
+The ontology is declared at lens creation (the `lens_propose_ontology` step in
+the create flow) and grows via the `tag-promoter` steward subroutine. See
+[palaces](./palaces.md).
 
 ### 2. Provenance without partitioning
 
-A single undifferentiated knowledge base mixes everything — work decisions, home maintenance, hobbies. Lenses keep that knowledge *attributed*: a hit always tells you which lens it belongs to, so "we decided Postgres 16" reads as a *work* decision, not a free-floating fact. But attribution is not isolation — a question still searches across all lenses, so you never have to remember which one a fact lives in. You get focus (each lens's own vocabulary + a labeled source) without walling knowledge off from a chat that needs it.
+A single undifferentiated signal stream mixes everything — work decisions, home
+maintenance, hobbies. Lenses keep extracted knowledge *attributed*: a hit
+always tells you which lens it belongs to, so "we decided Postgres 16" reads as
+a *work* decision, not a free-floating fact. Attribution is not isolation — a
+question still searches across all lenses, so you never have to remember which
+one a fact lives in.
 
-> **Not identity routing.** Earlier, the active lens also picked the agent persona. It no longer does — a lens-agnostic chat has no single lens to take a persona from, so the chat always uses the default `assistant` persona. A lens's `identity_profile` column still exists (and matters for AWEN), but it doesn't drive the chat system prompt. See [identity by lens](./identity-by-lens.md).
+### 3. Memory-aware scope decisions
+
+A lens's extractor reads from global memory when classifying. "Pat Collins is
+someone I manage" lives once, globally, and every lens that cares about that
+fact (the people-I-manage lens, the team-health lens, the 1:1-prep lens) draws
+on it when deciding scope. You write the fact once; the lenses pick it up.
 
 ## When to create a lens
 
@@ -56,64 +94,85 @@ A single undifferentiated knowledge base mixes everything — work decisions, ho
 | You'll come back to this topic over weeks or months | One-off question; use scratch |
 | Multiple feeds make sense for it | You're not connecting integrations to it |
 | You want a tag ontology for it | You don't have enough recurring concepts to define 5+ tags |
-| You want the steward maintaining a KB about it | You won't query the KB |
+| You want the steward maintaining a signal palace about it | You won't query the palace |
 
-A lens without a binding is harmless — extraction has nothing to do. A lens with a binding but no queries piles up data the agent never reads. **Bind lenses to the topics you actually ask about.**
+A lens without a binding is harmless — extraction has nothing to do. A lens with
+a binding but no queries piles up data the agent never reads. **Bind lenses to
+the topics you actually ask about.**
 
-## Scratch: the default write-target
+## Scratch: the default chat sandbox
 
-The `scratch` lens is auto-created on first boot and undeletable. It's the **default write-target** — where new learnings file until you've pointed the session at a named lens. Not a place you're confined to: reads still roam every lens from a scratch session just the same.
+The `scratch` lens is auto-created on first boot and undeletable. It's the
+default session context — somewhere to run a conversation that isn't anchored
+to any topic-specific extractor. Reads still roam every lens from a scratch
+session; scratch just doesn't run an extractor of its own.
 
-- The agent works fine in scratch. You don't need to create a lens to use arawn.
-- Memory entries written while scratch is the target land in scratch's KB.
-- To consolidate ad-hoc notes once you know where they belong, **promote** them: `/promote <name>` or the `lens_promote` tool files scratch's entities into a named lens (existing duplicates reinforce).
+You don't have to create a lens to use arawn. Scratch is fine for tinkering and
+one-off chats. Create lenses when you want their continuous extraction over the
+topics you care about.
 
 ## Lens vs. session
 
-A **session** is one chat conversation — a sequence of turns with the LLM. A session carries a **write-target** lens (defaulting to `scratch`) that says where its new learnings file. It does *not* scope what the session can read — every session reads across all lenses.
-
-`/lens switch` changes the write-target for the rest of the session; you can do it mid-conversation, and it only redirects future writes.
+A **session** is one chat conversation — a sequence of turns with the LLM.
+Sessions are not "in" a lens; they read across every lens's signal stream by
+default and draw on global memory. There is no `/lens switch`.
 
 ## Lens vs. feed
 
-A feed mirrors upstream content to disk. A lens is the *interpretation* of feeds — the typed entities the extractor builds, the queries you run against them.
+A feed mirrors upstream content (Gmail, Slack, filesystem) into a queryable
+**corpus**. A lens is the *interpretation* of that corpus — the typed entities
+its extractor builds and the queries you run against them.
 
-The relationship is many-to-many but per-feed-config:
+The relationship is many-to-many:
 
-- One lens can bind many feeds (your `work` lens might bind Gmail + Slack + Jira).
-- One feed can bind to many lenses (your `gmail/inbox-archive` could feed both `work` and `personal` lenses; both extractors run on each new email).
+- One lens can bind many feeds (a `work` lens might bind Gmail + Slack + Jira).
+- One feed can bind to many lenses (a `gmail/inbox` could feed both `work` and
+  `personal` lenses; both extractors run on each new message).
 
 [Bind a lens to a feed](../how-to/bind-a-lens-to-a-feed.md) is the recipe.
 
 ## Lens vs. memory
 
-Memory has two tiers: **global** (`<data_dir>/memory.db`) and **lens** (`<data_dir>/lenses/<name>/memory.db`).
+Memory is **global** and unrelated to lens membership.
 
-- Preferences and Person entities are written to global.
-- Decisions, conventions, facts, notes are written to the write-target lens.
+- `/remember` writes memory: a global statement (`"Pat Collins is someone I
+  manage"`, `"prefer terse responses"`).
+- `/memory` views the global memory store.
+- `memory_search` recalls memory by content.
+- A lens's extractor *reads* from global memory while classifying signals, so
+  facts you remember once influence every relevant lens's extraction.
 
-This is about *where things are stored and attributed*, not what's visible: a read spans both tiers and every lens. Your `prefer Tokio over async-std` preference lives in global (it's not tied to a topic); the `we use Postgres 16` decision lives in — and is labeled as belonging to — the lens you filed it under, even though a search from any session will still surface it.
+Lenses do **not** have their own memory tier — what looks like memory in a lens
+is *signals*: extracted activity, recallable with `signal_*`.
 
-[Memory design](./memory-design.md) covers the rationale.
+See [memory design](./memory-design.md) for the rationale.
 
 ## Filesystem isolation
 
-The `lenses/<name>/workspace/` directory is the writable root for shell + file tools, scoped to the session's current write-target lens. Writes outside `workspace/` fail with `Permission denied` at the sandbox layer.
+The `lenses/<slug>/workspace/` directory is the writable root for shell + file
+tools when an action is associated with a lens. Writes outside `workspace/` fail
+with `Permission denied` at the sandbox layer.
 
-This composes with the [shell sandbox](../reference/shell-sandbox.md) to bound what autonomously-running tools (watchers, chat-driven actions) can touch on disk — a safety prerequisite, not a later enhancement. (Note this is a *write*-side boundary on the filesystem; knowledge *reads* are cross-lens.)
+This composes with the [shell sandbox](../reference/shell-sandbox.md) to bound
+what autonomously-running tools (watchers, chat-driven actions) can touch on
+disk — a safety prerequisite, not a later enhancement. (Filesystem isolation is
+a *write*-side boundary; signal *reads* are cross-lens.)
 
 ## When NOT to use lenses
 
 - **You're tinkering.** Scratch is fine for tinkering.
-- **You have one lens and won't add more.** That's fine too — the abstraction doesn't cost anything when you don't use it.
-- **You're not connecting integrations.** Lenses' main value is in binding integrations; without integrations, you're just creating a folder for a label.
+- **You have one lens and won't add more.** That's fine too — the abstraction
+  doesn't cost anything when you don't use it.
+- **You're not connecting integrations.** Lenses' value comes from extraction
+  over feed-supplied material; without feeds, you're just creating a folder for
+  a label.
 
-The cost of a lens is low: a directory and a row. The cost of *not* creating a lens when you should is a polluted global KB.
+The cost of a lens is low: a directory and a row. The cost of *not* creating a
+lens when you should is a signal stream you can't navigate.
 
 ## Related
 
 - [Lens CLI reference](../reference/lens-cli.md) — slug rules, lifecycle.
 - [Lens tools reference](../reference/lens-tools.md) — `signal_*`, `lens_*`.
-- [Palaces explanation](./palaces.md) — what lives in the lens KB.
-- [Identity by lens](./identity-by-lens.md) — `identity_profile`.
-- [Memory design](./memory-design.md) — global vs. lens tiers.
+- [Palaces explanation](./palaces.md) — what lives in a lens's signal store.
+- [Memory design](./memory-design.md) — why memory is global.

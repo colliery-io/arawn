@@ -51,7 +51,7 @@ The source string is preserved through the lifecycle. Filtering by source (`todo
 
 ## Lens binding
 
-Todos belong to a lens. The `/todo` modal shows todos for the active lens by default; pass `--all` to see across lenses. The agent tools default to the active lens too, with an explicit `lens` argument for cross-lens queries.
+Todos belong to a lens. The `/todo` modal shows todos for the session's current lens context (defaults to `scratch`); pass `--all` to see across lenses. The agent tools follow the same default, with an explicit `lens` argument for cross-lens queries.
 
 ## Migration history
 

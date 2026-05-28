@@ -37,9 +37,8 @@ Every turn:
 User message
    │
    │   System prompt assembly:
-   │   - identity (lens-dependent — assistant or coding persona)
-   │   - active lens context
-   │   - relevant memory entries
+   │   - identity (always assistant persona)
+   │   - relevant global memory entries
    │   - available tools
    │
    ▼

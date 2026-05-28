@@ -1,14 +1,13 @@
-//! `signal_search` / `signal_query` / `signal_timeline` — agent-facing
-//! read tools over a lens KB. Phase 6 of I-0040.
+//! `signal_search` / `signal_query` / `signal_timeline` — agent-facing read
+//! tools over the lens KBs.
 //!
-//! All three operate on the active lens by default and route
-//! through `MemoryHandle` so a `SessionLens` switch is reflected
-//! immediately. An explicit `lens` arg routes to a named one when
-//! the handle is `Routed`.
+//! ARAWN-I-0061: signals are *extracted* from feeds by each lens's standing
+//! extractor (`arawn-extractor::cot`) and live in that lens's KB. These tools
+//! read across **every** lens by default and label each hit with its source
+//! lens; an explicit `lens` arg narrows to one when present.
 //!
-//! Scoping: signal_* are lens-tier only (Decision, Note, Fact in
-//! lens scope, Convention, etc.). The global tier (Preference,
-//! Person) is reachable via the existing `memory_search` tool.
+//! `signal_*` are lens-tier reads. Global **memory** (the user's standing facts
+//! and behavioral tuning) is a separate concern — search it with `memory_search`.
 
 use std::sync::Arc;
 
@@ -253,10 +252,12 @@ impl Tool for SignalQueryTool {
     }
 
     fn description(&self) -> &str {
-        "Structured filter over the active lens's KB. Use when you know \
-         what *shape* of entity you want (e.g. all decisions tagged \
-         stripe:migration since last month) rather than a free-text query. \
-         Filters compose: every filter narrows the result set."
+        "Structured filter over the signal stream extracted by every lens. \
+         Searches all lens KBs by default and labels each hit with the `lens` it \
+         came from; pass `lens` to narrow to one. Use when you know what *shape* \
+         of entity you want (e.g. all decisions tagged stripe:migration since \
+         last month) rather than a free-text query. Filters compose: every \
+         filter narrows the result set."
     }
 
     fn is_read_only(&self) -> bool {
@@ -419,9 +420,11 @@ impl Tool for SignalTimelineTool {
     }
 
     fn description(&self) -> &str {
-        "Chronological slice across a lens's KB. Returns entities in \
-         created_at-descending order within an optional [since, until] window. \
-         Useful for `what happened in this lens last week` summaries."
+        "Chronological slice over the signal stream extracted by every lens. \
+         Returns entities in created_at-descending order within an optional \
+         [since, until] window; each hit is labeled with the source lens. Pass \
+         `lens` to restrict to one. Useful for \"what happened across my lenses \
+         last week\" summaries."
     }
 
     fn is_read_only(&self) -> bool {

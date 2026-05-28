@@ -24,10 +24,10 @@ The shell tool spawns each command in an OS sandbox:
 
 ### Write access
 
-Only the active lens's `workspace/` directory is writable:
+Only the session's current lens `workspace/` directory is writable (defaults to `scratch`):
 
 ```
-<data_dir>/lenses/<active>/workspace/
+<data_dir>/lenses/<slug>/workspace/
 ```
 
 Writes anywhere else fail with `Permission denied`. The agent should be calling `file_write` (which is path-aware and operates inside the workspace) rather than reaching for `shell` for writes — `file_write` is the right tool for most cases.
