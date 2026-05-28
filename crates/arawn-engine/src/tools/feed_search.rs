@@ -65,12 +65,18 @@ impl Tool for FeedSearchTool {
     }
 
     fn description(&self) -> &str {
-        "Search across continual data feeds (gmail, slack, drive, jira, confluence, calendar). \
-         Use this for cross-feed lookups when no lens is declared. Ranks by hybrid \
-         FTS5 + semantic similarity (RRF-fused) when an embedder is configured.\n\n\
-         **Use this (not `daily_list_items`) when the user asks to \"summarize my inbox\", \
-         \"read my gmail\", \"what's in slack today\", etc.** — `feed_search` reads the raw \
-         projection rows; the daily tablet is a curated brief that only covers a few items.\n\n\
+        "Search the raw projection rows of your continual data feeds (gmail, slack, \
+         drive, jira, confluence, calendar). Hybrid FTS5 + semantic similarity \
+         (RRF-fused when an embedder is configured); **default limit is 10**, so \
+         pass `limit` higher for sweeps where you can't afford to drop items.\n\n\
+         Reach for this when the question is about *raw content* — \"read this \
+         gmail thread\", \"what's the last slack message in #X\", \"what's in my \
+         drive\". For *synthesizing across sources* — morning briefing, \"what's \
+         on my plate today\", \"what did we decide about X\" — call \
+         `signal_search` / `signal_query` first; the extracted signal stream \
+         surfaces relationships (calendar conflicts, related mentions) the raw \
+         FTS top-10 will miss. The daily tablet (`daily_list_items`) is a curated \
+         brief, not a substitute for either.\n\n\
          Use `feed_types` to scope (e.g. `[\"gmail_messages\"]` for inbox-only), \
          `since`/`until` (RFC3339) for time windows."
     }

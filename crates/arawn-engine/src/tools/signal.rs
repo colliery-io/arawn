@@ -125,14 +125,18 @@ impl Tool for SignalSearchTool {
 
     fn description(&self) -> &str {
         "Semantic + FTS5 search over your curated knowledge base **across all \
-         lenses**. Returns **entities** (decisions, facts, notes, conventions) \
-         extracted from feeds and ranked by hybrid similarity; each hit is labeled \
-         with the `lens` it came from. Pass `lens` to restrict to one.\n\n\
-         For \"what did we decide / agree / observe about X\" questions, this is the \
-         right tool. For \"summarize my inbox / read my gmail / what's in slack\" — \
-         use `feed_search` instead; that returns raw projection rows. The daily \
-         ceremony tablet (`daily_list_items`) is a curated brief, not a substitute \
-         for either."
+         lenses**. Returns **entities** (decisions, facts, notes, conventions, \
+         events, mentions) extracted from feeds and ranked by hybrid similarity; \
+         each hit is labeled with the `lens` it came from. Pass `lens` to restrict \
+         to one.\n\n\
+         Reach for this first when synthesizing across sources — \"what's on my \
+         plate today\", \"morning briefing across calendar/inbox/Slack\", \"what \
+         did we decide / agree / observe about X\" — because it returns the \
+         *extracted* signal stream without the top-N FTS cutoff that `feed_search` \
+         applies. For raw, single-source content — \"read this exact gmail thread\", \
+         \"what's the last slack message in #X\" — `feed_search` is the right call. \
+         The daily ceremony tablet (`daily_list_items`) is a curated brief, not a \
+         substitute for either."
     }
 
     fn is_read_only(&self) -> bool {

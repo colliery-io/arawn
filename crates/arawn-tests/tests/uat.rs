@@ -72,13 +72,20 @@ pub struct ScenarioTurn {
     pub judge_expectation: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MechanicalThresholds {
     pub min_files_created: usize,
     #[serde(default)]
     pub min_workflows_created: usize,
     pub min_memory_entities: usize,
     pub max_tool_errors: usize,
+    /// Substrings that must appear in at least one tool_result content across
+    /// the run (case-insensitive). Catches "lazy retrieval" — where the agent
+    /// skips the read tool that would surface the answer and the judge then
+    /// excuses the omission as data-absent. If any listed string is missing
+    /// from every tool result, mechanical FAILS.
+    #[serde(default)]
+    pub required_evidence: Vec<String>,
 }
 
 // ============================================================================
@@ -135,6 +142,9 @@ pub struct MechanicalCheckResult {
     pub files_created: usize,
     pub workflows_created: usize,
     pub tool_errors: usize,
+    /// Required-evidence substrings that did NOT appear in any tool result.
+    /// Empty when all required evidence was retrieved (or none was required).
+    pub missing_evidence: Vec<String>,
     pub pass: bool,
 }
 
@@ -392,10 +402,30 @@ network_tools = ["gh", "curl"]
             .filter(|r| r.is_error)
             .count();
 
+        // Required-evidence check: every listed substring must appear in at
+        // least one tool_result content (case-insensitive). Catches the
+        // "lazy retrieval" gap where the agent never calls the read tool that
+        // would surface the answer; without this the run trivially "passes"
+        // mechanically and the judge papers over the omission as data-absent.
+        let all_tool_result_text: String = turns
+            .iter()
+            .flat_map(|t| &t.tool_results)
+            .map(|r| r.content.to_lowercase())
+            .collect::<Vec<_>>()
+            .join("\n");
+        let missing_evidence: Vec<String> = scenario
+            .mechanical
+            .required_evidence
+            .iter()
+            .filter(|needle| !all_tool_result_text.contains(&needle.to_lowercase()))
+            .cloned()
+            .collect();
+
         let mech_pass = all_completed
             && no_engine_errors
             && workspace_files.len() >= scenario.mechanical.min_files_created
-            && workflows_created >= scenario.mechanical.min_workflows_created;
+            && workflows_created >= scenario.mechanical.min_workflows_created
+            && missing_evidence.is_empty();
 
         ScenarioResult {
             scenario_name: scenario.name.clone(),
@@ -408,6 +438,7 @@ network_tools = ["gh", "curl"]
                 files_created: workspace_files.len(),
                 workflows_created,
                 tool_errors,
+                missing_evidence,
                 pass: mech_pass,
             },
             workspace_files,
@@ -669,6 +700,7 @@ fn work_signal_pipeline_scenario() -> Scenario {
             min_workflows_created: 1,
             min_memory_entities: 0,
             max_tool_errors: 2,
+            required_evidence: vec![],
         },
         seed_fixture: None,
         seed_tag_promoter: false,
@@ -734,6 +766,7 @@ fn signal_extraction_e2e_scenario() -> Scenario {
             // should produce >= 6 entities across the two lenses.
             min_memory_entities: 6,
             max_tool_errors: 3,
+            required_evidence: vec![],
         },
         seed_fixture: Some("tests/fixtures/uat/signal-extraction-e2e.json".to_string()),
         // Dust scenario: don't pre-seed promotion proposals. A stray
@@ -783,6 +816,7 @@ fn tag_promoter_cycle_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 4,
             max_tool_errors: 2,
+            required_evidence: vec![],
         },
         seed_fixture: Some("tests/fixtures/uat/signal-extraction-e2e.json".to_string()),
         // This scenario IS the tag-promoter cycle — seed the proposals
@@ -824,6 +858,7 @@ fn retro_ceremony_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 0,
             max_tool_errors: 1,
+            required_evidence: vec![],
         },
         seed_fixture: Some("tests/fixtures/uat/retro-ceremony.json".to_string()),
         seed_tag_promoter: false,
@@ -864,6 +899,7 @@ fn daily_ceremony_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 0,
             max_tool_errors: 1,
+            required_evidence: vec![],
         },
         seed_fixture: Some("tests/fixtures/uat/daily-ceremony.json".to_string()),
         seed_tag_promoter: false,
@@ -910,6 +946,7 @@ fn weekly_ceremony_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 0,
             max_tool_errors: 1,
+            required_evidence: vec![],
         },
         seed_fixture: Some("tests/fixtures/uat/weekly-ceremony.json".to_string()),
         seed_tag_promoter: false,
@@ -950,6 +987,7 @@ fn priority_completion_feedback_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 0,
             max_tool_errors: 1,
+            required_evidence: vec![],
         },
         seed_fixture: Some("tests/fixtures/uat/retro-ceremony.json".to_string()),
         seed_tag_promoter: false,
@@ -991,6 +1029,13 @@ fn morning_briefing_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 4,
             max_tool_errors: 2,
+            // Tool-results must surface the conflicting 20:00 UTC events and
+            // RFC-0042 so the synthesis check is meaningful. If `feed_search`
+            // top-10 drops them, the agent should have reached for `signal_*`.
+            required_evidence: vec![
+                "20:00".to_string(),
+                "rfc-0042".to_string(),
+            ],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
@@ -1015,6 +1060,7 @@ fn inbox_summary_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 3,
             max_tool_errors: 2,
+            required_evidence: vec![],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
@@ -1039,6 +1085,7 @@ fn draft_with_confirmation_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 0,
             max_tool_errors: 3,
+            required_evidence: vec![],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
@@ -1063,6 +1110,7 @@ fn schedule_with_confirmation_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 0,
             max_tool_errors: 3,
+            required_evidence: vec![],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
@@ -1087,6 +1135,7 @@ fn mention_scan_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 0,
             max_tool_errors: 2,
+            required_evidence: vec![],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
@@ -1111,6 +1160,7 @@ fn no_fabrication_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 0,
             max_tool_errors: 2,
+            required_evidence: vec![],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
@@ -1142,6 +1192,7 @@ fn filesystem_watch_roundtrip_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 0,
             max_tool_errors: 2,
+            required_evidence: vec![],
         },
         seed_fixture: Some("tests/fixtures/uat/filesystem-watch-roundtrip.json".to_string()),
         seed_tag_promoter: false,
@@ -1331,6 +1382,12 @@ async fn uat_run() {
                 "FAIL"
             },
         );
+        if !result.mechanical.missing_evidence.is_empty() {
+            println!(
+                "      Missing evidence: {}",
+                result.mechanical.missing_evidence.join(" · "),
+            );
+        }
         for turn in &result.turns {
             let tools: Vec<&str> = turn.tool_calls.iter().map(|t| t.name.as_str()).collect();
             println!(
