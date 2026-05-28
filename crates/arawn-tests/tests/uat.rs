@@ -982,8 +982,8 @@ fn morning_briefing_scenario() -> Scenario {
         objective: "Assistant surfaces today's schedule, awaiting-me items, and notable Slack/mail across pat's connected tools when asked for an open-ended briefing. Tests proactive-surface behavior without the user naming specific tools.".to_string(),
         turns: vec![
             ScenarioTurn {
-                user_message: "Give me a quick morning briefing — what should I know about today across my calendar, inbox, and Slack (focus on the `personal` lens). Don't bury the lede.".to_string(),
-                judge_expectation: "Agent should use signal_search / signal_query / signal_timeline (passing lens=\"personal\" or omitting and reading cross-lens) and/or the relevant integration read tools to gather state across calendar + inbox + slack. Summary should mention: today's standup, the architecture review at 1pm-ish (a calendar conflict — both at 20:00 UTC), the RFC-0042 thread from Alice asking for sign-off, and the @mention from Jamie about the ledger dashboard. FAIL if the agent invents details not present in the fixture.".to_string(),
+                user_message: "Give me a quick morning briefing — what should I know about today across my calendar, inbox, and Slack (focus on the `personal` lens). Don't bury the lede, and flag any scheduling conflicts.".to_string(),
+                judge_expectation: "Agent should use signal_search / signal_query / signal_timeline (passing lens=\"personal\" or omitting and reading cross-lens) and/or the relevant integration read tools to gather state across calendar + inbox + slack. Summary should mention: today's standup, the architecture review at 1pm-ish (a calendar conflict — both at 20:00 UTC), the RFC-0042 thread from Alice asking for sign-off, and the @mention from Jamie about the ledger dashboard. The agent MUST surface the 20:00 UTC overlap between the 1:1 and the architecture review as a calendar conflict. FAIL if the agent invents details not present in the fixture.".to_string(),
             },
         ],
         mechanical: MechanicalThresholds {
