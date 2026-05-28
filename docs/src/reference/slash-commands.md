@@ -30,6 +30,10 @@ and [lock down permissions how-to](../how-to/lock-down-permissions.md).
 
 List available agent types — built-ins (`general-purpose`, `Explore`, `Plan`) plus any loaded from `<data_dir>/agents/`. See [sub-agents reference](./sub-agents.md).
 
+### `/brief`
+
+Show today's combined daily + weekly brief — the cached ceremony tablets rendered as one quick view. Unlike `/today`, which shows the daily tablet alone, `/brief` stitches both together for a one-shot read. Tablets are composed by the ceremony cron / boot-time backfill, not by `/brief` itself; if no tablet exists yet, `/brief` shows a placeholder pointing at `/today`. See [ceremonies tools reference](./ceremonies-tools.md).
+
 ### `/clear`
 
 Clear the chat history for the current session. Does NOT delete server-side session data — just empties the visible buffer.

@@ -313,6 +313,11 @@ pub struct FeedSummaryDto {
     pub run_count: u64,
     pub data_size_bytes: u64,
     pub data_dir: String,
+    /// Items written by the most recent run (ARAWN-I-0061 T-I). Populated by
+    /// `feed_run` so the client can show "pulled N items"; `None` for the
+    /// `feeds_list` summary path where we don't have a just-completed run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_run_items: Option<u64>,
 }
 
 /// Returned by `feed_remove` so the TUI can confirm the wipe with a

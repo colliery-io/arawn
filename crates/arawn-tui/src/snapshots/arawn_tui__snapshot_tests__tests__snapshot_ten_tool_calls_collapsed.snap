@@ -4,7 +4,7 @@ expression: snap
 ---
   │  ▸ shell result                                                     ┌ Today ───────────────────┐
   │    file-1.txt                                                       │Brief                     │
-  │    file-1.log                                                       │(no brief yet — run /day t│
+  │    file-1.log                                                       │(no brief yet — try /brief│
   │  ⏵ shell · ls -la /tmp/dir-2 · 0.0s                                 │                          │
   │  ▸ shell result                                                     │                          │
   │    file-2.txt                                                       │                          │

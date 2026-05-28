@@ -4,7 +4,7 @@ expression: snap
 ---
   │                                                                     ┌ Today ───────────────────┐
   │                                                                     │Brief                     │
-  │                                                                     │(no brief yet — run /day t│
+  │                                                                     │(no brief yet — try /brief│
   │                                                                     │                          │
   │                                                                     │                          │
   │                                                                     │                          │
@@ -25,4 +25,4 @@ expression: snap
   │                                                                     └──────────────────────────┘
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 > Type your message...
- no model Ready
+ test-model Ready

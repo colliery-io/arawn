@@ -796,6 +796,7 @@ pub(super) fn feed_summary_to_dto(s: arawn_feeds::FeedSummary) -> arawn_service:
         run_count: s.run_count,
         data_size_bytes: s.data_size_bytes,
         data_dir: s.data_dir,
+        last_run_items: None,
     }
 }
 

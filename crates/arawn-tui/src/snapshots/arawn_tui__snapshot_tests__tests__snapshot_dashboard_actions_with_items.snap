@@ -6,19 +6,19 @@ expression: snap
   │                                                                                         │Brief                     │
   │                                                                                         │2026-05-19 · Tue          │
   │                                                                                         │                          │
-  │                                                                                         │(no calendar events today)│
-  │                                                                                         │                          │
-  │                                     ╭─────────────╮                                     │                          │
+  │                                     ╭─────────────╮                                     │(no calendar events today)│
   │                                     │    arawn    │                                     │                          │
   │                                     ╰─────────────╯                                     │                          │
   │                                                                                         │                          │
- ▸│                       Welcome — your personal agentic assistant.                        │                          │
+  │                       Welcome — your personal agentic assistant.                        │                          │
   │                 I watch, check, summarize, and nudge across your tools.                 │                          │
-  │                                                                                         │                          │
-  │                       Type / for commands · Tab to toggle sidebar                       │Action items              │
-  │                              /connect <service> · ↑ recall                              │☐ Reply Alice RFC-0042    │
-  │                                                                                         │☐ Review PR #482          │
-  │                                                                                         │☐ ENG-712 stale 10d       │
+ ▸│                                                                                         │                          │
+  │                               No LLM provider configured.                               │                          │
+  │                             Run `arawn doctor` to diagnose.                             │                          │
+  │                         Edit `~/.arawn/arawn.toml` to set one.                          │Action items              │
+  │                                                                                         │☐ Reply Alice RFC-0042    │
+  │                       Type / for commands · Tab to toggle sidebar                       │☐ Review PR #482          │
+  │                              /connect <service> · ↑ recall                              │☐ ENG-712 stale 10d       │
   │                                                                                         │─ Carried over ─          │
   │                                                                                         │☐ Carried: dust falcon    │
   │                                                                                         │                          │

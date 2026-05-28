@@ -86,14 +86,18 @@ impl LocalService {
         feed_id: &str,
     ) -> Result<arawn_service::FeedSummaryDto, ServiceError> {
         let runtime = self.feed_runtime_or_err()?;
-        runtime.run_feed_once(feed_id).await.map_err(feed_err)?;
-        let dto = current_summary(&runtime, feed_id).await?;
+        // ARAWN-I-0061 T-I: capture the just-completed run's RunOutcome so we
+        // can surface "pulled N items" in the client toast. The cron path
+        // discards this; the user-triggered /feeds run path keeps it.
+        let outcome = runtime.run_feed_once(feed_id).await.map_err(feed_err)?;
+        let items_written = outcome.summary.items_written;
+        let mut dto = current_summary(&runtime, feed_id).await?;
+        dto.last_run_items = Some(items_written);
         let _ = self.notice_tx.send(arawn_service::ServerNotice {
             level: "info".into(),
             category: "feeds".into(),
             message: format!(
-                "feed {feed_id} run on demand — {} items, status {}",
-                "?",
+                "feed {feed_id} run on demand — {items_written} items, status {}",
                 dto.last_status.as_deref().unwrap_or("?"),
             ),
             timestamp: chrono::Utc::now().to_rfc3339(),

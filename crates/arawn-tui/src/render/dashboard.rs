@@ -51,7 +51,7 @@ pub(super) fn render_dashboard_brief(app: &App, frame: &mut Frame, area: ratatui
 
     let Some(view) = app.daily_view.as_ref() else {
         lines.push(Line::from(Span::styled(
-            "(no brief yet — run /day to generate)".to_string(),
+            "(no brief yet — try /brief or /today)".to_string(),
             muted,
         )));
         let para = Paragraph::new(lines);

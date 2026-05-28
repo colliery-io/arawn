@@ -4,7 +4,7 @@ expression: snap
 ---
   │❯ do something                                                       ┌ Today ───────────────────┐
   ││ system:                                                            │Brief                     │
-  ││ Error: API rate limited                                            │(no brief yet — run /day t│
+  ││ Error: API rate limited                                            │(no brief yet — try /brief│
   │                                                                     │                          │
   │                                                                     │                          │
   │                                                                     │                          │

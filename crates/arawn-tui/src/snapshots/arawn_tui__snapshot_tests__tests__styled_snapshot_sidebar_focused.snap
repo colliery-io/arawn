@@ -4,8 +4,6 @@ expression: snap
 ---
 «fg:Rgb(203, 166, 247)»┌ Lenses ──────┐
 «fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│
-«fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│
-«fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│
 «fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│                         «fg:Rgb(69, 71, 90)»╭─────────────╮
 «fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│                         «fg:Rgb(69, 71, 90)»│    «fg:Rgb(166, 173, 200),bold»arawn«fg:Rgb(69, 71, 90)»    │
 «fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│                         «fg:Rgb(69, 71, 90)»╰─────────────╯
@@ -13,10 +11,12 @@ expression: snap
 «fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│           «fg:Rgb(166, 173, 200)»Welcome — your personal agentic assistant.
 «fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│     «fg:Rgb(166, 173, 200)»I watch, check, summarize, and nudge across your tools.
 «fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│
+«fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│                   «fg:Rgb(249, 226, 175)»No LLM provider configured.
+«fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│                 «fg:Rgb(127, 132, 156)»Run `arawn doctor` to diagnose.
+«fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│             «fg:Rgb(127, 132, 156)»Edit `~/.arawn/arawn.toml` to set one.
+«fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│
 «fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│           «fg:Rgb(127, 132, 156)»Type / for commands · Tab to toggle sidebar
 «fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│                  «fg:Rgb(127, 132, 156)»/connect <service> · ↑ recall
-«fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│
-«fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│
 «fg:Rgb(203, 166, 247)»│              «fg:Rgb(203, 166, 247)»│
 «fg:Rgb(203, 166, 247)»└──────────────┘
 «fg:Rgb(49, 50, 68)»────────────────────────────────────────────────────────────────────────────────

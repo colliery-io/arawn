@@ -4,19 +4,19 @@ expression: snap
 ---
 «bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
 «bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
-«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
-«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
 «bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│                               «fg:Rgb(69, 71, 90)»╭─────────────╮
 «bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│                               «fg:Rgb(69, 71, 90)»│    «fg:Rgb(166, 173, 200),bold»arawn«fg:Rgb(69, 71, 90)»    │
 «bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│                               «fg:Rgb(69, 71, 90)»╰─────────────╯
 «bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
-«fg:Rgb(203, 166, 247),bg:Rgb(17, 17, 27)» ▸«fg:Rgb(69, 71, 90)»│                 «fg:Rgb(166, 173, 200)»Welcome — your personal agentic assistant.
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│                 «fg:Rgb(166, 173, 200)»Welcome — your personal agentic assistant.
 «bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│           «fg:Rgb(166, 173, 200)»I watch, check, summarize, and nudge across your tools.
+«fg:Rgb(203, 166, 247),bg:Rgb(17, 17, 27)» ▸«fg:Rgb(69, 71, 90)»│
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│                         «fg:Rgb(249, 226, 175)»No LLM provider configured.
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│                       «fg:Rgb(127, 132, 156)»Run `arawn doctor` to diagnose.
+«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│                   «fg:Rgb(127, 132, 156)»Edit `~/.arawn/arawn.toml` to set one.
 «bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
 «bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│                 «fg:Rgb(127, 132, 156)»Type / for commands · Tab to toggle sidebar
 «bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│                        «fg:Rgb(127, 132, 156)»/connect <service> · ↑ recall
-«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
-«bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
 «bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
 «bg:Rgb(17, 17, 27)»  «fg:Rgb(69, 71, 90)»│
 «fg:Rgb(49, 50, 68)»────────────────────────────────────────────────────────────────────────────────

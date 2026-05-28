@@ -4,9 +4,7 @@ expression: snap
 ---
   │                                                                     ┌ Today ───────────────────┐
   │                                                                     │Brief                     │
-  │                                                                     │(no brief yet — run /day t│
-  │                                                                     │                          │
-  │                                                                     │                          │
+  │                                                                     │(no brief yet — try /brief│
   │                                                                     │                          │
   │                                                                     │                          │
   │                                                                     │                          │
@@ -15,13 +13,15 @@ expression: snap
   │                           │    arawn    │                           │                          │
   │                           ╰─────────────╯                           │                          │
   │                                                                     │                          │
- ▸│             Welcome — your personal agentic assistant.              │Action items              │
-  │       I watch, check, summarize, and nudge across your tools.       │(no action items)         │
+  │             Welcome — your personal agentic assistant.              │                          │
+  │       I watch, check, summarize, and nudge across your tools.       │                          │
+ ▸│                                                                     │Action items              │
+  │                     No LLM provider configured.                     │(no action items)         │
+  │                   Run `arawn doctor` to diagnose.                   │                          │
+  │               Edit `~/.arawn/arawn.toml` to set one.                │                          │
   │                                                                     │                          │
   │             Type / for commands · Tab to toggle sidebar             │                          │
   │                    /connect <service> · ↑ recall                    │                          │
-  │                                                                     │                          │
-  │                                                                     │                          │
   │                                                                     │                          │
   │                                                                     │                          │
   │                                                                     │                          │

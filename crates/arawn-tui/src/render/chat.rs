@@ -19,7 +19,7 @@ pub(super) fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layou
         if app.should_show_brief_in_empty_chat() {
             render_empty_chat_brief(app, frame, area);
         } else {
-            render_idle_hero(frame, area);
+            render_idle_hero(frame, area, app.model_name.is_empty());
         }
         return;
     }
@@ -39,6 +39,21 @@ pub(super) fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layou
                     ChatRole::ToolResult { is_error: true, .. }
                 );
             (next_is_result, next_is_error)
+        })
+        .collect();
+
+    // ARAWN-I-0061: signal provenance footer chip. For each Assistant message,
+    // collect the distinct source lenses from any `signal_*` tool results that
+    // landed in the same turn (between this assistant message and the prior
+    // user/system message). Pre-computed here to dodge the borrow conflict
+    // against `iter_mut()` below.
+    let signal_sources_per_message: Vec<Vec<String>> = (0..num_messages)
+        .map(|i| {
+            if matches!(app.messages[i].role, ChatRole::Assistant) {
+                collect_signal_sources_for_turn(&app.messages, i)
+            } else {
+                Vec::new()
+            }
         })
         .collect();
 
@@ -82,6 +97,29 @@ pub(super) fn render_chat(app: &mut App, frame: &mut Frame, area: ratatui::layou
                     let mut prefixed = vec![Span::styled("│ ", gutter_style)];
                     prefixed.extend(md_line.spans.clone());
                     lines.push(Line::from(prefixed));
+                }
+
+                // ARAWN-I-0061: sources footer. Surfaces the cross-lens
+                // provenance of `signal_*` reads consumed by this turn so the
+                // user sees that an answer drew from `work · personal · …`
+                // without expanding the raw tool card.
+                let sources = &signal_sources_per_message[msg_idx];
+                if !sources.is_empty() {
+                    let dim = Style::default().fg(theme::OVERLAY0);
+                    let mut footer: Vec<Span<'static>> = vec![
+                        Span::styled("│ ", gutter_style),
+                        Span::styled("◆ sources: ", dim),
+                    ];
+                    for (i, name) in sources.iter().enumerate() {
+                        if i > 0 {
+                            footer.push(Span::styled(" · ", dim));
+                        }
+                        footer.push(Span::styled(
+                            name.clone(),
+                            Style::default().fg(theme::TOOL_NAME),
+                        ));
+                    }
+                    lines.push(Line::from(footer));
                 }
             }
             ChatRole::ToolCall { name } => {
@@ -437,12 +475,17 @@ pub(super) fn render_empty_chat_brief(app: &App, frame: &mut Frame, area: ratatu
     frame.render_widget(para, inner);
 }
 
-pub(super) fn render_idle_hero(frame: &mut Frame, area: ratatui::layout::Rect) {
+pub(super) fn render_idle_hero(
+    frame: &mut Frame,
+    area: ratatui::layout::Rect,
+    no_model: bool,
+) {
     let chrome = Style::default().fg(theme::CHROME);
     let dim = Style::default().fg(theme::SUBTEXT0);
     let hint = Style::default().fg(theme::OVERLAY1);
+    let warn = Style::default().fg(theme::YELLOW);
 
-    let hero_lines: Vec<Line> = vec![
+    let mut hero_lines: Vec<Line> = vec![
         Line::from(Span::styled("╭─────────────╮", chrome)),
         Line::from(vec![
             Span::styled("│    ", chrome),
@@ -460,12 +503,30 @@ pub(super) fn render_idle_hero(frame: &mut Frame, area: ratatui::layout::Rect) {
             dim,
         )),
         Line::from(""),
+    ];
+
+    // ARAWN-I-0061: actionable first-run guidance when no LLM provider is
+    // configured — otherwise this screen would lead the user into a typing
+    // session that silently fails.
+    if no_model {
+        hero_lines.extend([
+            Line::from(Span::styled("No LLM provider configured.", warn)),
+            Line::from(Span::styled("Run `arawn doctor` to diagnose.", hint)),
+            Line::from(Span::styled(
+                "Edit `~/.arawn/arawn.toml` to set one.",
+                hint,
+            )),
+            Line::from(""),
+        ]);
+    }
+
+    hero_lines.extend([
         Line::from(Span::styled(
             "Type / for commands · Tab to toggle sidebar",
             hint,
         )),
         Line::from(Span::styled("/connect <service> · ↑ recall", hint)),
-    ];
+    ]);
 
     let hero_height = hero_lines.len() as u16;
     let hero_width = 56u16;
@@ -477,4 +538,155 @@ pub(super) fn render_idle_hero(frame: &mut Frame, area: ratatui::layout::Rect) {
     let rect = ratatui::layout::Rect::new(x, y, hero_width, hero_height);
     let para = Paragraph::new(hero_lines).alignment(ratatui::layout::Alignment::Center);
     frame.render_widget(para, rect);
+}
+
+/// ARAWN-I-0061: collect the distinct source lenses from `signal_*` tool
+/// results in the turn ending at `assistant_idx`. Walks backward from the
+/// assistant message until the previous User/System message, parses each
+/// matching `ToolResult` payload as JSON, and harvests every `"lens"` field's
+/// string value. Sorted + deduped for stable rendering.
+pub(super) fn collect_signal_sources_for_turn(
+    messages: &[crate::app::ChatMessage],
+    assistant_idx: usize,
+) -> Vec<String> {
+    use std::collections::BTreeSet;
+
+    let mut set: BTreeSet<String> = BTreeSet::new();
+    for i in (0..assistant_idx).rev() {
+        match &messages[i].role {
+            ChatRole::User | ChatRole::System => break,
+            ChatRole::ToolResult {
+                name,
+                is_error: false,
+            } if name.starts_with("signal_") => {
+                if let Ok(v) = serde_json::from_str::<serde_json::Value>(&messages[i].content) {
+                    harvest_lens_strings(&v, &mut set);
+                }
+            }
+            _ => {}
+        }
+    }
+    set.into_iter().collect()
+}
+
+fn harvest_lens_strings(v: &serde_json::Value, out: &mut std::collections::BTreeSet<String>) {
+    match v {
+        serde_json::Value::Object(map) => {
+            for (k, val) in map {
+                if k == "lens"
+                    && let serde_json::Value::String(s) = val
+                    && !s.is_empty()
+                {
+                    out.insert(s.clone());
+                }
+                harvest_lens_strings(val, out);
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for item in arr {
+                harvest_lens_strings(item, out);
+            }
+        }
+        _ => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::{ChatMessage, ChatRole};
+
+    fn msg(role: ChatRole, content: &str) -> ChatMessage {
+        ChatMessage::new(role, content)
+    }
+
+    #[test]
+    fn chip_collects_lenses_from_signal_search_result() {
+        let messages = vec![
+            msg(ChatRole::User, "what happened?"),
+            msg(
+                ChatRole::ToolCall {
+                    name: "signal_search".into(),
+                },
+                r#"{"query":"x"}"#,
+            ),
+            msg(
+                ChatRole::ToolResult {
+                    name: "signal_search".into(),
+                    is_error: false,
+                },
+                r#"{"results":[{"lens":"work","title":"a"},{"lens":"personal","title":"b"},{"lens":"work","title":"c"}]}"#,
+            ),
+            msg(ChatRole::Assistant, "done"),
+        ];
+        let sources = collect_signal_sources_for_turn(&messages, 3);
+        assert_eq!(sources, vec!["personal".to_string(), "work".to_string()]);
+    }
+
+    #[test]
+    fn chip_empty_when_no_signal_tool_in_turn() {
+        let messages = vec![
+            msg(ChatRole::User, "hi"),
+            msg(
+                ChatRole::ToolCall {
+                    name: "feed_search".into(),
+                },
+                r#"{}"#,
+            ),
+            msg(
+                ChatRole::ToolResult {
+                    name: "feed_search".into(),
+                    is_error: false,
+                },
+                r#"{"results":[{"lens":"work","title":"x"}]}"#,
+            ),
+            msg(ChatRole::Assistant, "answer"),
+        ];
+        // feed_search is not signal_*; chip should be empty even though the
+        // payload contains a `lens` field.
+        let sources = collect_signal_sources_for_turn(&messages, 3);
+        assert!(sources.is_empty());
+    }
+
+    #[test]
+    fn chip_stops_at_previous_user_message() {
+        // A signal_* result from a *prior* turn must not bleed into this
+        // turn's chip.
+        let messages = vec![
+            msg(
+                ChatRole::ToolResult {
+                    name: "signal_search".into(),
+                    is_error: false,
+                },
+                r#"{"results":[{"lens":"old"}]}"#,
+            ),
+            msg(ChatRole::User, "new question"),
+            msg(ChatRole::Assistant, "answer with no signal calls"),
+        ];
+        let sources = collect_signal_sources_for_turn(&messages, 2);
+        assert!(sources.is_empty());
+    }
+
+    #[test]
+    fn chip_ignores_error_results() {
+        let messages = vec![
+            msg(ChatRole::User, "what?"),
+            msg(
+                ChatRole::ToolCall {
+                    name: "signal_search".into(),
+                },
+                r#"{}"#,
+            ),
+            msg(
+                ChatRole::ToolResult {
+                    name: "signal_search".into(),
+                    is_error: true,
+                },
+                r#"{"results":[{"lens":"work"}]}"#,
+            ),
+            msg(ChatRole::Assistant, "no answer"),
+        ];
+        let sources = collect_signal_sources_for_turn(&messages, 3);
+        assert!(sources.is_empty());
+    }
 }

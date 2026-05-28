@@ -6,25 +6,19 @@ expression: snap
   │                                                                     │Brief                     │
   │                                                                     │(no brief yet — try /brief│
   │                                                                     │                          │
-  │                                                                     │                          │
-  │                                                                     │                          │
-  │                                                                     │                          │
   │                           ╭─────────────╮                           │                          │
   │                           │    arawn    │                           │                          │
   │                           ╰─────────────╯                           │                          │
   │                                                                     │                          │
   │             Welcome — your personal agentic assistant.              │                          │
   │       I watch, check, summarize, and nudge across your tools.       │                          │
- ▸│                                                                     │Action items              │
-  │                     No LLM provider configured.                     │(no action items)         │
+ ▸│                                                                     │                          │
+  │                     No LLM provider configured.                     │                          │
   │                   Run `arawn doctor` to diagnose.                   │                          │
-  │               Edit `~/.arawn/arawn.toml` to set one.                │                          │
-  │                                                                     │                          │
+  │               Edit `~/.arawn/arawn.toml` to set one.                │Action items              │
+  │                                                                     │(no action items)         │
   │             Type / for commands · Tab to toggle sidebar             │                          │
   │                    /connect <service> · ↑ recall                    │                          │
-  │                                                                     │                          │
-  │                                                                     │                          │
-  │                                                                     │                          │
   │                                                                     │                          │
   │                                                                     │                          │
   │                                                                     │                          │

@@ -4,7 +4,7 @@ expression: snap
 ---
 ┌ Lenses ──────────┐                                                    ┌ Today ───────────────────┐
 │▸ scratch         │                                                    │Brief                     │
-│  home            │                                                    │(no brief yet — run /day t│
+│  home            │                                                    │(no brief yet — try /brief│
 │                  │                                                    │                          │
 │                  │                                                    │                          │
 │                  │                                                    │                          │

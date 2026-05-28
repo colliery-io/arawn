@@ -4,7 +4,7 @@ expression: snap
 ---
   │  Brief — 2026-05-19                                                 ┌ Today ───────────────────┐
   │  Today                                                              │Brief                     │
-  │  Today's calendar                                                   │(no brief yet — run /day t│
+  │  Today's calendar                                                   │(no brief yet — try /brief│
   │  • 09:00 standup                                                    │                          │
   │  Carried-over todos                                                 │                          │
   │  (no todos rolled over from yesterday)                              │                          │

@@ -4,7 +4,7 @@ expression: snap
 ---
   │❯ What files are in the project?                                     ┌ Today ───────────────────┐
   │  ⏵ shell · Calling shell... · 0.0s                                  │Brief                     │
-  │  ▸ shell result                                                     │(no brief yet — run /day t│
+  │  ▸ shell result                                                     │(no brief yet — try /brief│
   │    Cargo.toml                                                       │                          │
   │    crates/                                                          │                          │
   │    plugins/                                                         │                          │

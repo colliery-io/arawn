@@ -4,7 +4,7 @@ expression: snap
 ---
   │❯ search for 日 本 語  docs                                             ┌ Today ───────────────────┐
   │  ⏵ 🔥 shell · grep -r 日 本 語  docs/ · 0.0s                            │Brief                     │
-  │  ▸ 🔥 shell result                                                   │(no brief yet — run /day t│
+  │  ▸ 🔥 shell result                                                   │(no brief yet — try /brief│
   │    docs/日 本 語 /intro.md                                             │                          │
   │    docs/日 本 語 /usage.md                                             │                          │
   │                                                                     │                          │

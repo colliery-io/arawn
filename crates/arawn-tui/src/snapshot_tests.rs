@@ -68,6 +68,42 @@ mod tests {
         insta::assert_snapshot!(snap);
     }
 
+    // ARAWN-I-0061: signal-provenance footer chip — verifies the
+    // `◆ sources: …` line appears on an assistant turn that consumed
+    // `signal_*` results carrying lens labels.
+    #[test]
+    fn snapshot_chat_with_signal_sources_chip() {
+        let mut app = App::new();
+        app.messages = vec![
+            ChatMessage::new(ChatRole::User, "What did we decide about Postgres?"),
+            ChatMessage::new(
+                ChatRole::ToolCall {
+                    name: "signal_search".into(),
+                },
+                "Calling signal_search...",
+            ),
+            ChatMessage::new(
+                ChatRole::ToolResult {
+                    name: "signal_search".into(),
+                    is_error: false,
+                },
+                r#"{"results":[{"lens":"work","title":"use Postgres 16"},{"lens":"personal","title":"home db"}]}"#,
+            ),
+            ChatMessage::new(
+                ChatRole::Assistant,
+                "We decided to use Postgres 16 for the ledger.",
+            ),
+        ];
+
+        let mut terminal = make_terminal(100, 30);
+        let snap = draw(&mut app, &mut terminal);
+        assert!(
+            snap.contains("◆ sources:") && snap.contains("work") && snap.contains("personal"),
+            "expected sources chip with lens names, got:\n{snap}"
+        );
+        insta::assert_snapshot!(snap);
+    }
+
     // --- Streaming state ---
 
     #[test]
@@ -187,11 +223,36 @@ mod tests {
         app.is_generating = false;
         app.streaming_text.clear();
         // Pre-onboarding state: no brief cached, fall through to
-        // the hero (T-0331 welcome).
+        // the hero (T-0331 welcome). Set a model so the no-model
+        // guidance (I-0061 T-H) doesn't appear here.
         app.brief_markdown = None;
+        app.model_name = "test-model".into();
 
         let mut terminal = make_terminal(100, 24);
         let snap = draw(&mut app, &mut terminal);
+        insta::assert_snapshot!(snap);
+    }
+
+    // ARAWN-I-0061 T-H: first-run guidance when no LLM provider is configured.
+    // The hero must surface actionable next steps (`arawn doctor`, edit
+    // `arawn.toml`) instead of leaving the user to type into a silent failure.
+    #[test]
+    fn snapshot_idle_hero_no_model_configured() {
+        let mut app = App::new();
+        app.messages.clear();
+        app.is_generating = false;
+        app.streaming_text.clear();
+        app.brief_markdown = None;
+        // Default for `model_name` is empty — leave it that way.
+
+        let mut terminal = make_terminal(100, 24);
+        let snap = draw(&mut app, &mut terminal);
+        assert!(
+            snap.contains("No LLM provider configured.")
+                && snap.contains("arawn doctor")
+                && snap.contains("arawn.toml"),
+            "expected first-run no-model guidance, got:\n{snap}"
+        );
         insta::assert_snapshot!(snap);
     }
 

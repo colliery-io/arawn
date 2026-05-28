@@ -6,19 +6,19 @@ expression: snap
   │
   │
   │
-  │
-  │
   │                               ╭─────────────╮
   │                               │    arawn    │
   │                               ╰─────────────╯
   │
- ▸│                 Welcome — your personal agentic assistant.
+  │                 Welcome — your personal agentic assistant.
   │           I watch, check, summarize, and nudge across your tools.
+ ▸│
+  │                         No LLM provider configured.
+  │                       Run `arawn doctor` to diagnose.
+  │                   Edit `~/.arawn/arawn.toml` to set one.
   │
   │                 Type / for commands · Tab to toggle sidebar
   │                        /connect <service> · ↑ recall
-  │
-  │
   │
   │
   │

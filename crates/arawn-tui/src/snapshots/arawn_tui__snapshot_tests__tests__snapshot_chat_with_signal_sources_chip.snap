@@ -2,15 +2,15 @@
 source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
-  │❯ List the crates                                                    ┌ Today ───────────────────┐
-  │                                                                     │Brief                     │
-  ││ Here are the crates in this▌                                       │(no brief yet — try /brief│
+  │❯ What did we decide about Postgres?                                 ┌ Today ───────────────────┐
+  │  ⏵ signal_search · Calling signal_search... · 0.0s                  │Brief                     │
+  │  ▸ signal_search result (93 chars — Ctrl+E to expand)               │(no brief yet — try /brief│
+  │    {"results":[{"lens":"work","title":"use Postgres 16"},{"lens"…   │                          │
   │                                                                     │                          │
+  ││ We decided to use Postgres 16 for the ledger.                      │                          │
+  ││ ◆ sources: personal · work                                         │                          │
   │                                                                     │                          │
-  │                                                                     │                          │
-  │                                                                     │                          │
-  │                                                                     │                          │
-  │                                                                     │                          │
+  │  ───────────────────────────────────────────────────────────────────│                          │
   │                                                                     │                          │
   │                                                                     │                          │
   │                                                                     │                          │
@@ -30,5 +30,5 @@ expression: snap
   │                                                                     │                          │
   │                                                                     └──────────────────────────┘
 ────────────────────────────────────────────────────────────────────────────────────────────────────
-> Generating...
- no model ⠋ Thinking...
+> Type your message...
+ no model Ready

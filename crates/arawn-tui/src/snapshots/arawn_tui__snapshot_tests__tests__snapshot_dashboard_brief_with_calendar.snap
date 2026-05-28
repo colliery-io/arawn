@@ -6,19 +6,19 @@ expression: snap
   │                                                                                         │Brief                     │
   │                                                                                         │2026-05-19 · Tue          │
   │                                                                                         │                          │
-  │                                                                                         │• 09:00 standup — platform│
-  │                                                                                         │• 13:00 1:1 with Jamie    │
-  │                                     ╭─────────────╮                                     │                          │
-  │                                     │    arawn    │                                     │                          │
+  │                                     ╭─────────────╮                                     │• 09:00 standup — platform│
+  │                                     │    arawn    │                                     │• 13:00 1:1 with Jamie    │
   │                                     ╰─────────────╯                                     │                          │
   │                                                                                         │                          │
- ▸│                       Welcome — your personal agentic assistant.                        │                          │
+  │                       Welcome — your personal agentic assistant.                        │                          │
   │                 I watch, check, summarize, and nudge across your tools.                 │                          │
-  │                                                                                         │                          │
-  │                       Type / for commands · Tab to toggle sidebar                       │Action items              │
-  │                              /connect <service> · ↑ recall                              │(no action items)         │
-  │                                                                                         │                          │
-  │                                                                                         │                          │
+ ▸│                                                                                         │                          │
+  │                               No LLM provider configured.                               │                          │
+  │                             Run `arawn doctor` to diagnose.                             │                          │
+  │                         Edit `~/.arawn/arawn.toml` to set one.                          │Action items              │
+  │                                                                                         │(no action items)         │
+  │                       Type / for commands · Tab to toggle sidebar                       │                          │
+  │                              /connect <service> · ↑ recall                              │                          │
   │                                                                                         │                          │
   │                                                                                         │                          │
   │                                                                                         │                          │

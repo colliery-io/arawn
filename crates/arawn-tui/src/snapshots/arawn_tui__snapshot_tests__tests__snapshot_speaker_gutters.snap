@@ -4,7 +4,7 @@ expression: snap
 ---
   │❯ what's up                                                          ┌ Today ───────────────────┐
   │                                                                     │Brief                     │
-  ││ Here's a quick answer with some prose.                             │(no brief yet — run /day t│
+  ││ Here's a quick answer with some prose.                             │(no brief yet — try /brief│
   │  ⏵ shell · ls -la · 0.0s                                            │                          │
   │  ▸ shell result                                                     │                          │
   │    file.rs                                                          │                          │

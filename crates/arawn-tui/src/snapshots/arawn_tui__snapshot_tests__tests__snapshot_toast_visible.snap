@@ -3,15 +3,15 @@ source: crates/arawn-tui/src/snapshot_tests.rs
 expression: snap
 ---
   │                                                                     ┌ Today ───────────────────┐
-  │                           ╭─────────────╮                           │Brief                     │
-  │                           │    arawn    │                           │(no brief yet — run /day t│
-  │                           ╰─────────────╯                           │                          │
+  │                                                                     │Brief                     │
+  │                                                                     │(no brief yet — try /brief│
   │                                                                     │                          │
-  │             Welcome — your personal agentic assistant.              │                          │
- ▸│       I watch, check, summarize, and nudge across your tools.       │                          │
   │                                                                     │                          │
-  │             Type / for commands · Tab to toggle sidebar             │                          │
-  │                    /connect <service> · ↑ recall                    │                          │
+  │                                                                     │                          │
+ ▸│                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
+  │                                                                     │                          │
   │                                                                     │                          │
   │                                                                     └──────────────────────────┘
 ────────────────────────────────────────────────────────────────────────────────────────────────────
