@@ -65,8 +65,15 @@ impl ExtractionChain for CotChain {
         row: &ProjectionRow,
         kb: &MemoryManager,
     ) -> Result<ChainOutcome, ExtractionError> {
+        // Surface what's already known globally about this row's subject so the
+        // chain decides in scope of the user's standing facts (ARAWN-I-0061).
+        // FTS over title + a body excerpt picks up named people / projects /
+        // conventions; bounded to a handful so the prompt doesn't drown.
+        let fact_query = format!("{} {}", row.title, truncate(&row.body_text, 500));
+        let known_facts = relevant_global_facts(kb, &fact_query, 5);
+
         // ── Stage 1: classify ───────────────────────────────────────────
-        let classify = self.classify(lens, row).await?;
+        let classify = self.classify(lens, row, &known_facts).await?;
         if !classify.in_scope {
             debug!(
                 lens = %lens.name,
@@ -99,7 +106,7 @@ impl ExtractionChain for CotChain {
         };
 
         // ── Stage 2: extract ────────────────────────────────────────────
-        let candidates = self.extract(lens, row, &ontology).await?;
+        let candidates = self.extract(lens, row, &ontology, &known_facts).await?;
         if candidates.is_empty() {
             return Ok(ChainOutcome::default());
         }
@@ -129,16 +136,20 @@ impl CotChain {
         &self,
         ws: &Lens,
         row: &ProjectionRow,
+        known_facts: &[String],
     ) -> Result<ClassifyResult, ExtractionError> {
         let system = "You decide whether a piece of content belongs in a knowledge \
                       base for a specific lens. Output ONLY a JSON object: \
                       {\"in_scope\": bool, \"reason\": short string}. \
                       Be selective — a lens is a tight scope (one person, \
-                      one project, one initiative). When in doubt, in_scope = false.";
+                      one project, one initiative). When in doubt, in_scope = false. \
+                      Use the known facts (if any) to recognize people, projects, and \
+                      conventions that bring otherwise-ambiguous content into scope.";
         let user = format!(
             "Lens: {name}\n\
-             Description: {desc}\n\n\
-             Item (feed type: {feed_type}):\n\
+             Description: {desc}\n\
+             {facts}\
+             \nItem (feed type: {feed_type}):\n\
              Title: {title}\n\
              Body:\n{body}\n",
             name = ws.name,
@@ -147,6 +158,7 @@ impl CotChain {
             } else {
                 ws.description.as_str()
             },
+            facts = format_known_facts(known_facts),
             feed_type = row.feed_type,
             title = row.title,
             body = truncate(&row.body_text, 4_000),
@@ -189,6 +201,7 @@ impl CotChain {
         ws: &Lens,
         row: &ProjectionRow,
         ontology: &[String],
+        known_facts: &[String],
     ) -> Result<Vec<ExtractedCandidate>, ExtractionError> {
         let ontology_block = if ontology.is_empty() {
             "(empty — lens has no ontology yet; emit only `tags_discovered` for now)".to_string()
@@ -220,8 +233,8 @@ impl CotChain {
             "Lens: {name}\n\
              Description: {desc}\n\
              Declared ontology (use these EXACT strings for tags_ontology): {ontology_block}\n\
-             \n\
-             Title: {title}\n\
+             {facts}\
+             \nTitle: {title}\n\
              Body:\n{body}\n",
             name = ws.name,
             desc = if ws.description.is_empty() {
@@ -230,6 +243,7 @@ impl CotChain {
                 ws.description.as_str()
             },
             ontology_block = ontology_block,
+            facts = format_known_facts(known_facts),
             title = row.title,
             body = truncate(&row.body_text, 4_000),
         );
@@ -330,7 +344,10 @@ impl CotChain {
                 warn!(entity_type = %cand.entity_type, "unknown entity_type — skipping");
                 continue;
             };
-            let scope = et.default_scope();
+            // ARAWN-I-0061: extractor signals always live in the lens KB by
+            // definition — a lens *is* its extracted signal stream. `default_scope`
+            // governs deliberate memory writes (global); it does not apply here.
+            let scope = Scope::Lens;
 
             // Filter ontology tags to declared list (case-folded).
             let kept_ontology: Vec<String> = cand
@@ -462,6 +479,69 @@ fn parse_relation_type(s: &str) -> Option<RelationType> {
 /// EXTRACTED_FROM edge target is stable across runs.
 fn projection_id_to_uuid(projection_id: &str) -> Uuid {
     Uuid::new_v5(&Uuid::NAMESPACE_OID, projection_id.as_bytes())
+}
+
+/// Pull a small set of relevant facts from global memory (ARAWN-I-0061) to give
+/// the chain situational context — who matters, what's a known project, what the
+/// user's standing preferences are. Keyed by tokens from the row so we surface
+/// facts whose subject overlaps with the content being classified.
+fn relevant_global_facts(kb: &MemoryManager, query: &str, limit: usize) -> Vec<String> {
+    // FTS5's default is AND across terms and chokes on stray punctuation
+    // (hyphens, colons, etc. parse as operators or syntax errors). Sanitize to
+    // alphanumeric tokens of length ≥3 and join with OR so any single overlap
+    // with a stored memory's title/content surfaces it. Bound the term count so
+    // a long row body can't blow up the FTS query.
+    let mut tokens: Vec<String> = query
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|t| t.len() >= 3)
+        .map(|t| t.to_lowercase())
+        .collect();
+    tokens.sort();
+    tokens.dedup();
+    tokens.truncate(40);
+    if tokens.is_empty() {
+        return Vec::new();
+    }
+    let fts_query = tokens
+        .iter()
+        .map(|t| format!("\"{t}\""))
+        .collect::<Vec<_>>()
+        .join(" OR ");
+    let hits = match kb.global.search(&fts_query, limit) {
+        Ok(h) => h,
+        Err(_) => return Vec::new(),
+    };
+    hits.into_iter()
+        .map(|e| {
+            let snippet: String = e
+                .content
+                .as_deref()
+                .unwrap_or("")
+                .chars()
+                .take(120)
+                .collect();
+            if snippet.trim().is_empty() {
+                format!("- {}: {}", e.entity_type.as_str(), e.title)
+            } else {
+                format!("- {}: {} — {}", e.entity_type.as_str(), e.title, snippet)
+            }
+        })
+        .collect()
+}
+
+/// Render a "Relevant known facts" block for injection into a CoT prompt.
+/// Returns an empty string when there are no facts so callers can splice it in
+/// unconditionally without a trailing blank section.
+fn format_known_facts(facts: &[String]) -> String {
+    if facts.is_empty() {
+        return String::new();
+    }
+    let mut s = String::from("\nRelevant known facts (from global memory):\n");
+    for f in facts {
+        s.push_str(f);
+        s.push('\n');
+    }
+    s
 }
 
 fn truncate(s: &str, max_chars: usize) -> String {
@@ -765,11 +845,13 @@ mod integration {
         }
     }
 
-    fn runner_with(fx: &Fixture, mock: Arc<KeyedMockLlm>, batch_size: usize) -> ExtractorRunner {
-        let chain: Arc<dyn ExtractionChain> = Arc::new(CotChain::new(
-            mock as Arc<dyn arawn_llm::LlmClient>,
-            "mock-model",
-        ));
+    fn runner_with<C: arawn_llm::LlmClient + 'static>(
+        fx: &Fixture,
+        mock: Arc<C>,
+        batch_size: usize,
+    ) -> ExtractorRunner {
+        let mock: Arc<dyn arawn_llm::LlmClient> = mock;
+        let chain: Arc<dyn ExtractionChain> = Arc::new(CotChain::new(mock, "mock-model"));
         ExtractorRunner::new(
             Arc::clone(&fx.store),
             Arc::clone(&fx.proj),
@@ -1006,6 +1088,117 @@ mod integration {
             !auth_hits.is_empty(),
             "auth-migration KB should contain the fact"
         );
+    }
+
+    /// LLM mock that returns `in_scope: true` only when the user prompt
+    /// contains a chosen needle, and `false` otherwise. Used to prove a
+    /// global-memory fact reaches the classify prompt.
+    struct ScopeGatedByPrompt {
+        needle: String,
+    }
+
+    #[async_trait]
+    impl arawn_llm::LlmClient for ScopeGatedByPrompt {
+        async fn stream(
+            &self,
+            request: ChatRequest,
+        ) -> Result<
+            Pin<Box<dyn futures::Stream<Item = Result<ChatChunk, LlmError>> + Send>>,
+            LlmError,
+        > {
+            let sys = request.system_prompt.clone().unwrap_or_default();
+            let user = request
+                .messages
+                .iter()
+                .filter(|m| m.role == "user")
+                .map(|m| {
+                    let arawn_llm::types::ChatContent::Text(s) = &m.content;
+                    s.as_str()
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let payload: Value = if classify_stage(&sys) {
+                let in_scope = user.contains(&self.needle);
+                serde_json::json!({"in_scope": in_scope, "reason": "gated"})
+            } else if extract_stage(&sys) {
+                serde_json::json!([
+                    {"entity_type": "note", "title": "context-aware capture"}
+                ])
+            } else if link_stage(&sys) {
+                serde_json::json!([])
+            } else {
+                panic!("ScopeGatedByPrompt: unknown stage: {sys}");
+            };
+            let text = payload.to_string();
+            let chunks: Vec<Result<ChatChunk, LlmError>> = vec![
+                Ok(ChatChunk::TextDelta { text }),
+                Ok(ChatChunk::Done { usage: None }),
+            ];
+            Ok(Box::pin(stream::iter(chunks)))
+        }
+    }
+
+    #[tokio::test]
+    async fn global_memory_fact_reaches_classify_prompt() {
+        // Seed a global memory fact whose CONTENT (the "Dylan manages" phrase)
+        // does NOT appear in the row body. If the chain classifies in_scope, the
+        // fact must have been injected into the prompt — only the global memory
+        // path produces that string.
+        let fx = setup();
+        let kb = fx.kb("pat");
+        let fact = Entity::new(EntityType::Person, "Pat Collins")
+            .with_content("Pat Collins is someone Dylan manages")
+            .with_confidence(ConfidenceSource::Stated);
+        kb.global.store_fact(&fact).unwrap();
+
+        fx.proj
+            .write_batch(&[fixture_proj(
+                "m1",
+                "Pat Collins shipped the new dashboard today",
+                0,
+            )])
+            .unwrap();
+
+        let mock = Arc::new(ScopeGatedByPrompt {
+            needle: "Dylan manages".into(),
+        });
+        let runner = runner_with(&fx, mock, 50);
+        let stats = runner
+            .run_for_lens(&ws("pat", "pat's stuff"), "gmail_messages")
+            .await
+            .unwrap();
+
+        assert_eq!(
+            stats.kept, 1,
+            "row should classify in_scope because the global memory fact \
+             ('Dylan manages …') reached the prompt"
+        );
+        assert_eq!(stats.entities_written, 1);
+    }
+
+    #[tokio::test]
+    async fn classify_without_global_facts_is_out_of_scope() {
+        // Same gated mock, same row — but no seeded global fact. The needle
+        // never appears in the prompt, so classify falls through to false.
+        let fx = setup();
+        fx.proj
+            .write_batch(&[fixture_proj(
+                "m1",
+                "Pat Collins shipped the new dashboard today",
+                0,
+            )])
+            .unwrap();
+        let mock = Arc::new(ScopeGatedByPrompt {
+            needle: "Dylan manages".into(),
+        });
+        let runner = runner_with(&fx, mock, 50);
+        let stats = runner
+            .run_for_lens(&ws("pat", "pat's stuff"), "gmail_messages")
+            .await
+            .unwrap();
+
+        assert_eq!(stats.kept, 0, "no global fact → mock returns out-of-scope");
+        assert_eq!(stats.skipped, 1);
     }
 
     #[tokio::test]
