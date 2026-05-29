@@ -399,14 +399,20 @@ pub fn wire_integrations(
 /// This flips `LocalService::connected_services` for the listed services so
 /// `query_engine::filter_tools_for_context` will include their categories.
 ///
-/// **Does NOT make integration tools callable.** Each provider's tool family
-/// is constructed from a concrete typed integration (`GmailIntegration`,
-/// `GoogleCalendarIntegration`, …) and needs a real or mocked provider client.
-/// Subsequent tasks (T-B/C/D) build the per-service mock clients.
-pub fn wire_uat_mock_integrations(service: &mut LocalService) {
+/// ARAWN-I-0062 T-B: for services with projection-backed UAT tool families
+/// (currently `google_calendar`), this also registers the UAT tool impls into
+/// the engine's tool registry — so the agent can actually call them. Each
+/// provider grows its own set of UAT tools under
+/// `arawn_integrations::<service>::uat_tools`.
+pub fn wire_uat_mock_integrations(
+    data_dir: &str,
+    service: &mut LocalService,
+    registry: &Arc<arawn_engine::ToolRegistry>,
+) {
     let Ok(list) = std::env::var("ARAWN_UAT_MOCK_INTEGRATIONS") else {
         return;
     };
+    let data_dir_path = std::path::PathBuf::from(data_dir);
     for raw in list.split(',') {
         let name = raw.trim();
         if name.is_empty() {
@@ -415,5 +421,24 @@ pub fn wire_uat_mock_integrations(service: &mut LocalService) {
         let mock = Arc::new(arawn_integrations::UatMockIntegration::new(name));
         service.register_integration(mock as Arc<dyn arawn_integrations::Integration>);
         info!(service = %name, "registered UAT mock integration");
+
+        // Per-service UAT tool wiring. Production tools are constructed from
+        // typed integrations + credentials; the UAT variants are credential-
+        // free and read from the seeded projection store.
+        match name {
+            "google_calendar" => {
+                for tool in arawn_integrations::calendar::uat_calendar_tools(data_dir_path.clone())
+                {
+                    registry.register(tool);
+                }
+                info!("registered UAT calendar tools (1)");
+            }
+            _ => {
+                debug!(
+                    service = %name,
+                    "no projection-backed UAT tools for this service yet",
+                );
+            }
+        }
     }
 }

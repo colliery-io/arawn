@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 arawn-auth = { path = "../arawn-auth" }
+arawn-projections = { path = "../arawn-projections" }
 arawn-service = { workspace = true }
 arawn-tool = { workspace = true }
 async-trait = { workspace = true }

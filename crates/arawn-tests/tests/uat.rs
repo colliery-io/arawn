@@ -1086,7 +1086,7 @@ fn morning_briefing_scenario() -> Scenario {
         turns: vec![
             ScenarioTurn {
                 user_message: "Give me a quick morning briefing — what should I know about today across my calendar, inbox, and Slack (focus on the `personal` lens). Don't bury the lede, and flag any scheduling conflicts.".to_string(),
-                judge_expectation: "Agent should use signal_search / signal_query / signal_timeline (passing lens=\"personal\" or omitting and reading cross-lens) and/or the relevant integration read tools to gather state across calendar + inbox + slack. Summary should mention: today's standup, the architecture review at 1pm-ish (a calendar conflict — both at 20:00 UTC), the RFC-0042 thread from Alice asking for sign-off, and the @mention from Jamie about the ledger dashboard. The agent MUST surface the 20:00 UTC overlap between the 1:1 and the architecture review as a calendar conflict. FAIL if the agent invents details not present in the fixture.".to_string(),
+                judge_expectation: "Agent should call the live `calendar_upcoming` tool first for today's schedule (Google Calendar is connected in this run), then fall back to signal_search / signal_query / feed_search and/or other integration tools to gather inbox + slack state. Summary should mention: today's standup, the architecture review at 1pm-ish (a calendar conflict — both at 20:00 UTC), the RFC-0042 thread from Alice asking for sign-off, and the @mention from Jamie about the ledger dashboard. The agent MUST surface the 20:00 UTC overlap between the 1:1 and the architecture review as a calendar conflict. FAIL if the agent invents details not present in the fixture.".to_string(),
             },
         ],
         mechanical: MechanicalThresholds {
@@ -1101,14 +1101,19 @@ fn morning_briefing_scenario() -> Scenario {
                 "20:00".to_string(),
                 "rfc-0042".to_string(),
             ],
-            required_tool_names: vec![],
+            // ARAWN-I-0062 T-B: live Google Calendar is the right source for
+            // "today's schedule." The UAT calendar tool reads the same
+            // calendar_events projection seed; required_tool_names asserts
+            // the agent reached for it rather than falling back to feed_search
+            // / signal_*.
+            required_tool_names: vec!["calendar_upcoming".to_string()],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
-        mock_integrations: vec![],
+        mock_integrations: vec!["google_calendar".to_string()],
     }
 }
 

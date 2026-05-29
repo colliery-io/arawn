@@ -1040,11 +1040,16 @@ async fn main() -> Result<()> {
             &registry,
             &github_for_bind_hook,
         );
-        // ARAWN-I-0062 T-A: UAT-only mock integrations (env-var gated). Reports
-        // services as connected so the engine's category filter includes their
-        // tool families. Tools themselves still require the typed provider —
-        // see T-B/C/D.
-        arawn_bin::startup::integrations::wire_uat_mock_integrations(&mut service);
+        // ARAWN-I-0062 T-A/T-B: UAT-only mock integrations (env-var gated).
+        // Reports services as connected so the engine's category filter
+        // includes their tool families, and registers projection-backed UAT
+        // tool impls for the services that have them (calendar today; gmail/
+        // slack/drive follow in T-C/D/F).
+        arawn_bin::startup::integrations::wire_uat_mock_integrations(
+            &data_dir,
+            &mut service,
+            &registry,
+        );
         // Field-by-field destructuring removed — `integrations_for_feeds` is
         // passed by reference into `startup::feeds::wire_continual_feeds`.
 
