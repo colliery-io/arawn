@@ -445,6 +445,12 @@ pub fn wire_uat_mock_integrations(
                 }
                 info!("registered UAT slack tools (2)");
             }
+            "google_drive" => {
+                for tool in arawn_integrations::drive::uat_drive_tools(data_dir_path.clone()) {
+                    registry.register(tool);
+                }
+                info!("registered UAT drive tools (1)");
+            }
             _ => {
                 debug!(
                     service = %name,
