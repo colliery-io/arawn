@@ -12,9 +12,11 @@
 mod client;
 mod integration;
 mod tools;
+pub mod uat_tools;
 
 pub use client::{GmailHub, client_from_token_store};
 pub use integration::{GmailIntegration, GmailProviderConfig};
 pub use tools::{
     GmailGetMessageTool, GmailInboxReadTool, GmailMarkReadTool, GmailSearchTool, GmailSendTool,
 };
+pub use uat_tools::{UatGmailInboxReadTool, UatGmailSearchTool, uat_gmail_tools};

@@ -433,6 +433,18 @@ pub fn wire_uat_mock_integrations(
                 }
                 info!("registered UAT calendar tools (1)");
             }
+            "gmail" => {
+                for tool in arawn_integrations::gmail::uat_gmail_tools(data_dir_path.clone()) {
+                    registry.register(tool);
+                }
+                info!("registered UAT gmail tools (2)");
+            }
+            "slack" => {
+                for tool in arawn_integrations::slack::uat_slack_tools(data_dir_path.clone()) {
+                    registry.register(tool);
+                }
+                info!("registered UAT slack tools (2)");
+            }
             _ => {
                 debug!(
                     service = %name,

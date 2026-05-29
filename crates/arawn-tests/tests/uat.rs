@@ -1123,8 +1123,8 @@ fn inbox_summary_scenario() -> Scenario {
         objective: "Assistant summarizes inbox grouped by topic and omits marketing noise. Tests both summarization quality and signal-vs-noise filtering.".to_string(),
         turns: vec![
             ScenarioTurn {
-                user_message: "Summarize my inbox today using the `personal` lens. Skip the marketing junk — automated promos from vendors (meal-kit, anything with an 'Unsubscribe' link or a discount code) and routine billing invoices are noise, not substance. I only want the messages that need my attention or that I'd want to know about.".to_string(),
-                judge_expectation: "Agent should switch lens and use signal_search / signal_query (or gmail tools) to read inbox rows. The summary MUST omit the meal-kit promo (mentions SAVE10, 'Unsubscribe') and the cloud-provider billing-notification rows (vendor invoice). It should mention: Alice's RFC-0042 sign-off request, Mei's coffee invitation, Jamie's standup notes, mom's Sunday dinner, the github PR review request, and the catch-up reply from Bob. FAIL if either marketing row is summarized as substantive; FAIL if any inbox content not present in the fixture is described.".to_string(),
+                user_message: "Summarize my inbox today. Skip the marketing junk — automated promos from vendors (meal-kit, anything with an 'Unsubscribe' link or a discount code) and routine billing invoices are noise, not substance. I only want the messages that need my attention or that I'd want to know about.".to_string(),
+                judge_expectation: "Agent should call the live gmail tool (gmail_inbox_read) for the inbox — Gmail is connected in this run — and may complement with signal_search / signal_query. The summary MUST omit the meal-kit promo (mentions SAVE10, 'Unsubscribe') and the cloud-provider billing-notification rows (vendor invoice). It should mention: Alice's RFC-0042 sign-off request, Mei's coffee invitation, Jamie's standup notes, mom's Sunday dinner, the github PR review request, and the catch-up reply from Bob. FAIL if either marketing row is summarized as substantive; FAIL if any inbox content not present in the fixture is described.".to_string(),
             },
         ],
         mechanical: MechanicalThresholds {
@@ -1132,15 +1132,21 @@ fn inbox_summary_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 3,
             max_tool_errors: 2,
-            required_evidence: vec![],
-            required_tool_names: vec![],
+            // ARAWN-I-0062 T-C: real inbox content markers (RFC-0042 + Bob's
+            // catch-up reply) prove the gmail read happened against the right
+            // fixture rows, not just any payload.
+            required_evidence: vec![
+                "rfc-0042".to_string(),
+                "bob".to_string(),
+            ],
+            required_tool_names: vec!["gmail_inbox_read".to_string()],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
-        mock_integrations: vec![],
+        mock_integrations: vec!["gmail".to_string()],
     }
 }
 
@@ -1204,8 +1210,8 @@ fn mention_scan_scenario() -> Scenario {
         objective: "Assistant uses a targeted mention-scan tool / query (not a free-form search) and surfaces the two @mentions present in the fixture with their context.".to_string(),
         turns: vec![
             ScenarioTurn {
-                user_message: "Working in the `personal` lens:Did anyone explicitly @-mention me on Slack today — meaning a message that starts with `@pat` or contains `@pat` as a token? Pull just those messages and quote them. Don't include messages that merely address me by name in the body (e.g., 'Pat?') — only ones with the literal @-prefix.".to_string(),
-                judge_expectation: "Agent should use the most targeted available tool (slack_my_mentions / signal_search / feed_search with a 'pat' or '@pat' query) and return EXACTLY TWO @mentions: Jamie's ledger-migration-dashboard ask in C-platform ('@pat — could you take a look...'), and Alice's RFC-0042 sign-off ping in C-eng-design ('RFC-0042 thread — @pat we'd love your sign-off here...'). FAIL if the agent reports only one. FAIL if the agent inflates the count by including David's 'Pat?' message (which addresses Pat by name but has no @-prefix). FAIL if it summarizes without quoting.".to_string(),
+                user_message: "Did anyone explicitly @-mention me on Slack today — meaning a message that starts with `@pat` or contains `@pat` as a token? Pull just those messages and quote them. Don't include messages that merely address me by name in the body (e.g., 'Pat?') — only ones with the literal @-prefix.".to_string(),
+                judge_expectation: "Slack is connected in this run, so the agent should use the live slack tools — `slack_list_channels` to discover channels, then `slack_history` per channel — and filter for the literal `@pat` token. Return EXACTLY TWO @mentions: Jamie's ledger-migration-dashboard ask in C-platform ('@pat — could you take a look...'), and Alice's RFC-0042 sign-off ping in C-eng-design ('RFC-0042 thread — @pat we'd love your sign-off here...'). FAIL if the agent reports only one. FAIL if the agent inflates the count by including David's 'Pat?' message (no @-prefix). FAIL if it summarizes without quoting.".to_string(),
             },
         ],
         mechanical: MechanicalThresholds {
@@ -1213,15 +1219,19 @@ fn mention_scan_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 0,
             max_tool_errors: 2,
-            required_evidence: vec![],
-            required_tool_names: vec![],
+            // Both @mentions must be present in the tool result stream.
+            required_evidence: vec!["@pat".to_string()],
+            // Live slack path: must call slack_history (channel discovery via
+            // slack_list_channels is allowed but not required — agent may
+            // already know channel names from prior turns / signals).
+            required_tool_names: vec!["slack_history".to_string()],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
-        mock_integrations: vec![],
+        mock_integrations: vec!["slack".to_string()],
     }
 }
 
