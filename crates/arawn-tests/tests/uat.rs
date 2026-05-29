@@ -64,6 +64,14 @@ pub struct Scenario {
     /// data in all five sections.
     #[serde(default)]
     pub seed_weekly_ceremony: bool,
+    /// ARAWN-I-0062 T-A: services whose `UatMockIntegration` should be
+    /// registered on the server before the engine boots. The mocks report
+    /// `is_connected() == true`, which flips `LocalService::connected_services`
+    /// for those services and lets the engine's category filter include their
+    /// tool families. Empty by default — current corpus-mode scenarios are
+    /// unchanged. Wired via the `ARAWN_UAT_MOCK_INTEGRATIONS` env var.
+    #[serde(default)]
+    pub mock_integrations: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -86,6 +94,12 @@ pub struct MechanicalThresholds {
     /// from every tool result, mechanical FAILS.
     #[serde(default)]
     pub required_evidence: Vec<String>,
+    /// ARAWN-I-0062 T-A: tool names the agent MUST call by name at least once
+    /// across the run. Lets a scenario assert "the live integration tool was
+    /// actually reached for" — complements `required_evidence` (which only
+    /// inspects tool *output*). Empty by default. Names compared exactly.
+    #[serde(default)]
+    pub required_tool_names: Vec<String>,
 }
 
 // ============================================================================
@@ -145,6 +159,9 @@ pub struct MechanicalCheckResult {
     /// Required-evidence substrings that did NOT appear in any tool result.
     /// Empty when all required evidence was retrieved (or none was required).
     pub missing_evidence: Vec<String>,
+    /// Required tool names the agent never called (ARAWN-I-0062 T-A).
+    /// Empty when every required tool was called (or none was required).
+    pub missing_tool_names: Vec<String>,
     pub pass: bool,
 }
 
@@ -292,6 +309,15 @@ network_tools = ["gh", "curl"]
 
     /// Start the arawn server process.
     pub fn start_server(&mut self) -> Result<(), String> {
+        self.start_server_with(&[])
+    }
+
+    /// ARAWN-I-0062 T-A: variant that passes a list of services into the
+    /// server via `ARAWN_UAT_MOCK_INTEGRATIONS`. The server's startup picks up
+    /// the env var and registers a `UatMockIntegration` for each name; that
+    /// flips `connected_services` for those services so the engine's tool-
+    /// category filter includes them.
+    pub fn start_server_with(&mut self, mock_integrations: &[String]) -> Result<(), String> {
         let binary = std::env::var("ARAWN_BINARY").unwrap_or_else(|_| {
             // Find the binary relative to the workspace root
             let manifest_dir = env!("CARGO_MANIFEST_DIR");
@@ -305,16 +331,22 @@ network_tools = ["gh", "curl"]
                 .to_string()
         });
 
-        let child = Command::new(&binary)
-            .args([
-                "--data-dir",
-                &self.data_dir.to_string_lossy(),
-                "serve",
-                "--port",
-                &self.port.to_string(),
-            ])
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::piped())
+        let mut cmd = Command::new(&binary);
+        cmd.args([
+            "--data-dir",
+            &self.data_dir.to_string_lossy(),
+            "serve",
+            "--port",
+            &self.port.to_string(),
+        ])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped());
+
+        if !mock_integrations.is_empty() {
+            cmd.env("ARAWN_UAT_MOCK_INTEGRATIONS", mock_integrations.join(","));
+        }
+
+        let child = cmd
             .spawn()
             .map_err(|e| format!("failed to start server: {e}"))?;
 
@@ -421,11 +453,29 @@ network_tools = ["gh", "curl"]
             .cloned()
             .collect();
 
+        // ARAWN-I-0062 T-A: required_tool_names — every listed tool must have
+        // been called at least once across the run. Complements the
+        // content-grep check for cases where we want to assert the *path*
+        // (e.g. agent reached for `calendar_upcoming`), independent of what
+        // landed in the result body.
+        let called_tool_names: std::collections::HashSet<&str> = turns
+            .iter()
+            .flat_map(|t| t.tool_calls.iter().map(|c| c.name.as_str()))
+            .collect();
+        let missing_tool_names: Vec<String> = scenario
+            .mechanical
+            .required_tool_names
+            .iter()
+            .filter(|name| !called_tool_names.contains(name.as_str()))
+            .cloned()
+            .collect();
+
         let mech_pass = all_completed
             && no_engine_errors
             && workspace_files.len() >= scenario.mechanical.min_files_created
             && workflows_created >= scenario.mechanical.min_workflows_created
-            && missing_evidence.is_empty();
+            && missing_evidence.is_empty()
+            && missing_tool_names.is_empty();
 
         ScenarioResult {
             scenario_name: scenario.name.clone(),
@@ -439,6 +489,7 @@ network_tools = ["gh", "curl"]
                 workflows_created,
                 tool_errors,
                 missing_evidence,
+                missing_tool_names,
                 pass: mech_pass,
             },
             workspace_files,
@@ -701,12 +752,14 @@ fn work_signal_pipeline_scenario() -> Scenario {
             min_memory_entities: 0,
             max_tool_errors: 2,
             required_evidence: vec![],
+            required_tool_names: vec![],
         },
         seed_fixture: None,
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
+        mock_integrations: vec![],
     }
 }
 
@@ -767,6 +820,7 @@ fn signal_extraction_e2e_scenario() -> Scenario {
             min_memory_entities: 6,
             max_tool_errors: 3,
             required_evidence: vec![],
+            required_tool_names: vec![],
         },
         seed_fixture: Some("tests/fixtures/uat/signal-extraction-e2e.json".to_string()),
         // Dust scenario: don't pre-seed promotion proposals. A stray
@@ -776,6 +830,7 @@ fn signal_extraction_e2e_scenario() -> Scenario {
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
+        mock_integrations: vec![],
     }
 }
 
@@ -817,6 +872,7 @@ fn tag_promoter_cycle_scenario() -> Scenario {
             min_memory_entities: 4,
             max_tool_errors: 2,
             required_evidence: vec![],
+            required_tool_names: vec![],
         },
         seed_fixture: Some("tests/fixtures/uat/signal-extraction-e2e.json".to_string()),
         // This scenario IS the tag-promoter cycle — seed the proposals
@@ -825,6 +881,7 @@ fn tag_promoter_cycle_scenario() -> Scenario {
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
+        mock_integrations: vec![],
     }
 }
 
@@ -859,12 +916,14 @@ fn retro_ceremony_scenario() -> Scenario {
             min_memory_entities: 0,
             max_tool_errors: 1,
             required_evidence: vec![],
+            required_tool_names: vec![],
         },
         seed_fixture: Some("tests/fixtures/uat/retro-ceremony.json".to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: true,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
+        mock_integrations: vec![],
     }
 }
 
@@ -900,12 +959,14 @@ fn daily_ceremony_scenario() -> Scenario {
             min_memory_entities: 0,
             max_tool_errors: 1,
             required_evidence: vec![],
+            required_tool_names: vec![],
         },
         seed_fixture: Some("tests/fixtures/uat/daily-ceremony.json".to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: true,
         seed_weekly_ceremony: false,
+        mock_integrations: vec![],
     }
 }
 
@@ -947,12 +1008,14 @@ fn weekly_ceremony_scenario() -> Scenario {
             min_memory_entities: 0,
             max_tool_errors: 1,
             required_evidence: vec![],
+            required_tool_names: vec![],
         },
         seed_fixture: Some("tests/fixtures/uat/weekly-ceremony.json".to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: true,
+        mock_integrations: vec![],
     }
 }
 
@@ -988,12 +1051,14 @@ fn priority_completion_feedback_scenario() -> Scenario {
             min_memory_entities: 0,
             max_tool_errors: 1,
             required_evidence: vec![],
+            required_tool_names: vec![],
         },
         seed_fixture: Some("tests/fixtures/uat/retro-ceremony.json".to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: true,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
+        mock_integrations: vec![],
     }
 }
 
@@ -1036,12 +1101,14 @@ fn morning_briefing_scenario() -> Scenario {
                 "20:00".to_string(),
                 "rfc-0042".to_string(),
             ],
+            required_tool_names: vec![],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
+        mock_integrations: vec![],
     }
 }
 
@@ -1061,12 +1128,14 @@ fn inbox_summary_scenario() -> Scenario {
             min_memory_entities: 3,
             max_tool_errors: 2,
             required_evidence: vec![],
+            required_tool_names: vec![],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
+        mock_integrations: vec![],
     }
 }
 
@@ -1086,12 +1155,14 @@ fn draft_with_confirmation_scenario() -> Scenario {
             min_memory_entities: 0,
             max_tool_errors: 3,
             required_evidence: vec![],
+            required_tool_names: vec![],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
+        mock_integrations: vec![],
     }
 }
 
@@ -1111,12 +1182,14 @@ fn schedule_with_confirmation_scenario() -> Scenario {
             min_memory_entities: 0,
             max_tool_errors: 3,
             required_evidence: vec![],
+            required_tool_names: vec![],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
+        mock_integrations: vec![],
     }
 }
 
@@ -1136,12 +1209,14 @@ fn mention_scan_scenario() -> Scenario {
             min_memory_entities: 0,
             max_tool_errors: 2,
             required_evidence: vec![],
+            required_tool_names: vec![],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
+        mock_integrations: vec![],
     }
 }
 
@@ -1161,12 +1236,14 @@ fn no_fabrication_scenario() -> Scenario {
             min_memory_entities: 0,
             max_tool_errors: 2,
             required_evidence: vec![],
+            required_tool_names: vec![],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
+        mock_integrations: vec![],
     }
 }
 
@@ -1193,12 +1270,14 @@ fn filesystem_watch_roundtrip_scenario() -> Scenario {
             min_memory_entities: 0,
             max_tool_errors: 2,
             required_evidence: vec![],
+            required_tool_names: vec![],
         },
         seed_fixture: Some("tests/fixtures/uat/filesystem-watch-roundtrip.json".to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
+        mock_integrations: vec![],
     }
 }
 
@@ -1354,8 +1433,10 @@ async fn uat_run() {
             }
         }
 
-        // Start server
-        harness.start_server().expect("start server");
+        // Start server (with any UAT mock integrations the scenario requested).
+        harness
+            .start_server_with(&scenario.mock_integrations)
+            .expect("start server");
         println!("    Waiting for server...");
         harness
             .wait_for_ready(Duration::from_secs(60))
@@ -1386,6 +1467,12 @@ async fn uat_run() {
             println!(
                 "      Missing evidence: {}",
                 result.mechanical.missing_evidence.join(" · "),
+            );
+        }
+        if !result.mechanical.missing_tool_names.is_empty() {
+            println!(
+                "      Missing tool calls: {}",
+                result.mechanical.missing_tool_names.join(" · "),
             );
         }
         for turn in &result.turns {

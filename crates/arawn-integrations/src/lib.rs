@@ -32,10 +32,12 @@ pub mod integration;
 pub mod oauth_flow;
 pub mod retry_after;
 pub mod slack;
+pub mod uat_mock;
 
 pub use credential_store::CredentialStore;
 pub use error::IntegrationError;
 pub use integration::{ConnectContext, Integration, IntegrationStatus};
+pub use uat_mock::UatMockIntegration;
 pub use oauth_flow::{OAuthOutcome, run_oauth_flow};
 pub use retry_after::parse_retry_after;
 

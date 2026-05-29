@@ -393,3 +393,27 @@ pub fn wire_integrations(
         slack: slack_integration_for_feeds,
     }
 }
+
+/// ARAWN-I-0062 T-A: register lifecycle-level `UatMockIntegration`s based on
+/// the `ARAWN_UAT_MOCK_INTEGRATIONS` env var (comma-separated service slugs).
+/// This flips `LocalService::connected_services` for the listed services so
+/// `query_engine::filter_tools_for_context` will include their categories.
+///
+/// **Does NOT make integration tools callable.** Each provider's tool family
+/// is constructed from a concrete typed integration (`GmailIntegration`,
+/// `GoogleCalendarIntegration`, …) and needs a real or mocked provider client.
+/// Subsequent tasks (T-B/C/D) build the per-service mock clients.
+pub fn wire_uat_mock_integrations(service: &mut LocalService) {
+    let Ok(list) = std::env::var("ARAWN_UAT_MOCK_INTEGRATIONS") else {
+        return;
+    };
+    for raw in list.split(',') {
+        let name = raw.trim();
+        if name.is_empty() {
+            continue;
+        }
+        let mock = Arc::new(arawn_integrations::UatMockIntegration::new(name));
+        service.register_integration(mock as Arc<dyn arawn_integrations::Integration>);
+        info!(service = %name, "registered UAT mock integration");
+    }
+}

@@ -4,14 +4,14 @@ level: task
 title: "T-A: UAT integration-connection plumbing"
 short_code: "ARAWN-T-0445"
 created_at: 2026-05-28T22:01:44.832147+00:00
-updated_at: 2026-05-28T22:01:44.832147+00:00
+updated_at: 2026-05-29T00:43:06.013983+00:00
 parent: ARAWN-I-0062
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -46,6 +46,10 @@ the registration shim that flips `is_connected("calendar")` to `true`.
   mentions a `calendar_*` tool name.
 
 ## Acceptance Criteria
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 - [ ] `connected_services` reports the mocked services as connected when
       `mock_integrations` is non-empty.
 - [ ] Integration tools for those services land in the live registry and pass
@@ -60,4 +64,41 @@ Blocks every other task in this initiative. T-B/C/D/E/F/G all need the
 registration shim + `required_tool_names`.
 
 ## Status Updates
-*To be added during implementation*
+
+**2026-05-28 — Done (plumbing only).** Landed:
+
+- `arawn_integrations::UatMockIntegration` — lifecycle-only `Integration` impl
+  reporting `is_connected() = true` and a `capabilities_summary` tagged
+  `uat-mock`. Lives at `crates/arawn-integrations/src/uat_mock.rs`, exported
+  from `lib.rs`. Unit-tested.
+- Server-side wiring: `startup::integrations::wire_uat_mock_integrations`
+  reads `ARAWN_UAT_MOCK_INTEGRATIONS` (comma-separated service slugs) and
+  registers a mock per name. Called from `main.rs` after the OAuth
+  `wire_integrations`.
+- Harness-side: `Scenario.mock_integrations: Vec<String>` (serde-default);
+  `Harness::start_server_with(&[...])` injects the env var when non-empty;
+  the test runner passes `scenario.mock_integrations` through.
+- New `MechanicalThresholds.required_tool_names: Vec<String>` field +
+  `MechanicalCheckResult.missing_tool_names`. Mechanical check tracks the
+  union of every `tool_call.name` across all turns and fails if any required
+  name was never called. Surfaced in the summary print line ("Missing tool
+  calls: …") alongside "Missing evidence: …".
+- All 15 existing scenarios get `mock_integrations: vec![]` and
+  `required_tool_names: vec![]` (no behavioural change).
+
+**Architectural finding for T-B+:** the "tools land in registry" half of T-A's
+acceptance is NOT met, and that's correct — it's not achievable yet.
+Integration TOOLS are registered in
+`crates/arawn/src/startup/integrations.rs` from typed concrete integrations
+(`GmailIntegration::new(client_id, client_secret)` etc.), guarded by
+*credentials present*, and they take `Arc<GmailIntegration>` (not
+`Arc<dyn Integration>`) at construction. A bare lifecycle-mock won't bring
+those tools into the registry — T-B/T-C/T-D each need to build a typed
+concrete-integration variant with a fake provider client and wire it into the
+same registration path the OAuth integrations use today, so the tools get
+constructed and registered against the mock client. That's exactly what T-B
+(calendar) is sized for; T-A's contribution is the shared substrate (env-var
++ harness + mechanical check) those tasks build on.
+
+Verification: `arawn-integrations::uat_mock::tests::reports_connected_and_named`
+green; `cargo build --tests` clean; `angreal check workspace` exit 0.
