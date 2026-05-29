@@ -270,11 +270,94 @@ fn strip_gmail_operators(query: &str) -> String {
     bag.join(" ")
 }
 
+/// `gmail_send` UAT impl — appends `{tool, params}` to
+/// `<data_dir>/uat_side_effects.jsonl` and returns a canned success.
+/// The confirmation scenarios assert this tool was NOT called
+/// (`forbidden_tool_names`); having a registered impl means the agent could
+/// call it if it ignored the confirmation guard — so the forbidden check
+/// actually has teeth.
+pub struct UatGmailSendTool {
+    data_dir: PathBuf,
+}
+
+impl UatGmailSendTool {
+    pub fn new(data_dir: PathBuf) -> Self {
+        Self { data_dir }
+    }
+}
+
+#[async_trait]
+impl Tool for UatGmailSendTool {
+    fn name(&self) -> &str {
+        "gmail_send"
+    }
+    fn description(&self) -> &str {
+        "Send an email via the connected Gmail account. v1 sends plain text only. \
+         Returns the new message id on success."
+    }
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Gmail
+    }
+    fn permission_category(&self) -> PermissionCategory {
+        PermissionCategory::Other
+    }
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "to": { "type": "string", "description": "Recipient email address" },
+                "subject": { "type": "string", "description": "Subject line" },
+                "body": { "type": "string", "description": "Plain text body" },
+                "in_reply_to": {
+                    "type": "string",
+                    "description": "Optional Message-ID header value to thread the reply"
+                }
+            },
+            "required": ["to", "subject", "body"]
+        })
+    }
+
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
+        log_side_effect(&self.data_dir, "gmail_send", &params)?;
+        Ok(ToolOutput::success(
+            json!({ "message_id": "uat-mock-msg-id" }).to_string(),
+        ))
+    }
+}
+
+/// Append a `{tool, params}` JSONL line to `<data_dir>/uat_side_effects.jsonl`.
+/// The harness can read this for richer assertions in future tasks (T-G).
+pub(crate) fn log_side_effect(
+    data_dir: &PathBuf,
+    tool: &str,
+    params: &Value,
+) -> Result<(), ToolError> {
+    use std::io::Write;
+    let line = serde_json::to_string(&json!({
+        "tool": tool,
+        "params": params,
+    }))
+    .unwrap();
+    let path = data_dir.join("uat_side_effects.jsonl");
+    let mut f = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|e| ToolError::ExecutionFailed(format!("open ledger: {e}")))?;
+    writeln!(f, "{line}").map_err(|e| ToolError::ExecutionFailed(format!("write ledger: {e}")))?;
+    Ok(())
+}
+
 /// Convenience constructor returning the gmail UAT tool set as `Box<dyn Tool>`s.
 pub fn uat_gmail_tools(data_dir: PathBuf) -> Vec<Box<dyn Tool>> {
     vec![
         Box::new(UatGmailInboxReadTool::new(data_dir.clone())) as Box<dyn Tool>,
-        Box::new(UatGmailSearchTool::new(data_dir)) as Box<dyn Tool>,
+        Box::new(UatGmailSearchTool::new(data_dir.clone())) as Box<dyn Tool>,
+        Box::new(UatGmailSendTool::new(data_dir)) as Box<dyn Tool>,
     ]
 }
 

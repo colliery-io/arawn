@@ -188,10 +188,77 @@ impl Tool for UatCalendarUpcomingTool {
     }
 }
 
+/// `calendar_create_event` UAT impl — appends to the side-effect ledger and
+/// returns canned success. The schedule-with-confirmation scenario asserts
+/// this tool was NOT called.
+pub struct UatCalendarCreateEventTool {
+    data_dir: PathBuf,
+}
+
+impl UatCalendarCreateEventTool {
+    pub fn new(data_dir: PathBuf) -> Self {
+        Self { data_dir }
+    }
+}
+
+#[async_trait]
+impl Tool for UatCalendarCreateEventTool {
+    fn name(&self) -> &str {
+        "calendar_create_event"
+    }
+    fn description(&self) -> &str {
+        "Create an event on a Google Calendar. start/end are RFC3339 (e.g. \
+         '2026-05-08T10:00:00-04:00'). Returns the new event id and a calendar URL."
+    }
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Calendar
+    }
+    fn permission_category(&self) -> PermissionCategory {
+        PermissionCategory::Other
+    }
+    fn parameters_schema(&self) -> Value {
+        json!({
+            "type": "object",
+            "properties": {
+                "title": { "type": "string", "description": "Event title (a.k.a. summary)" },
+                "start": { "type": "string", "description": "Start time, RFC3339 with timezone" },
+                "end": { "type": "string", "description": "End time, RFC3339 with timezone" },
+                "attendees": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Attendee email addresses"
+                },
+                "description": { "type": "string", "description": "Free-form description" },
+                "location": { "type": "string", "description": "Free-form location" },
+                "calendar_id": { "type": "string", "description": "Target calendar (default 'primary')" }
+            },
+            "required": ["title", "start", "end"]
+        })
+    }
+
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
+        crate::gmail::uat_tools::log_side_effect(&self.data_dir, "calendar_create_event", &params)?;
+        Ok(ToolOutput::success(
+            json!({
+                "event_id": "uat-mock-event-id",
+                "html_link": "https://calendar.google.com/event?eid=uat-mock"
+            })
+            .to_string(),
+        ))
+    }
+}
+
 /// Convenience constructor that returns the tool as `Arc<dyn Tool>` for
 /// registration into the engine's tool registry.
 pub fn uat_calendar_tools(data_dir: PathBuf) -> Vec<Box<dyn Tool>> {
-    vec![Box::new(UatCalendarUpcomingTool::new(data_dir)) as Box<dyn Tool>]
+    vec![
+        Box::new(UatCalendarUpcomingTool::new(data_dir.clone())) as Box<dyn Tool>,
+        Box::new(UatCalendarCreateEventTool::new(data_dir)) as Box<dyn Tool>,
+    ]
 }
 
 #[cfg(test)]
