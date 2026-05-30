@@ -26,8 +26,10 @@ minimal resource footprint.
 
 ## Purpose
 
-Help you stay organized and on top of non-work life. Arawn watches, checks,
-summarizes, and nudges — so you don't have to keep everything in your head.
+Help you stay organized and on top of life — work and non-work alike. Arawn
+watches, checks, summarizes, and nudges so you don't have to keep everything
+in your head. The same memory · signals · lenses substrate serves the
+single user whether they're running an engineering org or planning a vacation.
 
 ## Current State
 
@@ -63,10 +65,15 @@ A single Rust binary that:
 
 The core data model has three distinct layers (kept distinct on purpose):
 
-- **Memory** — global statements of fact and behavioral tuning (e.g. "Pat
-  Collins is someone I manage", "prefer terse responses"). Stored once,
-  globally. Read by the chat and by every lens's extractor when deciding
-  scope.
+- **Memory** — global statements of fact, structured entities, and behavioral
+  tuning. Facts can be opaque ("prefer terse responses", "calendar is in PT")
+  or structured: a `Person` entity for "Pat Collins" (role, reports_to, team,
+  growth themes, open commitments); a `Project` entity for "Project Atlas"
+  (decisions log, risks, bindings); a `Team` entity for per-team roll-ups.
+  Typed relations between entities — `manages`, `reports_to`, `on_team`,
+  `peer_of`, `belongs_to_project` — turn the memory into a navigable model of
+  who and what surrounds the user. Stored once, globally. Read by the chat
+  and by every lens's extractor when deciding scope.
 - **Signals** — extracted activity/events. Each lens's standing extractor
   pulls typed entities out of incoming feed material; the chat reads them
   across every lens with the agent's `signal_*` tools (each hit labeled by
@@ -120,6 +127,24 @@ A configurable LLM provider drives the chat, the extraction chain, and
 ceremony summarization. Provider choice is per-deployment (`arawn.toml`); the
 extractor uses the same client.
 
+### Audiences & Voice
+
+The chat speaks in the user's voice when drafting external communication.
+The single user might be writing a board update, a 1:1 follow-up to a
+direct, a peer-leader heads-up, an all-hands talking point, or a casual
+reminder to themselves. These have different registers; the system models
+them explicitly. Voice profiles:
+
+- `personal` — the default register. Direct, warm, no corporate hedging.
+- `exec-comms` — work-context drafting with audience sub-modes (`board`,
+  `peer`, `direct-report`, `skip-level`, `all-hands`). Each sub-mode carries
+  a register guide that shapes tone, hedging, and structure without
+  re-prompting per draft.
+
+Voice profile selection is part of how drafting tools (`gmail_send`, future
+`slack_reply`, future `compose`) attach context. The user can override per
+request and set defaults via `arawn.md`.
+
 ## Success Criteria
 
 1. Can hold a useful chat conversation with context persistence — the chat
@@ -131,6 +156,10 @@ extractor uses the same client.
    every lens's extraction.
 5. Stable on a low-resource system (<500 MB memory).
 6. Comprehensive test coverage from day one (unit + integration + UAT).
+7. Can answer person-centric and project-centric questions ("what's been
+   going on with Sarah this week?", "where's Atlas right now?") by joining
+   structured entities to signals, at the same cadence as topic-centric
+   questions.
 
 ## Principles
 

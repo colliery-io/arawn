@@ -4,14 +4,14 @@ level: initiative
 title: "Vision refresh: personal AND work, with exec persona as co-equal surface"
 short_code: "ARAWN-I-0063"
 created_at: 2026-05-30T17:14:37.171747+00:00
-updated_at: 2026-05-30T17:14:37.171747+00:00
+updated_at: 2026-05-30T17:30:33.494099+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
