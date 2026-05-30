@@ -4,14 +4,14 @@ level: task
 title: "T-B: person_profile sidecar table + PersonProfile struct + MemoryStore CRUD"
 short_code: "ARAWN-T-0457"
 created_at: 2026-05-30T20:36:34.673781+00:00
-updated_at: 2026-05-30T20:36:34.673781+00:00
+updated_at: 2026-05-30T20:49:41.316717+00:00
 parent: ARAWN-I-0064
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -26,9 +26,18 @@ initiative_id: ARAWN-I-0064
 
 [[ARAWN-I-0064]]
 
-## Objective **[REQUIRED]**
+## Objective
 
-{Clear statement of what this task accomplishes}
+Add the `person_profile` sidecar SQLite table to `MemoryStore` and a `PersonProfile` struct (with `RelationToUser` enum) so structured Person fields can be persisted alongside the closed-enum Entity. Profile rows are optional — a Person can exist without one and callers fall back to the Entity's title/content. `delete_entity` cascades into this table to avoid orphans.
+
+## Status Updates
+
+**2026-05-30 — shipped.** Files:
+- `crates/arawn-memory/src/person_profile.rs` (new, ~155 LOC) — `PersonProfile` struct + `RelationToUser` enum + builders + 2 unit tests
+- `crates/arawn-memory/src/lib.rs` — module + re-export
+- `crates/arawn-memory/src/store.rs`: migration adds `person_profile` table + 2 partial indices; 4 CRUD methods + `parse_person_profile_row` helper appended to `impl MemoryStore`; `delete_entity` extended with cascade DELETE inside existing transaction; 7 new tests in `mod tests`
+
+Verification: `angreal check workspace` clean; `cargo test -p arawn-memory` 80/80 pass.
 
 ## Backlog Item Details **[CONDITIONAL: Backlog Item]**
 
@@ -63,6 +72,10 @@ initiative_id: ARAWN-I-0064
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

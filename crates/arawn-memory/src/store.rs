@@ -9,7 +9,7 @@
 use std::path::Path;
 use std::sync::Mutex;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use graphqlite::Connection as GraphConnection;
 use rusqlite::params;
 use tracing::{debug, info};
@@ -19,6 +19,7 @@ use crate::cypher_schema::{
     entity_label, entity_to_props, node_to_entity, relation_type_from_str, relation_type_str,
 };
 use crate::error::MemoryError;
+use crate::person_profile::{PersonProfile, RelationToUser};
 use crate::types::*;
 use crate::vector;
 
@@ -101,6 +102,34 @@ impl MemoryStore {
         )
         .map_err(|e| MemoryError::Storage(format!("fts5 migrate: {e}")))?;
 
+        // ARAWN-I-0064 T-B: person_profile sidecar for structured Person
+        // fields. `entity_id` is an app-level FK into the graphqlite
+        // Entity model (no SQLite FK because Entity lives in EAV).
+        // Cascade-delete handled in `delete_entity`.
+        sql.execute_batch(
+            "CREATE TABLE IF NOT EXISTS person_profile (
+                entity_id            TEXT PRIMARY KEY NOT NULL,
+                role                 TEXT,
+                relation_to_user     TEXT,
+                reports_to_person_id TEXT,
+                hire_date            TEXT,
+                last_1on1            TEXT,
+                pronouns             TEXT,
+                time_zone            TEXT,
+                growth_areas         TEXT NOT NULL DEFAULT '[]',
+                current_concerns     TEXT NOT NULL DEFAULT '[]',
+                created_at           TEXT NOT NULL,
+                updated_at           TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_person_profile_relation_to_user
+                ON person_profile(relation_to_user)
+                WHERE relation_to_user IS NOT NULL;
+            CREATE INDEX IF NOT EXISTS idx_person_profile_reports_to
+                ON person_profile(reports_to_person_id)
+                WHERE reports_to_person_id IS NOT NULL;",
+        )
+        .map_err(|e| MemoryError::Storage(format!("person_profile migrate: {e}")))?;
+
         Ok(())
     }
 
@@ -165,6 +194,17 @@ impl MemoryStore {
                 "DELETE FROM entity_embeddings WHERE entity_id = ?1",
                 params![id_str.clone()],
             );
+
+            // ARAWN-I-0064 T-B: cascade-delete the person_profile sidecar
+            // so removing a Person entity doesn't leave an orphan profile
+            // row. Safe to run for non-Person entities — no row, no-op.
+            sql.execute(
+                "DELETE FROM person_profile WHERE entity_id = ?1",
+                params![id_str.clone()],
+            )
+            .map_err(|e| {
+                MemoryError::Storage(format!("person_profile cascade delete: {e}"))
+            })?;
             Ok(())
         })?;
         Ok(true)
@@ -564,6 +604,185 @@ impl MemoryStore {
         entities.truncate(limit);
         Ok(entities)
     }
+
+    // === Person profile sidecar (ARAWN-I-0064 T-B) ===
+    //
+    // Structured Person fields live in a dedicated SQLite table; the
+    // Entity itself stays a closed-enum graphqlite node. Profile rows
+    // are optional — a Person can exist without one (callers fall back
+    // to title/content). `delete_entity` cascades into this table to
+    // avoid orphans.
+
+    /// Insert-or-update a person_profile row. Updates `updated_at` to
+    /// `profile.updated_at` on conflict; caller is responsible for
+    /// stamping it.
+    pub fn upsert_person_profile(&self, profile: &PersonProfile) -> Result<(), MemoryError> {
+        let conn = self.conn.lock().unwrap();
+        let sql = conn.sqlite_connection();
+        let growth_json = serde_json::to_string(&profile.growth_areas)
+            .map_err(|e| MemoryError::Storage(format!("serialize growth_areas: {e}")))?;
+        let concerns_json = serde_json::to_string(&profile.current_concerns)
+            .map_err(|e| MemoryError::Storage(format!("serialize current_concerns: {e}")))?;
+        sql.execute(
+            "INSERT INTO person_profile (
+                entity_id, role, relation_to_user, reports_to_person_id,
+                hire_date, last_1on1, pronouns, time_zone,
+                growth_areas, current_concerns, created_at, updated_at
+             ) VALUES (
+                ?1, ?2, ?3, ?4,
+                ?5, ?6, ?7, ?8,
+                ?9, ?10, ?11, ?12
+             )
+             ON CONFLICT(entity_id) DO UPDATE SET
+                role                 = excluded.role,
+                relation_to_user     = excluded.relation_to_user,
+                reports_to_person_id = excluded.reports_to_person_id,
+                hire_date            = excluded.hire_date,
+                last_1on1            = excluded.last_1on1,
+                pronouns             = excluded.pronouns,
+                time_zone            = excluded.time_zone,
+                growth_areas         = excluded.growth_areas,
+                current_concerns     = excluded.current_concerns,
+                updated_at           = excluded.updated_at",
+            params![
+                profile.entity_id.to_string(),
+                profile.role,
+                profile.relation_to_user.map(|r| r.as_str().to_string()),
+                profile.reports_to_person_id.map(|u| u.to_string()),
+                profile.hire_date.map(|d| d.format("%Y-%m-%d").to_string()),
+                profile.last_1on1.map(|d| d.to_rfc3339()),
+                profile.pronouns,
+                profile.time_zone,
+                growth_json,
+                concerns_json,
+                profile.created_at.to_rfc3339(),
+                profile.updated_at.to_rfc3339(),
+            ],
+        )
+        .map_err(|e| MemoryError::Storage(format!("upsert person_profile: {e}")))?;
+        Ok(())
+    }
+
+    pub fn get_person_profile(
+        &self,
+        entity_id: Uuid,
+    ) -> Result<Option<PersonProfile>, MemoryError> {
+        let conn = self.conn.lock().unwrap();
+        let sql = conn.sqlite_connection();
+        let mut stmt = sql
+            .prepare(
+                "SELECT entity_id, role, relation_to_user, reports_to_person_id,
+                        hire_date, last_1on1, pronouns, time_zone,
+                        growth_areas, current_concerns, created_at, updated_at
+                 FROM person_profile
+                 WHERE entity_id = ?1",
+            )
+            .map_err(|e| MemoryError::Storage(format!("prepare get_person_profile: {e}")))?;
+        let row =
+            stmt.query_row(params![entity_id.to_string()], parse_person_profile_row);
+        match row {
+            Ok(p) => Ok(Some(p)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(MemoryError::Storage(format!("get person_profile: {e}"))),
+        }
+    }
+
+    pub fn delete_person_profile(&self, entity_id: Uuid) -> Result<bool, MemoryError> {
+        let conn = self.conn.lock().unwrap();
+        let sql = conn.sqlite_connection();
+        let n = sql
+            .execute(
+                "DELETE FROM person_profile WHERE entity_id = ?1",
+                params![entity_id.to_string()],
+            )
+            .map_err(|e| MemoryError::Storage(format!("delete person_profile: {e}")))?;
+        Ok(n > 0)
+    }
+
+    /// All profiles with the given `relation_to_user` (e.g. `Manages` →
+    /// the user's direct reports). Used by the L0 memory stack render
+    /// in T-D. Ordered most-recently-updated first.
+    pub fn list_person_profiles_by_relation_to_user(
+        &self,
+        rel: RelationToUser,
+    ) -> Result<Vec<PersonProfile>, MemoryError> {
+        let conn = self.conn.lock().unwrap();
+        let sql = conn.sqlite_connection();
+        let mut stmt = sql
+            .prepare(
+                "SELECT entity_id, role, relation_to_user, reports_to_person_id,
+                        hire_date, last_1on1, pronouns, time_zone,
+                        growth_areas, current_concerns, created_at, updated_at
+                 FROM person_profile
+                 WHERE relation_to_user = ?1
+                 ORDER BY updated_at DESC",
+            )
+            .map_err(|e| {
+                MemoryError::Storage(format!("prepare list_by_relation_to_user: {e}"))
+            })?;
+        let rows = stmt
+            .query_map(params![rel.as_str()], parse_person_profile_row)
+            .map_err(|e| MemoryError::Storage(format!("query list_by_relation_to_user: {e}")))?;
+        let mut out = Vec::new();
+        for row in rows {
+            out.push(
+                row.map_err(|e| MemoryError::Storage(format!("row list_by_relation: {e}")))?,
+            );
+        }
+        Ok(out)
+    }
+}
+
+/// Shared row → PersonProfile parser. Column order must match the SELECT
+/// list in both `get_person_profile` and
+/// `list_person_profiles_by_relation_to_user`.
+fn parse_person_profile_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<PersonProfile> {
+    let entity_id_str: String = row.get(0)?;
+    let entity_id = Uuid::parse_str(&entity_id_str).map_err(|e| {
+        rusqlite::Error::FromSqlConversionFailure(
+            0,
+            rusqlite::types::Type::Text,
+            Box::new(e),
+        )
+    })?;
+    let role: Option<String> = row.get(1)?;
+    let relation_to_user_str: Option<String> = row.get(2)?;
+    let reports_to_str: Option<String> = row.get(3)?;
+    let hire_date_str: Option<String> = row.get(4)?;
+    let last_1on1_str: Option<String> = row.get(5)?;
+    let pronouns: Option<String> = row.get(6)?;
+    let time_zone: Option<String> = row.get(7)?;
+    let growth_json: String = row.get(8)?;
+    let concerns_json: String = row.get(9)?;
+    let created_at_str: String = row.get(10)?;
+    let updated_at_str: String = row.get(11)?;
+
+    let now = Utc::now();
+    Ok(PersonProfile {
+        entity_id,
+        role,
+        relation_to_user: relation_to_user_str
+            .as_deref()
+            .and_then(RelationToUser::from_str),
+        reports_to_person_id: reports_to_str.as_deref().and_then(|s| Uuid::parse_str(s).ok()),
+        hire_date: hire_date_str
+            .as_deref()
+            .and_then(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok()),
+        last_1on1: last_1on1_str
+            .as_deref()
+            .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+            .map(|dt| dt.with_timezone(&Utc)),
+        pronouns,
+        time_zone,
+        growth_areas: serde_json::from_str(&growth_json).unwrap_or_default(),
+        current_concerns: serde_json::from_str(&concerns_json).unwrap_or_default(),
+        created_at: DateTime::parse_from_rfc3339(&created_at_str)
+            .map(|dt| dt.with_timezone(&Utc))
+            .unwrap_or(now),
+        updated_at: DateTime::parse_from_rfc3339(&updated_at_str)
+            .map(|dt| dt.with_timezone(&Utc))
+            .unwrap_or(now),
+    })
 }
 
 // === Cypher helpers ===
@@ -1074,5 +1293,156 @@ mod tests {
 
         store.delete_entity(entity.id).unwrap();
         assert!(store.search("Goldfinch", 5).unwrap().is_empty());
+    }
+
+    // === Person profile sidecar (ARAWN-I-0064 T-B) ===
+
+    #[test]
+    fn person_profile_upsert_then_get_roundtrips_all_fields() {
+        let store = test_store();
+        let person = Entity::new(EntityType::Person, "Sarah Lee");
+        store.insert_entity(&person).unwrap();
+
+        let manager = Entity::new(EntityType::Person, "David Chen");
+        store.insert_entity(&manager).unwrap();
+
+        let profile = PersonProfile::new(person.id)
+            .with_role("Senior EM")
+            .with_relation_to_user(RelationToUser::Manages)
+            .with_reports_to(manager.id);
+        store.upsert_person_profile(&profile).unwrap();
+
+        let fetched = store.get_person_profile(person.id).unwrap().unwrap();
+        assert_eq!(fetched.entity_id, person.id);
+        assert_eq!(fetched.role.as_deref(), Some("Senior EM"));
+        assert_eq!(fetched.relation_to_user, Some(RelationToUser::Manages));
+        assert_eq!(fetched.reports_to_person_id, Some(manager.id));
+        assert!(fetched.growth_areas.is_empty());
+    }
+
+    #[test]
+    fn person_profile_upsert_updates_existing_row() {
+        let store = test_store();
+        let person = Entity::new(EntityType::Person, "Marcus");
+        store.insert_entity(&person).unwrap();
+
+        store
+            .upsert_person_profile(&PersonProfile::new(person.id).with_role("Staff Eng"))
+            .unwrap();
+        store
+            .upsert_person_profile(
+                &PersonProfile::new(person.id)
+                    .with_role("Principal Eng")
+                    .with_relation_to_user(RelationToUser::Manages),
+            )
+            .unwrap();
+
+        let p = store.get_person_profile(person.id).unwrap().unwrap();
+        assert_eq!(p.role.as_deref(), Some("Principal Eng"));
+        assert_eq!(p.relation_to_user, Some(RelationToUser::Manages));
+    }
+
+    #[test]
+    fn person_profile_get_returns_none_when_absent() {
+        let store = test_store();
+        assert!(store.get_person_profile(Uuid::new_v4()).unwrap().is_none());
+    }
+
+    #[test]
+    fn person_profile_delete_returns_false_when_missing() {
+        let store = test_store();
+        assert!(!store.delete_person_profile(Uuid::new_v4()).unwrap());
+    }
+
+    #[test]
+    fn list_person_profiles_by_relation_to_user_filters_correctly() {
+        let store = test_store();
+
+        let direct1 = Entity::new(EntityType::Person, "Sarah");
+        let direct2 = Entity::new(EntityType::Person, "Marcus");
+        let manager = Entity::new(EntityType::Person, "David");
+        let peer = Entity::new(EntityType::Person, "Anita");
+        for e in [&direct1, &direct2, &manager, &peer] {
+            store.insert_entity(e).unwrap();
+        }
+        store
+            .upsert_person_profile(
+                &PersonProfile::new(direct1.id).with_relation_to_user(RelationToUser::Manages),
+            )
+            .unwrap();
+        store
+            .upsert_person_profile(
+                &PersonProfile::new(direct2.id).with_relation_to_user(RelationToUser::Manages),
+            )
+            .unwrap();
+        store
+            .upsert_person_profile(
+                &PersonProfile::new(manager.id)
+                    .with_relation_to_user(RelationToUser::ReportsToUser),
+            )
+            .unwrap();
+        store
+            .upsert_person_profile(
+                &PersonProfile::new(peer.id).with_relation_to_user(RelationToUser::PeerOfUser),
+            )
+            .unwrap();
+
+        let directs = store
+            .list_person_profiles_by_relation_to_user(RelationToUser::Manages)
+            .unwrap();
+        assert_eq!(directs.len(), 2);
+        let direct_ids: std::collections::HashSet<_> =
+            directs.iter().map(|p| p.entity_id).collect();
+        assert!(direct_ids.contains(&direct1.id));
+        assert!(direct_ids.contains(&direct2.id));
+
+        let bosses = store
+            .list_person_profiles_by_relation_to_user(RelationToUser::ReportsToUser)
+            .unwrap();
+        assert_eq!(bosses.len(), 1);
+        assert_eq!(bosses[0].entity_id, manager.id);
+
+        let peers = store
+            .list_person_profiles_by_relation_to_user(RelationToUser::PeerOfUser)
+            .unwrap();
+        assert_eq!(peers.len(), 1);
+        assert_eq!(peers[0].entity_id, peer.id);
+    }
+
+    #[test]
+    fn delete_entity_cascades_to_person_profile() {
+        let store = test_store();
+        let person = Entity::new(EntityType::Person, "Cascade Test");
+        store.insert_entity(&person).unwrap();
+        store
+            .upsert_person_profile(&PersonProfile::new(person.id).with_role("Eng"))
+            .unwrap();
+        assert!(store.get_person_profile(person.id).unwrap().is_some());
+
+        store.delete_entity(person.id).unwrap();
+
+        // Entity gone from graph
+        assert!(store.get_entity(person.id).unwrap().is_none());
+        // Profile gone too — cascade worked
+        assert!(store.get_person_profile(person.id).unwrap().is_none());
+    }
+
+    #[test]
+    fn person_profile_migration_is_idempotent_on_reopen() {
+        // Open then re-open the same path. Migration must be idempotent —
+        // a second open mustn't drop or corrupt the table.
+        let tmp = tempfile::TempDir::new().unwrap();
+        let db_path = tmp.path().join("memory.db");
+        let store1 = MemoryStore::open(&db_path).unwrap();
+        let person = Entity::new(EntityType::Person, "Survives Reopen");
+        store1.insert_entity(&person).unwrap();
+        store1
+            .upsert_person_profile(&PersonProfile::new(person.id).with_role("CTO"))
+            .unwrap();
+        drop(store1);
+
+        let store2 = MemoryStore::open(&db_path).unwrap();
+        let p = store2.get_person_profile(person.id).unwrap().unwrap();
+        assert_eq!(p.role.as_deref(), Some("CTO"));
     }
 }

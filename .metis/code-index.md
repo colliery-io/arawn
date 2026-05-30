@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-30T17:22:25Z | 419 files | Python, Rust
+> Generated: 2026-05-30T20:52:05Z | 420 files | Python, Rust
 
 ## Project Structure
 
@@ -353,6 +353,7 @@
 │   │   │   ├── lib.rs
 │   │   │   ├── manager.rs
 │   │   │   ├── ontology.rs
+│   │   │   ├── person_profile.rs
 │   │   │   ├── shortcodes.rs
 │   │   │   ├── stack.rs
 │   │   │   ├── store.rs
@@ -4169,14 +4170,14 @@
 - pub `new` function L107-112 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
 - pub `LensRefineTool` struct L181-184 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter> }` — inverse via `arawn_steward::rollback::apply_inverse`.
 - pub `new` function L187-192 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
-- pub `LensRollbackTool` struct L262-265 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter> }` — inverse via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L268-273 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
-- pub `LensDustTool` struct L364-369 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter>, client: Arc<dyn LlmClient>, ...` — inverse via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L372-384 — `( data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>, client: Arc<dyn L...` — inverse via `arawn_steward::rollback::apply_inverse`.
-- pub `LensApplyTool` struct L580-583 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter> }` — inverse via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L586-591 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
-- pub `LensTagTool` struct L689-692 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter> }` — Direct CRUD on the lens's tag ontology.
-- pub `new` function L695-700 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
+- pub `LensRollbackTool` struct L261-264 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter> }` — inverse via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L267-272 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
+- pub `LensDustTool` struct L363-368 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter>, client: Arc<dyn LlmClient>, ...` — inverse via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L371-383 — `( data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>, client: Arc<dyn L...` — inverse via `arawn_steward::rollback::apply_inverse`.
+- pub `LensApplyTool` struct L578-581 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter> }` — inverse via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L584-589 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
+- pub `LensTagTool` struct L687-690 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter> }` — Direct CRUD on the lens's tag ontology.
+- pub `new` function L693-698 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
 -  `closest_tag` function L27-51 — `(needle: &str, candidates: &[String]) -> Option<String>` — Return the closest tag in `candidates` to `needle` if any candidate
 -  `edit_distance` function L55-75 — `(a: &str, b: &str) -> usize` — Levenshtein distance, classic two-row DP.
 -  `open_journal` function L77-80 — `(data_dir: &PathBuf, lens: &str) -> Result<Journal, ToolError>` — inverse via `arawn_steward::rollback::apply_inverse`.
@@ -4190,62 +4191,62 @@
 -  `parameters_schema` function L140-148 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
 -  `execute` function L150-174 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
 -  `LensRefineTool` type L186-193 — `= LensRefineTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensRefineTool` type L196-256 — `impl Tool for LensRefineTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensRefineTool` type L196-255 — `impl Tool for LensRefineTool` — inverse via `arawn_steward::rollback::apply_inverse`.
 -  `name` function L197-199 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `description` function L201-206 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L208-210 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `category` function L212-219 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L221-229 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L231-255 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensRollbackTool` type L267-274 — `= LensRollbackTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensRollbackTool` type L277-358 — `impl Tool for LensRollbackTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `name` function L278-280 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `description` function L282-286 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L288-290 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `category` function L292-299 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L301-310 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L312-357 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensDustTool` type L371-385 — `= LensDustTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensDustTool` type L388-574 — `impl Tool for LensDustTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `name` function L389-391 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `description` function L393-400 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L402-405 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `category` function L407-414 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L416-436 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L438-573 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensApplyTool` type L585-592 — `= LensApplyTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensApplyTool` type L595-678 — `impl Tool for LensApplyTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `name` function L596-598 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `description` function L600-605 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L607-609 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `category` function L611-618 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L620-629 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L631-677 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensTagTool` type L694-701 — `= LensTagTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensTagTool` type L704-836 — `impl Tool for LensTagTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `name` function L705-707 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `description` function L709-716 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L718-720 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `category` function L722-724 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L726-746 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L748-835 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `tests` module L839-1195 — `-` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `setup` function L847-858 — `() -> ( TempDir, Arc<LensMemoryRouter>, crate::context::EngineToolContext, )` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `write_proposal_row` function L860-873 — `(j: &Journal) -> i64` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `write_delete_row` function L875-886 — `(j: &Journal, e: &Entity) -> i64` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `journal_lists_recent_rows` function L889-899 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `refine_returns_pending_proposals_only` function L902-923 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `rollback_reverts_delete_action_end_to_end` function L926-944 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `rollback_is_idempotent` function L947-960 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `apply_then_rollback_round_trip_for_map_proposal` function L963-1007 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `apply_refuses_reverted_row` function L1010-1030 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `lens_tag_list_add_remove_round_trip` function L1033-1095 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `lens_apply_promotes_tag_into_ontology` function L1098-1143 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `rollback_unknown_id_errors` function L1146-1151 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `closest_tag_matches_substring_user_added_suffix` function L1156-1168 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `closest_tag_matches_typo` function L1171-1177 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `closest_tag_returns_none_when_unrelated` function L1180-1184 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `closest_tag_picks_shortest_distance` function L1187-1194 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L201-205 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L207-209 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L211-218 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L220-228 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L230-254 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensRollbackTool` type L266-273 — `= LensRollbackTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensRollbackTool` type L276-357 — `impl Tool for LensRollbackTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L277-279 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L281-285 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L287-289 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L291-298 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L300-309 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L311-356 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensDustTool` type L370-384 — `= LensDustTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensDustTool` type L387-572 — `impl Tool for LensDustTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L388-390 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L392-398 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L400-403 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L405-412 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L414-434 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L436-571 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensApplyTool` type L583-590 — `= LensApplyTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensApplyTool` type L593-676 — `impl Tool for LensApplyTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L594-596 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L598-603 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L605-607 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L609-616 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L618-627 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L629-675 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensTagTool` type L692-699 — `= LensTagTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensTagTool` type L702-833 — `impl Tool for LensTagTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L703-705 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L707-713 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L715-717 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L719-721 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L723-743 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L745-832 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `tests` module L836-1192 — `-` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `setup` function L844-855 — `() -> ( TempDir, Arc<LensMemoryRouter>, crate::context::EngineToolContext, )` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `write_proposal_row` function L857-870 — `(j: &Journal) -> i64` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `write_delete_row` function L872-883 — `(j: &Journal, e: &Entity) -> i64` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `journal_lists_recent_rows` function L886-896 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `refine_returns_pending_proposals_only` function L899-920 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_reverts_delete_action_end_to_end` function L923-941 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_is_idempotent` function L944-957 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `apply_then_rollback_round_trip_for_map_proposal` function L960-1004 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `apply_refuses_reverted_row` function L1007-1027 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `lens_tag_list_add_remove_round_trip` function L1030-1092 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `lens_apply_promotes_tag_into_ontology` function L1095-1140 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_unknown_id_errors` function L1143-1148 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `closest_tag_matches_substring_user_added_suffix` function L1153-1165 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `closest_tag_matches_typo` function L1168-1174 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `closest_tag_returns_none_when_unrelated` function L1177-1181 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `closest_tag_picks_shortest_distance` function L1184-1191 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
 
 #### crates/arawn-engine/src/tools/task_list.rs
 
@@ -4724,13 +4725,13 @@
 - pub `LensShowTool` struct L11-14 — `{ store: Arc<Mutex<Store>>, active: SessionLens }`
 - pub `new` function L17-19 — `(store: Arc<Mutex<Store>>, active: SessionLens) -> Self`
 -  `LensShowTool` type L16-20 — `= LensShowTool`
--  `LensShowTool` type L23-99 — `impl Tool for LensShowTool`
+-  `LensShowTool` type L23-100 — `impl Tool for LensShowTool`
 -  `name` function L24-26 — `(&self) -> &str`
--  `description` function L28-34 — `(&self) -> &str`
--  `is_read_only` function L36-38 — `(&self) -> bool`
--  `category` function L40-42 — `(&self) -> ToolCategory`
--  `parameters_schema` function L44-52 — `(&self) -> Value`
--  `execute` function L54-98 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...`
+-  `description` function L28-35 — `(&self) -> &str`
+-  `is_read_only` function L37-39 — `(&self) -> bool`
+-  `category` function L41-43 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L45-53 — `(&self) -> Value`
+-  `execute` function L55-99 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...`
 
 #### crates/arawn-engine/src/tools/lens/unbind.rs
 
@@ -7906,14 +7907,14 @@
 
 - pub `entity_label` function L24-33 — `(t: EntityType) -> &'static str` — Cypher node label for an `EntityType`.
 - pub `entity_type_from_label` function L36-46 — `(s: &str) -> Option<EntityType>` — Inverse of `entity_label`.
-- pub `relation_type_str` function L49-60 — `(t: RelationType) -> &'static str` — Cypher relationship type for a `RelationType`.
-- pub `relation_type_from_str` function L63-75 — `(s: &str) -> Option<RelationType>` — Inverse of `relation_type_str`.
-- pub `entity_to_props` function L81-99 — `(e: &Entity) -> JsonValue` — Project an `Entity` into a Cypher parameter map (`$props`).
-- pub `node_to_entity` function L105-187 — `(node: &Value) -> Result<Entity, MemoryError>` — Parse a node `Value` (as returned by `MATCH (n) RETURN n`) into an `Entity`.
--  `tests` module L190-231 — `-` — user input.
--  `label_roundtrip` function L194-205 — `()` — user input.
--  `relation_roundtrip` function L208-220 — `()` — user input.
--  `entity_to_props_serializes_tags_as_json_string` function L223-230 — `()` — user input.
+- pub `relation_type_str` function L49-63 — `(t: RelationType) -> &'static str` — Cypher relationship type for a `RelationType`.
+- pub `relation_type_from_str` function L66-81 — `(s: &str) -> Option<RelationType>` — Inverse of `relation_type_str`.
+- pub `entity_to_props` function L87-105 — `(e: &Entity) -> JsonValue` — Project an `Entity` into a Cypher parameter map (`$props`).
+- pub `node_to_entity` function L111-193 — `(node: &Value) -> Result<Entity, MemoryError>` — Parse a node `Value` (as returned by `MATCH (n) RETURN n`) into an `Entity`.
+-  `tests` module L196-241 — `-` — user input.
+-  `label_roundtrip` function L200-211 — `()` — user input.
+-  `relation_roundtrip` function L214-230 — `()` — user input.
+-  `entity_to_props_serializes_tags_as_json_string` function L233-240 — `()` — user input.
 
 #### crates/arawn-memory/src/error.rs
 
@@ -7941,13 +7942,14 @@
 - pub `inject` module L9 — `-` — confidence scoring, tag support, and search-before-create deduplication.
 - pub `manager` module L10 — `-` — confidence scoring, tag support, and search-before-create deduplication.
 - pub `ontology` module L11 — `-` — confidence scoring, tag support, and search-before-create deduplication.
-- pub `shortcodes` module L12 — `-` — confidence scoring, tag support, and search-before-create deduplication.
-- pub `stack` module L13 — `-` — confidence scoring, tag support, and search-before-create deduplication.
-- pub `store` module L14 — `-` — confidence scoring, tag support, and search-before-create deduplication.
-- pub `types` module L15 — `-` — confidence scoring, tag support, and search-before-create deduplication.
-- pub `vector` module L16 — `-` — confidence scoring, tag support, and search-before-create deduplication.
--  `graphqlite_smoke` module L29-53 — `-` — confidence scoring, tag support, and search-before-create deduplication.
--  `graphqlite_node_and_edge_roundtrip` function L33-52 — `()` — confidence scoring, tag support, and search-before-create deduplication.
+- pub `person_profile` module L12 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+- pub `shortcodes` module L13 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+- pub `stack` module L14 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+- pub `store` module L15 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+- pub `types` module L16 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+- pub `vector` module L17 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+-  `graphqlite_smoke` module L31-55 — `-` — confidence scoring, tag support, and search-before-create deduplication.
+-  `graphqlite_node_and_edge_roundtrip` function L35-54 — `()` — confidence scoring, tag support, and search-before-create deduplication.
 
 #### crates/arawn-memory/src/manager.rs
 
@@ -8008,6 +8010,23 @@
 -  `count_tracks_size` function L328-336 — `()` — with `added_via = 'promotion'`.
 -  `schema_idempotent_on_reopen` function L339-346 — `()` — with `added_via = 'promotion'`.
 
+#### crates/arawn-memory/src/person_profile.rs
+
+- pub `RelationToUser` enum L25-32 — `Manages | ReportsToUser | PeerOfUser` — How the user is connected to this Person.
+- pub `as_str` function L35-41 — `(&self) -> &'static str` — ReportsTo, PeerOf}` graph edges added in T-A.
+- pub `from_str` function L44-51 — `(s: &str) -> Option<Self>` — ReportsTo, PeerOf}` graph edges added in T-A.
+- pub `PersonProfile` struct L59-79 — `{ entity_id: Uuid, role: Option<String>, relation_to_user: Option<RelationToUser...` — Structured profile for a Person entity.
+- pub `new` function L84-100 — `(entity_id: Uuid) -> Self` — Construct a new profile for the given Person entity with all
+- pub `with_role` function L102-105 — `(mut self, role: impl Into<String>) -> Self` — ReportsTo, PeerOf}` graph edges added in T-A.
+- pub `with_relation_to_user` function L107-110 — `(mut self, rel: RelationToUser) -> Self` — ReportsTo, PeerOf}` graph edges added in T-A.
+- pub `with_reports_to` function L112-115 — `(mut self, person_id: Uuid) -> Self` — ReportsTo, PeerOf}` graph edges added in T-A.
+- pub `with_last_1on1` function L117-120 — `(mut self, ts: DateTime<Utc>) -> Self` — ReportsTo, PeerOf}` graph edges added in T-A.
+-  `RelationToUser` type L34-52 — `= RelationToUser` — ReportsTo, PeerOf}` graph edges added in T-A.
+-  `PersonProfile` type L81-121 — `= PersonProfile` — ReportsTo, PeerOf}` graph edges added in T-A.
+-  `tests` module L124-150 — `-` — ReportsTo, PeerOf}` graph edges added in T-A.
+-  `relation_to_user_roundtrip` function L128-136 — `()` — ReportsTo, PeerOf}` graph edges added in T-A.
+-  `builder_fills_only_set_fields` function L139-149 — `()` — ReportsTo, PeerOf}` graph edges added in T-A.
+
 #### crates/arawn-memory/src/shortcodes.rs
 
 - pub `apply_shortcodes` function L15-79 — `(text: &str, entity_names: &[String], min_occurrences: usize) -> String` — Scan text for repeated entity-like names and replace with shortcodes.
@@ -8040,62 +8059,74 @@
 
 #### crates/arawn-memory/src/store.rs
 
-- pub `MemoryStore` struct L30-32 — `{ conn: Mutex<GraphConnection> }` — Knowledge base store.
-- pub `open` function L36-55 — `(path: &Path) -> Result<Self, MemoryError>` — Open or create a memory database at the given path.
-- pub `in_memory` function L58-66 — `() -> Result<Self, MemoryError>` — Create an in-memory store (for testing).
-- pub `insert_entity` function L114-123 — `(&self, entity: &Entity) -> Result<(), MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `get_entity` function L125-128 — `(&self, id: Uuid) -> Result<Option<Entity>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `update_entity` function L130-138 — `(&self, entity: &Entity) -> Result<(), MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `delete_entity` function L140-171 — `(&self, id: Uuid) -> Result<bool, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `list_by_type` function L173-189 — `( &self, entity_type: EntityType, limit: usize, ) -> Result<Vec<Entity>, MemoryE...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `list_all_ranked` function L198-217 — `(&self, limit: usize) -> Result<Vec<Entity>, MemoryError>` — List all non-superseded entities ranked by confidence: stated > observed > inferred,
-- pub `count_by_type` function L219-232 — `(&self, entity_type: EntityType) -> Result<usize, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `count_all` function L234-245 — `(&self) -> Result<usize, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `search` function L253-268 — `(&self, query: &str, limit: usize) -> Result<Vec<Entity>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `search_by_type` function L270-291 — `( &self, query: &str, entity_type: EntityType, limit: usize, ) -> Result<Vec<Ent...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `add_relation` function L295-304 — `( &self, source_id: Uuid, relation_type: RelationType, target_id: Uuid, ) -> Res...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `get_relations` function L306-345 — `(&self, entity_id: Uuid) -> Result<Vec<Relation>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `get_neighbors` function L347-365 — `(&self, entity_id: Uuid) -> Result<Vec<(Uuid, RelationType)>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `delete_relation` function L367-399 — `( &self, source_id: Uuid, relation_type: RelationType, target_id: Uuid, ) -> Res...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `store_fact` function L406-422 — `(&self, entity: &Entity) -> Result<StoreFactResult, MemoryError>` — Store a fact with search-before-create deduplication.
-- pub `supersede_entity` function L465-487 — `( &self, old_id: Uuid, new_entity: &Entity, ) -> Result<StoreFactResult, MemoryE...` — Supersede an existing entity with a new one.
-- pub `init_vectors` function L493-497 — `(&self, dims: usize) -> Result<(), MemoryError>` — Initialize vector storage with the given dimensions.
-- pub `store_embedding` function L500-503 — `(&self, entity_id: Uuid, embedding: &[f32]) -> Result<(), MemoryError>` — Store an embedding for an entity.
-- pub `search_similar` function L506-513 — `( &self, query_embedding: &[f32], limit: usize, ) -> Result<Vec<vector::Similari...` — Search for entities similar to a query embedding.
-- pub `search_similar_filtered` function L516-529 — `( &self, query_embedding: &[f32], entity_ids: &[Uuid], limit: usize, ) -> Result...` — Search for entities similar to a query, filtered to a subset.
-- pub `has_embedding` function L532-535 — `(&self, entity_id: Uuid) -> Result<bool, MemoryError>` — Check if an entity has a stored embedding.
-- pub `count_embeddings` function L538-541 — `(&self) -> Result<usize, MemoryError>` — Count total stored embeddings.
-- pub `search_by_tags` function L549-566 — `( &self, tags: &[String], limit: usize, ) -> Result<Vec<Entity>, MemoryError>` — Tag search loads all non-superseded entities and filters in Rust.
--  `MemoryStore` type L34-567 — `= MemoryStore` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `migrate` function L68-105 — `(&self) -> Result<(), MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `reinforce_entity` function L425-462 — `(&self, entity_id: Uuid) -> Result<StoreFactResult, MemoryError>` — Reinforce an existing entity (increment count, refresh timestamps).
--  `with_tx` function L574-590 — `(conn: &GraphConnection, body: F) -> Result<(), MemoryError>` — Run `body` inside a sqlite transaction on the shared connection.
--  `cypher_entity_exists` function L592-604 — `(conn: &GraphConnection, id: &str) -> Result<bool, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `fetch_entity_by_id` function L606-619 — `(conn: &GraphConnection, id: Uuid) -> Result<Option<Entity>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `cypher_upsert_entity` function L624-660 — `(conn: &GraphConnection, entity: &Entity) -> Result<(), MemoryError>` — MERGE-style upsert: create node-with-label if absent, otherwise SET every
--  `cypher_upsert_relation` function L664-699 — `( conn: &GraphConnection, source_id: Uuid, relation_type: RelationType, target_i...` — MERGE-style edge upsert.
--  `rows_to_entities` function L702-710 — `(result: &graphqlite::CypherResult) -> Result<Vec<Entity>, MemoryError>` — Map a `MATCH … RETURN n` result set into `Vec<Entity>`.
--  `fts_upsert` function L722-748 — `(sql: &rusqlite::Connection, entity: &Entity) -> Result<(), MemoryError>` — Upsert the FTS row for an entity.
--  `fts_search` function L755-780 — `( sql: &rusqlite::Connection, query: &str, _scope: Option<()>, limit: usize, ) -...` — FTS5 text search returning ranked entity_ids.
--  `tests` module L783-1078 — `-` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `test_store` function L786-788 — `() -> MemoryStore` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `insert_and_get` function L791-799 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `get_nonexistent` function L802-805 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `update_entity` function L808-823 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `delete_entity` function L826-837 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `list_by_type` function L840-857 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `count_by_type` function L860-875 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `fts5_search` function L878-895 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `fts5_search_by_type` function L898-910 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `relations_crud` function L913-936 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `store_fact_insert` function L939-947 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `store_fact_reinforce` function L950-966 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `store_fact_reinforce_case_insensitive` function L969-981 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `supersede_entity` function L984-1011 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `tags_on_entity` function L1014-1022 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `search_by_tags` function L1025-1046 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `superseded_excluded_from_search` function L1049-1060 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `fts_row_present_after_insert_and_gone_after_delete` function L1063-1077 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `MemoryStore` struct L31-33 — `{ conn: Mutex<GraphConnection> }` — Knowledge base store.
+- pub `open` function L37-56 — `(path: &Path) -> Result<Self, MemoryError>` — Open or create a memory database at the given path.
+- pub `in_memory` function L59-67 — `() -> Result<Self, MemoryError>` — Create an in-memory store (for testing).
+- pub `insert_entity` function L143-152 — `(&self, entity: &Entity) -> Result<(), MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `get_entity` function L154-157 — `(&self, id: Uuid) -> Result<Option<Entity>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `update_entity` function L159-167 — `(&self, entity: &Entity) -> Result<(), MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `delete_entity` function L169-211 — `(&self, id: Uuid) -> Result<bool, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `list_by_type` function L213-229 — `( &self, entity_type: EntityType, limit: usize, ) -> Result<Vec<Entity>, MemoryE...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `list_all_ranked` function L238-257 — `(&self, limit: usize) -> Result<Vec<Entity>, MemoryError>` — List all non-superseded entities ranked by confidence: stated > observed > inferred,
+- pub `count_by_type` function L259-272 — `(&self, entity_type: EntityType) -> Result<usize, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `count_all` function L274-285 — `(&self) -> Result<usize, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `search` function L293-308 — `(&self, query: &str, limit: usize) -> Result<Vec<Entity>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `search_by_type` function L310-331 — `( &self, query: &str, entity_type: EntityType, limit: usize, ) -> Result<Vec<Ent...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `add_relation` function L335-344 — `( &self, source_id: Uuid, relation_type: RelationType, target_id: Uuid, ) -> Res...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `get_relations` function L346-385 — `(&self, entity_id: Uuid) -> Result<Vec<Relation>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `get_neighbors` function L387-405 — `(&self, entity_id: Uuid) -> Result<Vec<(Uuid, RelationType)>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `delete_relation` function L407-439 — `( &self, source_id: Uuid, relation_type: RelationType, target_id: Uuid, ) -> Res...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `store_fact` function L446-462 — `(&self, entity: &Entity) -> Result<StoreFactResult, MemoryError>` — Store a fact with search-before-create deduplication.
+- pub `supersede_entity` function L505-527 — `( &self, old_id: Uuid, new_entity: &Entity, ) -> Result<StoreFactResult, MemoryE...` — Supersede an existing entity with a new one.
+- pub `init_vectors` function L533-537 — `(&self, dims: usize) -> Result<(), MemoryError>` — Initialize vector storage with the given dimensions.
+- pub `store_embedding` function L540-543 — `(&self, entity_id: Uuid, embedding: &[f32]) -> Result<(), MemoryError>` — Store an embedding for an entity.
+- pub `search_similar` function L546-553 — `( &self, query_embedding: &[f32], limit: usize, ) -> Result<Vec<vector::Similari...` — Search for entities similar to a query embedding.
+- pub `search_similar_filtered` function L556-569 — `( &self, query_embedding: &[f32], entity_ids: &[Uuid], limit: usize, ) -> Result...` — Search for entities similar to a query, filtered to a subset.
+- pub `has_embedding` function L572-575 — `(&self, entity_id: Uuid) -> Result<bool, MemoryError>` — Check if an entity has a stored embedding.
+- pub `count_embeddings` function L578-581 — `(&self) -> Result<usize, MemoryError>` — Count total stored embeddings.
+- pub `search_by_tags` function L589-606 — `( &self, tags: &[String], limit: usize, ) -> Result<Vec<Entity>, MemoryError>` — Tag search loads all non-superseded entities and filters in Rust.
+- pub `upsert_person_profile` function L619-664 — `(&self, profile: &PersonProfile) -> Result<(), MemoryError>` — Insert-or-update a person_profile row.
+- pub `get_person_profile` function L666-688 — `( &self, entity_id: Uuid, ) -> Result<Option<PersonProfile>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `delete_person_profile` function L690-700 — `(&self, entity_id: Uuid) -> Result<bool, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `list_person_profiles_by_relation_to_user` function L705-733 — `( &self, rel: RelationToUser, ) -> Result<Vec<PersonProfile>, MemoryError>` — All profiles with the given `relation_to_user` (e.g.
+-  `MemoryStore` type L35-734 — `= MemoryStore` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `migrate` function L69-134 — `(&self) -> Result<(), MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `reinforce_entity` function L465-502 — `(&self, entity_id: Uuid) -> Result<StoreFactResult, MemoryError>` — Reinforce an existing entity (increment count, refresh timestamps).
+-  `parse_person_profile_row` function L739-786 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<PersonProfile>` — Shared row → PersonProfile parser.
+-  `with_tx` function L793-809 — `(conn: &GraphConnection, body: F) -> Result<(), MemoryError>` — Run `body` inside a sqlite transaction on the shared connection.
+-  `cypher_entity_exists` function L811-823 — `(conn: &GraphConnection, id: &str) -> Result<bool, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `fetch_entity_by_id` function L825-838 — `(conn: &GraphConnection, id: Uuid) -> Result<Option<Entity>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `cypher_upsert_entity` function L843-879 — `(conn: &GraphConnection, entity: &Entity) -> Result<(), MemoryError>` — MERGE-style upsert: create node-with-label if absent, otherwise SET every
+-  `cypher_upsert_relation` function L883-918 — `( conn: &GraphConnection, source_id: Uuid, relation_type: RelationType, target_i...` — MERGE-style edge upsert.
+-  `rows_to_entities` function L921-929 — `(result: &graphqlite::CypherResult) -> Result<Vec<Entity>, MemoryError>` — Map a `MATCH … RETURN n` result set into `Vec<Entity>`.
+-  `fts_upsert` function L941-967 — `(sql: &rusqlite::Connection, entity: &Entity) -> Result<(), MemoryError>` — Upsert the FTS row for an entity.
+-  `fts_search` function L974-999 — `( sql: &rusqlite::Connection, query: &str, _scope: Option<()>, limit: usize, ) -...` — FTS5 text search returning ranked entity_ids.
+-  `tests` module L1002-1448 — `-` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `test_store` function L1005-1007 — `() -> MemoryStore` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `insert_and_get` function L1010-1018 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `get_nonexistent` function L1021-1024 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `update_entity` function L1027-1042 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `delete_entity` function L1045-1056 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `list_by_type` function L1059-1076 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `count_by_type` function L1079-1094 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `fts5_search` function L1097-1114 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `fts5_search_by_type` function L1117-1129 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `relations_crud` function L1132-1155 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `store_fact_insert` function L1158-1166 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `store_fact_reinforce` function L1169-1185 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `store_fact_reinforce_case_insensitive` function L1188-1200 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `supersede_entity` function L1203-1230 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `tags_on_entity` function L1233-1241 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `search_by_tags` function L1244-1265 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `superseded_excluded_from_search` function L1268-1279 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `fts_row_present_after_insert_and_gone_after_delete` function L1282-1296 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `person_profile_upsert_then_get_roundtrips_all_fields` function L1301-1321 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `person_profile_upsert_updates_existing_row` function L1324-1343 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `person_profile_get_returns_none_when_absent` function L1346-1349 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `person_profile_delete_returns_false_when_missing` function L1352-1355 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `list_person_profiles_by_relation_to_user_filters_correctly` function L1358-1410 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `delete_entity_cascades_to_person_profile` function L1413-1428 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `person_profile_migration_is_idempotent_on_reopen` function L1431-1447 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
 
 #### crates/arawn-memory/src/types.rs
 
@@ -8104,38 +8135,38 @@
 - pub `from_str` function L32-42 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
 - pub `default_scope` function L51-53 — `(&self) -> Scope` — Default scope for a deliberately-stored memory entity.
 - pub `Scope` enum L59-62 — `Global | Lens` — Which KB tier an entity belongs to.
-- pub `RelationType` enum L67-79 — `RelatesTo | Contradicts | Supports | Supersedes | ExtractedFrom | Mentions | Bel...` — Type of relationship between entities.
-- pub `as_str` function L82-93 — `(&self) -> &'static str` — Core types for the knowledge base memory system.
-- pub `from_str` function L96-108 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
-- pub `ConfidenceSource` enum L114-121 — `Stated | Observed | Inferred` — How confident we are in this entity's accuracy.
-- pub `base_score` function L124-130 — `(&self) -> f32` — Core types for the knowledge base memory system.
-- pub `as_str` function L132-138 — `(&self) -> &'static str` — Core types for the knowledge base memory system.
-- pub `from_str` function L141-148 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
-- pub `compute_confidence` function L152-177 — `( source: ConfidenceSource, reinforcement_count: u32, days_since_update: f64, su...` — Compute confidence score with reinforcement and staleness.
-- pub `Entity` struct L195-216 — `{ id: Uuid, entity_type: EntityType, title: String, content: Option<String>, con...` — A knowledge entity stored in the KB.
-- pub `new` function L219-236 — `(entity_type: EntityType, title: impl Into<String>) -> Self` — Core types for the knowledge base memory system.
-- pub `with_content` function L238-241 — `(mut self, content: impl Into<String>) -> Self` — Core types for the knowledge base memory system.
-- pub `with_confidence` function L243-246 — `(mut self, source: ConfidenceSource) -> Self` — Core types for the knowledge base memory system.
-- pub `with_tags` function L249-252 — `(mut self, tags: Vec<String>) -> Self` — Set the discovered (free-form) tags.
-- pub `with_tags_discovered` function L255-257 — `(self, tags: Vec<String>) -> Self` — Explicit alias for `with_tags` — set the discovered tag set.
-- pub `with_tags_ontology` function L262-265 — `(mut self, tags: Vec<String>) -> Self` — Set the ontology (closed-list) tags.
-- pub `with_session` function L267-270 — `(mut self, session_id: Uuid) -> Self` — Core types for the knowledge base memory system.
-- pub `confidence_score` function L273-281 — `(&self) -> f32` — Compute the current confidence score.
-- pub `Relation` struct L286-291 — `{ source_id: Uuid, relation_type: RelationType, target_id: Uuid, created_at: Dat...` — A directed relation between two entities.
-- pub `StoreFactResult` enum L295-305 — `Inserted | Reinforced | Superseded` — Result of a store_fact operation (search-before-create).
+- pub `RelationType` enum L67-94 — `RelatesTo | Contradicts | Supports | Supersedes | ExtractedFrom | Mentions | Bel...` — Type of relationship between entities.
+- pub `as_str` function L97-111 — `(&self) -> &'static str` — Core types for the knowledge base memory system.
+- pub `from_str` function L114-129 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
+- pub `ConfidenceSource` enum L135-142 — `Stated | Observed | Inferred` — How confident we are in this entity's accuracy.
+- pub `base_score` function L145-151 — `(&self) -> f32` — Core types for the knowledge base memory system.
+- pub `as_str` function L153-159 — `(&self) -> &'static str` — Core types for the knowledge base memory system.
+- pub `from_str` function L162-169 — `(s: &str) -> Option<Self>` — Core types for the knowledge base memory system.
+- pub `compute_confidence` function L173-198 — `( source: ConfidenceSource, reinforcement_count: u32, days_since_update: f64, su...` — Compute confidence score with reinforcement and staleness.
+- pub `Entity` struct L216-237 — `{ id: Uuid, entity_type: EntityType, title: String, content: Option<String>, con...` — A knowledge entity stored in the KB.
+- pub `new` function L240-257 — `(entity_type: EntityType, title: impl Into<String>) -> Self` — Core types for the knowledge base memory system.
+- pub `with_content` function L259-262 — `(mut self, content: impl Into<String>) -> Self` — Core types for the knowledge base memory system.
+- pub `with_confidence` function L264-267 — `(mut self, source: ConfidenceSource) -> Self` — Core types for the knowledge base memory system.
+- pub `with_tags` function L270-273 — `(mut self, tags: Vec<String>) -> Self` — Set the discovered (free-form) tags.
+- pub `with_tags_discovered` function L276-278 — `(self, tags: Vec<String>) -> Self` — Explicit alias for `with_tags` — set the discovered tag set.
+- pub `with_tags_ontology` function L283-286 — `(mut self, tags: Vec<String>) -> Self` — Set the ontology (closed-list) tags.
+- pub `with_session` function L288-291 — `(mut self, session_id: Uuid) -> Self` — Core types for the knowledge base memory system.
+- pub `confidence_score` function L294-302 — `(&self) -> f32` — Compute the current confidence score.
+- pub `Relation` struct L307-312 — `{ source_id: Uuid, relation_type: RelationType, target_id: Uuid, created_at: Dat...` — A directed relation between two entities.
+- pub `StoreFactResult` enum L316-326 — `Inserted | Reinforced | Superseded` — Result of a store_fact operation (search-before-create).
 -  `EntityType` type L19-54 — `= EntityType` — Core types for the knowledge base memory system.
--  `RelationType` type L81-109 — `= RelationType` — Core types for the knowledge base memory system.
--  `ConfidenceSource` type L123-149 — `= ConfidenceSource` — Core types for the knowledge base memory system.
--  `Entity` type L218-282 — `= Entity` — Core types for the knowledge base memory system.
--  `tests` module L308-389 — `-` — Core types for the knowledge base memory system.
--  `entity_type_roundtrip` function L312-323 — `()` — Core types for the knowledge base memory system.
--  `relation_type_roundtrip` function L326-338 — `()` — Core types for the knowledge base memory system.
--  `confidence_stated_fresh` function L341-344 — `()` — Core types for the knowledge base memory system.
--  `confidence_reinforced` function L347-351 — `()` — Core types for the knowledge base memory system.
--  `confidence_stale` function L354-358 — `()` — Core types for the knowledge base memory system.
--  `confidence_superseded_is_zero` function L361-364 — `()` — Core types for the knowledge base memory system.
--  `entity_builder` function L367-377 — `()` — Core types for the knowledge base memory system.
--  `default_scopes` function L380-388 — `()` — Core types for the knowledge base memory system.
+-  `RelationType` type L96-130 — `= RelationType` — Core types for the knowledge base memory system.
+-  `ConfidenceSource` type L144-170 — `= ConfidenceSource` — Core types for the knowledge base memory system.
+-  `Entity` type L239-303 — `= Entity` — Core types for the knowledge base memory system.
+-  `tests` module L329-414 — `-` — Core types for the knowledge base memory system.
+-  `entity_type_roundtrip` function L333-344 — `()` — Core types for the knowledge base memory system.
+-  `relation_type_roundtrip` function L347-363 — `()` — Core types for the knowledge base memory system.
+-  `confidence_stated_fresh` function L366-369 — `()` — Core types for the knowledge base memory system.
+-  `confidence_reinforced` function L372-376 — `()` — Core types for the knowledge base memory system.
+-  `confidence_stale` function L379-383 — `()` — Core types for the knowledge base memory system.
+-  `confidence_superseded_is_zero` function L386-389 — `()` — Core types for the knowledge base memory system.
+-  `entity_builder` function L392-402 — `()` — Core types for the knowledge base memory system.
+-  `default_scopes` function L405-413 — `()` — Core types for the knowledge base memory system.
 
 #### crates/arawn-memory/src/vector.rs
 
