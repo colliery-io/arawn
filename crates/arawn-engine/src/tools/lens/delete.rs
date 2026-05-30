@@ -27,7 +27,7 @@ impl Tool for LensDeleteTool {
 
     fn description(&self) -> &str {
         "Soft-delete a lens (sets archived = 1). On-disk KB is left intact. \
-         Refuses 'scratch' and refuses the currently-active lens."
+         Refuses 'scratch' and refuses the session's current write-target lens."
     }
 
     fn category(&self) -> ToolCategory {
@@ -53,7 +53,7 @@ impl Tool for LensDeleteTool {
         };
         if name == self.active.current() {
             return Ok(ToolOutput::error(format!(
-                "lens '{name}' is currently active; switch away before deleting"
+                "lens '{name}' is the current write-target; refusing to delete it"
             )));
         }
         let store = self.store.lock().unwrap();

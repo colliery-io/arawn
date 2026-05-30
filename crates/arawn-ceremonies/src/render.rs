@@ -335,7 +335,7 @@ pub fn render_brief(view: &BriefView, now: chrono::DateTime<chrono::Utc>) -> Str
             }
         }
         None => {
-            out.push_str("_(no daily tablet — run /day to generate)_\n\n");
+            out.push_str("_(no daily tablet yet — produced by the morning ceremony)_\n\n");
         }
     }
 

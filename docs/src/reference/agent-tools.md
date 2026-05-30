@@ -90,7 +90,7 @@ See [feed_search tool reference](./feed-search-tool.md).
 
 ## Lens lifecycle
 
-Source: `lens.rs`.
+Source: `lens/` (split into `create.rs`, `list.rs`, `show.rs`, `bind.rs`, `unbind.rs`, `describe.rs`, `delete.rs`, `propose_ontology.rs`).
 
 | Tool | Description |
 |---|---|

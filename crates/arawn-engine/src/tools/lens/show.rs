@@ -26,12 +26,11 @@ impl Tool for LensShowTool {
     }
 
     fn description(&self) -> &str {
-        "Show the active lens's details (or a named one). \
-         Includes display_name, description, bindings, and — crucially \
-         for downstream tools — the lens's declared tag ontology. \
-         Use this before calling `lens_dust` or `signal_query` \
-         with a tag filter so you pick a tag that actually exists in \
-         the ontology."
+        "Show one lens's details — display_name, description, bindings, and the \
+         lens's declared tag ontology. Pass `name` to target a specific lens; \
+         defaults to `scratch` when omitted. Use this before calling `lens_dust` \
+         or `signal_query` with a tag filter so you pick a tag that actually \
+         exists in the ontology."
     }
 
     fn is_read_only(&self) -> bool {
@@ -46,7 +45,7 @@ impl Tool for LensShowTool {
         json!({
             "type": "object",
             "properties": {
-                "name": {"type": "string", "description": "Defaults to the active lens"}
+                "name": {"type": "string", "description": "Defaults to `scratch`"}
             },
             "required": []
         })

@@ -444,11 +444,11 @@ async fn main() -> Result<()> {
             Some(Arc::clone(&hook_runner)),
         );
 
-        // Active-lens shim shared between lens slash
-        // commands and the memory router. T-0250 routes memory tools
-        // through this primitive so `/lens switch` redirects
-        // memory_store / memory_search to the new lens's KB
-        // on subsequent calls.
+        // Write-target shim shared between lens tools and the memory
+        // router. Post-ARAWN-I-0061 there is no `/lens switch` — reads
+        // roam across every lens, and this shim only picks the lens
+        // that `memory_store` / steward writes land in. Currently
+        // pinned to `scratch`.
         let active_lens = arawn_engine::SessionLens::scratch();
 
         // Lens memory router — hoisted to outer scope so the

@@ -199,7 +199,8 @@ impl Tool for LensRefineTool {
     }
 
     fn description(&self) -> &str {
-        "List pending steward proposals (map + door-watch) for the active lens. \
+        "List pending steward proposals (map + door-watch). Defaults to the session's \
+         current lens (`scratch` if none) — pass `lens=<name>` to target a specific one. \
          Proposals are not applied automatically — the user reviews them. Reject via \
          `lens_rollback <id>`. Accept/apply is a future v2."
     }
@@ -390,8 +391,9 @@ impl Tool for LensDustTool {
     }
 
     fn description(&self) -> &str {
-        "Manually trigger the steward's `dust` subroutine on the active lens — \
-         clusters cold entities (default by shared tag) and proposes a summary entity \
+        "Manually trigger the steward's `dust` subroutine. Defaults to the session's \
+         current lens (`scratch` if none) — pass `lens=<name>` to target a specific one. \
+         Clusters cold entities (default by shared tag) and proposes a summary entity \
          per cluster. Proposals are journaled with `applied=false`; review with \
          `lens_refine`, commit with `lens_apply <id>`, reject with \
          `lens_rollback <id>`."
@@ -705,7 +707,8 @@ impl Tool for LensTagTool {
     }
 
     fn description(&self) -> &str {
-        "Manage the active lens's tag ontology directly. `op: list` \
+        "Manage a lens's tag ontology directly. Defaults to the session's current lens \
+         (`scratch` if none) — pass `lens=<name>` to target a specific one. `op: list` \
          returns every tag with `added_via` provenance. `op: add` inserts a \
          new tag (idempotent). `op: remove` deletes a tag. Use this for \
          curation outside the propose-accept cycle — for organic growth, \
@@ -735,7 +738,7 @@ impl Tool for LensTagTool {
                 },
                 "lens": {
                     "type": "string",
-                    "description": "Override the active lens."
+                    "description": "Target a specific lens (defaults to the session's current lens)."
                 }
             },
             "required": ["op"]

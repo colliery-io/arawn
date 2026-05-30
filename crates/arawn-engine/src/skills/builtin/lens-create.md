@@ -57,9 +57,7 @@ lens_new(
 
 Report the outcome briefly:
 
-> "Created `<name>`. Ready to use — try `lens_switch <name>` to make it active."
-
-Don't auto-switch unless the user asks.
+> "Created `<name>`. Bind feeds to it with `lens_bind` when ready — chat reads `signal_*` across every lens, so you don't need to 'switch in'."
 
 ## When NOT to use this skill
 

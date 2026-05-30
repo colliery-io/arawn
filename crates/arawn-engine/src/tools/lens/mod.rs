@@ -745,7 +745,7 @@ mod tests {
             .await
             .unwrap();
         assert!(result.is_error);
-        assert!(result.content.contains("active"));
+        assert!(result.content.contains("write-target"));
     }
 
     #[tokio::test]

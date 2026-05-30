@@ -47,7 +47,7 @@ Calls `lens_new`. The agent walks through an ontology proposal flow — proposes
 /lens list
 ```
 
-Calls `lens_list`. Returns active lenses. To include archived: use `lens_list { include_archived: true }` directly.
+Calls `lens_list`. Returns active lenses. To include archived: use `lens_list { all: true }` directly.
 
 ### Show / bind / unbind / describe / delete (agent tools, not slash subcommands)
 
