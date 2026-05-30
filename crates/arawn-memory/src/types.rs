@@ -76,6 +76,21 @@ pub enum RelationType {
     /// entities it summarizes. Allowed by the dust subroutine per
     /// ARAWN-A-0003.
     Summarizes,
+    /// Person → Person: the source manages the target (e.g. an EM
+    /// manages a senior IC). Org-graph relation introduced by
+    /// ARAWN-I-0064. The user's *own* management relations to people
+    /// live on `PersonProfile.relation_to_user` — this variant is for
+    /// org-graph edges between two non-self Person entities (e.g.
+    /// "Sarah manages Marcus").
+    Manages,
+    /// Person → Person: the source reports up to the target. Inverse
+    /// of `Manages`. Stored explicitly (rather than derived) so a
+    /// person-centric query can answer "who does Marcus report to?"
+    /// without scanning every Manages edge. ARAWN-I-0064.
+    ReportsTo,
+    /// Person → Person: collaborative peer at roughly the same level
+    /// (not an org-chart claim). ARAWN-I-0064.
+    PeerOf,
 }
 
 impl RelationType {
@@ -89,6 +104,9 @@ impl RelationType {
             Self::Mentions => "mentions",
             Self::BelongsTo => "belongs_to",
             Self::Summarizes => "summarizes",
+            Self::Manages => "manages",
+            Self::ReportsTo => "reports_to",
+            Self::PeerOf => "peer_of",
         }
     }
 
@@ -103,6 +121,9 @@ impl RelationType {
             "mentions" => Some(Self::Mentions),
             "belongs_to" => Some(Self::BelongsTo),
             "summarizes" => Some(Self::Summarizes),
+            "manages" => Some(Self::Manages),
+            "reports_to" => Some(Self::ReportsTo),
+            "peer_of" => Some(Self::PeerOf),
             _ => None,
         }
     }
@@ -332,6 +353,10 @@ mod tests {
             RelationType::ExtractedFrom,
             RelationType::Mentions,
             RelationType::BelongsTo,
+            RelationType::Summarizes,
+            RelationType::Manages,
+            RelationType::ReportsTo,
+            RelationType::PeerOf,
         ] {
             assert_eq!(RelationType::from_str(rt.as_str()), Some(rt));
         }

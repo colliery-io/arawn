@@ -56,6 +56,9 @@ pub fn relation_type_str(t: RelationType) -> &'static str {
         RelationType::Mentions => "MENTIONS",
         RelationType::BelongsTo => "BELONGS_TO",
         RelationType::Summarizes => "SUMMARIZES",
+        RelationType::Manages => "MANAGES",
+        RelationType::ReportsTo => "REPORTS_TO",
+        RelationType::PeerOf => "PEER_OF",
     }
 }
 
@@ -70,6 +73,9 @@ pub fn relation_type_from_str(s: &str) -> Option<RelationType> {
         "MENTIONS" => Some(RelationType::Mentions),
         "BELONGS_TO" => Some(RelationType::BelongsTo),
         "SUMMARIZES" => Some(RelationType::Summarizes),
+        "MANAGES" => Some(RelationType::Manages),
+        "REPORTS_TO" => Some(RelationType::ReportsTo),
+        "PEER_OF" => Some(RelationType::PeerOf),
         _ => None,
     }
 }
@@ -214,6 +220,10 @@ mod tests {
             RelationType::ExtractedFrom,
             RelationType::Mentions,
             RelationType::BelongsTo,
+            RelationType::Summarizes,
+            RelationType::Manages,
+            RelationType::ReportsTo,
+            RelationType::PeerOf,
         ] {
             assert_eq!(relation_type_from_str(relation_type_str(rt)), Some(rt));
         }
