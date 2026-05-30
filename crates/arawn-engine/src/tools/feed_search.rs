@@ -69,14 +69,20 @@ impl Tool for FeedSearchTool {
          drive, jira, confluence, calendar). Hybrid FTS5 + semantic similarity \
          (RRF-fused when an embedder is configured); **default limit is 10**, so \
          pass `limit` higher for sweeps where you can't afford to drop items.\n\n\
-         Reach for this when the question is about *raw content* — \"read this \
-         gmail thread\", \"what's the last slack message in #X\", \"what's in my \
-         drive\". For *synthesizing across sources* — morning briefing, \"what's \
-         on my plate today\", \"what did we decide about X\" — call \
-         `signal_search` / `signal_query` first; the extracted signal stream \
-         surfaces relationships (calendar conflicts, related mentions) the raw \
-         FTS top-10 will miss. The daily tablet (`daily_list_items`) is a curated \
-         brief, not a substitute for either.\n\n\
+         **Reach for the live integration tool first when one applies** — \
+         `slack_history` / `slack_list_channels` for any Slack-specific question \
+         (\"who said X\", \"@-mentions\", \"today in #X\"), `gmail_inbox_read` / \
+         `gmail_search` for inbox lookups, `calendar_upcoming` for schedule \
+         questions, `drive_search` for files. Those tools return complete, \
+         present-tense data uncapped by FTS top-10 and labeled with the source's \
+         own identifiers. `feed_search` is the fallback for cross-source sweeps \
+         when no single live tool fits.\n\n\
+         For *synthesizing across sources* — morning briefing, \"what's on my \
+         plate today\", \"what did we decide about X\" — call `signal_search` / \
+         `signal_query` first; the extracted signal stream surfaces \
+         relationships (calendar conflicts, related mentions) the raw FTS top-10 \
+         will miss. The daily tablet (`daily_list_items`) is a curated brief, \
+         not a substitute for either.\n\n\
          Use `feed_types` to scope (e.g. `[\"gmail_messages\"]` for inbox-only), \
          `since`/`until` (RFC3339) for time windows."
     }

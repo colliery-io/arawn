@@ -1171,7 +1171,10 @@ fn inbox_summary_scenario() -> Scenario {
                 "bob".to_string(),
             ],
             required_tool_names: vec!["gmail_inbox_read".to_string()],
-            forbidden_tool_names: vec![],
+            // ARAWN-I-0062 T-G: summarizing the inbox should never reply or
+            // forward. Defensive guard against the agent quietly answering a
+            // message it surfaced.
+            forbidden_tool_names: vec!["gmail_send".to_string()],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
@@ -1197,7 +1200,11 @@ fn draft_with_confirmation_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 0,
             max_tool_errors: 3,
-            required_evidence: vec![],
+            // ARAWN-I-0062 T-G: prove the agent actually retrieved Alice's
+            // RFC-0042 thread before drafting. Without this guard the agent
+            // could "draft" a plausible reply against no evidence at all and
+            // still pass the forbidden check.
+            required_evidence: vec!["rfc-0042".to_string()],
             // Either `gmail_inbox_read` or `gmail_search` finds Alice's
             // thread, so don't pin to one. The forbidden check is the
             // load-bearing constraint; the judge validates the draft +
@@ -1260,13 +1267,23 @@ fn mention_scan_scenario() -> Scenario {
             min_workflows_created: 0,
             min_memory_entities: 0,
             max_tool_errors: 2,
-            // Both @mentions must be present in the tool result stream.
-            required_evidence: vec!["@pat".to_string()],
+            // ARAWN-I-0062 T-G: prove BOTH @mentions surfaced — not just that
+            // *some* `@pat` token appeared. The two mentions have distinct
+            // anchors (Jamie's "ledger dashboard" ask, Alice's "RFC-0042"
+            // sign-off ping); requiring both forces the agent to read
+            // multiple channels, not just one.
+            required_evidence: vec![
+                "@pat".to_string(),
+                "ledger migration".to_string(),
+                "RFC-0042".to_string(),
+            ],
             // Live slack path: must call slack_history (channel discovery via
             // slack_list_channels is allowed but not required — agent may
             // already know channel names from prior turns / signals).
             required_tool_names: vec!["slack_history".to_string()],
-            forbidden_tool_names: vec![],
+            // ARAWN-I-0062 T-G: scanning mentions should never post; defensive
+            // guard against an over-eager reply.
+            forbidden_tool_names: vec!["slack_post".to_string()],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
