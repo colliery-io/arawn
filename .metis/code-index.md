@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-30T20:52:05Z | 420 files | Python, Rust
+> Generated: 2026-05-30T21:58:38Z | 421 files | Python, Rust
 
 ## Project Structure
 
@@ -119,6 +119,7 @@
 │   │       │   ├── mod.rs
 │   │       │   ├── prompt.rs
 │   │       │   └── rules.rs
+│   │       ├── person_intent.rs
 │   │       ├── plan.rs
 │   │       ├── plugins/
 │   │       │   ├── builtin.rs
@@ -758,15 +759,15 @@
 -  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L32 — `: &str`
 -  `FILE_LOG_FILTER` variable L35 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L38-1251 — `() -> Result<()>`
+-  `main` function L38-1259 — `() -> Result<()>`
 -  `Cli` struct L48-67 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L70-110 — `Serve | Tui | Plugin | Doctor | Usage`
--  `ExtractorBindHook` struct L846-855 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
--  `ExtractorBindHook` type L856-955 — `= ExtractorBindHook`
--  `on_bind` function L857-954 — `(&self, lens_name: &str, feed_id: &str)`
--  `FeedRuntimeUnbindHook` struct L970-972 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
--  `FeedRuntimeUnbindHook` type L973-988 — `= FeedRuntimeUnbindHook`
--  `on_unbind` function L974-987 — `(&self, removed_feed_ids: &[String])`
+-  `ExtractorBindHook` struct L854-863 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
+-  `ExtractorBindHook` type L864-963 — `= ExtractorBindHook`
+-  `on_bind` function L865-962 — `(&self, lens_name: &str, feed_id: &str)`
+-  `FeedRuntimeUnbindHook` struct L978-980 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
+-  `FeedRuntimeUnbindHook` type L981-996 — `= FeedRuntimeUnbindHook`
+-  `on_unbind` function L982-995 — `(&self, removed_feed_ids: &[String])`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -2359,17 +2360,34 @@
 - pub `hooks` module L10 — `-`
 - pub `lens_router` module L11 — `-`
 - pub `permissions` module L12 — `-`
-- pub `plan` module L13 — `-`
-- pub `plugins` module L14 — `-`
-- pub `prompt_injection` module L15 — `-`
-- pub `query_engine` module L16 — `-`
-- pub `skills` module L17 — `-`
-- pub `system_prompt` module L18 — `-`
-- pub `testing` module L19 — `-`
-- pub `token_estimator` module L20 — `-`
-- pub `tool_result_limiter` module L21 — `-`
-- pub `tool_timeout` module L22 — `-`
-- pub `tools` module L23 — `-`
+- pub `person_intent` module L13 — `-`
+- pub `plan` module L14 — `-`
+- pub `plugins` module L15 — `-`
+- pub `prompt_injection` module L16 — `-`
+- pub `query_engine` module L17 — `-`
+- pub `skills` module L18 — `-`
+- pub `system_prompt` module L19 — `-`
+- pub `testing` module L20 — `-`
+- pub `token_estimator` module L21 — `-`
+- pub `tool_result_limiter` module L22 — `-`
+- pub `tool_timeout` module L23 — `-`
+- pub `tools` module L24 — `-`
+
+#### crates/arawn-engine/src/person_intent.rs
+
+- pub `BetweenPeople` struct L27-33 — `{ manager_name: String, report_name: String }` — Two non-self people in a manager/report relationship the user has
+- pub `PersonIntent` struct L40-57 — `{ primary_name: Option<String>, relation_to_user: Option<RelationToUser>, betwee...` — Structured intent extracted from a memory-store text by the LLM
+- pub `classify_person_intent` function L93-108 — `( text: &str, client: &Arc<dyn LlmClient>, model: &str, ) -> PersonIntent` — Classify a memory-write text into a structured `PersonIntent`.
+-  `SYSTEM_PROMPT` variable L59-87 — `: &str` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `run_classifier` function L110-140 — `( prompt: &str, client: &Arc<dyn LlmClient>, model: &str, ) -> Result<String, St...` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `parse_intent` function L144-161 — `(raw: &str) -> PersonIntent` — Lenient JSON extraction — strips common fence patterns (```json ...
+-  `tests` module L164-222 — `-` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `parse_intent_handles_plain_json` function L168-174 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `parse_intent_handles_fenced_json` function L177-185 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `parse_intent_handles_plain_fences_no_lang` function L188-192 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `parse_intent_returns_default_on_garbage` function L195-199 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `parse_intent_returns_default_on_partial_json` function L202-206 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `parse_intent_accepts_each_relation_to_user_variant` function L209-221 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
 
 #### crates/arawn-engine/src/plan.rs
 
@@ -3943,22 +3961,37 @@
 
 #### crates/arawn-engine/src/tools/memory_store.rs
 
-- pub `MemoryStoreTool` struct L14-17 — `{ memory: MemoryHandle, embedder: Option<Arc<dyn Embedder>> }` — Tool that stores knowledge in the KB with search-before-create deduplication.
-- pub `new` function L20-25 — `(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self`
--  `MemoryStoreTool` type L19-26 — `= MemoryStoreTool`
--  `MemoryStoreTool` type L29-202 — `impl Tool for MemoryStoreTool`
--  `name` function L30-32 — `(&self) -> &str`
--  `description` function L34-48 — `(&self) -> &str`
--  `category` function L50-52 — `(&self) -> ToolCategory`
--  `parameters_schema` function L54-79 — `(&self) -> Value`
--  `execute` function L81-201 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...`
--  `tests` module L205-317 — `-`
--  `setup` function L212-223 — `() -> ( TempDir, Arc<MemoryManager>, crate::context::EngineToolContext, )`
--  `store_new_fact` function L226-243 — `()`
--  `store_preference_goes_global` function L246-259 — `()`
--  `store_decision_goes_global` function L262-276 — `()`
--  `store_reinforces_duplicate` function L279-300 — `()`
--  `store_with_tags` function L303-316 — `()`
+- pub `MemoryStoreTool` struct L19-28 — `{ memory: MemoryHandle, embedder: Option<Arc<dyn Embedder>>, classifier_llm: Opt...` — Tool that stores knowledge in the KB with search-before-create deduplication.
+- pub `new` function L31-38 — `(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self`
+- pub `with_classifier` function L44-48 — `(mut self, client: Arc<dyn LlmClient>, model: impl Into<String>) -> Self` — Attach the LLM classifier used to detect social-relation phrasings
+-  `MemoryStoreTool` type L30-115 — `= MemoryStoreTool`
+-  `maybe_classify` function L56-83 — `( &self, entity_type: EntityType, title: &str, content: Option<&str>, ) -> Optio...` — Run the LLM classifier on a Person memory text.
+-  `write_between_people_relation` function L90-114 — `( &self, store: &arawn_memory::MemoryStore, bp: &BetweenPeople, session_id: uuid...` — Apply a `between_people` intent: create / find both Person
+-  `ensure_person` function L119-135 — `( store: &arawn_memory::MemoryStore, name: &str, session_id: uuid::Uuid, ) -> Re...` — Ensure a Person entity exists for the given name.
+-  `upsert_relation_to_user` function L140-151 — `( store: &arawn_memory::MemoryStore, entity_id: uuid::Uuid, rel: RelationToUser,...` — Merge a `relation_to_user` into the PersonProfile sidecar.
+-  `MemoryStoreTool` type L154-358 — `impl Tool for MemoryStoreTool`
+-  `name` function L155-157 — `(&self) -> &str`
+-  `description` function L159-173 — `(&self) -> &str`
+-  `category` function L175-177 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L179-204 — `(&self) -> Value`
+-  `execute` function L206-357 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...`
+-  `tests` module L361-656 — `-`
+-  `setup` function L368-379 — `() -> ( TempDir, Arc<MemoryManager>, crate::context::EngineToolContext, )`
+-  `CannedIntentLlm` struct L384-386 — `{ canned_json: String }` — Mock LLM client that returns a canned JSON intent on every call.
+-  `CannedIntentLlm` type L388-394 — `= CannedIntentLlm`
+-  `returning` function L389-393 — `(json: impl Into<String>) -> Arc<Self>`
+-  `CannedIntentLlm` type L397-419 — `= CannedIntentLlm`
+-  `stream` function L398-418 — `( &self, _request: arawn_llm::ChatRequest, ) -> Result< std::pin::Pin< Box< dyn ...`
+-  `store_new_fact` function L422-439 — `()`
+-  `store_preference_goes_global` function L442-455 — `()`
+-  `store_decision_goes_global` function L458-472 — `()`
+-  `store_reinforces_duplicate` function L475-496 — `()`
+-  `store_with_tags` function L499-512 — `()`
+-  `classifier_skipped_when_entity_type_is_not_person` function L517-535 — `()`
+-  `classifier_writes_person_profile_when_relation_to_user_detected` function L538-564 — `()`
+-  `classifier_short_circuits_for_between_people_phrasings` function L567-612 — `()`
+-  `classifier_empty_intent_falls_through_to_normal_store` function L615-635 — `()`
+-  `classifier_failure_falls_through_to_normal_store` function L638-655 — `()`
 
 #### crates/arawn-engine/src/tools/mod.rs
 

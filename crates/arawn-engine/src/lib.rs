@@ -10,6 +10,7 @@ pub mod error;
 pub mod hooks;
 pub mod lens_router;
 pub mod permissions;
+pub mod person_intent;
 pub mod plan;
 pub mod plugins;
 pub mod prompt_injection;
@@ -43,6 +44,7 @@ pub use permissions::{
 pub use arawn_tool::{Tool, ToolCategory, ToolError, ToolOutput, ToolRegistry};
 pub use ceremony_sources::{ProjectionsAttentionSource, ProjectionsCalendarSource};
 pub use lens_router::{LensMemoryRouter, MemoryHandle};
+pub use person_intent::{BetweenPeople, PersonIntent, classify_person_intent};
 pub use plan::{PlanModeSnapshot, PlanModeState, generate_slug};
 pub use query_engine::{
     ConnectedServicesFn, IntegrationCapabilitiesFn, ProgressEvent, PromptContext, QueryEngine,

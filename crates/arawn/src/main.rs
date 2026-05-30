@@ -469,10 +469,18 @@ async fn main() -> Result<()> {
         // Use the routed handle so the active lens determines
         // which KB the tools read/write.
         if let Some(ref router) = lens_router {
-            registry.register(Box::new(arawn_engine::MemoryStoreTool::new(
-                Arc::clone(router),
-                embedder.clone(),
-            )));
+            // ARAWN-I-0064 T-C: classifier turns "Sarah is someone I manage"
+            // into a Person entity plus a PersonProfile sidecar row with
+            // relation_to_user=Manages; "Marcus reports to Sarah" into two
+            // Person entities plus a Manages/ReportsTo edge pair. Uses the
+            // engine LLM client + model.
+            registry.register(Box::new(
+                arawn_engine::MemoryStoreTool::new(Arc::clone(router), embedder.clone())
+                    .with_classifier(
+                        llm_pool.engine(),
+                        llm_pool.engine_config().model.clone(),
+                    ),
+            ));
             registry.register(Box::new(arawn_engine::MemorySearchTool::new(
                 Arc::clone(router),
                 embedder.clone(),
