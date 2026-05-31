@@ -348,11 +348,18 @@ fn build_messages(system_prompt: &Option<String>, messages: &[ChatMessage]) -> V
                 }));
             }
             "assistant" => {
+                // Ollama's `/v1/chat/completions` requires `content` to be
+                // present as a string even when the assistant message is
+                // tool-only (no narration). Omitting it produces an
+                // `invalid message content type: <nil>` HTTP 400 from the
+                // server. OpenAI's spec accepts `null`, `""`, or absent;
+                // emit `""` here so both providers are happy. See the
+                // tool-only roundtrip test below.
                 let ChatContent::Text(ref text) = msg.content;
-                let mut m = json!({ "role": "assistant" });
-                if !text.is_empty() {
-                    m["content"] = json!(text);
-                }
+                let mut m = json!({
+                    "role": "assistant",
+                    "content": text,
+                });
                 if !msg.tool_calls.is_empty() {
                     let tool_calls: Vec<Value> = msg
                         .tool_calls
@@ -463,7 +470,6 @@ struct StreamUsage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::ToolCall;
 
     #[test]
     fn groq_convenience_constructor() {
@@ -532,6 +538,60 @@ mod tests {
             client.completions_url(),
             "https://custom-groq-proxy.example.com/v1/chat/completions"
         );
+    }
+
+    #[test]
+    fn assistant_tool_only_message_includes_empty_content() {
+        // Regression for the ollama HTTP 400 "invalid message content type: <nil>"
+        // failure: when the assistant performs a tool call with no narration,
+        // the serialized message MUST still carry `content` (empty string is
+        // fine). Omitting the field makes ollama reject the request.
+        use crate::types::ToolCall;
+        use serde_json::json;
+        let msgs = build_messages(
+            &None,
+            &[ChatMessage {
+                role: "assistant".into(),
+                content: ChatContent::Text(String::new()),
+                tool_calls: vec![ToolCall {
+                    id: "call_1".into(),
+                    name: "skill".into(),
+                    arguments: json!({"skill": "workflows"}),
+                }],
+                tool_call_id: None,
+            }],
+        );
+        assert_eq!(msgs.len(), 1);
+        let m = &msgs[0];
+        assert_eq!(m["role"], "assistant");
+        assert!(
+            m.get("content").is_some(),
+            "tool-only assistant message dropped the `content` field — ollama HTTP 400s"
+        );
+        assert_eq!(m["content"], "");
+        assert!(m["tool_calls"].is_array());
+    }
+
+    #[test]
+    fn assistant_message_with_text_and_tool_calls_keeps_both() {
+        use crate::types::ToolCall;
+        use serde_json::json;
+        let msgs = build_messages(
+            &None,
+            &[ChatMessage {
+                role: "assistant".into(),
+                content: ChatContent::Text("Let me look that up.".into()),
+                tool_calls: vec![ToolCall {
+                    id: "call_2".into(),
+                    name: "feed_search".into(),
+                    arguments: json!({"q": "x"}),
+                }],
+                tool_call_id: None,
+            }],
+        );
+        let m = &msgs[0];
+        assert_eq!(m["content"], "Let me look that up.");
+        assert!(m["tool_calls"].is_array());
     }
 
     #[test]
