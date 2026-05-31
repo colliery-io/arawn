@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-31T01:41:40Z | 421 files | Python, Rust
+> Generated: 2026-05-31T16:23:14Z | 422 files | Python, Rust
 
 ## Project Structure
 
@@ -179,6 +179,7 @@
 │   │           ├── memory_search.rs
 │   │           ├── memory_store.rs
 │   │           ├── mod.rs
+│   │           ├── person_brief.rs
 │   │           ├── safe_env.rs
 │   │           ├── sensitive_paths.rs
 │   │           ├── shell.rs
@@ -759,15 +760,15 @@
 -  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L32 — `: &str`
 -  `FILE_LOG_FILTER` variable L35 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L38-1259 — `() -> Result<()>`
+-  `main` function L38-1266 — `() -> Result<()>`
 -  `Cli` struct L48-67 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L70-110 — `Serve | Tui | Plugin | Doctor | Usage`
--  `ExtractorBindHook` struct L854-863 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
--  `ExtractorBindHook` type L864-963 — `= ExtractorBindHook`
--  `on_bind` function L865-962 — `(&self, lens_name: &str, feed_id: &str)`
--  `FeedRuntimeUnbindHook` struct L978-980 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
--  `FeedRuntimeUnbindHook` type L981-996 — `= FeedRuntimeUnbindHook`
--  `on_unbind` function L982-995 — `(&self, removed_feed_ids: &[String])`
+-  `ExtractorBindHook` struct L861-870 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
+-  `ExtractorBindHook` type L871-970 — `= ExtractorBindHook`
+-  `on_bind` function L872-969 — `(&self, lens_name: &str, feed_id: &str)`
+-  `FeedRuntimeUnbindHook` struct L985-987 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
+-  `FeedRuntimeUnbindHook` type L988-1003 — `= FeedRuntimeUnbindHook`
+-  `on_unbind` function L989-1002 — `(&self, removed_feed_ids: &[String])`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -4010,21 +4011,49 @@
 - pub `lens` module L13 — `-`
 - pub `memory_search` module L14 — `-`
 - pub `memory_store` module L15 — `-`
-- pub `safe_env` module L16 — `-`
-- pub `sensitive_paths` module L17 — `-`
-- pub `shell` module L18 — `-`
-- pub `signal` module L19 — `-`
-- pub `skill` module L20 — `-`
-- pub `sleep` module L21 — `-`
-- pub `steward` module L22 — `-`
-- pub `task_list` module L23 — `-`
-- pub `task_output` module L24 — `-`
-- pub `task_stop` module L25 — `-`
-- pub `think` module L26 — `-`
-- pub `todo` module L27 — `-`
-- pub `web_fetch` module L28 — `-`
-- pub `web_search` module L29 — `-`
-- pub `weekly` module L30 — `-`
+- pub `person_brief` module L16 — `-`
+- pub `safe_env` module L17 — `-`
+- pub `sensitive_paths` module L18 — `-`
+- pub `shell` module L19 — `-`
+- pub `signal` module L20 — `-`
+- pub `skill` module L21 — `-`
+- pub `sleep` module L22 — `-`
+- pub `steward` module L23 — `-`
+- pub `task_list` module L24 — `-`
+- pub `task_output` module L25 — `-`
+- pub `task_stop` module L26 — `-`
+- pub `think` module L27 — `-`
+- pub `todo` module L28 — `-`
+- pub `web_fetch` module L29 — `-`
+- pub `web_search` module L30 — `-`
+- pub `weekly` module L31 — `-`
+
+#### crates/arawn-engine/src/tools/person_brief.rs
+
+- pub `PersonBriefTool` struct L28-32 — `{ memory: MemoryHandle, embedder: Option<Arc<dyn Embedder>> }` — single highest-leverage delta for the daily-driver.
+- pub `new` function L35-40 — `(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self` — single highest-leverage delta for the daily-driver.
+-  `PersonBriefTool` type L34-41 — `= PersonBriefTool` — single highest-leverage delta for the daily-driver.
+-  `PersonBriefTool` type L44-164 — `impl Tool for PersonBriefTool` — single highest-leverage delta for the daily-driver.
+-  `name` function L45-47 — `(&self) -> &str` — single highest-leverage delta for the daily-driver.
+-  `description` function L49-56 — `(&self) -> &str` — single highest-leverage delta for the daily-driver.
+-  `is_read_only` function L58-60 — `(&self) -> bool` — single highest-leverage delta for the daily-driver.
+-  `category` function L62-64 — `(&self) -> ToolCategory` — single highest-leverage delta for the daily-driver.
+-  `parameters_schema` function L66-81 — `(&self) -> Value` — single highest-leverage delta for the daily-driver.
+-  `execute` function L83-163 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — single highest-leverage delta for the daily-driver.
+-  `resolve_person` function L168-186 — `(store: &MemoryStore, name: &str) -> Result<Option<Entity>, ToolError>` — Find the Person entity matching `name`.
+-  `format_brief` function L189-291 — `( person: &Entity, profile: Option<&PersonProfile>, memory_hits: &[Entity], grap...` — Render the brief as markdown so it threads into chat naturally.
+-  `tests` module L294-482 — `-` — single highest-leverage delta for the daily-driver.
+-  `setup` function L301-312 — `() -> ( TempDir, Arc<MemoryManager>, crate::context::EngineToolContext, )` — single highest-leverage delta for the daily-driver.
+-  `returns_helpful_message_when_person_unknown` function L315-326 — `()` — single highest-leverage delta for the daily-driver.
+-  `returns_brief_with_profile_role_and_relation` function L329-351 — `()` — single highest-leverage delta for the daily-driver.
+-  `falls_back_to_partial_match_when_no_exact_title` function L354-362 — `()` — single highest-leverage delta for the daily-driver.
+-  `case_insensitive_exact_match_wins_over_partial` function L365-383 — `()` — single highest-leverage delta for the daily-driver.
+-  `renders_growth_themes_and_concerns_when_present` function L386-404 — `()` — single highest-leverage delta for the daily-driver.
+-  `surfaces_unstructured_profile_hint_when_no_sidecar` function L407-418 — `()` — single highest-leverage delta for the daily-driver.
+-  `surfaces_related_memory_entries_mentioning_the_person` function L421-436 — `()` — single highest-leverage delta for the daily-driver.
+-  `lists_graph_related_when_include_related_default_on` function L439-453 — `()` — single highest-leverage delta for the daily-driver.
+-  `include_related_false_omits_graph_section` function L456-472 — `()` — single highest-leverage delta for the daily-driver.
+-  `missing_name_param_errors` function L475-481 — `()` — single highest-leverage delta for the daily-driver.
 
 #### crates/arawn-engine/src/tools/safe_env.rs
 
@@ -7657,28 +7686,30 @@
 -  `poll_next` function L193-229 — `( mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>, ) -> std::task::Pol...`
 -  `try_parse_buffer` function L233-279 — `(&mut self) -> Option<Result<ChatChunk, LlmError>>`
 -  `parse_stream_chunk` function L282-327 — `(chunk: &StreamChunk) -> Vec<ChatChunk>`
--  `build_messages` function L331-394 — `(system_prompt: &Option<String>, messages: &[ChatMessage]) -> Vec<Value>`
--  `build_tools` function L396-410 — `(tools: &[ToolDefinition]) -> Vec<Value>`
--  `ApiErrorResponse` struct L415-417 — `{ error: Option<ApiError> }`
--  `ApiError` struct L420-424 — `{ message: String, code: Option<String> }`
--  `StreamChunk` struct L427-432 — `{ choices: Vec<StreamChoice>, usage: Option<StreamUsage> }`
--  `StreamChoice` struct L435-437 — `{ delta: StreamDelta }`
--  `StreamDelta` struct L440-443 — `{ content: Option<String>, tool_calls: Option<Vec<StreamToolCall>> }`
--  `StreamToolCall` struct L446-449 — `{ id: Option<String>, function: Option<StreamFunction> }`
--  `StreamFunction` struct L452-455 — `{ name: Option<String>, arguments: Option<String> }`
--  `StreamUsage` struct L458-461 — `{ prompt_tokens: u32, completion_tokens: u32 }`
--  `tests` module L464-625 — `-`
--  `groq_convenience_constructor` function L469-477 — `()`
--  `ollama_convenience_constructor` function L480-488 — `()`
--  `openai_convenience_constructor` function L491-498 — `()`
--  `custom_base_url` function L501-511 — `()`
--  `from_config_known_providers` function L514-521 — `()`
--  `from_config_custom_url_override` function L524-535 — `()`
--  `build_messages_with_system_prompt` function L538-551 — `()`
--  `parse_text_delta` function L554-567 — `()`
--  `parse_tool_use_start` function L570-589 — `()`
--  `parse_usage` function L592-603 — `()`
--  `no_auth_header_when_no_api_key` function L606-624 — `()`
+-  `build_messages` function L331-401 — `(system_prompt: &Option<String>, messages: &[ChatMessage]) -> Vec<Value>`
+-  `build_tools` function L403-417 — `(tools: &[ToolDefinition]) -> Vec<Value>`
+-  `ApiErrorResponse` struct L422-424 — `{ error: Option<ApiError> }`
+-  `ApiError` struct L427-431 — `{ message: String, code: Option<String> }`
+-  `StreamChunk` struct L434-439 — `{ choices: Vec<StreamChoice>, usage: Option<StreamUsage> }`
+-  `StreamChoice` struct L442-444 — `{ delta: StreamDelta }`
+-  `StreamDelta` struct L447-450 — `{ content: Option<String>, tool_calls: Option<Vec<StreamToolCall>> }`
+-  `StreamToolCall` struct L453-456 — `{ id: Option<String>, function: Option<StreamFunction> }`
+-  `StreamFunction` struct L459-462 — `{ name: Option<String>, arguments: Option<String> }`
+-  `StreamUsage` struct L465-468 — `{ prompt_tokens: u32, completion_tokens: u32 }`
+-  `tests` module L471-685 — `-`
+-  `groq_convenience_constructor` function L475-483 — `()`
+-  `ollama_convenience_constructor` function L486-494 — `()`
+-  `openai_convenience_constructor` function L497-504 — `()`
+-  `custom_base_url` function L507-517 — `()`
+-  `from_config_known_providers` function L520-527 — `()`
+-  `from_config_custom_url_override` function L530-541 — `()`
+-  `assistant_tool_only_message_includes_empty_content` function L544-573 — `()`
+-  `assistant_message_with_text_and_tool_calls_keeps_both` function L576-595 — `()`
+-  `build_messages_with_system_prompt` function L598-611 — `()`
+-  `parse_text_delta` function L614-627 — `()`
+-  `parse_tool_use_start` function L630-649 — `()`
+-  `parse_usage` function L652-663 — `()`
+-  `no_auth_header_when_no_api_key` function L666-684 — `()`
 
 #### crates/arawn-llm/src/retry.rs
 

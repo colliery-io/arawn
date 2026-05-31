@@ -13,6 +13,7 @@ pub mod grep;
 pub mod lens;
 pub mod memory_search;
 pub mod memory_store;
+pub mod person_brief;
 pub mod safe_env;
 pub mod sensitive_paths;
 pub mod shell;
@@ -53,6 +54,7 @@ pub use lens::{
 };
 pub use memory_search::MemorySearchTool;
 pub use memory_store::MemoryStoreTool;
+pub use person_brief::PersonBriefTool;
 pub use shell::ShellTool;
 pub use signal::{SignalQueryTool, SignalSearchTool, SignalTimelineTool};
 pub use skill::SkillTool;

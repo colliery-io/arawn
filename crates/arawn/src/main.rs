@@ -485,6 +485,13 @@ async fn main() -> Result<()> {
                 Arc::clone(router),
                 embedder.clone(),
             )));
+            // ARAWN-I-0065 T-A: orchestrator that returns "what's been going
+            // on with X" — Person + PersonProfile sidecar + memory hits +
+            // graph relations. The exec daily-driver's most-used read.
+            registry.register(Box::new(arawn_engine::PersonBriefTool::new(
+                Arc::clone(router),
+                embedder.clone(),
+            )));
             registry.register(Box::new(arawn_engine::SignalSearchTool::new(
                 Arc::clone(router),
                 embedder.clone(),
