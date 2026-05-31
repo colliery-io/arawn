@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-30T21:58:38Z | 421 files | Python, Rust
+> Generated: 2026-05-31T01:41:40Z | 421 files | Python, Rust
 
 ## Project Structure
 
@@ -8074,21 +8074,30 @@
 
 #### crates/arawn-memory/src/stack.rs
 
-- pub `MemoryStack` struct L16-19 — `{ manager: &'a MemoryManager, lens_name: String }` — Layered memory stack.
-- pub `new` function L22-27 — `(manager: &'a MemoryManager, lens_name: &str) -> Self` — L2: On-demand — topic-triggered retrieval (separate method)
-- pub `wake_up` function L31-52 — `(&self, budget_tokens: usize) -> String` — Generate L0 + L1 memory context within the given token budget.
-- pub `l1_entity_titles` function L134-152 — `(&self) -> Vec<String>` — Get the entity titles included in L1 (for L2 deduplication).
-- pub `topical_context` function L156-183 — `( &self, keywords: &[String], l1_titles: &[String], budget_tokens: usize, ) -> O...` — L2: Topic-triggered context.
--  `estimate_tokens` function L11-13 — `(text: &str) -> usize` — Estimate token count from text length (matches arawn-engine's TokenEstimator).
--  `render_l0` function L55-74 — `(&self) -> String` — L0: Identity layer — lens name + Person/Convention entities.
--  `render_l1_with_names` function L78-131 — `(&self, budget_tokens: usize) -> (String, Vec<String>)` — L1: Essential story — top-ranked entities grouped by type, within budget.
--  `format_entity_brief` function L186-196 — `(entity: &Entity) -> String` — L2: On-demand — topic-triggered retrieval (separate method)
--  `tests` module L199-277 — `-` — L2: On-demand — topic-triggered retrieval (separate method)
--  `setup` function L204-209 — `() -> (TempDir, MemoryManager)` — L2: On-demand — topic-triggered retrieval (separate method)
--  `wake_up_respects_budget` function L212-230 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
--  `wake_up_empty_kb` function L233-240 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
--  `l1_ranks_stated_before_inferred` function L243-264 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
--  `tiny_budget_does_not_panic` function L267-276 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+- pub `MemoryStack` struct L17-20 — `{ manager: &'a MemoryManager, lens_name: String }` — Layered memory stack.
+- pub `new` function L23-28 — `(manager: &'a MemoryManager, lens_name: &str) -> Self` — L2: On-demand — topic-triggered retrieval (separate method)
+- pub `wake_up` function L32-53 — `(&self, budget_tokens: usize) -> String` — Generate L0 + L1 memory context within the given token budget.
+- pub `l1_entity_titles` function L232-250 — `(&self) -> Vec<String>` — Get the entity titles included in L1 (for L2 deduplication).
+- pub `topical_context` function L254-281 — `( &self, keywords: &[String], l1_titles: &[String], budget_tokens: usize, ) -> O...` — L2: Topic-triggered context.
+-  `estimate_tokens` function L12-14 — `(text: &str) -> usize` — Estimate token count from text length (matches arawn-engine's TokenEstimator).
+-  `render_l0` function L71-134 — `(&self) -> String` — L0: Identity layer — lens name + structured org slice + conventions.
+-  `render_relation_bucket` function L139-153 — `( &self, label: &str, profiles: &[PersonProfile], ) -> Option<String>` — Render one relation bucket — "you manage: Sarah (Senior EM), Marcus".
+-  `format_person_with_role` function L159-172 — `(&self, profile: &PersonProfile) -> String` — "Sarah Lee (Senior EM)" when the role column is set; bare title
+-  `render_l1_with_names` function L176-229 — `(&self, budget_tokens: usize) -> (String, Vec<String>)` — L1: Essential story — top-ranked entities grouped by type, within budget.
+-  `format_entity_brief` function L284-294 — `(entity: &Entity) -> String` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `tests` module L297-499 — `-` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `setup` function L302-307 — `() -> (TempDir, MemoryManager)` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `wake_up_respects_budget` function L310-328 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `wake_up_empty_kb` function L331-338 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `l1_ranks_stated_before_inferred` function L341-362 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `tiny_budget_does_not_panic` function L365-374 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `make_person` function L378-383 — `(mgr: &MemoryManager, name: &str) -> uuid::Uuid` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `upsert_profile` function L385-396 — `( mgr: &MemoryManager, entity_id: uuid::Uuid, rel: RelationToUser, role: Option<...` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `l0_groups_persons_by_relation_to_user_with_roles` function L399-426 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `l0_falls_back_to_plain_people_line_for_unstructured_persons` function L429-445 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `l0_mixes_structured_and_unstructured_persons` function L448-465 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `l0_caps_each_bucket_at_five_entries` function L468-484 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `l0_person_without_role_renders_bare_name` function L487-498 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
 
 #### crates/arawn-memory/src/store.rs
 

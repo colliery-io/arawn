@@ -265,7 +265,7 @@
     "crates/arawn-memory/src/ontology.rs": "6e96aff404889de906ce366882d830a23630e15ed2df487a87f3aed6f66e0037",
     "crates/arawn-memory/src/person_profile.rs": "3378acdd2ef317ffccf35acbef9277aa06e382a61068abf39681bc221723916f",
     "crates/arawn-memory/src/shortcodes.rs": "7013aa5cd39da387f45e64fad17a3309e1541ddc4e2a7ba1e12b79f76a37eb1f",
-    "crates/arawn-memory/src/stack.rs": "e7b0c6de218dbb6645dce3c5970260470ee7bf457f3f366658877709a06d00de",
+    "crates/arawn-memory/src/stack.rs": "35796cdf92acb4576bfbfef623d3f6df3b0107980fb1d164dd9097cc7d559266",
     "crates/arawn-memory/src/store.rs": "7a572c304079196a83afcd560469e33ec9d2180dd6c8c2ad3800c0ed1b5b9756",
     "crates/arawn-memory/src/types.rs": "291e779ab0f64dab3a6249b2c46c9dd6cf6088bb32c2d1c412cabac94e4a33ed",
     "crates/arawn-memory/src/vector.rs": "4c08d5be88e346fdf27954d3d8cc68dffe6d791b53fb106c0e65c906dfe4cc7b",

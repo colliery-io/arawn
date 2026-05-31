@@ -4,14 +4,14 @@ level: initiative
 title: "Org-model substrate: Person/Project/Team entities + social-graph relations"
 short_code: "ARAWN-I-0064"
 created_at: 2026-05-30T18:15:51.096721+00:00
-updated_at: 2026-05-30T20:38:41.263550+00:00
+updated_at: 2026-05-30T23:24:33.093352+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

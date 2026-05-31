@@ -4,14 +4,14 @@ level: task
 title: "T-D: L0 memory stack — render structured org slice from typed Person entities"
 short_code: "ARAWN-T-0459"
 created_at: 2026-05-30T20:36:38.173240+00:00
-updated_at: 2026-05-30T20:36:38.173240+00:00
+updated_at: 2026-05-30T23:24:32.058367+00:00
 parent: ARAWN-I-0064
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -26,9 +26,32 @@ initiative_id: ARAWN-I-0064
 
 [[ARAWN-I-0064]]
 
-## Objective **[REQUIRED]**
+## Objective
 
-{Clear statement of what this task accomplishes}
+Replace the flat `people: Sarah, Marcus, ...` rendering in the L0 memory stack with a structured org slice that joins Person entities to their `PersonProfile` sidecar rows. The agent now sees:
+
+```
+you manage: Sarah Lee (Senior EM), Marcus (Staff Eng)
+you report to: David Chen (VP)
+peers: Anita, Priya
+people: Pat Collins
+```
+
+Persons without a profile (legacy or unstructured captures) keep appearing in the plain `people:` line — backward-compatible. Each bucket capped at 5 names.
+
+## Status Updates
+
+**2026-05-30 — shipped, I-0064 complete.**
+
+Files:
+- `crates/arawn-memory/src/stack.rs`:
+  - `render_l0` rewritten: pulls Manages / ReportsToUser / PeerOfUser profile buckets via `list_person_profiles_by_relation_to_user`, then a legacy `people:` fallback for unstructured Persons (filtered against ids already shown)
+  - Two helper methods: `render_relation_bucket` (single-bucket formatter with 5-name cap) and `format_person_with_role` (joins to Entity title, formats `Name (Role)` when role is set, bare name otherwise, defensive `?` fallback)
+  - 5 new tests: groups-by-relation-with-roles, plain-fallback-for-unstructured, mix-of-structured-and-unstructured, bucket-cap-at-5, no-parens-when-role-missing
+
+Verification:
+- `cargo test -p arawn-memory --lib` — 85/85 pass (was 80; +5 T-D)
+- `angreal check workspace` — clean
 
 ## Backlog Item Details **[CONDITIONAL: Backlog Item]**
 
@@ -63,6 +86,10 @@ initiative_id: ARAWN-I-0064
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

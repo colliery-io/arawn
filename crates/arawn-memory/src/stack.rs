@@ -5,6 +5,7 @@
 //! L2: On-demand — topic-triggered retrieval (separate method)
 
 use crate::manager::MemoryManager;
+use crate::person_profile::{PersonProfile, RelationToUser};
 use crate::types::{Entity, EntityType};
 
 /// Estimate token count from text length (matches arawn-engine's TokenEstimator).
@@ -51,16 +52,75 @@ impl<'a> MemoryStack<'a> {
         }
     }
 
-    /// L0: Identity layer — lens name + Person/Convention entities.
+    /// L0: Identity layer — lens name + structured org slice + conventions.
+    ///
+    /// ARAWN-I-0064 T-D: Person entities are now rendered grouped by the
+    /// user's relation to them (`PersonProfile.relation_to_user`) so the
+    /// agent sees real org context instead of a flat name list:
+    ///
+    /// ```text
+    /// you manage: Sarah Lee (Senior EM), Marcus (Staff Eng)
+    /// you report to: David Chen (VP)
+    /// peers: Anita, Priya
+    /// people: Pat Collins
+    /// ```
+    ///
+    /// Persons without a `PersonProfile` row (legacy / unstructured
+    /// captures) still appear in the plain `people:` fallback so old data
+    /// keeps surfacing. Each bucket is capped at 5 names.
     fn render_l0(&self) -> String {
         let mut out = format!("[L0 — IDENTITY] lens: {}\n", self.lens_name);
 
-        // People from global KB
-        if let Ok(people) = self.manager.global.list_by_type(EntityType::Person, 5)
-            && !people.is_empty()
-        {
-            let names: Vec<&str> = people.iter().map(|e| e.title.as_str()).collect();
-            out.push_str(&format!("people: {}\n", names.join(", ")));
+        // Pull structured org buckets in priority order: directs first,
+        // then managers, then peers. Profile rows already come back
+        // sorted by `updated_at DESC` from the store.
+        let directs = self
+            .manager
+            .global
+            .list_person_profiles_by_relation_to_user(RelationToUser::Manages)
+            .unwrap_or_default();
+        let managers = self
+            .manager
+            .global
+            .list_person_profiles_by_relation_to_user(RelationToUser::ReportsToUser)
+            .unwrap_or_default();
+        let peers = self
+            .manager
+            .global
+            .list_person_profiles_by_relation_to_user(RelationToUser::PeerOfUser)
+            .unwrap_or_default();
+
+        // Track ids already shown so the legacy `people:` fallback below
+        // doesn't double-print directs/managers/peers.
+        let mut accounted: std::collections::HashSet<uuid::Uuid> =
+            std::collections::HashSet::new();
+        for p in directs.iter().chain(managers.iter()).chain(peers.iter()) {
+            accounted.insert(p.entity_id);
+        }
+
+        if let Some(line) = self.render_relation_bucket("you manage", &directs) {
+            out.push_str(&line);
+        }
+        if let Some(line) = self.render_relation_bucket("you report to", &managers) {
+            out.push_str(&line);
+        }
+        if let Some(line) = self.render_relation_bucket("peers", &peers) {
+            out.push_str(&line);
+        }
+
+        // Legacy/unstructured Persons — those without a PersonProfile row.
+        // Pull a larger window than the cap so we can filter accounted
+        // ids and still produce up to 5 names.
+        if let Ok(people) = self.manager.global.list_by_type(EntityType::Person, 20) {
+            let leftover: Vec<&str> = people
+                .iter()
+                .filter(|e| !accounted.contains(&e.id))
+                .map(|e| e.title.as_str())
+                .take(5)
+                .collect();
+            if !leftover.is_empty() {
+                out.push_str(&format!("people: {}\n", leftover.join(", ")));
+            }
         }
 
         // Core conventions from lens KB
@@ -71,6 +131,44 @@ impl<'a> MemoryStack<'a> {
         }
 
         out
+    }
+
+    /// Render one relation bucket — "you manage: Sarah (Senior EM), Marcus".
+    /// Caps at 5 entries to keep L0 within budget; skips empty buckets so
+    /// the L0 output doesn't carry placeholder lines for unused tiers.
+    fn render_relation_bucket(
+        &self,
+        label: &str,
+        profiles: &[PersonProfile],
+    ) -> Option<String> {
+        if profiles.is_empty() {
+            return None;
+        }
+        let parts: Vec<String> = profiles
+            .iter()
+            .take(5)
+            .map(|p| self.format_person_with_role(p))
+            .collect();
+        Some(format!("{}: {}\n", label, parts.join(", ")))
+    }
+
+    /// "Sarah Lee (Senior EM)" when the role column is set; bare title
+    /// otherwise. Falls back to "?" if the Entity row vanished
+    /// underneath us (shouldn't happen — cascade-delete in T-B keeps
+    /// the sidecar in sync — but defensive against partial-state reads).
+    fn format_person_with_role(&self, profile: &PersonProfile) -> String {
+        let title = self
+            .manager
+            .global
+            .get_entity(profile.entity_id)
+            .ok()
+            .flatten()
+            .map(|e| e.title)
+            .unwrap_or_else(|| "?".to_string());
+        match profile.role.as_deref() {
+            Some(role) if !role.is_empty() => format!("{title} ({role})"),
+            _ => title,
+        }
     }
 
     /// L1: Essential story — top-ranked entities grouped by type, within budget.
@@ -273,5 +371,129 @@ mod tests {
         let stack = MemoryStack::new(&mgr, "test-ws");
         let output = stack.wake_up(10); // absurdly small
         assert!(!output.is_empty());
+    }
+
+    // === ARAWN-I-0064 T-D: structured L0 org slice ===
+
+    fn make_person(mgr: &MemoryManager, name: &str) -> uuid::Uuid {
+        let e = Entity::new(EntityType::Person, name);
+        let id = e.id;
+        mgr.global.insert_entity(&e).unwrap();
+        id
+    }
+
+    fn upsert_profile(
+        mgr: &MemoryManager,
+        entity_id: uuid::Uuid,
+        rel: RelationToUser,
+        role: Option<&str>,
+    ) {
+        let mut p = PersonProfile::new(entity_id).with_relation_to_user(rel);
+        if let Some(r) = role {
+            p = p.with_role(r);
+        }
+        mgr.global.upsert_person_profile(&p).unwrap();
+    }
+
+    #[test]
+    fn l0_groups_persons_by_relation_to_user_with_roles() {
+        let (_tmp, mgr) = setup();
+        let sarah = make_person(&mgr, "Sarah Lee");
+        let marcus = make_person(&mgr, "Marcus");
+        let david = make_person(&mgr, "David Chen");
+        let anita = make_person(&mgr, "Anita");
+        upsert_profile(&mgr, sarah, RelationToUser::Manages, Some("Senior EM"));
+        upsert_profile(&mgr, marcus, RelationToUser::Manages, Some("Staff Eng"));
+        upsert_profile(&mgr, david, RelationToUser::ReportsToUser, Some("VP"));
+        upsert_profile(&mgr, anita, RelationToUser::PeerOfUser, None);
+
+        let stack = MemoryStack::new(&mgr, "test-ws");
+        let out = stack.wake_up(900);
+
+        // Profiles come back ordered by updated_at DESC (most recent first),
+        // so the assertion is order-agnostic — what matters is that both
+        // directs land in the "you manage" bucket with their roles.
+        let manage_line = out
+            .lines()
+            .find(|l| l.starts_with("you manage: "))
+            .unwrap_or_else(|| panic!("no `you manage` line in:\n{out}"));
+        assert!(manage_line.contains("Sarah Lee (Senior EM)"), "got: {manage_line}");
+        assert!(manage_line.contains("Marcus (Staff Eng)"), "got: {manage_line}");
+        assert!(out.contains("you report to: David Chen (VP)"), "got:\n{out}");
+        assert!(out.contains("peers: Anita"), "got:\n{out}");
+        // No leftover plain `people:` line — every Person is accounted for.
+        assert!(!out.contains("\npeople:"), "got:\n{out}");
+    }
+
+    #[test]
+    fn l0_falls_back_to_plain_people_line_for_unstructured_persons() {
+        let (_tmp, mgr) = setup();
+        // Two persons with no PersonProfile — pure legacy capture.
+        make_person(&mgr, "Pat Collins");
+        make_person(&mgr, "Quinn");
+
+        let stack = MemoryStack::new(&mgr, "test-ws");
+        let out = stack.wake_up(900);
+
+        assert!(out.contains("people: "), "got:\n{out}");
+        assert!(out.contains("Pat Collins"), "got:\n{out}");
+        assert!(out.contains("Quinn"), "got:\n{out}");
+        // None of the structured headers should appear.
+        assert!(!out.contains("you manage"), "got:\n{out}");
+        assert!(!out.contains("you report to"), "got:\n{out}");
+        assert!(!out.contains("peers:"), "got:\n{out}");
+    }
+
+    #[test]
+    fn l0_mixes_structured_and_unstructured_persons() {
+        let (_tmp, mgr) = setup();
+        let sarah = make_person(&mgr, "Sarah");
+        upsert_profile(&mgr, sarah, RelationToUser::Manages, None);
+        make_person(&mgr, "Pat Collins"); // unstructured
+
+        let stack = MemoryStack::new(&mgr, "test-ws");
+        let out = stack.wake_up(900);
+
+        assert!(out.contains("you manage: Sarah"), "got:\n{out}");
+        assert!(out.contains("people: Pat Collins"), "got:\n{out}");
+        // Sarah should NOT appear in the legacy `people:` line.
+        let people_line = out
+            .lines()
+            .find(|l| l.starts_with("people: "))
+            .expect("people: line present");
+        assert!(!people_line.contains("Sarah"), "people line leaked Sarah");
+    }
+
+    #[test]
+    fn l0_caps_each_bucket_at_five_entries() {
+        let (_tmp, mgr) = setup();
+        for i in 0..8 {
+            let p = make_person(&mgr, &format!("Direct{i}"));
+            upsert_profile(&mgr, p, RelationToUser::Manages, None);
+        }
+        let stack = MemoryStack::new(&mgr, "test-ws");
+        let out = stack.wake_up(900);
+
+        let manage_line = out
+            .lines()
+            .find(|l| l.starts_with("you manage: "))
+            .expect("you manage: line present");
+        // Comma-separated count of names: 5 names = 4 commas.
+        let commas = manage_line.matches(", ").count();
+        assert_eq!(commas, 4, "got line: {manage_line}");
+    }
+
+    #[test]
+    fn l0_person_without_role_renders_bare_name() {
+        let (_tmp, mgr) = setup();
+        let id = make_person(&mgr, "Anita");
+        upsert_profile(&mgr, id, RelationToUser::PeerOfUser, None);
+
+        let stack = MemoryStack::new(&mgr, "test-ws");
+        let out = stack.wake_up(900);
+
+        // No parentheses around the name when no role is set.
+        assert!(out.contains("peers: Anita\n"), "got:\n{out}");
+        assert!(!out.contains("Anita ("), "got:\n{out}");
     }
 }
