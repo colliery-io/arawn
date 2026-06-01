@@ -4,21 +4,21 @@ level: task
 title: "T-B: cadence_check tool — who am I overdue with"
 short_code: "ARAWN-T-0462"
 created_at: 2026-05-31T15:44:54.775913+00:00
-updated_at: 2026-05-31T15:44:54.775913+00:00
+updated_at: 2026-06-01T02:12:44.439159+00:00
 parent: ARAWN-I-0065
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
 initiative_id: ARAWN-I-0065
 ---
 
-# T-B: cadence_check tool — "who am I overdue with"
+# T-B: cadence_check tool — who am I overdue with
 
 *This template includes sections for various types of tasks. Delete sections that don't apply to your specific use case.*
 
@@ -26,9 +26,26 @@ initiative_id: ARAWN-I-0065
 
 [[ARAWN-I-0065]]
 
-## Objective **[REQUIRED]**
+## Objective
 
-{Clear statement of what this task accomplishes}
+Build `cadence_check` — answers *"who am I overdue with?"* by joining `PersonProfile.relation_to_user` (the I-0064 org substrate) against the `calendar_events` projection. Returns sorted list of directs / managers / peers past the overdue threshold, oldest first; "no recorded meeting" bubbles to the top.
+
+## Status Updates
+
+**2026-05-31 — shipped.**
+
+- `crates/arawn-engine/src/tools/cadence_check.rs` (new): `CadenceCheckTool` taking `MemoryHandle` + `Arc<ProjectionStore>`. Params: `role` (default `directs`), `overdue_days` (default 14). Pulls matching PersonProfiles, loads the last 90 days of calendar events once, matches each person against attendees via token-substring (lowercased ≥2-char tokens), renders markdown with rel label per person. "🎉" message when nothing overdue.
+- `crates/arawn-engine/src/tools/mod.rs` + `lib.rs`: module + re-export
+- `crates/arawn/src/main.rs:528-545`: registered inside the projections block (needs both prerequisites)
+- 11 new tests: no-directs message, never-met flagged, recent-meeting excluded, old-meeting flagged, sort order, role filter, unknown role, threshold respected, helpers
+
+Verification: `cargo test -p arawn-engine --lib tools::cadence_check` — 11/11 pass; `angreal check workspace` — clean.
+
+## Known follow-ups (deferred)
+
+- `role: "skips"` — needs a quarterly-cadence marker on PersonProfile
+- Attendee aliasing — token substring is best-effort; Person.email or alias table needed for collisions
+- Per-relation overdue defaults — directs probably want 14d, quarterly skip-levels want 90d
 
 ## Backlog Item Details **[CONDITIONAL: Backlog Item]**
 
@@ -63,6 +80,10 @@ initiative_id: ARAWN-I-0065
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

@@ -58,7 +58,7 @@ pub use tools::{
     FileEditTool, FileReadTool, FileWriteTool, GlobTool, GrepTool, LensApplyTool, LensBindTool,
     LensCreateTool, LensDeleteTool, LensDescribeTool, LensDustTool, LensJournalTool, LensListTool,
     LensProposeOntologyTool, LensRefineTool, LensRollbackTool, LensShowTool,
-    LensTagTool, LensUnbindTool, MemorySearchTool, MemoryStoreTool, PersonBriefTool, SessionLens,
+    CadenceCheckTool, LensTagTool, LensUnbindTool, MemorySearchTool, MemoryStoreTool, PersonBriefTool, SessionLens,
     ShellTool, SignalQueryTool, SignalSearchTool, SignalTimelineTool, SkillTool, SleepTool,
     TaskGetTool, TaskListTool, TaskOutputTool, TaskStopTool, ThinkTool, UnbindHook, WebFetchTool,
     WebSearchTool,

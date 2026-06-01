@@ -531,6 +531,18 @@ async fn main() -> Result<()> {
                 embedder.clone(),
             )));
             info!("feed_search tool registered");
+
+            // ARAWN-I-0065 T-B: cadence_check joins PersonProfile.relation_to_user
+            // (lens_router → memory) against calendar_events (projections) to
+            // surface overdue 1:1s. Needs both prerequisites; lives here
+            // because the projections block is the gating one.
+            if let Some(ref router) = lens_router {
+                registry.register(Box::new(arawn_engine::CadenceCheckTool::new(
+                    Arc::clone(router),
+                    Arc::clone(proj),
+                )));
+                info!("cadence_check tool registered");
+            }
         }
 
         // Embed pass: walks projection rows whose embedding is NULL

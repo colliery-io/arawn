@@ -11,6 +11,7 @@ pub mod file_write;
 pub mod glob;
 pub mod grep;
 pub mod lens;
+pub mod cadence_check;
 pub mod memory_search;
 pub mod memory_store;
 pub mod person_brief;
@@ -52,6 +53,7 @@ pub use lens::{
     LensProposeOntologyTool, LensShowTool, LensUnbindTool,
     SessionLens, UnbindHook,
 };
+pub use cadence_check::CadenceCheckTool;
 pub use memory_search::MemorySearchTool;
 pub use memory_store::MemoryStoreTool;
 pub use person_brief::PersonBriefTool;

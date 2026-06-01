@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-05-31T16:23:14Z | 422 files | Python, Rust
+> Generated: 2026-06-01T02:12:51Z | 423 files | Python, Rust
 
 ## Project Structure
 
@@ -154,6 +154,7 @@
 │   │       └── tools/
 │   │           ├── agent.rs
 │   │           ├── ask_user.rs
+│   │           ├── cadence_check.rs
 │   │           ├── ceremony.rs
 │   │           ├── daily.rs
 │   │           ├── enter_plan_mode.rs
@@ -760,15 +761,15 @@
 -  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
 -  `DEFAULT_MODEL` variable L32 — `: &str`
 -  `FILE_LOG_FILTER` variable L35 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L38-1266 — `() -> Result<()>`
+-  `main` function L38-1278 — `() -> Result<()>`
 -  `Cli` struct L48-67 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L70-110 — `Serve | Tui | Plugin | Doctor | Usage`
--  `ExtractorBindHook` struct L861-870 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
--  `ExtractorBindHook` type L871-970 — `= ExtractorBindHook`
--  `on_bind` function L872-969 — `(&self, lens_name: &str, feed_id: &str)`
--  `FeedRuntimeUnbindHook` struct L985-987 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
--  `FeedRuntimeUnbindHook` type L988-1003 — `= FeedRuntimeUnbindHook`
--  `on_unbind` function L989-1002 — `(&self, removed_feed_ids: &[String])`
+-  `ExtractorBindHook` struct L873-882 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
+-  `ExtractorBindHook` type L883-982 — `= ExtractorBindHook`
+-  `on_bind` function L884-981 — `(&self, lens_name: &str, feed_id: &str)`
+-  `FeedRuntimeUnbindHook` struct L997-999 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
+-  `FeedRuntimeUnbindHook` type L1000-1015 — `= FeedRuntimeUnbindHook`
+-  `on_unbind` function L1001-1014 — `(&self, removed_feed_ids: &[String])`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -3618,6 +3619,40 @@
 -  `multiple_questions` function L223-248 — `()`
 -  `empty_questions_errors` function L251-256 — `()`
 
+#### crates/arawn-engine/src/tools/cadence_check.rs
+
+- pub `CadenceCheckTool` struct L29-32 — `{ memory: MemoryHandle, projections: Arc<ProjectionStore> }` — `Person.email` field or a proper alias table.
+- pub `new` function L35-40 — `(memory: impl Into<MemoryHandle>, projections: Arc<ProjectionStore>) -> Self` — `Person.email` field or a proper alias table.
+-  `CadenceCheckTool` type L34-41 — `= CadenceCheckTool` — `Person.email` field or a proper alias table.
+-  `CadenceCheckTool` type L44-224 — `impl Tool for CadenceCheckTool` — `Person.email` field or a proper alias table.
+-  `name` function L45-47 — `(&self) -> &str` — `Person.email` field or a proper alias table.
+-  `description` function L49-56 — `(&self) -> &str` — `Person.email` field or a proper alias table.
+-  `is_read_only` function L58-60 — `(&self) -> bool` — `Person.email` field or a proper alias table.
+-  `category` function L62-64 — `(&self) -> ToolCategory` — `Person.email` field or a proper alias table.
+-  `parameters_schema` function L66-81 — `(&self) -> Value` — `Person.email` field or a proper alias table.
+-  `execute` function L83-223 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — `Person.email` field or a proper alias table.
+-  `Row` struct L164-169 — `{ name: String, rel: RelationToUser, days_since: Option<i64>, last_event_title: ...` — `Person.email` field or a proper alias table.
+-  `CalRow` struct L227-231 — `{ title: String, start: DateTime<Utc>, attendees: Vec<String> }` — One calendar event (subset of `CalEvent` we need for cadence).
+-  `recent_calendar_events` function L235-295 — `( projections: &Arc<ProjectionStore>, days: i64, ) -> Result<Vec<CalRow>, ToolEr...` — Pull every calendar event in the last `days` days from the
+-  `person_matches_any_attendee` function L304-316 — `(person_title: &str, attendees: &[String]) -> bool` — Token-based fuzzy match: split the person's title into lowercase
+-  `name_tokens` function L320-326 — `(title: &str) -> Vec<String>` — Token-split the title: lowercase, split on whitespace, drop tokens
+-  `_unused_imports_silencer` function L329 — `(_e: &EntityType)` — `Person.email` field or a proper alias table.
+-  `tests` module L332-550 — `-` — `Person.email` field or a proper alias table.
+-  `setup` function L340-355 — `() -> ( TempDir, Arc<MemoryManager>, Arc<ProjectionStore>, crate::context::Engin...` — `Person.email` field or a proper alias table.
+-  `make_direct` function L357-367 — `(mgr: &MemoryManager, name: &str) -> Uuid` — `Person.email` field or a proper alias table.
+-  `insert_event` function L369-394 — `( projections: &Arc<ProjectionStore>, title: &str, days_ago: i64, attendees: &[&...` — `Person.email` field or a proper alias table.
+-  `returns_helpful_message_when_no_directs_exist` function L397-403 — `()` — `Person.email` field or a proper alias table.
+-  `flags_direct_with_no_recorded_meeting_as_overdue` function L406-413 — `()` — `Person.email` field or a proper alias table.
+-  `omits_recent_meeting_from_overdue_list` function L416-433 — `()` — `Person.email` field or a proper alias table.
+-  `flags_meeting_older_than_threshold` function L436-445 — `()` — `Person.email` field or a proper alias table.
+-  `sorts_oldest_first_with_never_met_at_top` function L448-470 — `()` — `Person.email` field or a proper alias table.
+-  `role_managers_only_returns_relation_to_user_reports_to_user` function L473-494 — `()` — `Person.email` field or a proper alias table.
+-  `unknown_role_errors` function L497-506 — `()` — `Person.email` field or a proper alias table.
+-  `overdue_days_threshold_is_respected` function L509-526 — `()` — `Person.email` field or a proper alias table.
+-  `name_tokens_drops_short_tokens` function L529-533 — `()` — `Person.email` field or a proper alias table.
+-  `person_matches_email_address` function L536-541 — `()` — `Person.email` field or a proper alias table.
+-  `person_does_not_match_unrelated_attendee` function L544-549 — `()` — `Person.email` field or a proper alias table.
+
 #### crates/arawn-engine/src/tools/ceremony.rs
 
 - pub `RetroRunTool` struct L29-31 — `{ svc: Arc<CeremonyService> }` — that the agent surfaces those ids when summarising what happened.
@@ -4009,24 +4044,25 @@
 - pub `glob` module L11 — `-`
 - pub `grep` module L12 — `-`
 - pub `lens` module L13 — `-`
-- pub `memory_search` module L14 — `-`
-- pub `memory_store` module L15 — `-`
-- pub `person_brief` module L16 — `-`
-- pub `safe_env` module L17 — `-`
-- pub `sensitive_paths` module L18 — `-`
-- pub `shell` module L19 — `-`
-- pub `signal` module L20 — `-`
-- pub `skill` module L21 — `-`
-- pub `sleep` module L22 — `-`
-- pub `steward` module L23 — `-`
-- pub `task_list` module L24 — `-`
-- pub `task_output` module L25 — `-`
-- pub `task_stop` module L26 — `-`
-- pub `think` module L27 — `-`
-- pub `todo` module L28 — `-`
-- pub `web_fetch` module L29 — `-`
-- pub `web_search` module L30 — `-`
-- pub `weekly` module L31 — `-`
+- pub `cadence_check` module L14 — `-`
+- pub `memory_search` module L15 — `-`
+- pub `memory_store` module L16 — `-`
+- pub `person_brief` module L17 — `-`
+- pub `safe_env` module L18 — `-`
+- pub `sensitive_paths` module L19 — `-`
+- pub `shell` module L20 — `-`
+- pub `signal` module L21 — `-`
+- pub `skill` module L22 — `-`
+- pub `sleep` module L23 — `-`
+- pub `steward` module L24 — `-`
+- pub `task_list` module L25 — `-`
+- pub `task_output` module L26 — `-`
+- pub `task_stop` module L27 — `-`
+- pub `think` module L28 — `-`
+- pub `todo` module L29 — `-`
+- pub `web_fetch` module L30 — `-`
+- pub `web_search` module L31 — `-`
+- pub `weekly` module L32 — `-`
 
 #### crates/arawn-engine/src/tools/person_brief.rs
 
