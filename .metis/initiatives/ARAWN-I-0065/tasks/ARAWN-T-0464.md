@@ -4,14 +4,14 @@ level: task
 title: "T-D: /remember classifier upgrade (I-0064 T-C follow-up)"
 short_code: "ARAWN-T-0464"
 created_at: 2026-05-31T15:44:57.789872+00:00
-updated_at: 2026-05-31T15:44:57.789872+00:00
+updated_at: 2026-06-01T02:31:53.287758+00:00
 parent: ARAWN-I-0065
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ initiative_id: ARAWN-I-0065
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

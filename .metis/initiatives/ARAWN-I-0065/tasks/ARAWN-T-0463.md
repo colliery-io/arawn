@@ -4,14 +4,14 @@ level: task
 title: "T-C: IdentityProfile::ExecComms + compose(audience) wrapper tool"
 short_code: "ARAWN-T-0463"
 created_at: 2026-05-31T15:44:56.286074+00:00
-updated_at: 2026-05-31T15:44:56.286074+00:00
+updated_at: 2026-06-01T02:31:52.267523+00:00
 parent: ARAWN-I-0065
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ initiative_id: ARAWN-I-0065
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

@@ -1,34 +1,69 @@
 ---
-id: t-e-weekly-ceremony-audience-knob
+id: remote-company-tracking
 level: task
-title: "T-E: weekly ceremony audience knob (skip-level / peer / own retro / board)"
-short_code: "ARAWN-T-0465"
-created_at: 2026-05-31T15:44:59.289320+00:00
-updated_at: 2026-06-01T02:31:54.308644+00:00
-parent: ARAWN-I-0065
+title: "Remote-company tracking observability plan (org_snapshot / awaiting_me / voice_check)"
+short_code: "ARAWN-T-0467"
+created_at: 2026-06-01T02:31:38.756770+00:00
+updated_at: 2026-06-01T02:31:38.756770+00:00
+parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/completed"
+  - "#phase/backlog"
+  - "#feature"
 
 
 exit_criteria_met: false
-initiative_id: ARAWN-I-0065
+initiative_id: NULL
 ---
 
-# T-E: weekly ceremony audience knob (skip-level / peer / own retro / board)
+# Remote-company tracking observability plan (org_snapshot / awaiting_me / voice_check)
 
 *This template includes sections for various types of tasks. Delete sections that don't apply to your specific use case.*
 
 ## Parent Initiative **[CONDITIONAL: Assigned Task]**
 
-[[ARAWN-I-0065]]
+[[Parent Initiative]]
 
-## Objective **[REQUIRED]**
+## Objective
 
-{Clear statement of what this task accomplishes}
+Captured plan for a future "remote-company tracking" surface — the strategic shift the user surfaced mid-I-0065: *"the major goal is this helps me keep track of a remote company."*
+
+Three proposed tools sit at the heart of this. None built yet.
+
+### `org_snapshot` — "what's happening across my org right now"
+- Pulls recent activity per direct's team: PR throughput, calendar density (meeting load), slack channel volume in channels they own, recent incidents
+- Daily-ish run; agent-callable on demand
+- Substrate: PersonProfile.relation_to_user=Manages (the directs), calendar_events projection, slack/gmail/github projections (when GitHub tools land — see I-0066 deferral)
+- Output: per-team rollup with deltas vs prior period
+
+### `awaiting_me` — "what is the org blocked on me for"
+- Inverse of inbox triage: items where YOUR decision/approval/feedback unblocks others
+- Cross-source: gmail "waiting on you" threads, slack mentions in channels you own, calendar invites with unanswered RSVP, lens-binding requests, /code-review pending
+- Output: sorted by urgency × blast-radius
+
+### `voice_check` — "who haven't I heard from this week"
+- Directs and skip-levels whose signal volume dropped relative to their baseline
+- The remote-company canary — surfaces the people who tend to disappear before they actually disappear
+- Substrate: per-person signal frequency from slack/gmail/github projections over rolling windows
+- Output: list sorted by signal-volume delta, with last-seen timestamp
+
+## Why this is in the backlog
+
+User chose to file this rather than build now. The pivot is real but not urgent — the org-substrate (I-0064) and the read-tools (I-0065 T-A `person_brief` + T-B `cadence_check`) already cover meaningful daily-driver value. The three observability tools above are the next conceptually-coherent layer when ready.
+
+## When to pick this up
+
+- After GitHub team-level tools land (I-0066) — org_snapshot needs PR throughput visibility
+- OR when the maintainer's day actually demands one of the three tools faster than the others would land — pick that one off and ship it as a standalone task
+
+## Related history
+
+- I-0065 closed with T-A (person_brief) + T-B (cadence_check) shipped on `feat/i0065-exec-surface`
+- T-C (ExecComms voice), T-E (weekly audience knob) — dropped, not relevant to remote-company tracking
+- T-D (/remember classifier upgrade), T-F (inbox/slack triage + VIP) — closed-as-deferred; remain candidates if needed individually later
 
 ## Backlog Item Details **[CONDITIONAL: Backlog Item]**
 
@@ -63,10 +98,6 @@ initiative_id: ARAWN-I-0065
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
-
-## Acceptance Criteria
-
-## Acceptance Criteria
 
 ## Acceptance Criteria **[REQUIRED]**
 

@@ -4,14 +4,14 @@ level: initiative
 title: "Exec daily-driver surface: person_brief, cadence_check, inbox triage, exec-voice drafting"
 short_code: "ARAWN-I-0065"
 created_at: 2026-05-31T15:42:21.389960+00:00
-updated_at: 2026-05-31T15:45:29.345863+00:00
+updated_at: 2026-06-01T02:31:56.346818+00:00
 parent: 
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
