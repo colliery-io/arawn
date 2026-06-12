@@ -4,14 +4,14 @@ level: initiative
 title: "Make Arawn daily-drivable: correctness, observability, and last-mile gaps"
 short_code: "ARAWN-I-0067"
 created_at: 2026-06-11T10:52:34.227666+00:00
-updated_at: 2026-06-11T12:15:12.706828+00:00
+updated_at: 2026-06-12T12:01:03.218147+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/active"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

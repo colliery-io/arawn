@@ -137,6 +137,14 @@ impl CommandRegistry {
             description: "Show active permission rules and recent decisions".into(),
             kind: CommandKind::BuiltIn,
         });
+        // Health surface (ARAWN-I-0068 P2-1)
+        self.commands.push(CommandInfo {
+            name: "status".into(),
+            description:
+                "Show background subsystem health (feeds, ceremonies, embedding, extraction, LLM)"
+                    .into(),
+            kind: CommandKind::BuiltIn,
+        });
         // External integrations
         self.commands.push(CommandInfo {
             name: "integrations".into(),
@@ -342,6 +350,8 @@ pub enum CommandResult {
     WorkflowStatus(Option<String>),
     /// Show active permission rules + recent decisions.
     PermissionsStatus,
+    /// Show background subsystem health (ARAWN-I-0068 P2-1) via `/status`.
+    SystemStatus,
     /// List registered external integrations + connection state.
     IntegrationsList,
     /// Begin the auth flow for an integration. Argument is the service name.
@@ -731,6 +741,7 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                 }
                 "memory" => CommandResult::MemorySummary,
                 "permissions" => CommandResult::PermissionsStatus,
+                "status" => CommandResult::SystemStatus,
                 "integrations" => CommandResult::IntegrationsList,
                 "connect" => {
                     let svc = cmd.args.split_whitespace().next().unwrap_or("");

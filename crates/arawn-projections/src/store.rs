@@ -160,6 +160,43 @@ impl ProjectionStore {
             .collect())
     }
 
+    /// Total rows still awaiting an embedding across every feed type, for
+    /// the health surface (ARAWN-I-0068 P2-1). Discovers the per-feed-type
+    /// `<feed_type>_embeddings` tables via `sqlite_master` and sums the
+    /// rows whose status is `pending`. Returns 0 when no embedding tables
+    /// exist yet. (An explicit `errored` status — and its own count — lands
+    /// with T-0481.)
+    pub fn pending_embedding_count(&self) -> Result<u64, ProjectionError> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn
+            .prepare(
+                "SELECT name FROM sqlite_master \
+                 WHERE type = 'table' AND name LIKE '%\\_embeddings' ESCAPE '\\'",
+            )
+            .map_err(|e| ProjectionError::Storage(format!("list embedding tables: {e}")))?;
+        let tables: Vec<String> = stmt
+            .query_map([], |r| r.get::<_, String>(0))
+            .map_err(|e| ProjectionError::Storage(format!("list embedding tables: {e}")))?
+            .collect::<Result<_, _>>()
+            .map_err(|e| ProjectionError::Storage(format!("list embedding tables: {e}")))?;
+        drop(stmt);
+
+        let mut total: u64 = 0;
+        for table in tables {
+            // Table names come from sqlite_master (not user input); they're
+            // identifiers so they can't be bound as query parameters.
+            let cnt: i64 = conn
+                .query_row(
+                    &format!("SELECT COUNT(*) FROM \"{table}\" WHERE status = 'pending'"),
+                    [],
+                    |r| r.get(0),
+                )
+                .map_err(|e| ProjectionError::Storage(format!("count pending {table}: {e}")))?;
+            total += cnt.max(0) as u64;
+        }
+        Ok(total)
+    }
+
     /// Total rows for a feed_type — useful for tests and ops.
     pub fn count(&self, feed_type: &str) -> Result<usize, ProjectionError> {
         let conn = self.conn.lock().unwrap();
@@ -580,6 +617,17 @@ mod fts_escape_tests {
             body: body.into(),
         };
         store.write_batch(&[p]).expect("write");
+    }
+
+    #[test]
+    fn pending_embedding_count_sums_pending_rows() {
+        let store = open_store();
+        // No rows yet → zero backlog (and no panic on the empty-table set).
+        assert_eq!(store.pending_embedding_count().unwrap(), 0);
+        // Each freshly-written projection row is marked embedding-pending.
+        seed(&store, "m1", "one", "body one");
+        seed(&store, "m2", "two", "body two");
+        assert_eq!(store.pending_embedding_count().unwrap(), 2);
     }
 
     #[test]

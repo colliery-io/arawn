@@ -44,8 +44,8 @@ use ceremony::{
 };
 use formats::{
     OpenAttempt, format_feed_discover, format_feed_list, format_feed_registered,
-    format_integrations_list, format_known_templates, format_permissions_status, human_size,
-    try_open_url,
+    format_integrations_list, format_known_templates, format_permissions_status,
+    format_system_status, human_size, try_open_url,
 };
 use notices::apply_system_notice;
 use todo::{fetch_open_todos, handle_todo_overlay_key};
@@ -177,6 +177,28 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                     .to_string(),
             ));
         }
+    }
+
+    // ARAWN-I-0068 P2-1: readiness gate. If the server is still wiring up
+    // its background subsystems, warn the user rather than letting them fire
+    // `/watch`/`/ceremony` into a half-initialized backend. Non-fatal — older
+    // servers without the `health` RPC just skip the banner.
+    if let Ok(health) = client.health().await
+        && !health.ready
+    {
+        let reasons = if health.blocking.is_empty() {
+            String::new()
+        } else {
+            format!(" ({})", health.blocking.join("; "))
+        };
+        app.messages.push(crate::app::ChatMessage::new(
+            crate::app::ChatRole::System,
+            format!(
+                "⚠ The server is still starting up{reasons}. Background \
+                 subsystems (feeds, ceremonies, memory) may not be ready yet — \
+                 run `/status` to check before relying on them."
+            ),
+        ));
     }
 
     // Setup terminal
@@ -585,6 +607,14 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 let body = match client.get_permissions_status().await {
                                     Ok(status) => format_permissions_status(&status),
                                     Err(e) => format!("Failed to fetch permissions status: {e}"),
+                                };
+                                app.messages.push(ChatMessage::new(ChatRole::System, body));
+                                app.dirty = true;
+                            }
+                            crate::command::CommandResult::SystemStatus => {
+                                let body = match client.status().await {
+                                    Ok(status) => format_system_status(&status),
+                                    Err(e) => format!("Failed to fetch system status: {e}"),
                                 };
                                 app.messages.push(ChatMessage::new(ChatRole::System, body));
                                 app.dirty = true;

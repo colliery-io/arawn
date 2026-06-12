@@ -98,6 +98,41 @@ impl<'a> ExtractorCursorStore<'a> {
         Ok(())
     }
 
+    /// List every cursor row across all lenses — backs the extraction
+    /// block of the health surface (ARAWN-I-0068 P2-1). Ordered by
+    /// (lens, feed_type) for stable rendering.
+    pub fn list_all(&self) -> Result<Vec<ExtractorCursor>, StorageError> {
+        let mut stmt = self.db.conn().prepare(
+            "SELECT lens_name, feed_type, last_source_ts, last_processed_at \
+             FROM extractor_cursors \
+             ORDER BY lens_name, feed_type",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+            ))
+        })?;
+        let mut out = Vec::new();
+        for r in rows {
+            let (ws, ft, last_str, proc_str) = r?;
+            let last_source_ts = if last_str.is_empty() {
+                None
+            } else {
+                Some(parse_dt(&last_str)?)
+            };
+            out.push(ExtractorCursor {
+                lens_name: ws,
+                feed_type: ft,
+                last_source_ts,
+                last_processed_at: parse_dt(&proc_str)?,
+            });
+        }
+        Ok(out)
+    }
+
     /// List every cursor row for a lens — used by
     /// `/lens show` and ops tooling.
     pub fn list_for_lens(&self, lens_name: &str) -> Result<Vec<ExtractorCursor>, StorageError> {
@@ -182,6 +217,26 @@ mod tests {
         store.advance("pat", "gmail_messages", t0).unwrap();
         let c = store.get("pat", "gmail_messages").unwrap().unwrap();
         assert_eq!(c.last_source_ts, Some(t1));
+    }
+
+    #[test]
+    fn list_all_spans_lenses_ordered() {
+        let db = db();
+        let store = ExtractorCursorStore::new(&db);
+        assert!(store.list_all().unwrap().is_empty());
+
+        let t: DateTime<Utc> = "2026-05-01T10:00:00Z".parse::<DateTime<Utc>>().unwrap();
+        store.advance("pat", "gmail_messages", t).unwrap();
+        store.advance("auth-migration", "jira_issues", t).unwrap();
+        store.advance("pat", "slack_messages", t).unwrap();
+
+        let all = store.list_all().unwrap();
+        assert_eq!(all.len(), 3);
+        // Ordered by (lens_name, feed_type).
+        assert_eq!(all[0].lens_name, "auth-migration");
+        assert_eq!(all[1].lens_name, "pat");
+        assert_eq!(all[1].feed_type, "gmail_messages");
+        assert_eq!(all[2].feed_type, "slack_messages");
     }
 
     #[test]

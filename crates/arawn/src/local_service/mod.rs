@@ -100,6 +100,17 @@ pub struct LocalService {
     /// `startup::hooks::load_and_build_hook_runner`. `None` when no
     /// `settings.json` has been written; downstream fire sites no-op.
     hook_runner: Option<Arc<arawn_engine::hooks::HookRunner>>,
+    /// One-way readiness flag (ARAWN-I-0068 P2-1). Set true by
+    /// `mark_ready()` once the post-startup wiring
+    /// (feeds/ceremonies/memory/storage) finishes. The `health` RPC reads
+    /// it so a client knows when the server is safe to drive.
+    ready: Arc<std::sync::atomic::AtomicBool>,
+    /// Shared projection store, when wired — backs the embedding-backlog
+    /// count in the `status` surface. `None` when projections failed to open.
+    projections: Arc<std::sync::RwLock<Option<Arc<arawn_projections::ProjectionStore>>>>,
+    /// True once the per-lens extractor runner is wired — backs the
+    /// "extraction available" flag in `status`.
+    extractor_available: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl LocalService {
@@ -136,7 +147,36 @@ impl LocalService {
             ceremony_service: Arc::new(std::sync::RwLock::new(None)),
             todo_event_tx: arawn_storage::todo_event_channel().0,
             hook_runner: None,
+            ready: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            projections: Arc::new(std::sync::RwLock::new(None)),
+            extractor_available: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
+    }
+
+    /// Flip the readiness flag to true (ARAWN-I-0068 P2-1). Called once by
+    /// main.rs after all post-startup wiring completes, just before the WS
+    /// server starts accepting connections.
+    pub fn mark_ready(&self) {
+        self.ready.store(true, std::sync::atomic::Ordering::SeqCst);
+    }
+
+    /// Whether the server has finished post-startup wiring. Backs the
+    /// `health` RPC's readiness gate.
+    pub fn is_ready(&self) -> bool {
+        self.ready.load(std::sync::atomic::Ordering::SeqCst)
+    }
+
+    /// Wire the projection store so the status surface can report the
+    /// embedding backlog. Called from main.rs when projections open.
+    pub fn set_projections(&self, projections: Arc<arawn_projections::ProjectionStore>) {
+        *self.projections.write().recover() = Some(projections);
+    }
+
+    /// Mark the per-lens extractor runner as wired — drives the
+    /// "extraction available" flag in `status`.
+    pub fn mark_extractor_available(&self) {
+        self.extractor_available
+            .store(true, std::sync::atomic::Ordering::SeqCst);
     }
 
     /// Attach a hook runner. Every `QueryEngine` built by this service
@@ -601,6 +641,7 @@ mod lenses;
 mod memory;
 mod permissions;
 mod sessions;
+mod status;
 
 #[async_trait]
 impl ArawnService for LocalService {
@@ -679,6 +720,12 @@ impl ArawnService for LocalService {
         &self,
     ) -> Result<arawn_service::PermissionsStatus, ServiceError> {
         self.get_permissions_status_inner().await
+    }
+    async fn health(&self) -> Result<arawn_service::HealthStatus, ServiceError> {
+        self.health_inner().await
+    }
+    async fn status(&self) -> Result<arawn_service::SystemStatus, ServiceError> {
+        self.status_inner().await
     }
     async fn list_integrations(
         &self,

@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-06-12T10:55:59Z | 425 files | Python, Rust
+> Generated: 2026-06-12T15:54:23Z | 426 files | Python, Rust
 
 ## Project Structure
 
@@ -23,7 +23,8 @@
 │   │       │   ├── memory.rs
 │   │       │   ├── mod.rs
 │   │       │   ├── permissions.rs
-│   │       │   └── sessions.rs
+│   │       │   ├── sessions.rs
+│   │       │   └── status.rs
 │   │       ├── lock_ext.rs
 │   │       ├── main.rs
 │   │       ├── plugin_cmd.rs
@@ -771,19 +772,19 @@
 -  `DEFAULT_MODEL` variable L33 — `: &str`
 -  `FILE_LOG_FILTER` variable L36 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
 -  `CursorStoreFactory` type L39-41 — `= std::sync::Arc< dyn Fn(&str) -> Result<arawn_steward::CursorStore, arawn_stewa...` — Factory that opens a per-lens `CursorStore` against the shared data dir.
--  `main` function L44-1341 — `() -> Result<()>`
+-  `main` function L44-1357 — `() -> Result<()>`
 -  `Cli` struct L54-73 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
 -  `Command` enum L76-131 — `Init | Serve | Tui | Plugin | Doctor | Usage`
--  `ExtractorBindHook` struct L924-933 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
--  `ExtractorBindHook` type L934-1033 — `= ExtractorBindHook`
--  `on_bind` function L935-1032 — `(&self, lens_name: &str, feed_id: &str)`
--  `FeedRuntimeUnbindHook` struct L1048-1050 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
--  `FeedRuntimeUnbindHook` type L1051-1071 — `= FeedRuntimeUnbindHook`
--  `on_unbind` function L1052-1070 — `(&self, removed_feed_ids: &[String])`
--  `preflight_server` function L1346-1366 — `(ws_url: &str) -> std::result::Result<(), String>` — Quick TCP reachability check for the TUI's target server, run *before*
--  `tests` module L1369-1390 — `-`
--  `preflight_fails_for_unreachable_server` function L1373-1383 — `()`
--  `preflight_rejects_malformed_url` function L1386-1389 — `()`
+-  `ExtractorBindHook` struct L934-943 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
+-  `ExtractorBindHook` type L944-1043 — `= ExtractorBindHook`
+-  `on_bind` function L945-1042 — `(&self, lens_name: &str, feed_id: &str)`
+-  `FeedRuntimeUnbindHook` struct L1058-1060 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
+-  `FeedRuntimeUnbindHook` type L1061-1081 — `= FeedRuntimeUnbindHook`
+-  `on_unbind` function L1062-1080 — `(&self, removed_feed_ids: &[String])`
+-  `preflight_server` function L1362-1382 — `(ws_url: &str) -> std::result::Result<(), String>` — Quick TCP reachability check for the TUI's target server, run *before*
+-  `tests` module L1385-1406 — `-`
+-  `preflight_fails_for_unreachable_server` function L1389-1399 — `()`
+-  `preflight_rejects_malformed_url` function L1402-1405 — `()`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -858,98 +859,105 @@
 
 #### crates/arawn/src/local_service/mod.rs
 
-- pub `LocalService` struct L32-103 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, reg...` — In-process implementation of ArawnService.
-- pub `new` function L106-140 — `( store: Store, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, registry: Arc<T...`
-- pub `with_hook_runner` function L146-149 — `(mut self, runner: Arc<arawn_engine::hooks::HookRunner>) -> Self` — Attach a hook runner.
-- pub `hook_runner_clone` function L153-155 — `(&self) -> Option<Arc<arawn_engine::hooks::HookRunner>>` — Get a clone of the optional hook runner.
-- pub `todo_event_sender` function L159-161 — `(&self) -> arawn_storage::TodoEventSender` — Sender for todo events — RPC handlers clone this when
-- pub `subscribe_todo_events` function L165-167 — `(&self) -> arawn_storage::TodoEventReceiver` — Subscribe to the todo event channel — main.rs spawns a
-- pub `set_ceremony_service` function L171-173 — `(&self, svc: Arc<arawn_ceremonies::CeremonyService>)` — Wire the ceremony service.
-- pub `ceremony_service` function L176-178 — `(&self) -> Option<Arc<arawn_ceremonies::CeremonyService>>` — Shared reference to the ceremony service, if wired.
-- pub `with_active_lens` function L183-186 — `(mut self, ws: arawn_engine::SessionLens) -> Self` — Wire the shared `SessionLens` shim.
-- pub `set_feed_runtime` function L191-193 — `(&self, runtime: Arc<arawn_feeds::FeedRuntime>)` — Hand the live feed runtime to the service so `/watch` and
-- pub `register_integration` function L203-210 — `(&self, integration: Arc<dyn arawn_integrations::Integration>)` — Register an external integration.
-- pub `shared_integrations` function L214-218 — `( &self, ) -> Arc<std::sync::RwLock<HashMap<String, Arc<dyn arawn_integrations::...` — Shared reference to the integration registry — for tools that want
-- pub `subscribe_notices` function L224-228 — `( &self, ) -> tokio::sync::broadcast::Receiver<arawn_service::ServerNotice>` — Subscribe to server-wide notices (plugin/config hot-reload, etc.).
-- pub `notice_sender` function L232-234 — `(&self) -> tokio::sync::broadcast::Sender<arawn_service::ServerNotice>` — Get a sender clone — used to wire watchers (plugin runtime, config
-- pub `with_permission_rules` function L236-239 — `(self, rules: Vec<PermissionRule>) -> Self`
-- pub `with_permission_mode` function L244-247 — `(self, mode: arawn_engine::permissions::PermissionMode) -> Self` — T-0347: override the starting permission mode (declared in
-- pub `shared_store` function L251-253 — `(&self) -> Arc<Mutex<Store>>` — Get a reference to the shared permission rules for hot-reload.
-- pub `shared_llm` function L255-257 — `(&self) -> Arc<dyn LlmClient>`
-- pub `shared_compactor_llm` function L261-263 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM (separate client when `[compactor]` config selects a
-- pub `compactor_model` function L266-268 — `(&self) -> &str` — Model name used by the compactor.
-- pub `shared_llm_pool` function L272-274 — `(&self) -> Arc<LlmClientPool>` — Shared reference to the LLM pool — used by tools/agents that resolve
-- pub `shared_registry` function L276-278 — `(&self) -> Arc<ToolRegistry>`
-- pub `engine_config` function L280-282 — `(&self) -> &QueryEngineConfig`
-- pub `shared_permission_rules` function L284-286 — `(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>>`
-- pub `shared_permission_mode` function L288-292 — `( &self, ) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>`
-- pub `with_skill_registry` function L294-300 — `( mut self, registry: Arc<arawn_engine::skills::SkillRegistry>, ) -> Self`
-- pub `with_plugin_registry` function L302-308 — `( mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>, ) -> Self`
-- pub `with_plan_state` function L310-313 — `(mut self, state: Arc<PlanModeState>) -> Self`
-- pub `with_background_tasks` function L315-318 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
-- pub `with_memory_manager` function L320-323 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
--  `LocalService` type L105-569 — `= LocalService`
--  `feed_runtime_or_err` function L195-199 — `(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError>`
--  `load_session_state` function L327-365 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Lens, String...` — Load session metadata, resolve lens, and load message history.
--  `build_session_context` function L369-504 — `( &self, session_id: Uuid, lens: &Lens, ws_dir: &str, workspace_dir: &std::path:...` — Build a EngineToolContext and per-session PromptContext for the engine.
--  `build_engine` function L508-568 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
--  `infer_entity_type` function L572-593 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `commands` module L597 — `-`
--  `feeds` module L598 — `-`
--  `integrations` module L599 — `-`
--  `lenses` module L600 — `-`
--  `memory` module L601 — `-`
--  `permissions` module L602 — `-`
--  `sessions` module L603 — `-`
--  `LocalService` type L606-748 — `impl ArawnService for LocalService`
--  `list_lenses` function L607-609 — `(&self) -> Result<Vec<LensInfo>, ServiceError>`
--  `create_lens` function L610-612 — `(&self, name: String, root_dir: PathBuf) -> Result<LensInfo, ServiceError>`
--  `list_sessions` function L613-615 — `(&self, lens_id: Option<Uuid>) -> Result<Vec<SessionInfo>, ServiceError>`
--  `create_session` function L616-618 — `(&self, lens_id: Option<Uuid>) -> Result<SessionInfo, ServiceError>`
--  `load_session` function L619-621 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `truncate_session_at_user_message` function L622-629 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...`
--  `send_message` function L630-636 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L637-639 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
--  `resolve_user_input` function L640-647 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
--  `query_inventory` function L648-650 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
--  `list_available_commands` function L651-653 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
--  `list_workflows` function L654-656 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
--  `remember_fact` function L657-659 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
--  `memory_summary` function L660-662 — `(&self) -> Result<MemorySummary, ServiceError>`
--  `forget_entity` function L663-665 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
--  `get_permission_mode` function L666-668 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
--  `set_permission_mode` function L669-674 — `( &self, mode_str: &str, ) -> Result<PermissionModeInfo, ServiceError>`
--  `get_capabilities` function L675-677 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
--  `get_permissions_status` function L678-682 — `( &self, ) -> Result<arawn_service::PermissionsStatus, ServiceError>`
--  `list_integrations` function L683-687 — `( &self, ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
--  `start_oauth_flow` function L688-693 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
--  `disconnect_integration` function L694-696 — `(&self, service: &str) -> Result<(), ServiceError>`
--  `feed_register` function L697-702 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...`
--  `feed_list` function L703-705 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
--  `feed_pause` function L706-711 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_resume` function L712-717 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_run` function L718-720 — `(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_discover` function L721-726 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...`
--  `feed_schema` function L727-732 — `( &self, template: &str, ) -> Result<arawn_service::FeedSchemaDto, ServiceError>`
--  `feed_templates` function L733-741 — `(&self) -> Result<Vec<arawn_service::FeedTemplateInfo>, ServiceError>`
--  `feed_remove` function L742-747 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
--  `default_feed_for_service` function L755-764 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
--  `current_summary` function L766-776 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
--  `feed_err` function L778-785 — `(e: arawn_feeds::FeedError) -> ServiceError`
--  `feed_summary_to_dto` function L787-802 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
--  `OAuthFlowCtx` struct L807-811 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
--  `OAuthFlowCtx` type L814-836 — `= OAuthFlowCtx`
--  `service` function L815-817 — `(&self) -> &str`
--  `publish_auth_url` function L819-826 — `(&self, url: &url::Url)`
--  `publish_progress` function L828-835 — `(&self, message: &str)`
--  `resolve_ws_dir_from_store` function L839-852 — `( store: &Store, ws_id: Option<Uuid>, ) -> Result<String, ServiceError>` — Resolve lens directory name from store.
--  `first_sentence` function L856-867 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
--  `feed_default_tests` module L870-907 — `-`
--  `known_services_each_have_a_default_feed` function L874-900 — `()`
--  `unknown_service_has_no_default_feed` function L903-906 — `()`
--  `poison_recovery_tests` module L916-966 — `-` — P1-2 (ARAWN-T-0469): the service must survive a panic in a background
--  `rwlock_read_recovers_after_writer_panic` function L922-950 — `()`
--  `mutex_recovers_after_holder_panic` function L953-965 — `()`
+- pub `LocalService` struct L32-114 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, reg...` — In-process implementation of ArawnService.
+- pub `new` function L117-154 — `( store: Store, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, registry: Arc<T...`
+- pub `mark_ready` function L159-161 — `(&self)` — Flip the readiness flag to true (ARAWN-I-0068 P2-1).
+- pub `is_ready` function L165-167 — `(&self) -> bool` — Whether the server has finished post-startup wiring.
+- pub `set_projections` function L171-173 — `(&self, projections: Arc<arawn_projections::ProjectionStore>)` — Wire the projection store so the status surface can report the
+- pub `mark_extractor_available` function L177-180 — `(&self)` — Mark the per-lens extractor runner as wired — drives the
+- pub `with_hook_runner` function L186-189 — `(mut self, runner: Arc<arawn_engine::hooks::HookRunner>) -> Self` — Attach a hook runner.
+- pub `hook_runner_clone` function L193-195 — `(&self) -> Option<Arc<arawn_engine::hooks::HookRunner>>` — Get a clone of the optional hook runner.
+- pub `todo_event_sender` function L199-201 — `(&self) -> arawn_storage::TodoEventSender` — Sender for todo events — RPC handlers clone this when
+- pub `subscribe_todo_events` function L205-207 — `(&self) -> arawn_storage::TodoEventReceiver` — Subscribe to the todo event channel — main.rs spawns a
+- pub `set_ceremony_service` function L211-213 — `(&self, svc: Arc<arawn_ceremonies::CeremonyService>)` — Wire the ceremony service.
+- pub `ceremony_service` function L216-218 — `(&self) -> Option<Arc<arawn_ceremonies::CeremonyService>>` — Shared reference to the ceremony service, if wired.
+- pub `with_active_lens` function L223-226 — `(mut self, ws: arawn_engine::SessionLens) -> Self` — Wire the shared `SessionLens` shim.
+- pub `set_feed_runtime` function L231-233 — `(&self, runtime: Arc<arawn_feeds::FeedRuntime>)` — Hand the live feed runtime to the service so `/watch` and
+- pub `register_integration` function L243-250 — `(&self, integration: Arc<dyn arawn_integrations::Integration>)` — Register an external integration.
+- pub `shared_integrations` function L254-258 — `( &self, ) -> Arc<std::sync::RwLock<HashMap<String, Arc<dyn arawn_integrations::...` — Shared reference to the integration registry — for tools that want
+- pub `subscribe_notices` function L264-268 — `( &self, ) -> tokio::sync::broadcast::Receiver<arawn_service::ServerNotice>` — Subscribe to server-wide notices (plugin/config hot-reload, etc.).
+- pub `notice_sender` function L272-274 — `(&self) -> tokio::sync::broadcast::Sender<arawn_service::ServerNotice>` — Get a sender clone — used to wire watchers (plugin runtime, config
+- pub `with_permission_rules` function L276-279 — `(self, rules: Vec<PermissionRule>) -> Self`
+- pub `with_permission_mode` function L284-287 — `(self, mode: arawn_engine::permissions::PermissionMode) -> Self` — T-0347: override the starting permission mode (declared in
+- pub `shared_store` function L291-293 — `(&self) -> Arc<Mutex<Store>>` — Get a reference to the shared permission rules for hot-reload.
+- pub `shared_llm` function L295-297 — `(&self) -> Arc<dyn LlmClient>`
+- pub `shared_compactor_llm` function L301-303 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM (separate client when `[compactor]` config selects a
+- pub `compactor_model` function L306-308 — `(&self) -> &str` — Model name used by the compactor.
+- pub `shared_llm_pool` function L312-314 — `(&self) -> Arc<LlmClientPool>` — Shared reference to the LLM pool — used by tools/agents that resolve
+- pub `shared_registry` function L316-318 — `(&self) -> Arc<ToolRegistry>`
+- pub `engine_config` function L320-322 — `(&self) -> &QueryEngineConfig`
+- pub `shared_permission_rules` function L324-326 — `(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>>`
+- pub `shared_permission_mode` function L328-332 — `( &self, ) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>`
+- pub `with_skill_registry` function L334-340 — `( mut self, registry: Arc<arawn_engine::skills::SkillRegistry>, ) -> Self`
+- pub `with_plugin_registry` function L342-348 — `( mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>, ) -> Self`
+- pub `with_plan_state` function L350-353 — `(mut self, state: Arc<PlanModeState>) -> Self`
+- pub `with_background_tasks` function L355-358 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
+- pub `with_memory_manager` function L360-363 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
+-  `LocalService` type L116-609 — `= LocalService`
+-  `feed_runtime_or_err` function L235-239 — `(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError>`
+-  `load_session_state` function L367-405 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Lens, String...` — Load session metadata, resolve lens, and load message history.
+-  `build_session_context` function L409-544 — `( &self, session_id: Uuid, lens: &Lens, ws_dir: &str, workspace_dir: &std::path:...` — Build a EngineToolContext and per-session PromptContext for the engine.
+-  `build_engine` function L548-608 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
+-  `infer_entity_type` function L612-633 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
+-  `commands` module L637 — `-`
+-  `feeds` module L638 — `-`
+-  `integrations` module L639 — `-`
+-  `lenses` module L640 — `-`
+-  `memory` module L641 — `-`
+-  `permissions` module L642 — `-`
+-  `sessions` module L643 — `-`
+-  `status` module L644 — `-`
+-  `LocalService` type L647-795 — `impl ArawnService for LocalService`
+-  `list_lenses` function L648-650 — `(&self) -> Result<Vec<LensInfo>, ServiceError>`
+-  `create_lens` function L651-653 — `(&self, name: String, root_dir: PathBuf) -> Result<LensInfo, ServiceError>`
+-  `list_sessions` function L654-656 — `(&self, lens_id: Option<Uuid>) -> Result<Vec<SessionInfo>, ServiceError>`
+-  `create_session` function L657-659 — `(&self, lens_id: Option<Uuid>) -> Result<SessionInfo, ServiceError>`
+-  `load_session` function L660-662 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
+-  `truncate_session_at_user_message` function L663-670 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...`
+-  `send_message` function L671-677 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L678-680 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
+-  `resolve_user_input` function L681-688 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
+-  `query_inventory` function L689-691 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
+-  `list_available_commands` function L692-694 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
+-  `list_workflows` function L695-697 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
+-  `remember_fact` function L698-700 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
+-  `memory_summary` function L701-703 — `(&self) -> Result<MemorySummary, ServiceError>`
+-  `forget_entity` function L704-706 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
+-  `get_permission_mode` function L707-709 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
+-  `set_permission_mode` function L710-715 — `( &self, mode_str: &str, ) -> Result<PermissionModeInfo, ServiceError>`
+-  `get_capabilities` function L716-718 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
+-  `get_permissions_status` function L719-723 — `( &self, ) -> Result<arawn_service::PermissionsStatus, ServiceError>`
+-  `health` function L724-726 — `(&self) -> Result<arawn_service::HealthStatus, ServiceError>`
+-  `status` function L727-729 — `(&self) -> Result<arawn_service::SystemStatus, ServiceError>`
+-  `list_integrations` function L730-734 — `( &self, ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
+-  `start_oauth_flow` function L735-740 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
+-  `disconnect_integration` function L741-743 — `(&self, service: &str) -> Result<(), ServiceError>`
+-  `feed_register` function L744-749 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...`
+-  `feed_list` function L750-752 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
+-  `feed_pause` function L753-758 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_resume` function L759-764 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_run` function L765-767 — `(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_discover` function L768-773 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...`
+-  `feed_schema` function L774-779 — `( &self, template: &str, ) -> Result<arawn_service::FeedSchemaDto, ServiceError>`
+-  `feed_templates` function L780-788 — `(&self) -> Result<Vec<arawn_service::FeedTemplateInfo>, ServiceError>`
+-  `feed_remove` function L789-794 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
+-  `default_feed_for_service` function L802-811 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
+-  `current_summary` function L813-823 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
+-  `feed_err` function L825-832 — `(e: arawn_feeds::FeedError) -> ServiceError`
+-  `feed_summary_to_dto` function L834-849 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
+-  `OAuthFlowCtx` struct L854-858 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
+-  `OAuthFlowCtx` type L861-883 — `= OAuthFlowCtx`
+-  `service` function L862-864 — `(&self) -> &str`
+-  `publish_auth_url` function L866-873 — `(&self, url: &url::Url)`
+-  `publish_progress` function L875-882 — `(&self, message: &str)`
+-  `resolve_ws_dir_from_store` function L886-899 — `( store: &Store, ws_id: Option<Uuid>, ) -> Result<String, ServiceError>` — Resolve lens directory name from store.
+-  `first_sentence` function L903-914 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `feed_default_tests` module L917-954 — `-`
+-  `known_services_each_have_a_default_feed` function L921-947 — `()`
+-  `unknown_service_has_no_default_feed` function L950-953 — `()`
+-  `poison_recovery_tests` module L963-1013 — `-` — P1-2 (ARAWN-T-0469): the service must survive a panic in a background
+-  `rwlock_read_recovers_after_writer_panic` function L969-997 — `()`
+-  `mutex_recovers_after_holder_panic` function L1000-1012 — `()`
 
 #### crates/arawn/src/local_service/permissions.rs
 
@@ -969,6 +977,17 @@
 -  `send_message_inner` function L150-352 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...` — `ArawnService`.
 -  `cancel_inner` function L354-372 — `(&self, session_id: Uuid) -> Result<(), ServiceError>` — `ArawnService`.
 -  `resolve_user_input_inner` function L374-388 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...` — `ArawnService`.
+
+#### crates/arawn/src/local_service/status.rs
+
+-  `LocalService` type L20-147 — `= LocalService` — subsystem lock across an `.await`.
+-  `health_inner` function L23-34 — `(&self) -> Result<HealthStatus, ServiceError>` — Cheap readiness probe.
+-  `status_inner` function L39-48 — `(&self) -> Result<SystemStatus, ServiceError>` — Aggregate the per-subsystem health dump.
+-  `feeds_status` function L50-76 — `(&self) -> FeedsStatus` — subsystem lock across an `.await`.
+-  `ceremonies_status` function L78-89 — `(&self) -> CeremoniesStatus` — subsystem lock across an `.await`.
+-  `embedding_status` function L91-107 — `(&self) -> EmbeddingStatus` — subsystem lock across an `.await`.
+-  `extraction_status` function L109-128 — `(&self) -> ExtractionStatus` — subsystem lock across an `.await`.
+-  `llm_status` function L130-146 — `(&self) -> LlmStatus` — subsystem lock across an `.await`.
 
 ### crates/arawn/src/startup
 
@@ -1062,37 +1081,37 @@
 
 #### crates/arawn/src/ws_server/mod.rs
 
-- pub `read_token_file` function L247-258 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
-- pub `run_server` function L261-330 — `(service: LocalService, host: &str, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
-- pub `handle_connection_public` function L420-422 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
+- pub `read_token_file` function L249-260 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
+- pub `run_server` function L263-332 — `(service: LocalService, host: &str, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
+- pub `handle_connection_public` function L422-424 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
 -  `ceremonies` module L23 — `-`
 -  `todos` module L24 — `-`
 -  `PROTOCOL_VERSION` variable L27 — `: &str` — Protocol version reported by the `hello` handshake.
--  `RPC_METHODS` variable L30-86 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
--  `Request` struct L90-95 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
--  `Response` struct L99-105 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
--  `ErrorBody` struct L108-113 — `{ code: String, message: String, details: Option<Value> }`
--  `Response` type L115-199 — `= Response`
--  `success` function L116-122 — `(id: u64, result: Value) -> Self`
--  `error` function L124-134 — `(id: u64, code: &str, message: String) -> Self`
--  `from_ceremony_error` function L140-159 — `(id: u64, e: &arawn_ceremonies::CeremonyError) -> Self` — Build an error response from a `CeremonyError`.
--  `from_todo_error` function L164-182 — `(id: u64, e: &arawn_storage::StorageError) -> Self` — Build an error response from a `StorageError` raised by
--  `from_service_error` function L188-198 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
--  `AppState` struct L203-208 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
--  `is_loopback_host` function L215-223 — `(host: &str) -> bool` — Generate a random auth token for WebSocket connections.
--  `generate_auth_token` function L225-232 — `() -> String`
--  `write_token_file` function L235-243 — `( data_dir: &std::path::Path, token: &str, ) -> std::io::Result<std::path::PathB...` — Write the auth token to {data_dir}/server.token for clients to read.
--  `shutdown_signal` function L333-355 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
--  `decision_handler` function L360-379 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
--  `WsQueryParams` struct L383-385 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
--  `ws_handler` function L387-417 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
--  `handle_connection` function L424-1373 — `(socket: WebSocket, service: Arc<LocalService>)`
--  `tests` module L1376-1448 — `-`
--  `from_service_error_preserves_structured_detail_for_typed_variants` function L1383-1397 — `()` — Typed Storage error should round-trip through the wire payload with
--  `from_service_error_omits_details_for_string_only_variants` function L1403-1414 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
--  `loopback_hosts_are_recognized` function L1421-1426 — `()`
--  `non_loopback_hosts_flagged` function L1429-1435 — `()`
--  `from_service_error_preserves_engine_error_kind` function L1438-1447 — `()`
+-  `RPC_METHODS` variable L30-88 — `: &[&str]` — Canonical RPC method names (returned by `hello`).
+-  `Request` struct L92-97 — `{ id: u64, method: String, params: Value }` — JSON-RPC style request from client.
+-  `Response` struct L101-107 — `{ id: u64, result: Option<Value>, error: Option<ErrorBody> }` — JSON-RPC style response to client.
+-  `ErrorBody` struct L110-115 — `{ code: String, message: String, details: Option<Value> }`
+-  `Response` type L117-201 — `= Response`
+-  `success` function L118-124 — `(id: u64, result: Value) -> Self`
+-  `error` function L126-136 — `(id: u64, code: &str, message: String) -> Self`
+-  `from_ceremony_error` function L142-161 — `(id: u64, e: &arawn_ceremonies::CeremonyError) -> Self` — Build an error response from a `CeremonyError`.
+-  `from_todo_error` function L166-184 — `(id: u64, e: &arawn_storage::StorageError) -> Self` — Build an error response from a `StorageError` raised by
+-  `from_service_error` function L190-200 — `(id: u64, e: &arawn_service::ServiceError) -> Self` — Build an error response from a [`ServiceError`].
+-  `AppState` struct L205-210 — `{ service: Arc<LocalService>, auth_token: Option<String> }` — Shared app state for the WebSocket server.
+-  `is_loopback_host` function L217-225 — `(host: &str) -> bool` — Generate a random auth token for WebSocket connections.
+-  `generate_auth_token` function L227-234 — `() -> String`
+-  `write_token_file` function L237-245 — `( data_dir: &std::path::Path, token: &str, ) -> std::io::Result<std::path::PathB...` — Write the auth token to {data_dir}/server.token for clients to read.
+-  `shutdown_signal` function L335-357 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
+-  `decision_handler` function L362-381 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
+-  `WsQueryParams` struct L385-387 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
+-  `ws_handler` function L389-419 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
+-  `handle_connection` function L426-1401 — `(socket: WebSocket, service: Arc<LocalService>)`
+-  `tests` module L1404-1476 — `-`
+-  `from_service_error_preserves_structured_detail_for_typed_variants` function L1411-1425 — `()` — Typed Storage error should round-trip through the wire payload with
+-  `from_service_error_omits_details_for_string_only_variants` function L1431-1442 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
+-  `loopback_hosts_are_recognized` function L1449-1454 — `()`
+-  `non_loopback_hosts_flagged` function L1457-1463 — `()`
+-  `from_service_error_preserves_engine_error_kind` function L1466-1475 — `()`
 
 #### crates/arawn/src/ws_server/todos.rs
 
@@ -8696,36 +8715,37 @@
 - pub `write` function L71-73 — `(&self, projection: &P) -> Result<WriteOutcome, ProjectionError>` — Write a single projection inside a transaction: row UPSERT,
 - pub `write_batch` function L76-113 — `( &self, projections: &[P], ) -> Result<WriteOutcome, ProjectionError>` — Write many projections in one transaction.
 - pub `missing_source_ids` function L118-161 — `( &self, feed_type: &str, feed_id: &str, candidate_source_ids: &[String], ) -> R...` — Returns ids that are NOT yet projected for a given feed.
-- pub `count` function L164-173 — `(&self, feed_type: &str) -> Result<usize, ProjectionError>` — Total rows for a feed_type — useful for tests and ops.
-- pub `vector_search` function L179-210 — `( &self, feed_type: &str, query_vec: &[f32], limit: usize, ) -> Result<Vec<Strin...` — Vector similarity search over a single feed type.
-- pub `fts_search` function L220-251 — `( &self, feed_type: &str, query: &str, limit: usize, ) -> Result<Vec<String>, Pr...` — FTS search over a single feed type.
-- pub `get_row` function L254-297 — `( &self, feed_type: &str, projection_id: &str, ) -> Result<Option<ProjectionRow>...` — Get a single projection row by primary key.
-- pub `WriteOutcome` struct L301-305 — `{ inserted: usize, updated: usize, unchanged: usize }` — detect stale entries cheaply.
-- pub `escape_fts5` function L333-342 — `(query: &str) -> String` — Escape a user-supplied query for safe inclusion in an FTS5
--  `ProjectionStore` type L28-298 — `= ProjectionStore` — detect stale entries cheaply.
--  `WriteAction` enum L307-311 — `Inserted | Updated | Unchanged` — detect stale entries cheaply.
--  `body_hash` function L344-349 — `(body_text: &str) -> String` — detect stale entries cheaply.
--  `write_row` function L351-445 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, row: &ProjectionRow, ) -> Res...` — detect stale entries cheaply.
--  `fts_upsert` function L447-463 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, title: &...` — detect stale entries cheaply.
--  `embedding_invalidate` function L468-488 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, body_has...` — Mark a projection row's embedding as pending re-compute.
--  `fts_escape_tests` module L491-659 — `-` — detect stale entries cheaply.
--  `escape_empty_returns_empty` function L499-503 — `()` — detect stale entries cheaply.
--  `escape_quotes_each_token` function L506-509 — `()` — detect stale entries cheaply.
--  `escape_neutralises_hyphen` function L512-520 — `()` — detect stale entries cheaply.
--  `escape_neutralises_colon_and_parens` function L523-526 — `()` — detect stale entries cheaply.
--  `escape_doubles_embedded_quotes` function L529-532 — `()` — detect stale entries cheaply.
--  `TestProj` struct L538-545 — `{ id: String, feed_id: String, source_id: String, ts: chrono::DateTime<chrono::U...` — Test-only projection that targets the `slack_messages` table
--  `TestProj` type L546-562 — `impl Projection for TestProj` — detect stale entries cheaply.
--  `feed_type` function L547-549 — `(&self) -> &'static str` — detect stale entries cheaply.
--  `row` function L550-561 — `(&self) -> ProjectionRow` — detect stale entries cheaply.
--  `open_store` function L564-571 — `() -> ProjectionStore` — detect stale entries cheaply.
--  `seed` function L573-583 — `(store: &ProjectionStore, id: &str, title: &str, body: &str)` — detect stale entries cheaply.
--  `hyphenated_identifier_matches_post_fix` function L586-598 — `()` — detect stale entries cheaply.
--  `hyphenated_phrase_matches` function L601-608 — `()` — detect stale entries cheaply.
--  `multi_token_is_implicit_and` function L611-620 — `()` — detect stale entries cheaply.
--  `colon_in_query_does_not_trigger_column_lookup` function L623-630 — `()` — detect stale entries cheaply.
--  `empty_query_returns_empty_without_error` function L633-640 — `()` — detect stale entries cheaply.
--  `search_unwritten_feed_type_returns_empty_not_error` function L646-658 — `()` — T-0371: searching a feed type that has never been written
+- pub `pending_embedding_count` function L169-198 — `(&self) -> Result<u64, ProjectionError>` — Total rows still awaiting an embedding across every feed type, for
+- pub `count` function L201-210 — `(&self, feed_type: &str) -> Result<usize, ProjectionError>` — Total rows for a feed_type — useful for tests and ops.
+- pub `vector_search` function L216-247 — `( &self, feed_type: &str, query_vec: &[f32], limit: usize, ) -> Result<Vec<Strin...` — Vector similarity search over a single feed type.
+- pub `fts_search` function L257-288 — `( &self, feed_type: &str, query: &str, limit: usize, ) -> Result<Vec<String>, Pr...` — FTS search over a single feed type.
+- pub `get_row` function L291-334 — `( &self, feed_type: &str, projection_id: &str, ) -> Result<Option<ProjectionRow>...` — Get a single projection row by primary key.
+- pub `WriteOutcome` struct L338-342 — `{ inserted: usize, updated: usize, unchanged: usize }` — detect stale entries cheaply.
+- pub `escape_fts5` function L370-379 — `(query: &str) -> String` — Escape a user-supplied query for safe inclusion in an FTS5
+-  `ProjectionStore` type L28-335 — `= ProjectionStore` — detect stale entries cheaply.
+-  `WriteAction` enum L344-348 — `Inserted | Updated | Unchanged` — detect stale entries cheaply.
+-  `body_hash` function L381-386 — `(body_text: &str) -> String` — detect stale entries cheaply.
+-  `write_row` function L388-482 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, row: &ProjectionRow, ) -> Res...` — detect stale entries cheaply.
+-  `fts_upsert` function L484-500 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, title: &...` — detect stale entries cheaply.
+-  `embedding_invalidate` function L505-525 — `( tx: &rusqlite::Transaction<'_>, feed_type: &str, projection_id: &str, body_has...` — Mark a projection row's embedding as pending re-compute.
+-  `fts_escape_tests` module L528-696 — `-` — detect stale entries cheaply.
+-  `escape_empty_returns_empty` function L536-540 — `()` — detect stale entries cheaply.
+-  `escape_quotes_each_token` function L543-546 — `()` — detect stale entries cheaply.
+-  `escape_neutralises_hyphen` function L549-557 — `()` — detect stale entries cheaply.
+-  `escape_neutralises_colon_and_parens` function L560-563 — `()` — detect stale entries cheaply.
+-  `escape_doubles_embedded_quotes` function L566-569 — `()` — detect stale entries cheaply.
+-  `TestProj` struct L575-582 — `{ id: String, feed_id: String, source_id: String, ts: chrono::DateTime<chrono::U...` — Test-only projection that targets the `slack_messages` table
+-  `TestProj` type L583-599 — `impl Projection for TestProj` — detect stale entries cheaply.
+-  `feed_type` function L584-586 — `(&self) -> &'static str` — detect stale entries cheaply.
+-  `row` function L587-598 — `(&self) -> ProjectionRow` — detect stale entries cheaply.
+-  `open_store` function L601-608 — `() -> ProjectionStore` — detect stale entries cheaply.
+-  `seed` function L610-620 — `(store: &ProjectionStore, id: &str, title: &str, body: &str)` — detect stale entries cheaply.
+-  `hyphenated_identifier_matches_post_fix` function L623-635 — `()` — detect stale entries cheaply.
+-  `hyphenated_phrase_matches` function L638-645 — `()` — detect stale entries cheaply.
+-  `multi_token_is_implicit_and` function L648-657 — `()` — detect stale entries cheaply.
+-  `colon_in_query_does_not_trigger_column_lookup` function L660-667 — `()` — detect stale entries cheaply.
+-  `empty_query_returns_empty_without_error` function L670-677 — `()` — detect stale entries cheaply.
+-  `search_unwritten_feed_type_returns_empty_not_error` function L683-695 — `()` — T-0371: searching a feed type that has never been written
 
 #### crates/arawn-projections/src/types.rs
 
@@ -8821,7 +8841,7 @@
 
 - pub `error` module L1 — `-`
 - pub `types` module L2 — `-`
-- pub `ArawnService` interface L27-184 — `{ fn list_lenses(), fn create_lens(), fn list_sessions(), fn create_session(), f...` — The service contract between any UI client and the Arawn backend.
+- pub `ArawnService` interface L29-201 — `{ fn list_lenses(), fn create_lens(), fn list_sessions(), fn create_session(), f...` — The service contract between any UI client and the Arawn backend.
 
 #### crates/arawn-service/src/types.rs
 
@@ -8855,6 +8875,17 @@
 - pub `FeedParamSpecDto` struct L374-386 — `{ key: String, label: String, kind: FeedParamKindDto, required: bool, default: O...` — One declared parameter of a feed template.
 - pub `FeedTemplateInfo` struct L390-393 — `{ name: String, description: String }` — One template in the `/watch` modal's stage-1 picker.
 - pub `FeedSchemaDto` struct L399-403 — `{ template: String, params: Vec<FeedParamSpecDto>, default_cadence: String }` — Response from `feed_schema`: the form definition for one template.
+- pub `HealthStatus` struct L412-418 — `{ ready: bool, blocking: Vec<String> }` — Cheap liveness/readiness probe — the `health` RPC.
+- pub `SystemStatus` struct L426-434 — `{ version: u32, feeds: FeedsStatus, ceremonies: CeremoniesStatus, embedding: Emb...` — Versioned, per-subsystem health dump — the `status` RPC.
+- pub `SYSTEM_STATUS_VERSION` variable L437 — `: u32` — Current schema version of [`SystemStatus`].
+- pub `FeedsStatus` struct L442-447 — `{ available: bool, feeds: Vec<FeedStatusRow> }` — Feed subsystem health: whether the runtime is wired and a per-feed
+- pub `FeedStatusRow` struct L451-459 — `{ id: String, template: String, enabled: bool, last_run_at: Option<String>, last...` — One feed's last-run state for the status panel.
+- pub `CeremoniesStatus` struct L463-471 — `{ available: bool, pending_notifications: Option<u64> }` — Ceremony subsystem health.
+- pub `EmbeddingStatus` struct L475-483 — `{ embedder_loaded: bool, pending: Option<u64> }` — Embedding-pipeline health.
+- pub `ExtractionStatus` struct L487-491 — `{ available: bool, cursors: Vec<ExtractionCursor> }` — Extraction-pipeline health: per-(lens, feed_type) cursor positions.
+- pub `ExtractionCursor` struct L496-501 — `{ lens: String, feed_type: String, cursor_ts: Option<String> }` — One extraction cursor — how far the extractor has consumed a given
+- pub `LlmStatus` struct L506-513 — `{ clients: Vec<LlmClientStatus>, engine_reachable: Option<bool> }` — LLM-connectivity health: the configured clients and (optionally) whether
+- pub `LlmClientStatus` struct L517-522 — `{ role: String, provider: String, model: String }` — One configured LLM client.
 
 ### crates/arawn-steward/src
 
@@ -9227,14 +9258,15 @@
 - pub `new` function L26-28 — `(db: &'a Database) -> Self` — next run and `advance` it monotonically as it makes progress.
 - pub `get` function L33-71 — `( &self, lens_name: &str, feed_type: &str, ) -> Result<Option<ExtractorCursor>, ...` — Read the current cursor for (lens, feed_type).
 - pub `advance` function L75-99 — `( &self, lens_name: &str, feed_type: &str, new_source_ts: DateTime<Utc>, ) -> Re...` — Advance the cursor for (lens, feed_type) to `new_source_ts`.
-- pub `list_for_lens` function L103-134 — `(&self, lens_name: &str) -> Result<Vec<ExtractorCursor>, StorageError>` — List every cursor row for a lens — used by
--  `parse_dt` function L137-141 — `(s: &str) -> Result<DateTime<Utc>, StorageError>` — next run and `advance` it monotonically as it makes progress.
--  `tests` module L144-204 — `-` — next run and `advance` it monotonically as it makes progress.
--  `db` function L147-149 — `() -> Database` — next run and `advance` it monotonically as it makes progress.
--  `get_returns_none_for_unknown` function L152-156 — `()` — next run and `advance` it monotonically as it makes progress.
--  `advance_inserts_then_updates` function L159-172 — `()` — next run and `advance` it monotonically as it makes progress.
--  `advance_refuses_to_go_backwards` function L175-185 — `()` — next run and `advance` it monotonically as it makes progress.
--  `list_for_lens_returns_all_feed_types` function L188-203 — `()` — next run and `advance` it monotonically as it makes progress.
+- pub `list_all` function L104-134 — `(&self) -> Result<Vec<ExtractorCursor>, StorageError>` — List every cursor row across all lenses — backs the extraction
+- pub `list_for_lens` function L138-169 — `(&self, lens_name: &str) -> Result<Vec<ExtractorCursor>, StorageError>` — List every cursor row for a lens — used by
+-  `parse_dt` function L172-176 — `(s: &str) -> Result<DateTime<Utc>, StorageError>` — next run and `advance` it monotonically as it makes progress.
+-  `tests` module L179-239 — `-` — next run and `advance` it monotonically as it makes progress.
+-  `db` function L182-184 — `() -> Database` — next run and `advance` it monotonically as it makes progress.
+-  `get_returns_none_for_unknown` function L187-191 — `()` — next run and `advance` it monotonically as it makes progress.
+-  `advance_inserts_then_updates` function L194-207 — `()` — next run and `advance` it monotonically as it makes progress.
+-  `advance_refuses_to_go_backwards` function L210-220 — `()` — next run and `advance` it monotonically as it makes progress.
+-  `list_for_lens_returns_all_feed_types` function L223-238 — `()` — next run and `advance` it monotonically as it makes progress.
 
 #### crates/arawn-storage/src/jsonl.rs
 

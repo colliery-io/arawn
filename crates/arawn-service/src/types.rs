@@ -401,3 +401,122 @@ pub struct FeedSchemaDto {
     pub params: Vec<FeedParamSpecDto>,
     pub default_cadence: String,
 }
+
+// ─── Health & Status (ARAWN-I-0068 P2-1) ────────────────────────────
+
+/// Cheap liveness/readiness probe — the `health` RPC. Distinct from the
+/// richer [`SystemStatus`] dump: a client polls this to know when the
+/// server is safe to drive (feeds/ceremonies/memory/storage finished
+/// wiring) and renders `blocking` while it isn't yet.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HealthStatus {
+    /// True once post-startup wiring completes. One-way: false → true.
+    pub ready: bool,
+    /// Human-readable reasons `ready` is still false (e.g. "server
+    /// initializing"). Empty once ready.
+    pub blocking: Vec<String>,
+}
+
+/// Versioned, per-subsystem health dump — the `status` RPC. This is the
+/// forward contract the TUI panel and the future web GUI both render
+/// (ADR ARAWN-A-0005, protocol-first). `version` lets clients tolerate
+/// added blocks (steward/storage detail, permission-audit tail) in later
+/// revisions.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SystemStatus {
+    /// Schema version of this payload. Bumped when blocks are added.
+    pub version: u32,
+    pub feeds: FeedsStatus,
+    pub ceremonies: CeremoniesStatus,
+    pub embedding: EmbeddingStatus,
+    pub extraction: ExtractionStatus,
+    pub llm: LlmStatus,
+}
+
+/// Current schema version of [`SystemStatus`]. Bump when adding blocks.
+pub const SYSTEM_STATUS_VERSION: u32 = 1;
+
+/// Feed subsystem health: whether the runtime is wired and a per-feed
+/// last-run summary.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeedsStatus {
+    /// True if the feed runtime is wired (the workflow runner came up).
+    /// False means `/watch` and `/feeds` return "feeds runtime unavailable".
+    pub available: bool,
+    pub feeds: Vec<FeedStatusRow>,
+}
+
+/// One feed's last-run state for the status panel.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FeedStatusRow {
+    pub id: String,
+    pub template: String,
+    pub enabled: bool,
+    pub last_run_at: Option<String>,
+    /// Last run's status string (e.g. "ok", or an error). T-0478 will add
+    /// an explicit paused/reconnect-needed state here.
+    pub last_status: Option<String>,
+}
+
+/// Ceremony subsystem health.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CeremoniesStatus {
+    /// True if the ceremony engine wired at startup (else it was silently
+    /// skipped because the workflow runner was unavailable).
+    pub available: bool,
+    /// Count of pending ceremony notifications, when the engine is wired.
+    /// A coarse "something is waiting for review" signal; T-0477 will add
+    /// per-ceremony last-run rows.
+    pub pending_notifications: Option<u64>,
+}
+
+/// Embedding-pipeline health.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmbeddingStatus {
+    /// True if the embedding model loaded; false means memory search is
+    /// FTS-only (degraded, not broken).
+    pub embedder_loaded: bool,
+    /// Projection rows awaiting an embedding across all feed types. `None`
+    /// when the projection store isn't wired. (An explicit `errored` count
+    /// lands with T-0481, which adds the error status.)
+    pub pending: Option<u64>,
+}
+
+/// Extraction-pipeline health: per-(lens, feed_type) cursor positions.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExtractionStatus {
+    /// True if the extractor runner + projection store are wired.
+    pub available: bool,
+    pub cursors: Vec<ExtractionCursor>,
+}
+
+/// One extraction cursor — how far the extractor has consumed a given
+/// `(lens, feed_type)` stream.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExtractionCursor {
+    pub lens: String,
+    pub feed_type: String,
+    /// RFC3339 timestamp the extractor has consumed up to, if it has run.
+    pub cursor_ts: Option<String>,
+}
+
+/// LLM-connectivity health: the configured clients and (optionally) whether
+/// the engine endpoint is reachable.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LlmStatus {
+    /// Configured client roles (engine, compactor, hint targets, ...).
+    pub clients: Vec<LlmClientStatus>,
+    /// Liveness of the engine endpoint, when probed. `None` in v1 — a live
+    /// reachability probe is deferred so the `status` call stays cheap and
+    /// non-blocking; misconfiguration is still visible via `clients`.
+    pub engine_reachable: Option<bool>,
+}
+
+/// One configured LLM client.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LlmClientStatus {
+    /// Role name in the pool (e.g. "engine", "compactor").
+    pub role: String,
+    pub provider: String,
+    pub model: String,
+}

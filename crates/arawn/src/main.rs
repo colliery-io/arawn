@@ -731,6 +731,16 @@ async fn main() -> Result<()> {
                 _ => None,
             };
 
+        // ARAWN-I-0068 P2-1: wire the projection store + extractor
+        // availability into the service so the `status` surface can report
+        // the embedding backlog and extraction cursors.
+        if let Some(ref proj) = projections {
+            service.set_projections(Arc::clone(proj));
+        }
+        if extractor_runner.is_some() {
+            service.mark_extractor_available();
+        }
+
         // Steward — T-0256 scaffolding. Walks every active lens
         // on a coarse cadence; identity subroutine only until
         // T-0257/T-0258 land the real ones. Spawned only when the
@@ -1283,6 +1293,12 @@ async fn main() -> Result<()> {
             let _ = notice_tx_config.send(notice);
         }))
         .spawn();
+
+        // ARAWN-I-0068 P2-1: all post-startup wiring (feeds, ceremonies,
+        // memory, projections, extractor, watchers) is now in place — flip
+        // the readiness gate so connecting clients know the server is safe
+        // to drive. The `health` RPC reports `ready: true` from here on.
+        service.mark_ready();
 
         arawn_bin::ws_server::run_server(service, &config.server.host, serve_port).await?;
 

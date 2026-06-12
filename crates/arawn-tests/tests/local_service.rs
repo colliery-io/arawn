@@ -91,6 +91,72 @@ async fn separate_engine_and_compactor_llms_are_stored_distinctly() {
     assert_eq!(service.engine_config().model, "engine-model");
 }
 
+// ─── Health & Status (ARAWN-I-0068 P2-1) ────────────────────────────
+
+#[tokio::test]
+async fn health_not_ready_until_marked() {
+    let (_tmp, service) = setup_service(vec![]);
+
+    let h = service.health().await.unwrap();
+    assert!(!h.ready, "a freshly-constructed service is not ready");
+    assert!(
+        !h.blocking.is_empty(),
+        "while not ready, a blocking reason is reported"
+    );
+
+    // The startup wiring completes → one-way flip to ready.
+    service.mark_ready();
+
+    let h = service.health().await.unwrap();
+    assert!(h.ready, "marked-ready service reports ready");
+    assert!(h.blocking.is_empty(), "no blocking reasons once ready");
+}
+
+#[tokio::test]
+async fn status_reports_subsystems_absent_by_default() {
+    let (_tmp, service) = setup_service(vec![]);
+
+    let s = service.status().await.unwrap();
+
+    assert_eq!(s.version, arawn_service::SYSTEM_STATUS_VERSION);
+    // No feed runtime / ceremony / memory / projections / extractor wired
+    // in the bare test service — every block degrades gracefully rather
+    // than failing the whole call.
+    assert!(!s.feeds.available, "no feed runtime wired");
+    assert!(s.feeds.feeds.is_empty());
+    assert!(!s.ceremonies.available, "no ceremony service wired");
+    assert!(s.ceremonies.pending_notifications.is_none());
+    assert!(!s.embedding.embedder_loaded, "no memory manager wired");
+    assert!(s.embedding.pending.is_none(), "no projection store wired");
+    assert!(!s.extraction.available, "no extractor wired");
+    assert!(s.extraction.cursors.is_empty());
+    // The mock pool always has at least one configured client.
+    assert!(!s.llm.clients.is_empty(), "mock LLM pool has a client");
+    assert!(
+        s.llm.engine_reachable.is_none(),
+        "v1 does no live reachability probe"
+    );
+}
+
+#[tokio::test]
+async fn status_embedding_pending_surfaces_when_projections_wired() {
+    let (tmp, service) = setup_service(vec![]);
+
+    // Wiring a (here empty) projection store flips `pending` from None to
+    // Some, proving the status surface reads the live handle.
+    let proj = Arc::new(
+        arawn_projections::ProjectionStore::open(&tmp.path().join("projections.db")).unwrap(),
+    );
+    service.set_projections(proj);
+
+    let s = service.status().await.unwrap();
+    assert_eq!(
+        s.embedding.pending,
+        Some(0),
+        "a wired projection store reports a (zero) backlog, not None"
+    );
+}
+
 #[tokio::test]
 async fn list_lenses_returns_scratch() {
     let (_tmp, service) = setup_service(vec![]);

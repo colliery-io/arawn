@@ -179,6 +179,26 @@ impl WsClient {
         Ok(result.clone())
     }
 
+    /// Cheap readiness probe (ARAWN-I-0068 P2-1). Backs the readiness gate
+    /// shown on connect — the client warns when the server is still wiring
+    /// up rather than letting the user fire commands into a half-ready backend.
+    pub async fn health(
+        &mut self,
+    ) -> Result<arawn_service::HealthStatus, Box<dyn std::error::Error>> {
+        let resp = self.request_response("health", json!({})).await?;
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(serde_json::from_value(result.clone())?)
+    }
+
+    /// Versioned per-subsystem health dump. Backs the `/status` panel.
+    pub async fn status(
+        &mut self,
+    ) -> Result<arawn_service::SystemStatus, Box<dyn std::error::Error>> {
+        let resp = self.request_response("status", json!({})).await?;
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(serde_json::from_value(result.clone())?)
+    }
+
     /// List registered integrations and their connection state. Backs `/integrations`.
     pub async fn list_integrations(
         &mut self,

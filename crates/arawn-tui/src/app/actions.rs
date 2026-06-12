@@ -233,6 +233,7 @@ impl App {
                             | CommandResult::WorkflowList
                             | CommandResult::WorkflowStatus(_)
                             | CommandResult::PermissionsStatus
+                            | CommandResult::SystemStatus
                             | CommandResult::IntegrationsList
                             | CommandResult::IntegrationConnect(_)
                             | CommandResult::IntegrationDisconnect(_)

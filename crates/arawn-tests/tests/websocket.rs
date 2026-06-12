@@ -460,6 +460,38 @@ async fn get_and_set_permission_mode_via_ws() {
     );
 }
 
+/// ARAWN-I-0068 P2-1 — `health` + `status` round-trip via WS-RPC. Both
+/// are read-only probes; this proves the payloads serialize end-to-end and
+/// the readiness/subsystem fields land in the JSON the GUI will consume.
+#[tokio::test]
+async fn health_and_status_rpc_round_trip() {
+    let (url, _tmp) = start_test_server(vec![]).await;
+    let (ws_stream, _) = connect_async(&url).await.unwrap();
+    let (mut write, mut read) = ws_stream.split();
+
+    // health — the bare test server never calls `mark_ready`, so it reports
+    // not-ready with a blocking reason.
+    let resp = send_request(&mut write, &mut read, json!({"id": 1, "method": "health"})).await;
+    assert_eq!(resp["result"]["ready"], false, "got: {resp}");
+    assert!(
+        !resp["result"]["blocking"].as_array().unwrap().is_empty(),
+        "not-ready health should list a blocking reason, got: {resp}"
+    );
+
+    // status — versioned per-subsystem dump. Subsystems are absent in the
+    // bare server, but the blocks (and the version) must be present.
+    let resp = send_request(&mut write, &mut read, json!({"id": 2, "method": "status"})).await;
+    assert!(resp["result"]["version"].is_number(), "got: {resp}");
+    assert_eq!(resp["result"]["feeds"]["available"], false);
+    assert_eq!(resp["result"]["ceremonies"]["available"], false);
+    assert_eq!(resp["result"]["embedding"]["embedder_loaded"], false);
+    assert_eq!(resp["result"]["extraction"]["available"], false);
+    assert!(
+        resp["result"]["llm"]["clients"].is_array(),
+        "llm.clients must be an array, got: {resp}"
+    );
+}
+
 #[tokio::test]
 async fn multi_turn_conversation_over_ws() {
     let (url, _tmp) = start_test_server(vec![

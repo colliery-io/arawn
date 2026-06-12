@@ -4,14 +4,14 @@ level: initiative
 title: "Daily-drivable Phase 2: trustworthy background brain — status surface, failure history, data integrity"
 short_code: "ARAWN-I-0068"
 created_at: 2026-06-11T11:19:25.206917+00:00
-updated_at: 2026-06-11T11:19:25.206917+00:00
+updated_at: 2026-06-12T12:30:07.049201+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/active"
 
 
 exit_criteria_met: false

@@ -118,6 +118,93 @@ pub(super) fn format_permissions_status(status: &serde_json::Value) -> String {
     out
 }
 
+/// Render a `SystemStatus` (ARAWN-I-0068 P2-1) as a human-readable system
+/// message. Thin renderer — all the aggregation already happened server-side;
+/// this only formats the contract into rows the user can scan.
+pub(super) fn format_system_status(status: &arawn_service::SystemStatus) -> String {
+    use std::fmt::Write;
+    let mark = |b: bool| if b { "✓" } else { "—" };
+
+    let mut out = String::from("**System status**\n\n");
+
+    // Feeds
+    if status.feeds.available {
+        let _ = writeln!(
+            out,
+            "Feeds: ✓ runtime up ({} configured)",
+            status.feeds.feeds.len()
+        );
+        for f in &status.feeds.feeds {
+            let last = f.last_run_at.as_deref().unwrap_or("never");
+            let st = f.last_status.as_deref().unwrap_or("—");
+            let _ = writeln!(
+                out,
+                "  - `{}` ({}) {} · last run {} · {}",
+                f.id,
+                f.template,
+                if f.enabled { "enabled" } else { "paused" },
+                last,
+                st,
+            );
+        }
+    } else {
+        let _ = writeln!(out, "Feeds: — runtime unavailable");
+    }
+
+    // Ceremonies
+    match status.ceremonies.pending_notifications {
+        Some(n) if status.ceremonies.available => {
+            let _ = writeln!(out, "Ceremonies: ✓ engine up · {n} pending notification(s)");
+        }
+        _ => {
+            let _ = writeln!(
+                out,
+                "Ceremonies: {} engine",
+                mark(status.ceremonies.available)
+            );
+        }
+    }
+
+    // Embedding
+    let pending = status
+        .embedding
+        .pending
+        .map(|n| n.to_string())
+        .unwrap_or_else(|| "n/a".to_string());
+    let _ = writeln!(
+        out,
+        "Embedding: model {} · {pending} pending",
+        mark(status.embedding.embedder_loaded),
+    );
+
+    // Extraction
+    if status.extraction.available {
+        let _ = writeln!(
+            out,
+            "Extraction: ✓ runner up · {} cursor(s)",
+            status.extraction.cursors.len()
+        );
+        for c in &status.extraction.cursors {
+            let at = c.cursor_ts.as_deref().unwrap_or("start");
+            let _ = writeln!(out, "  - {}/{} → {at}", c.lens, c.feed_type);
+        }
+    } else {
+        let _ = writeln!(out, "Extraction: — runner unavailable");
+    }
+
+    // LLM
+    if status.llm.clients.is_empty() {
+        let _ = writeln!(out, "LLM: — no clients configured");
+    } else {
+        let _ = writeln!(out, "LLM:");
+        for c in &status.llm.clients {
+            let _ = writeln!(out, "  - {}: {}/{}", c.role, c.provider, c.model);
+        }
+    }
+
+    out
+}
+
 /// Render a freshly-registered feed into a chat-ready system message.
 pub(super) fn format_feed_registered(dto: &serde_json::Value) -> String {
     let template = dto.get("template").and_then(|v| v.as_str()).unwrap_or("?");
@@ -252,4 +339,90 @@ pub(super) fn format_known_templates() -> String {
      confluence/space-archive). Use the typed form `/watch <template> \
      <feed_id> key=value` for the rest."
         .into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use arawn_service::{
+        CeremoniesStatus, EmbeddingStatus, ExtractionCursor, ExtractionStatus, FeedStatusRow,
+        FeedsStatus, LlmClientStatus, LlmStatus, SYSTEM_STATUS_VERSION, SystemStatus,
+    };
+
+    fn populated() -> SystemStatus {
+        SystemStatus {
+            version: SYSTEM_STATUS_VERSION,
+            feeds: FeedsStatus {
+                available: true,
+                feeds: vec![FeedStatusRow {
+                    id: "design-channel".into(),
+                    template: "slack/channel-archive".into(),
+                    enabled: true,
+                    last_run_at: Some("2026-06-12T10:00:00Z".into()),
+                    last_status: Some("ok".into()),
+                }],
+            },
+            ceremonies: CeremoniesStatus {
+                available: true,
+                pending_notifications: Some(2),
+            },
+            embedding: EmbeddingStatus {
+                embedder_loaded: true,
+                pending: Some(5),
+            },
+            extraction: ExtractionStatus {
+                available: true,
+                cursors: vec![ExtractionCursor {
+                    lens: "pat".into(),
+                    feed_type: "slack_messages".into(),
+                    cursor_ts: Some("2026-06-11T09:00:00Z".into()),
+                }],
+            },
+            llm: LlmStatus {
+                clients: vec![LlmClientStatus {
+                    role: "engine".into(),
+                    provider: "groq".into(),
+                    model: "llama-3.3-70b".into(),
+                }],
+                engine_reachable: None,
+            },
+        }
+    }
+
+    #[test]
+    fn format_system_status_renders_every_subsystem() {
+        let out = format_system_status(&populated());
+        // One scannable line per subsystem, with the key live numbers.
+        assert!(out.contains("Feeds: ✓ runtime up (1 configured)"), "{out}");
+        assert!(out.contains("design-channel"), "{out}");
+        assert!(out.contains("Ceremonies: ✓ engine up · 2 pending"), "{out}");
+        assert!(out.contains("Embedding: model ✓ · 5 pending"), "{out}");
+        assert!(out.contains("Extraction: ✓ runner up · 1 cursor"), "{out}");
+        assert!(out.contains("pat/slack_messages"), "{out}");
+        assert!(out.contains("engine: groq/llama-3.3-70b"), "{out}");
+    }
+
+    #[test]
+    fn format_system_status_marks_absent_subsystems() {
+        let mut s = populated();
+        s.feeds.available = false;
+        s.feeds.feeds.clear();
+        s.ceremonies = CeremoniesStatus {
+            available: false,
+            pending_notifications: None,
+        };
+        s.embedding = EmbeddingStatus {
+            embedder_loaded: false,
+            pending: None,
+        };
+        s.extraction = ExtractionStatus {
+            available: false,
+            cursors: vec![],
+        };
+        let out = format_system_status(&s);
+        assert!(out.contains("Feeds: — runtime unavailable"), "{out}");
+        assert!(out.contains("Ceremonies: — engine"), "{out}");
+        assert!(out.contains("Embedding: model — · n/a pending"), "{out}");
+        assert!(out.contains("Extraction: — runner unavailable"), "{out}");
+    }
 }

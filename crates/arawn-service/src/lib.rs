@@ -10,12 +10,14 @@ use uuid::Uuid;
 
 pub use error::ServiceError;
 pub use types::{
-    CommandInfo, EngineEvent, FeedDiscoverDto, FeedDiscoverRow, FeedParamKindDto, FeedParamSpecDto,
-    FeedRegisterSpec, FeedRemoveDto, FeedSchemaDto, FeedSummaryDto, FeedTemplateInfo,
-    ForgetCandidate, ForgetResult, IntegrationStatus, InventoryItem, LensInfo, MemoryStoreResult,
-    MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption, OAuthFlowStarted,
-    PermissionAuditEntry, PermissionModeInfo, PermissionsStatus, ServerCapabilities, ServerNotice,
-    SessionDetail, SessionInfo, WorkflowInfo,
+    CeremoniesStatus, CommandInfo, EmbeddingStatus, EngineEvent, ExtractionCursor,
+    ExtractionStatus, FeedDiscoverDto, FeedDiscoverRow, FeedParamKindDto, FeedParamSpecDto,
+    FeedRegisterSpec, FeedRemoveDto, FeedSchemaDto, FeedStatusRow, FeedSummaryDto,
+    FeedTemplateInfo, FeedsStatus, ForgetCandidate, ForgetResult, HealthStatus, IntegrationStatus,
+    InventoryItem, LensInfo, LlmClientStatus, LlmStatus, MemoryStoreResult, MemoryStoreSummary,
+    MemorySummary, MemoryTypeCount, ModalPromptOption, OAuthFlowStarted, PermissionAuditEntry,
+    PermissionModeInfo, PermissionsStatus, SYSTEM_STATUS_VERSION, ServerCapabilities, ServerNotice,
+    SessionDetail, SessionInfo, SystemStatus, WorkflowInfo,
 };
 
 /// The service contract between any UI client and the Arawn backend.
@@ -124,6 +126,21 @@ pub trait ArawnService: Send + Sync {
     /// Backs the TUI's `/permissions` command. Read-only — modifying rules
     /// requires editing `arawn.toml` and (for now) restarting.
     async fn get_permissions_status(&self) -> Result<PermissionsStatus, ServiceError>;
+
+    // --- Health & Status (ARAWN-I-0068 P2-1) ---
+
+    /// Cheap liveness/readiness probe. `ready` flips true only after the
+    /// post-startup wiring (feeds/ceremonies/memory/storage) completes;
+    /// `blocking` lists why it isn't ready yet. Clients consult this before
+    /// driving the server so they don't fire `/watch`/`/ceremony` into a
+    /// half-initialized backend.
+    async fn health(&self) -> Result<HealthStatus, ServiceError>;
+
+    /// Versioned per-subsystem health dump for the status panel. Aggregates
+    /// live state — feeds, ceremonies, embedding, extraction, LLM clients —
+    /// into the [`SystemStatus`] contract that the TUI and future web GUI
+    /// both render.
+    async fn status(&self) -> Result<SystemStatus, ServiceError>;
 
     // --- Integrations ---
 

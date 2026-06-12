@@ -48,6 +48,8 @@ const RPC_METHODS: &[&str] = &[
     "set_permission_mode",
     "get_capabilities",
     "get_permissions_status",
+    "health",
+    "status",
     "list_integrations",
     "start_oauth_flow",
     "disconnect_integration",
@@ -1127,6 +1129,32 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                 debug!(id, "get_permissions_status");
                 let resp = match service.get_permissions_status().await {
                     Ok(status) => Response::success(id, serde_json::to_value(&status).unwrap()),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "health" => {
+                debug!(id, "health");
+                let resp = match service.health().await {
+                    Ok(h) => Response::success(id, serde_json::to_value(&h).unwrap()),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "status" => {
+                debug!(id, "status");
+                let resp = match service.status().await {
+                    Ok(s) => Response::success(id, serde_json::to_value(&s).unwrap()),
                     Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender
