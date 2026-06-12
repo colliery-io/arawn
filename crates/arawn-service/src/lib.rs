@@ -10,14 +10,15 @@ use uuid::Uuid;
 
 pub use error::ServiceError;
 pub use types::{
-    CeremoniesStatus, CommandInfo, EmbeddingStatus, EngineEvent, ExtractionCursor,
-    ExtractionStatus, FeedDiscoverDto, FeedDiscoverRow, FeedParamKindDto, FeedParamSpecDto,
-    FeedRegisterSpec, FeedRemoveDto, FeedSchemaDto, FeedStatusRow, FeedSummaryDto,
-    FeedTemplateInfo, FeedsStatus, ForgetCandidate, ForgetResult, HealthStatus, IntegrationStatus,
-    InventoryItem, LensInfo, LlmClientStatus, LlmStatus, MemoryStoreResult, MemoryStoreSummary,
-    MemorySummary, MemoryTypeCount, ModalPromptOption, OAuthFlowStarted, PermissionAuditEntry,
-    PermissionModeInfo, PermissionsStatus, SYSTEM_STATUS_VERSION, ServerCapabilities, ServerNotice,
-    SessionDetail, SessionInfo, SystemStatus, WorkflowInfo,
+    CeremoniesStatus, CeremonyRunStatus, CommandInfo, EmbeddingStatus, EngineEvent,
+    ExtractionCursor, ExtractionStatus, FeedDiscoverDto, FeedDiscoverRow, FeedParamKindDto,
+    FeedParamSpecDto, FeedRegisterSpec, FeedRemoveDto, FeedSchemaDto, FeedStatusRow,
+    FeedSummaryDto, FeedTemplateInfo, FeedsStatus, ForgetCandidate, ForgetResult, HealthStatus,
+    IntegrationStatus, InventoryItem, LensInfo, LlmClientStatus, LlmStatus, MemoryStoreResult,
+    MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption, OAuthFlowStarted,
+    PermissionAuditEntry, PermissionModeInfo, PermissionsStatus, SYSTEM_STATUS_VERSION,
+    ServerCapabilities, ServerNotice, SessionDetail, SessionInfo, StewardErrorStatus,
+    StewardStatus, SystemStatus, WorkflowInfo,
 };
 
 /// The service contract between any UI client and the Arawn backend.

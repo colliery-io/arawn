@@ -111,79 +111,122 @@ impl CeremonyDispatcher for EngineDispatcher {
         let live_period_key = plugin.period_key(now);
         let recovered = period_key != live_period_key;
 
-        // 3: idempotency — skip if tablet already exists with non-`open` status.
-        if let Some(status) = current_tablet_status(&self.conn, kind, &period_key)? {
-            if status != TabletStatus::Open {
+        // The dispatch proper runs in an inner block so its terminal
+        // outcome (skip / generate / error) can be recorded to the
+        // persisted run history (ARAWN-T-0477) at a single point below.
+        let result: Result<DispatchOutcome, CeremonyError> = async {
+            // 3: idempotency — skip if tablet already exists with non-`open` status.
+            if let Some(status) = current_tablet_status(&self.conn, kind, &period_key)? {
+                if status != TabletStatus::Open {
+                    return Ok(DispatchOutcome::Skipped {
+                        reason: format!(
+                            "tablet for ({kind}, {period_key}) already exists with status '{}'",
+                            status.as_str()
+                        ),
+                    });
+                }
+                // status == Open: caller is rerunning a tablet that was
+                // never reviewed. Conservative choice: skip so we don't
+                // overwrite in-flight content. Production may want to
+                // re-open this for explicit `force` runs — defer to a
+                // follow-up.
                 return Ok(DispatchOutcome::Skipped {
                     reason: format!(
-                        "tablet for ({kind}, {period_key}) already exists with status '{}'",
-                        status.as_str()
+                        "tablet for ({kind}, {period_key}) already open — refusing to overwrite"
                     ),
                 });
             }
-            // status == Open: caller is rerunning a tablet that was
-            // never reviewed. Conservative choice: skip so we don't
-            // overwrite in-flight content. Production may want to
-            // re-open this for explicit `force` runs — defer to a
-            // follow-up.
-            return Ok(DispatchOutcome::Skipped {
-                reason: format!(
-                    "tablet for ({kind}, {period_key}) already open — refusing to overwrite"
-                ),
-            });
-        }
 
-        // 4: Run the pipeline with auto-commit writes. Earlier
-        // revisions wrapped the whole pipeline in BEGIN IMMEDIATE
-        // …COMMIT, which held a SQLite write lock across the LLM
-        // compose call (up to several seconds) and starved every
-        // other writer on `arawn.db` — including `create_session`
-        // via WS-RPC. UAT exposed this when boot-time back-fill
-        // composed 15 tablets in sequence and the test client's
-        // first `create_session` hit `busy_timeout` (5s) and
-        // failed.
-        //
-        // Each insert below is its own SQLite auto-commit
-        // transaction; the LLM compose call sits between writes
-        // with no lock held. On any error after the tablet row is
-        // inserted we clean up by deleting that row so the next
-        // dispatch can retry.
-        let result = self
-            .run_pipeline(plugin.as_ref(), &period_key, now, recovered)
-            .await;
-        match result {
-            Ok(tablet_id) => {
-                if let Some(events) = &self.events {
-                    emit_event(
-                        events,
-                        CeremonyEvent::TabletGenerated {
-                            tablet_id: tablet_id.clone(),
-                            kind: kind.to_string(),
-                            period_key: period_key.clone(),
-                        },
-                    );
+            // 4: Run the pipeline with auto-commit writes. Earlier
+            // revisions wrapped the whole pipeline in BEGIN IMMEDIATE
+            // …COMMIT, which held a SQLite write lock across the LLM
+            // compose call (up to several seconds) and starved every
+            // other writer on `arawn.db` — including `create_session`
+            // via WS-RPC. UAT exposed this when boot-time back-fill
+            // composed 15 tablets in sequence and the test client's
+            // first `create_session` hit `busy_timeout` (5s) and
+            // failed.
+            //
+            // Each insert below is its own SQLite auto-commit
+            // transaction; the LLM compose call sits between writes
+            // with no lock held. On any error after the tablet row is
+            // inserted we clean up by deleting that row so the next
+            // dispatch can retry.
+            let pipeline_result = self
+                .run_pipeline(plugin.as_ref(), &period_key, now, recovered)
+                .await;
+            match pipeline_result {
+                Ok(tablet_id) => {
+                    if let Some(events) = &self.events {
+                        emit_event(
+                            events,
+                            CeremonyEvent::TabletGenerated {
+                                tablet_id: tablet_id.clone(),
+                                kind: kind.to_string(),
+                                period_key: period_key.clone(),
+                            },
+                        );
+                    }
+                    Ok(DispatchOutcome::Generated { tablet_id })
                 }
-                Ok(DispatchOutcome::Generated { tablet_id })
-            }
-            Err(e) => {
-                // Best-effort cleanup so a failed compose doesn't
-                // leave an `open`-status tablet that idempotency
-                // would later refuse to overwrite.
-                let tablet_id = format!("{}-{period_key}", kind);
-                if let Err(cleanup_err) = delete_tablet(&self.conn, &tablet_id) {
-                    warn!(
-                        tablet_id,
-                        error = %cleanup_err,
-                        "failed to clean up tablet after pipeline error"
-                    );
+                Err(e) => {
+                    // Best-effort cleanup so a failed compose doesn't
+                    // leave an `open`-status tablet that idempotency
+                    // would later refuse to overwrite.
+                    let tablet_id = format!("{}-{period_key}", kind);
+                    if let Err(cleanup_err) = delete_tablet(&self.conn, &tablet_id) {
+                        warn!(
+                            tablet_id,
+                            error = %cleanup_err,
+                            "failed to clean up tablet after pipeline error"
+                        );
+                    }
+                    Err(e)
                 }
-                Err(e)
             }
         }
+        .await;
+
+        // ARAWN-T-0477: record the dispatch outcome to the persisted run
+        // history (best-effort — a history write must never fail the run).
+        self.record_run(kind, &period_key, &result);
+
+        result
     }
 }
 
 impl EngineDispatcher {
+    /// Persist a single dispatch outcome to `ceremony_run_history`
+    /// (ARAWN-T-0477). Best-effort: a failure here is logged, never
+    /// propagated — recording history must not break the ceremony run.
+    fn record_run(
+        &self,
+        kind: &str,
+        period_key: &str,
+        result: &Result<DispatchOutcome, CeremonyError>,
+    ) {
+        let (outcome, error) = match result {
+            Ok(DispatchOutcome::Generated { .. }) => ("ok", None),
+            Ok(DispatchOutcome::Skipped { .. }) => ("skipped", None),
+            Err(e) => ("error", Some(e.to_string())),
+        };
+        let ran_at = Utc::now().to_rfc3339();
+        let conn = match self.conn.0.lock() {
+            Ok(c) => c,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        if let Err(e) = arawn_storage::failure_history::record_ceremony_run(
+            &conn,
+            kind,
+            period_key,
+            outcome,
+            error.as_deref(),
+            &ran_at,
+        ) {
+            warn!(kind, error = %e, "failed to record ceremony run history");
+        }
+    }
+
     async fn run_pipeline(
         &self,
         plugin: &dyn Ceremony,
@@ -675,6 +718,57 @@ mod tests {
         // Rollback: no tablet, no items.
         assert_eq!(count_rows(&conn, "ceremony_tablets"), 0);
         assert_eq!(count_rows(&conn, "ceremony_items"), 0);
+    }
+
+    /// Read the latest `ceremony_run_history` row for a kind.
+    fn latest_run(conn: &ConnHandle, kind: &str) -> (String, Option<String>) {
+        let c = conn.0.lock().unwrap();
+        c.query_row(
+            "SELECT outcome, error FROM ceremony_run_history \
+             WHERE kind = ?1 ORDER BY id DESC LIMIT 1",
+            [kind],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn dispatch_records_ok_run_history() {
+        // ARAWN-T-0477: a successful dispatch leaves an 'ok' history row.
+        let (_tmp, conn) = open_test_db();
+        let reg = PluginRegistry::new();
+        let items = vec![item_composed("retro-2026-W20", "what_happened", "sig-1")];
+        reg.register(Arc::new(ScriptedPlugin::new("retro", items)))
+            .unwrap();
+        let disp = EngineDispatcher::new(conn.clone(), reg);
+        disp.dispatch("retro").await.unwrap();
+
+        let (outcome, error) = latest_run(&conn, "retro");
+        assert_eq!(outcome, "ok");
+        assert!(error.is_none());
+    }
+
+    #[tokio::test]
+    async fn failing_dispatch_records_error_run_history() {
+        // ARAWN-T-0477: a failed dispatch is queryable after the fact — an
+        // 'error' row with the failure text, even though the tablet itself
+        // rolled back.
+        let (_tmp, conn) = open_test_db();
+        let reg = PluginRegistry::new();
+        let items = vec![
+            item_composed("retro-2026-W20", "what_happened", "sig-1"),
+            item_composed("retro-2026-W20", "what_happened", ""), // missing citation → error
+        ];
+        reg.register(Arc::new(ScriptedPlugin::new("retro", items)))
+            .unwrap();
+        let disp = EngineDispatcher::new(conn.clone(), reg);
+        let _ = disp.dispatch("retro").await.unwrap_err();
+
+        // Tablet rolled back, but the failure is recorded.
+        assert_eq!(count_rows(&conn, "ceremony_tablets"), 0);
+        let (outcome, error) = latest_run(&conn, "retro");
+        assert_eq!(outcome, "error");
+        assert!(error.is_some(), "error text should be persisted");
     }
 
     #[tokio::test]

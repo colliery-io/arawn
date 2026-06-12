@@ -10,9 +10,9 @@ use std::sync::atomic::Ordering;
 
 use crate::lock_ext::Recover;
 use arawn_service::{
-    CeremoniesStatus, EmbeddingStatus, ExtractionCursor, ExtractionStatus, FeedStatusRow,
-    FeedsStatus, HealthStatus, LlmClientStatus, LlmStatus, SYSTEM_STATUS_VERSION, ServiceError,
-    SystemStatus,
+    CeremoniesStatus, CeremonyRunStatus, EmbeddingStatus, ExtractionCursor, ExtractionStatus,
+    FeedStatusRow, FeedsStatus, HealthStatus, LlmClientStatus, LlmStatus, SYSTEM_STATUS_VERSION,
+    ServiceError, StewardErrorStatus, StewardStatus, SystemStatus,
 };
 
 use super::LocalService;
@@ -44,6 +44,7 @@ impl LocalService {
             embedding: self.embedding_status(),
             extraction: self.extraction_status(),
             llm: self.llm_status(),
+            steward: self.steward_status(),
         })
     }
 
@@ -76,16 +77,59 @@ impl LocalService {
     }
 
     fn ceremonies_status(&self) -> CeremoniesStatus {
+        // Latest dispatch outcome per ceremony, from the persisted run
+        // history (ARAWN-T-0477) — independent of whether the engine is
+        // currently wired (the history outlives a single process).
+        let recent_runs = {
+            let store = self.store.lock().recover();
+            arawn_storage::failure_history::latest_ceremony_runs(store.database().conn())
+                .map(|rows| {
+                    rows.into_iter()
+                        .map(|r| CeremonyRunStatus {
+                            kind: r.kind,
+                            period_key: r.period_key,
+                            outcome: r.outcome,
+                            error: r.error,
+                            ran_at: r.ran_at,
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
         match self.ceremony_service() {
             Some(svc) => CeremoniesStatus {
                 available: true,
                 pending_notifications: svc.list_notifications().ok().map(|n| n.len() as u64),
+                recent_runs,
             },
             None => CeremoniesStatus {
                 available: false,
                 pending_notifications: None,
+                recent_runs,
             },
         }
+    }
+
+    fn steward_status(&self) -> StewardStatus {
+        // Recent steward subroutine failures from the persisted error log
+        // (ARAWN-T-0477). The journal stays success-only; this is the error
+        // side-channel.
+        let recent_errors = {
+            let store = self.store.lock().recover();
+            arawn_storage::failure_history::recent_steward_errors(store.database().conn(), 20)
+                .map(|rows| {
+                    rows.into_iter()
+                        .map(|r| StewardErrorStatus {
+                            lens: r.lens_name,
+                            subroutine: r.subroutine,
+                            error: r.error,
+                            failed_at: r.failed_at,
+                        })
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        StewardStatus { recent_errors }
     }
 
     fn embedding_status(&self) -> EmbeddingStatus {

@@ -431,10 +431,13 @@ pub struct SystemStatus {
     pub embedding: EmbeddingStatus,
     pub extraction: ExtractionStatus,
     pub llm: LlmStatus,
+    /// Steward background-maintenance health (ARAWN-T-0477). Added in v2.
+    pub steward: StewardStatus,
 }
 
 /// Current schema version of [`SystemStatus`]. Bump when adding blocks.
-pub const SYSTEM_STATUS_VERSION: u32 = 1;
+/// v2 (ARAWN-T-0477) adds `ceremonies.recent_runs` + the `steward` block.
+pub const SYSTEM_STATUS_VERSION: u32 = 2;
 
 /// Feed subsystem health: whether the runtime is wired and a per-feed
 /// last-run summary.
@@ -465,9 +468,46 @@ pub struct CeremoniesStatus {
     /// skipped because the workflow runner was unavailable).
     pub available: bool,
     /// Count of pending ceremony notifications, when the engine is wired.
-    /// A coarse "something is waiting for review" signal; T-0477 will add
-    /// per-ceremony last-run rows.
+    /// A coarse "something is waiting for review" signal.
     pub pending_notifications: Option<u64>,
+    /// The latest dispatch outcome per ceremony kind (ARAWN-T-0477), from
+    /// the persisted run history — so "why is there no tablet today?" is
+    /// answerable. Newest first; empty until a dispatch has been recorded.
+    #[serde(default)]
+    pub recent_runs: Vec<CeremonyRunStatus>,
+}
+
+/// One ceremony's most recent dispatch outcome (ARAWN-T-0477).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CeremonyRunStatus {
+    pub kind: String,
+    pub period_key: String,
+    /// `ok` | `skipped` | `error`.
+    pub outcome: String,
+    /// Failure text when `outcome == "error"`.
+    pub error: Option<String>,
+    /// RFC3339 timestamp.
+    pub ran_at: String,
+}
+
+/// Steward (background-maintenance) health (ARAWN-T-0477). v1 surfaces only
+/// the recent error log; the journal stays success-only and isn't mirrored
+/// here.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StewardStatus {
+    /// Recent failed subroutine passes, newest first.
+    #[serde(default)]
+    pub recent_errors: Vec<StewardErrorStatus>,
+}
+
+/// One failed steward subroutine pass (ARAWN-T-0477).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StewardErrorStatus {
+    pub lens: String,
+    pub subroutine: String,
+    pub error: String,
+    /// RFC3339 timestamp.
+    pub failed_at: String,
 }
 
 /// Embedding-pipeline health.

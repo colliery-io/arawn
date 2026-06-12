@@ -164,6 +164,17 @@ pub(super) fn format_system_status(status: &arawn_service::SystemStatus) -> Stri
             );
         }
     }
+    for r in &status.ceremonies.recent_runs {
+        let detail = match r.outcome.as_str() {
+            "error" => format!("error: {}", r.error.as_deref().unwrap_or("?")),
+            other => other.to_string(),
+        };
+        let _ = writeln!(
+            out,
+            "  - {} ({}) {detail} · {}",
+            r.kind, r.period_key, r.ran_at
+        );
+    }
 
     // Embedding
     let pending = status
@@ -199,6 +210,24 @@ pub(super) fn format_system_status(status: &arawn_service::SystemStatus) -> Stri
         let _ = writeln!(out, "LLM:");
         for c in &status.llm.clients {
             let _ = writeln!(out, "  - {}: {}/{}", c.role, c.provider, c.model);
+        }
+    }
+
+    // Steward (ARAWN-T-0477) — recent maintenance failures, if any.
+    if status.steward.recent_errors.is_empty() {
+        let _ = writeln!(out, "Steward: ✓ no recent errors");
+    } else {
+        let _ = writeln!(
+            out,
+            "Steward: ⚠ {} recent error(s)",
+            status.steward.recent_errors.len()
+        );
+        for e in status.steward.recent_errors.iter().take(5) {
+            let _ = writeln!(
+                out,
+                "  - {}/{}: {} ({})",
+                e.lens, e.subroutine, e.error, e.failed_at
+            );
         }
     }
 
@@ -345,8 +374,9 @@ pub(super) fn format_known_templates() -> String {
 mod tests {
     use super::*;
     use arawn_service::{
-        CeremoniesStatus, EmbeddingStatus, ExtractionCursor, ExtractionStatus, FeedStatusRow,
-        FeedsStatus, LlmClientStatus, LlmStatus, SYSTEM_STATUS_VERSION, SystemStatus,
+        CeremoniesStatus, CeremonyRunStatus, EmbeddingStatus, ExtractionCursor, ExtractionStatus,
+        FeedStatusRow, FeedsStatus, LlmClientStatus, LlmStatus, SYSTEM_STATUS_VERSION,
+        StewardErrorStatus, StewardStatus, SystemStatus,
     };
 
     fn populated() -> SystemStatus {
@@ -365,6 +395,13 @@ mod tests {
             ceremonies: CeremoniesStatus {
                 available: true,
                 pending_notifications: Some(2),
+                recent_runs: vec![CeremonyRunStatus {
+                    kind: "daily".into(),
+                    period_key: "2026-06-11".into(),
+                    outcome: "error".into(),
+                    error: Some("compose failed".into()),
+                    ran_at: "2026-06-11T07:00:00Z".into(),
+                }],
             },
             embedding: EmbeddingStatus {
                 embedder_loaded: true,
@@ -386,6 +423,14 @@ mod tests {
                 }],
                 engine_reachable: None,
             },
+            steward: StewardStatus {
+                recent_errors: vec![StewardErrorStatus {
+                    lens: "pat".into(),
+                    subroutine: "identity".into(),
+                    error: "boom".into(),
+                    failed_at: "2026-06-11T02:00:00Z".into(),
+                }],
+            },
         }
     }
 
@@ -396,10 +441,18 @@ mod tests {
         assert!(out.contains("Feeds: ✓ runtime up (1 configured)"), "{out}");
         assert!(out.contains("design-channel"), "{out}");
         assert!(out.contains("Ceremonies: ✓ engine up · 2 pending"), "{out}");
+        // Persisted ceremony run history (T-0477).
+        assert!(
+            out.contains("daily (2026-06-11) error: compose failed"),
+            "{out}"
+        );
         assert!(out.contains("Embedding: model ✓ · 5 pending"), "{out}");
         assert!(out.contains("Extraction: ✓ runner up · 1 cursor"), "{out}");
         assert!(out.contains("pat/slack_messages"), "{out}");
         assert!(out.contains("engine: groq/llama-3.3-70b"), "{out}");
+        // Steward error log (T-0477).
+        assert!(out.contains("Steward: ⚠ 1 recent error"), "{out}");
+        assert!(out.contains("pat/identity: boom"), "{out}");
     }
 
     #[test]
@@ -410,6 +463,7 @@ mod tests {
         s.ceremonies = CeremoniesStatus {
             available: false,
             pending_notifications: None,
+            recent_runs: vec![],
         };
         s.embedding = EmbeddingStatus {
             embedder_loaded: false,
@@ -419,10 +473,14 @@ mod tests {
             available: false,
             cursors: vec![],
         };
+        s.steward = StewardStatus {
+            recent_errors: vec![],
+        };
         let out = format_system_status(&s);
         assert!(out.contains("Feeds: — runtime unavailable"), "{out}");
         assert!(out.contains("Ceremonies: — engine"), "{out}");
         assert!(out.contains("Embedding: model — · n/a pending"), "{out}");
         assert!(out.contains("Extraction: — runner unavailable"), "{out}");
+        assert!(out.contains("Steward: ✓ no recent errors"), "{out}");
     }
 }

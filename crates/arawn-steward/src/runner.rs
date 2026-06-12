@@ -130,6 +130,32 @@ impl StewardRunner {
         Ok(j)
     }
 
+    /// Persist a failed subroutine pass to `steward_error_log`
+    /// (ARAWN-T-0477). Best-effort: a logging failure here must not abort
+    /// the remaining subroutines, so the error is swallowed (logged) rather
+    /// than propagated.
+    fn record_subroutine_error(&self, lens_name: &str, subroutine: &str, error: &str) {
+        let failed_at = chrono::Utc::now().to_rfc3339();
+        let store = match self.store.lock() {
+            Ok(s) => s,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        if let Err(e) = arawn_storage::failure_history::record_steward_error(
+            store.database().conn(),
+            lens_name,
+            subroutine,
+            error,
+            &failed_at,
+        ) {
+            warn!(
+                lens = %lens_name,
+                subroutine,
+                error = %e,
+                "failed to record steward error to history"
+            );
+        }
+    }
+
     /// Run one pass over `lens`: every subroutine, in declared
     /// order, sequentially. A subroutine error is logged and surfaces
     /// in `stats.errors` but does not abort the remaining subroutines.
@@ -179,6 +205,10 @@ impl StewardRunner {
                         error = %e,
                         "steward subroutine failed; continuing"
                     );
+                    // ARAWN-T-0477: persist the failure so it's queryable
+                    // after the fact (the journal stays success-only) and
+                    // surfaces in `/status`.
+                    self.record_subroutine_error(&lens.name, sub.name(), &e.to_string());
                 }
             }
         }
@@ -303,5 +333,51 @@ mod tests {
         let j = runner.journal_for("scratch").unwrap();
         let recent = j.recent(10).unwrap();
         assert_eq!(recent.len(), 2, "two passes → two journal rows");
+    }
+
+    /// A subroutine that always fails — exercises the error path.
+    struct FailingSubroutine;
+    #[async_trait::async_trait]
+    impl crate::subroutine::StewardSubroutine for FailingSubroutine {
+        fn name(&self) -> &str {
+            "boom"
+        }
+        fn is_mutating(&self) -> bool {
+            false
+        }
+        async fn run(
+            &self,
+            _ctx: &crate::subroutine::SubroutineCtx,
+        ) -> Result<crate::subroutine::SubroutineOutcome, StewardError> {
+            Err(StewardError::Storage("kaboom".into()))
+        }
+    }
+
+    #[tokio::test]
+    async fn failing_subroutine_writes_error_log() {
+        // ARAWN-T-0477: a subroutine error is persisted to steward_error_log
+        // (the journal stays success-only) and is readable back.
+        let (_tmp, store, resolver) = setup();
+        let runner = StewardRunner::new(
+            store.clone(),
+            _tmp.path(),
+            resolver,
+            vec![Arc::new(FailingSubroutine)],
+        );
+        let stats = runner.run_pass_for_all().await.unwrap();
+        assert!(
+            stats.errors >= 1,
+            "the failing subroutine should bump errors"
+        );
+
+        let s = store.lock().unwrap();
+        let errors =
+            arawn_storage::failure_history::recent_steward_errors(s.database().conn(), 10).unwrap();
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.subroutine == "boom" && e.error.contains("kaboom")),
+            "expected a steward_error_log row for the failing subroutine, got {errors:?}"
+        );
     }
 }
