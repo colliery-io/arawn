@@ -261,16 +261,15 @@ pub fn read_token_file() -> Option<String> {
 pub async fn run_server(service: LocalService, host: &str, port: u16) -> anyhow::Result<()> {
     let data_dir = service.data_dir.clone();
 
-    // Generate auth token and write to disk for clients
+    // Generate the auth token now (the handler needs it in AppState), but
+    // DON'T write the token file until we've actually bound the port. Writing
+    // it up front means a failed `arawn serve` (port already in use) would
+    // clobber the *running* server's token file and lock out its clients.
     let auth_token = generate_auth_token();
-    match write_token_file(&data_dir, &auth_token) {
-        Ok(path) => info!(?path, "auth token written"),
-        Err(e) => warn!("failed to write auth token file: {e} — authentication disabled"),
-    }
 
     let state = AppState {
         service: Arc::new(service),
-        auth_token: Some(auth_token),
+        auth_token: Some(auth_token.clone()),
     };
 
     let app = Router::new()
@@ -296,7 +295,25 @@ pub async fn run_server(service: LocalService, host: &str, port: u16) -> anyhow:
              network."
         );
     }
-    let listener = TcpListener::bind(&addr).await?;
+    let listener = TcpListener::bind(&addr).await.map_err(|e| {
+        if e.kind() == std::io::ErrorKind::AddrInUse {
+            anyhow::anyhow!(
+                "Cannot start server: {addr} is already in use.\n\
+                 Is another `arawn serve` already running? Stop it first, \
+                 or pick a different port with `--port <N>`."
+            )
+        } else {
+            anyhow::anyhow!("Failed to bind {addr}: {e}")
+        }
+    })?;
+
+    // Bound successfully — now it's safe to (over)write the token file. Any
+    // stale token from a previous crashed run is replaced here.
+    match write_token_file(&data_dir, &auth_token) {
+        Ok(path) => info!(?path, "auth token written"),
+        Err(e) => warn!("failed to write auth token file: {e} — authentication disabled"),
+    }
+
     info!(addr = %addr, "WebSocket server listening");
     eprintln!("Arawn server listening on ws://{addr}/ws");
     eprintln!("Press Ctrl-C to stop.");

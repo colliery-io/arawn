@@ -144,10 +144,10 @@ impl CeremonyService {
         self
     }
 
-    /// `ceremonies.set_retro_cadence` — persist a new retro cadence
-    /// + anchor to `ceremony_config`. Applied to the live plugin on
-    /// next restart. (Hot-applying would need interior mutability on
-    /// the plugin Arc; deferred until that's actually painful.)
+    /// `ceremonies.set_retro_cadence` — persist a new retro cadence and
+    /// anchor to `ceremony_config`. Applied to the live plugin on next
+    /// restart. (Hot-applying would need interior mutability on the
+    /// plugin Arc; deferred until that's actually painful.)
     ///
     /// `cadence_str` accepts `"weekly"` / `"biweekly"` / `"monthly"`
     /// (case-insensitive). For biweekly the anchor is set to "today's
@@ -429,7 +429,9 @@ impl CeremonyService {
         }
 
         // Idempotency: if a priority row already cites this item via
-        // its linked todo's attrs.citation_id, return it.
+        // its linked todo's attrs.citation_id, return it. The tuple mirrors
+        // the SELECT column list one-to-one; naming it buys nothing.
+        #[allow(clippy::type_complexity)]
         let existing: Option<(
             String,
             Option<String>,

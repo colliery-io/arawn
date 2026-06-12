@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use futures::StreamExt;
@@ -18,6 +19,9 @@ use arawn_tool::ToolRegistry;
 
 const DEFAULT_MAX_ITERATIONS: usize = 200;
 const MAX_COMPACT_FAILURES: u32 = 3;
+/// Fallback recent-window for microcompaction when no full compactor is
+/// configured to borrow `keep_recent` from.
+const DEFAULT_MICROCOMPACT_KEEP_RECENT: usize = 6;
 
 /// Live progress events emitted during the engine loop.
 /// The service layer can map these to EngineEvent/WebSocket messages.
@@ -37,6 +41,10 @@ pub enum ProgressEvent {
         content: String,
         is_error: bool,
     },
+    /// An out-of-band engine notice the user should see (e.g. automatic
+    /// context compaction was disabled). The service maps this to a
+    /// user-visible warning.
+    Notice { message: String },
 }
 const DEFAULT_SYSTEM_PROMPT: &str = "You are Arawn, a helpful assistant. When you need to perform actions, use the available tools. Think step by step.";
 
@@ -342,8 +350,15 @@ impl QueryEngine {
                 }
             }
 
-            // Microcompact: clear old tool results to save context space (no LLM call)
-            let chars_cleared = session.microcompact(6); // keep last 6 messages verbatim
+            // Microcompact: clear old tool results to save context space (no
+            // LLM call). Shares the recent-window size with the full compactor
+            // so the two stay consistent instead of hardcoding a separate 6.
+            let microcompact_keep = self
+                .compactor
+                .as_ref()
+                .map(|c| c.keep_recent())
+                .unwrap_or(DEFAULT_MICROCOMPACT_KEEP_RECENT);
+            let chars_cleared = session.microcompact(microcompact_keep);
             if chars_cleared > 0 {
                 debug!(chars_cleared, "microcompact cleared old tool results");
             }
@@ -389,6 +404,19 @@ impl QueryEngine {
                                 max = MAX_COMPACT_FAILURES,
                                 "compaction failed, continuing with full history"
                             );
+                            // Surface to the user the moment the breaker trips
+                            // (once, on the transition — not every later turn),
+                            // so an unexplained context-overflow doesn't appear
+                            // 20 turns later with no warning.
+                            if self.compact_failures == MAX_COMPACT_FAILURES {
+                                self.emit_progress(ProgressEvent::Notice {
+                                    message: "Automatic context compaction has failed repeatedly \
+                                              and is now paused. This session may hit the model's \
+                                              context limit — consider starting a new session if \
+                                              responses degrade."
+                                        .into(),
+                                });
+                            }
                         } else {
                             // Success — reset circuit breaker
                             if self.compact_failures > 0 {
@@ -427,7 +455,21 @@ impl QueryEngine {
 
             // If no tool calls, we're done
             if response.tool_calls.is_empty() {
-                let text = response.text.clone();
+                let mut text = response.text.clone();
+                // A turn that stopped on the token limit or a content filter
+                // is NOT a clean end — tell the user instead of silently
+                // presenting a truncated answer as complete.
+                match response.finish_reason {
+                    Some(arawn_llm::FinishReason::Length) => {
+                        text.push_str(
+                            "\n\n_[Response truncated: hit the model's output token limit.]_",
+                        );
+                    }
+                    Some(arawn_llm::FinishReason::ContentFilter) => {
+                        text.push_str("\n\n_[Response halted by the provider's content filter.]_");
+                    }
+                    _ => {}
+                }
                 session.add_message(Message::Assistant {
                     content: text.clone(),
                     tool_uses: vec![],
@@ -482,7 +524,14 @@ impl QueryEngine {
                     continue;
                 }
                 // Check for repeated failing calls with identical arguments.
-                // We use a compact key of tool name + sorted args to detect duplicates.
+                // The key is the tool name + the arguments re-serialized through
+                // `serde_json::Value`'s Display, which is canonical: keys are
+                // sorted (serde_json's default Map is a BTreeMap — `preserve_order`
+                // is off) and incidental whitespace from the raw LLM output is
+                // already normalized away by parsing. So `{"a":1,"b":2}` and
+                // `{ "b":2, "a":1 }` hash to the same key. `failed_call_counts`
+                // lives on the engine, which is rebuilt per message, so the
+                // counts are naturally scoped to a single turn-loop.
                 let call_key = format!("{}:{}", tc.name, tc.arguments);
                 if let Some(&count) = self.failed_call_counts.get(&call_key)
                     && count >= 2
@@ -836,41 +885,37 @@ impl QueryEngine {
             .map_err(|e| EngineError::Other(anyhow::anyhow!("llm gate refused acquire: {e:?}")))?;
         let mut stream = self.llm.stream(request).await?;
         let mut response = AssembledResponse::default();
-        let mut current_tool_id = String::new();
-        let mut current_tool_name = String::new();
-        let mut current_tool_args = String::new();
+        // Assemble tool calls keyed by their stream `index`, NOT by arrival
+        // order. A model emitting parallel tool calls interleaves argument
+        // deltas for different indices; the old "current tool" flush model
+        // mixed them together. BTreeMap keeps the calls ordered by index.
+        let mut partials: BTreeMap<u32, PartialToolCall> = BTreeMap::new();
 
         while let Some(chunk) = stream.next().await {
             match chunk {
                 Ok(ChatChunk::TextDelta { text }) => {
                     response.text.push_str(&text);
                 }
-                Ok(ChatChunk::ToolUseStart { id, name }) => {
-                    // Flush any previous tool call
-                    if !current_tool_name.is_empty() {
-                        response.tool_calls.push(AssembledToolCall {
-                            id: current_tool_id.clone(),
-                            name: current_tool_name.clone(),
-                            arguments: parse_arguments(&current_tool_args),
-                        });
+                Ok(ChatChunk::ToolUseStart { index, id, name }) => {
+                    let entry = partials.entry(index).or_default();
+                    entry.id = id;
+                    entry.name = name;
+                }
+                Ok(ChatChunk::ToolUseInputDelta { index, json }) => {
+                    partials.entry(index).or_default().arguments.push_str(&json);
+                }
+                Ok(ChatChunk::Done {
+                    usage,
+                    finish_reason,
+                }) => {
+                    // A stream can emit more than one Done (e.g. a usage chunk
+                    // then `[DONE]`); only overwrite usage with a real value
+                    // and keep the first non-empty finish_reason.
+                    if usage.is_some() {
+                        response.usage = usage;
                     }
-                    current_tool_id = id;
-                    current_tool_name = name;
-                    current_tool_args.clear();
-                }
-                Ok(ChatChunk::ToolUseInputDelta { json }) => {
-                    current_tool_args.push_str(&json);
-                }
-                Ok(ChatChunk::Done { usage }) => {
-                    response.usage = usage;
-                    // Flush any pending tool call
-                    if !current_tool_name.is_empty() {
-                        response.tool_calls.push(AssembledToolCall {
-                            id: current_tool_id.clone(),
-                            name: current_tool_name.clone(),
-                            arguments: parse_arguments(&current_tool_args),
-                        });
-                        current_tool_name.clear();
+                    if finish_reason.is_some() {
+                        response.finish_reason = finish_reason;
                     }
                 }
                 Err(e) => {
@@ -880,13 +925,49 @@ impl QueryEngine {
             }
         }
 
-        // Flush if stream ended without Done
-        if !current_tool_name.is_empty() {
+        // Finalize assembled tool calls. A tool call whose accumulated
+        // arguments are non-empty but don't parse as JSON is an interrupted
+        // stream — surface it explicitly instead of silently executing the
+        // tool with `{}` (which would run it with the wrong/empty input).
+        for (index, partial) in partials {
+            if partial.name.is_empty() {
+                return Err(EngineError::Llm(arawn_llm::LlmError::Stream(format!(
+                    "stream interrupted: tool call at index {index} arrived without a name"
+                ))));
+            }
+            let arguments = if partial.arguments.trim().is_empty() {
+                // Legitimate no-argument tool call.
+                serde_json::json!({})
+            } else {
+                serde_json::from_str(&partial.arguments).map_err(|e| {
+                    EngineError::Llm(arawn_llm::LlmError::Stream(format!(
+                        "stream interrupted: tool call '{}' (index {index}) has incomplete \
+                         or malformed arguments ({e})",
+                        partial.name
+                    )))
+                })?
+            };
             response.tool_calls.push(AssembledToolCall {
-                id: current_tool_id,
-                name: current_tool_name,
-                arguments: parse_arguments(&current_tool_args),
+                id: partial.id,
+                name: partial.name,
+                arguments,
             });
+        }
+
+        // A truncated stream (token limit / content filter) that was in the
+        // middle of emitting tool calls cannot be trusted — the last call's
+        // arguments may be silently incomplete-but-valid JSON.
+        if response
+            .finish_reason
+            .as_ref()
+            .is_some_and(|fr| fr.is_truncated())
+            && !response.tool_calls.is_empty()
+        {
+            return Err(EngineError::Llm(arawn_llm::LlmError::Stream(format!(
+                "stream interrupted: model stopped with finish_reason={:?} while emitting \
+                 tool calls",
+                response.finish_reason
+            ))));
         }
 
         Ok(response)
@@ -1068,28 +1149,29 @@ impl QueryEngine {
     }
 }
 
-fn parse_arguments(raw: &str) -> serde_json::Value {
-    if raw.is_empty() {
-        return serde_json::json!({});
-    }
-    serde_json::from_str(raw).unwrap_or_else(|_| {
-        let truncated = &raw[..raw.len().min(200)];
-        warn!(raw = %truncated, "malformed tool arguments from LLM, falling back to empty object");
-        serde_json::json!({})
-    })
-}
-
 #[derive(Default)]
 struct AssembledResponse {
     text: String,
     tool_calls: Vec<AssembledToolCall>,
     usage: Option<arawn_llm::Usage>,
+    /// Why the model stopped, if the provider reported it. Used to detect
+    /// truncated turns (`length`/`content_filter`) and surface them.
+    finish_reason: Option<arawn_llm::FinishReason>,
 }
 
 struct AssembledToolCall {
     id: String,
     name: String,
     arguments: serde_json::Value,
+}
+
+/// A tool call being assembled from interleaved streaming deltas, keyed by
+/// the provider's tool-call `index`.
+#[derive(Default)]
+struct PartialToolCall {
+    id: String,
+    name: String,
+    arguments: String,
 }
 
 struct ToolResult {
@@ -1315,6 +1397,58 @@ mod tests {
     use std::pin::Pin;
     use std::sync::Mutex;
 
+    #[test]
+    fn duplicate_call_key_is_canonical_and_order_independent() {
+        // P1-10 (ARAWN-T-0474): the dedup key re-serializes arguments through
+        // serde_json::Value, whose Display sorts object keys (preserve_order is
+        // off) and drops incidental whitespace. So the same logical call hashes
+        // identically regardless of how the model ordered/spaced its arguments —
+        // a near-duplicate can't silently reset the failure counter.
+        let a: serde_json::Value = serde_json::from_str(r#"{"a":1,"b":2}"#).unwrap();
+        let b: serde_json::Value = serde_json::from_str(r#"{ "b" : 2,  "a": 1 }"#).unwrap();
+        assert_eq!(format!("tool:{a}"), format!("tool:{b}"));
+    }
+
+    #[test]
+    fn previously_used_tools_stay_available_under_filtering() {
+        // P1-8 (ARAWN-T-0474): a tool the agent already used must remain in the
+        // catalog on later turns even when the new user message shares no
+        // keywords with it. `filter_tools_for_context` force-includes any tool
+        // present in an earlier Assistant message's tool_uses.
+        use arawn_core::{Lens, Message, ToolUse};
+
+        // A small-window model so the filter actually runs (no large-context bypass).
+        let limits = ModelLimits::new(8_000, 0.85);
+        let registry = ToolRegistry::new();
+        registry.register(Box::new(ThinkTool)); // gives us a real, registered tool name
+
+        // Build a session: turn-1 assistant used "think", turn-2 user message
+        // mentions nothing related.
+        let lens = Lens::scratch("/tmp/sticky-test");
+        let mut session = Session::new(lens.id);
+        session.add_message(Message::User {
+            content: "please reflect on this".into(),
+        });
+        session.add_message(Message::Assistant {
+            content: String::new(),
+            tool_uses: vec![ToolUse {
+                id: "1".into(),
+                name: "think".into(),
+                input: serde_json::json!({}),
+            }],
+        });
+        session.add_message(Message::User {
+            content: "what is the capital of france".into(), // unrelated to "think"
+        });
+
+        let all_tools = registry.tool_definitions();
+        let filtered = filter_tools_for_context(&all_tools, &session, &registry, &[], &limits);
+        assert!(
+            filtered.iter().any(|t| t.name == "think"),
+            "a previously-used tool must remain available after an unrelated turn"
+        );
+    }
+
     /// Mock LLM that returns pre-scripted responses.
     struct MockLlm {
         responses: Mutex<Vec<Vec<ChatChunk>>>,
@@ -1333,7 +1467,10 @@ mod tests {
                 ChatChunk::TextDelta {
                     text: text.to_string(),
                 },
-                ChatChunk::Done { usage: None },
+                ChatChunk::Done {
+                    usage: None,
+                    finish_reason: Some(arawn_llm::FinishReason::Stop),
+                },
             ]
         }
 
@@ -1341,13 +1478,18 @@ mod tests {
         fn tool_call(id: &str, name: &str, args: &str) -> Vec<ChatChunk> {
             vec![
                 ChatChunk::ToolUseStart {
+                    index: 0,
                     id: id.to_string(),
                     name: name.to_string(),
                 },
                 ChatChunk::ToolUseInputDelta {
+                    index: 0,
                     json: args.to_string(),
                 },
-                ChatChunk::Done { usage: None },
+                ChatChunk::Done {
+                    usage: None,
+                    finish_reason: Some(arawn_llm::FinishReason::ToolCalls),
+                },
             ]
         }
     }

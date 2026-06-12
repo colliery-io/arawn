@@ -70,7 +70,7 @@ impl LlmClient for UsageTrackingClient {
             let mut recorded = false;
             while let Some(chunk) = upstream.next().await {
                 let chunk = chunk?;
-                if let ChatChunk::Done { usage: Some(usage) } = &chunk {
+                if let ChatChunk::Done { usage: Some(usage), .. } = &chunk {
                     record(TokenUsageRecord {
                         ts: now_secs(),
                         provider: provider.clone(),
@@ -141,6 +141,7 @@ mod tests {
                     input_tokens: 7,
                     output_tokens: 3,
                 }),
+                finish_reason: None,
             },
         ])]));
         let wrapped = UsageTrackingClient::new(mock, "mock-provider");

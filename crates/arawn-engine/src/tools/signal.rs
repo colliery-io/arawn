@@ -201,12 +201,8 @@ impl Tool for SignalSearchTool {
             None => None,
         };
 
-        let hits = arawn_memory::search_labeled_stores(
-            &stores,
-            query,
-            query_embedding.as_deref(),
-            limit,
-        );
+        let hits =
+            arawn_memory::search_labeled_stores(&stores, query, query_embedding.as_deref(), limit);
 
         let results: Vec<Value> = hits
             .iter()
@@ -702,7 +698,10 @@ mod tests {
             .await
             .unwrap();
         let v: Value = serde_json::from_str(&r.content).unwrap();
-        assert_eq!(v["count"], 1, "roam-all should find the `other` lens entity");
+        assert_eq!(
+            v["count"], 1,
+            "roam-all should find the `other` lens entity"
+        );
         assert_eq!(
             v["results"][0]["lens"], "other",
             "hit should be labeled with its source lens"

@@ -754,7 +754,10 @@ mod integration {
             let text = payload.to_string();
             let chunks: Vec<Result<ChatChunk, LlmError>> = vec![
                 Ok(ChatChunk::TextDelta { text }),
-                Ok(ChatChunk::Done { usage: None }),
+                Ok(ChatChunk::Done {
+                    usage: None,
+                    finish_reason: None,
+                }),
             ];
             Ok(Box::pin(stream::iter(chunks)))
         }
@@ -1132,7 +1135,10 @@ mod integration {
             let text = payload.to_string();
             let chunks: Vec<Result<ChatChunk, LlmError>> = vec![
                 Ok(ChatChunk::TextDelta { text }),
-                Ok(ChatChunk::Done { usage: None }),
+                Ok(ChatChunk::Done {
+                    usage: None,
+                    finish_reason: None,
+                }),
             ];
             Ok(Box::pin(stream::iter(chunks)))
         }

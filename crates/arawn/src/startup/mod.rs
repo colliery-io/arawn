@@ -8,6 +8,7 @@ pub mod feeds;
 pub mod feeds_helpers;
 pub mod helpers;
 pub mod hooks;
+pub mod init;
 pub mod integrations;
 
 pub use cli::run_cli_via_server;

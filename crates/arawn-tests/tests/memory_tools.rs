@@ -94,7 +94,10 @@ async fn memory_store_inserts_entity() {
 
     // ARAWN-I-0061: memory writes are global, not per-lens.
     let entities = mgr.global.search("PostgreSQL", 5).unwrap();
-    assert!(!entities.is_empty(), "entity should be stored in global memory");
+    assert!(
+        !entities.is_empty(),
+        "entity should be stored in global memory"
+    );
     assert_eq!(entities[0].title, "Project uses PostgreSQL 15");
     assert_eq!(
         entities[0].content.as_deref(),

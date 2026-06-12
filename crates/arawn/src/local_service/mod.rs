@@ -1,3 +1,4 @@
+use crate::lock_ext::Recover;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -16,8 +17,8 @@ use arawn_engine::{
 use arawn_llm::LlmClient;
 use arawn_service::{
     ArawnService, CommandInfo, EngineEvent, ForgetResult, InventoryItem, LensInfo,
-    MemoryStoreResult, MemorySummary, PermissionModeInfo, ServiceError,
-    SessionDetail, SessionInfo, WorkflowInfo,
+    MemoryStoreResult, MemorySummary, PermissionModeInfo, ServiceError, SessionDetail, SessionInfo,
+    WorkflowInfo,
 };
 use arawn_storage::{Store, lens_dir_name};
 use tracing::instrument;
@@ -168,12 +169,12 @@ impl LocalService {
     /// Wire the ceremony service. Called from main.rs after the
     /// cloacina runtime starts.
     pub fn set_ceremony_service(&self, svc: Arc<arawn_ceremonies::CeremonyService>) {
-        *self.ceremony_service.write().unwrap() = Some(svc);
+        *self.ceremony_service.write().recover() = Some(svc);
     }
 
     /// Shared reference to the ceremony service, if wired.
     pub fn ceremony_service(&self) -> Option<Arc<arawn_ceremonies::CeremonyService>> {
-        self.ceremony_service.read().unwrap().clone()
+        self.ceremony_service.read().recover().clone()
     }
 
     /// Wire the shared `SessionLens` shim. Memory tools read
@@ -188,11 +189,11 @@ impl LocalService {
     /// `/feeds` can dispatch to it. Called from main.rs after
     /// `arawn_feeds::start` returns.
     pub fn set_feed_runtime(&self, runtime: Arc<arawn_feeds::FeedRuntime>) {
-        *self.feed_runtime.write().unwrap() = Some(runtime);
+        *self.feed_runtime.write().recover() = Some(runtime);
     }
 
     fn feed_runtime_or_err(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError> {
-        self.feed_runtime.read().unwrap().clone().ok_or_else(|| {
+        self.feed_runtime.read().recover().clone().ok_or_else(|| {
             ServiceError::Internal("feeds runtime unavailable — workflow runner not running".into())
         })
     }
@@ -204,7 +205,7 @@ impl LocalService {
         info!(name = %name, "registering integration");
         self.integration_registry
             .write()
-            .unwrap()
+            .recover()
             .insert(name, integration);
     }
 
@@ -233,7 +234,7 @@ impl LocalService {
     }
 
     pub fn with_permission_rules(self, rules: Vec<PermissionRule>) -> Self {
-        *self.permission_rules.write().unwrap() = rules;
+        *self.permission_rules.write().recover() = rules;
         self
     }
 
@@ -241,7 +242,7 @@ impl LocalService {
     /// `[permissions] autonomy` in arawn.toml). Defaults to
     /// `PermissionMode::Ask`.
     pub fn with_permission_mode(self, mode: arawn_engine::permissions::PermissionMode) -> Self {
-        *self.permission_mode.write().unwrap() = mode;
+        *self.permission_mode.write().recover() = mode;
         self
     }
 
@@ -328,7 +329,7 @@ impl LocalService {
         session_id: Uuid,
     ) -> Result<(arawn_storage::SessionMeta, Lens, String, Vec<Message>), ServiceError> {
         let (meta, lens, ws_dir) = {
-            let store = self.store.lock().unwrap();
+            let store = self.store.lock().recover();
             let meta = store
                 .get_session_meta(session_id)?
                 .ok_or_else(|| ServiceError::NotFound(format!("session {session_id}")))?;
@@ -546,10 +547,10 @@ impl LocalService {
 
         // Attach permission checker
         {
-            let rules = self.permission_rules.read().unwrap().clone();
+            let rules = self.permission_rules.read().recover().clone();
             if !rules.is_empty() {
                 let prompt = ChannelModalPrompt::new(event_tx.clone(), self.pending_modals.clone());
-                let mode = *self.permission_mode.read().unwrap();
+                let mode = *self.permission_mode.read().recover();
                 let mut checker = PermissionChecker::new(rules)
                     .with_mode(mode)
                     .with_prompter(Box::new(prompt))
@@ -902,5 +903,64 @@ mod feed_default_tests {
     fn unknown_service_has_no_default_feed() {
         assert!(default_feed_for_service("zoom").is_none());
         assert!(default_feed_for_service("").is_none());
+    }
+}
+
+/// P1-2 (ARAWN-T-0469): the service must survive a panic in a background
+/// writer. All lock acquisitions in this crate recover from poisoning via the
+/// `Recover` trait (`.recover()`) rather than `.unwrap()`, so a panic while one
+/// task holds a write guard does NOT brick every later RPC. These tests
+/// exercise the trait directly on the `feed_runtime: RwLock<Option<_>>` access
+/// shape and fence against anyone reintroducing a poison-panicking `.unwrap()`.
+#[cfg(test)]
+mod poison_recovery_tests {
+    use std::sync::{Arc, Mutex, PoisonError, RwLock};
+
+    use crate::lock_ext::Recover;
+
+    #[test]
+    fn rwlock_read_recovers_after_writer_panic() {
+        let lock: Arc<RwLock<Option<u32>>> = Arc::new(RwLock::new(Some(1)));
+
+        // A background "writer" panics while holding the write guard,
+        // poisoning the lock — exactly the scenario where a panicking
+        // ceremony/feed task could otherwise brick the server.
+        let l = Arc::clone(&lock);
+        let handle = std::thread::spawn(move || {
+            // Acquire via the std API here so the panic happens regardless of
+            // our trait; recovery on the *read* side is what we assert below.
+            let mut g = l.write().unwrap_or_else(PoisonError::into_inner);
+            *g = Some(2);
+            panic!("simulated background writer panic");
+        });
+        assert!(
+            handle.join().is_err(),
+            "the writer thread should have panicked"
+        );
+        assert!(lock.is_poisoned(), "the lock should now be poisoned");
+
+        // The production access pattern (`.recover()`) must still work — no
+        // panic, and the partially-applied write is recovered rather than lost.
+        let read = lock.read().recover().clone();
+        assert_eq!(read, Some(2));
+
+        // And subsequent writes still succeed through the recovered guard.
+        *lock.write().recover() = Some(3);
+        assert_eq!(*lock.read().recover(), Some(3));
+    }
+
+    #[test]
+    fn mutex_recovers_after_holder_panic() {
+        let lock: Arc<Mutex<u32>> = Arc::new(Mutex::new(0));
+        let l = Arc::clone(&lock);
+        let handle = std::thread::spawn(move || {
+            let mut g = l.lock().unwrap_or_else(PoisonError::into_inner);
+            *g = 42;
+            panic!("poison the mutex");
+        });
+        assert!(handle.join().is_err());
+        assert!(lock.is_poisoned());
+        // Recovered access via `.recover()` does not panic and sees the value.
+        assert_eq!(*lock.lock().recover(), 42);
     }
 }

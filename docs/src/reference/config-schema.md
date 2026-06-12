@@ -30,7 +30,7 @@ A named LLM profile. Multiple entries allowed; the `[engine].llm` key picks whic
 | Key | Type | Default | Description |
 |---|---|---|---|
 | `provider` | string | `groq` | Provider name (`groq`, `openai`, `ollama`, `anthropic`) or a base URL (e.g. `https://ollama.com/v1`). |
-| `model` | string | `openai/gpt-oss-20b` | Provider-specific model id. |
+| `model` | string | `openai/gpt-oss-120b` | Provider-specific model id. |
 | `api_key` | string | none | Direct key value. Takes precedence over `api_key_env`. |
 | `api_key_env` | string | `GROQ_API_KEY` | Name of env var holding the key. Set to `""` for keyless providers. |
 | `base_url` | string | none | Override the provider's default API base URL. |

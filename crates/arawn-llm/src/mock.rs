@@ -65,16 +65,25 @@ impl MockResponse {
         match self {
             Self::Text(text) => vec![
                 ChatChunk::TextDelta { text },
-                ChatChunk::Done { usage: None },
+                ChatChunk::Done {
+                    usage: None,
+                    finish_reason: Some(crate::types::FinishReason::Stop),
+                },
             ],
             Self::ToolCall {
                 id,
                 name,
                 arguments,
             } => vec![
-                ChatChunk::ToolUseStart { id, name },
-                ChatChunk::ToolUseInputDelta { json: arguments },
-                ChatChunk::Done { usage: None },
+                ChatChunk::ToolUseStart { index: 0, id, name },
+                ChatChunk::ToolUseInputDelta {
+                    index: 0,
+                    json: arguments,
+                },
+                ChatChunk::Done {
+                    usage: None,
+                    finish_reason: Some(crate::types::FinishReason::ToolCalls),
+                },
             ],
             Self::Raw(chunks) => chunks,
             Self::Error(_) | Self::StreamError { .. } => {
@@ -205,7 +214,7 @@ mod tests {
                     assert_eq!(name, "think");
                     got_start = true;
                 }
-                ChatChunk::ToolUseInputDelta { json } => {
+                ChatChunk::ToolUseInputDelta { json, .. } => {
                     assert!(json.contains("thought"));
                     got_delta = true;
                 }
@@ -313,7 +322,10 @@ mod tests {
     #[tokio::test]
     async fn mock_error_then_success_simulates_retry() {
         let mock = MockLlmClient::new(vec![
-            MockResponse::error(crate::error::LlmError::RateLimited("slow down".into())),
+            MockResponse::error(crate::error::LlmError::RateLimited {
+                message: "slow down".into(),
+                retry_after: None,
+            }),
             MockResponse::text("recovered"),
         ]);
         let request = ChatRequest {

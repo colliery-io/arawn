@@ -25,23 +25,45 @@ pub fn build_llm_client(config: &crate::LlmConfig) -> Result<Arc<dyn arawn_llm::
     );
     match config.provider.as_str() {
         "anthropic" => {
-            let api_key = resolved_key.ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Anthropic provider requires an API key — set `api_key` in [llm.<name>] or export {}",
-                    config.api_key_env
-                )
-            })?;
+            let api_key = resolved_key.ok_or_else(|| missing_key_error(config))?;
             Ok(Arc::new(arawn_llm::AnthropicClient::new(api_key)))
         }
-        _ => {
-            // All other providers use OpenAI-compatible client
+        provider => {
+            // Cloud OpenAI-compatible providers need a key too — fail fast at
+            // startup (parity with Anthropic) instead of letting the user type
+            // their first prompt before discovering the env var was unset.
+            // Local providers (Ollama, LM Studio) legitimately need no key.
+            if provider_requires_key(provider) && resolved_key.is_none() {
+                return Err(missing_key_error(config));
+            }
             Ok(Arc::new(arawn_llm::OpenAICompatibleClient::from_config(
-                &config.provider,
+                provider,
                 config.base_url.as_deref(),
                 resolved_key,
             )?))
         }
     }
+}
+
+/// Does this provider require an API key? Cloud providers do; local ones
+/// (Ollama, LM Studio) don't. Unknown providers are treated permissively
+/// (no key required) — they may be a local proxy or a custom endpoint, and we
+/// can't know, so we don't block startup.
+fn provider_requires_key(provider: &str) -> bool {
+    matches!(
+        provider,
+        "groq" | "openai" | "anthropic" | "mistral" | "together" | "fireworks"
+    )
+}
+
+/// A fail-fast startup error that names the exact env var the user should set.
+fn missing_key_error(config: &crate::LlmConfig) -> anyhow::Error {
+    anyhow::anyhow!(
+        "provider '{}' requires an API key, but none was found — set `api_key` in \
+         [llm.<name>] or export {} before starting arawn",
+        config.provider,
+        config.api_key_env
+    )
 }
 
 /// Register all default tools into the registry.
@@ -174,5 +196,49 @@ pub fn dirs_path() -> Option<String> {
     #[cfg(not(target_os = "macos"))]
     {
         std::env::var("HOME").ok().map(|h| format!("{h}/.arawn"))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::LlmConfig;
+
+    #[test]
+    fn cloud_provider_without_key_fails_fast_naming_env_var() {
+        // P1-3 (ARAWN-T-0470): a cloud provider whose key env var is unset
+        // must fail at client construction, not mid-session — and the error
+        // must name the exact env var the user should set.
+        let cfg = LlmConfig {
+            provider: "groq".into(),
+            api_key: None,
+            api_key_env: "ARAWN_TEST_DEFINITELY_UNSET_KEY_9f3a".into(),
+            ..LlmConfig::default()
+        };
+        let err = match build_llm_client(&cfg) {
+            Ok(_) => panic!("missing key should fail fast"),
+            Err(e) => e,
+        };
+        let msg = format!("{err}");
+        assert!(
+            msg.contains("ARAWN_TEST_DEFINITELY_UNSET_KEY_9f3a"),
+            "error must name the configured env var: {msg}"
+        );
+        assert!(
+            msg.contains("groq"),
+            "error should name the provider: {msg}"
+        );
+    }
+
+    #[test]
+    fn local_provider_without_key_still_builds() {
+        // Ollama / LM Studio need no key — startup must not block on them.
+        let cfg = LlmConfig {
+            provider: "ollama".into(),
+            api_key: None,
+            api_key_env: "ARAWN_TEST_DEFINITELY_UNSET_KEY_9f3a".into(),
+            ..LlmConfig::default()
+        };
+        assert!(build_llm_client(&cfg).is_ok());
     }
 }

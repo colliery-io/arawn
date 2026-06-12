@@ -15,7 +15,7 @@ use tracing::{debug, warn};
 use arawn_llm::LlmClient;
 use arawn_memory::{Entity, RelationType};
 
-use crate::cursor::CursorStore;
+use crate::cursor::CursorFactory;
 use crate::error::StewardError;
 use crate::journal::{Journal, JournalRecord};
 use crate::llm_text::{complete_text, extract_json_block};
@@ -58,14 +58,14 @@ pub struct MapSubroutine {
     client: Arc<dyn LlmClient>,
     model: String,
     config: MapConfig,
-    cursor_factory: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync>,
+    cursor_factory: CursorFactory,
 }
 
 impl MapSubroutine {
     pub fn new(
         client: Arc<dyn LlmClient>,
         model: impl Into<String>,
-        cursor_factory: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync>,
+        cursor_factory: CursorFactory,
     ) -> Self {
         Self {
             client,
@@ -283,6 +283,7 @@ fn brief(e: &Entity) -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cursor::CursorStore;
     use std::collections::VecDeque;
     use std::pin::Pin;
     use std::sync::Mutex;
@@ -324,7 +325,10 @@ mod tests {
             let text = v.to_string();
             Ok(Box::pin(stream::iter(vec![
                 Ok(ChatChunk::TextDelta { text }),
-                Ok(ChatChunk::Done { usage: None }),
+                Ok(ChatChunk::Done {
+                    usage: None,
+                    finish_reason: None,
+                }),
             ])))
         }
     }
@@ -333,14 +337,13 @@ mod tests {
         tempfile::TempDir,
         Arc<MemoryManager>,
         Arc<Journal>,
-        Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync>,
+        CursorFactory,
     ) {
         let tmp = tempfile::tempdir().unwrap();
         let mem = Arc::new(MemoryManager::open(tmp.path(), "ws", None).unwrap());
         let j = Arc::new(Journal::open(tmp.path(), "ws").unwrap());
         let dir = tmp.path().to_path_buf();
-        let f: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync> =
-            Arc::new(move |n: &str| CursorStore::open(&dir, n));
+        let f: CursorFactory = Arc::new(move |n: &str| CursorStore::open(&dir, n));
         (tmp, mem, j, f)
     }
 

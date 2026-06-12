@@ -153,8 +153,15 @@ impl LlmClient for OpenAICompatibleClient {
 
         if !response.status().is_success() {
             let status = response.status().as_u16();
+            // Capture Retry-After before consuming the body — the retry layer
+            // honors it on a 429.
+            let retry_after = parse_retry_after(response.headers());
             let text = response.text().await.unwrap_or_default();
-            return Err(LlmError::from_status(status, text));
+            return Err(LlmError::from_status_with_retry_after(
+                status,
+                text,
+                retry_after,
+            ));
         }
 
         let byte_stream = response.bytes_stream();
@@ -171,6 +178,10 @@ struct SseParser<S> {
     buffer: String,
     pending_chunks: Vec<ChatChunk>,
     provider: String,
+    /// The most recent `finish_reason` seen in a choice. OpenAI reports it in
+    /// a choice *before* the `[DONE]` marker (and any usage-only chunk), so we
+    /// stash it here and attach it to whichever `Done` chunk we emit.
+    finish_reason: Option<crate::types::FinishReason>,
 }
 
 impl<S> SseParser<S> {
@@ -180,6 +191,7 @@ impl<S> SseParser<S> {
             buffer: String::new(),
             pending_chunks: Vec::new(),
             provider,
+            finish_reason: None,
         }
     }
 }
@@ -242,7 +254,10 @@ impl<S> SseParser<S> {
 
             if let Some(data) = line.strip_prefix("data: ") {
                 if data == "[DONE]" {
-                    return Some(Ok(ChatChunk::Done { usage: None }));
+                    return Some(Ok(ChatChunk::Done {
+                        usage: None,
+                        finish_reason: self.finish_reason.take(),
+                    }));
                 }
 
                 // Check for inline error responses
@@ -259,7 +274,17 @@ impl<S> SseParser<S> {
 
                 match serde_json::from_str::<StreamChunk>(data) {
                     Ok(chunk) => {
-                        let mut chunks = parse_stream_chunk(&chunk);
+                        // Capture finish_reason as soon as a choice reports
+                        // one — it arrives in a content/empty delta before the
+                        // terminal usage chunk or `[DONE]`.
+                        if let Some(fr) = chunk
+                            .choices
+                            .first()
+                            .and_then(|c| c.finish_reason.as_deref())
+                        {
+                            self.finish_reason = Some(crate::types::FinishReason::from_openai(fr));
+                        }
+                        let mut chunks = parse_stream_chunk(&chunk, &mut self.finish_reason);
                         if !chunks.is_empty() {
                             let first = chunks.remove(0);
                             for remaining in chunks.into_iter().rev() {
@@ -279,7 +304,14 @@ impl<S> SseParser<S> {
     }
 }
 
-fn parse_stream_chunk(chunk: &StreamChunk) -> Vec<ChatChunk> {
+/// Translate one parsed SSE chunk into provider-neutral `ChatChunk`s.
+///
+/// `finish_reason` is the parser's running finish_reason, consumed (`take`n)
+/// when this chunk is terminal so it rides along on the emitted `Done`.
+fn parse_stream_chunk(
+    chunk: &StreamChunk,
+    finish_reason: &mut Option<crate::types::FinishReason>,
+) -> Vec<ChatChunk> {
     let mut results = Vec::new();
 
     if let Some(ref usage) = chunk.usage {
@@ -288,6 +320,7 @@ fn parse_stream_chunk(chunk: &StreamChunk) -> Vec<ChatChunk> {
                 input_tokens: usage.prompt_tokens,
                 output_tokens: usage.completion_tokens,
             }),
+            finish_reason: finish_reason.take(),
         });
         return results;
     }
@@ -297,22 +330,48 @@ fn parse_stream_chunk(chunk: &StreamChunk) -> Vec<ChatChunk> {
     };
     let delta = &choice.delta;
 
-    if let Some(tool_calls) = &delta.tool_calls
-        && let Some(tc) = tool_calls.first()
-        && let Some(ref func) = tc.function
-    {
-        if let Some(ref name) = func.name {
-            results.push(ChatChunk::ToolUseStart {
-                id: tc.id.clone().unwrap_or_default(),
-                name: name.clone(),
-            });
+    if let Some(tool_calls) = &delta.tool_calls {
+        // Iterate ALL tool calls in the delta — a model emitting parallel
+        // calls can place several in one delta, and interleave argument
+        // deltas for different `index`es across subsequent deltas. We key
+        // every emitted chunk by index so the engine assembles them
+        // independently rather than by arrival order.
+        for (pos, tc) in tool_calls.iter().enumerate() {
+            let Some(ref func) = tc.function else {
+                continue;
+            };
+            // Fall back to array position when the provider omits `index`
+            // (single-tool OpenAI-compatible servers sometimes do): a lone
+            // call lands in slot 0 across deltas, matching the old behavior.
+            let index = tc.index.unwrap_or(pos as u32);
+
+            if let Some(ref name) = func.name {
+                // Never key on an empty id — synthesize a deterministic,
+                // non-empty one from the index so downstream tool-result
+                // routing has a stable handle.
+                let id = tc
+                    .id
+                    .clone()
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or_else(|| format!("call_{index}"));
+                results.push(ChatChunk::ToolUseStart {
+                    index,
+                    id,
+                    name: name.clone(),
+                });
+            }
+            if let Some(ref args) = func.arguments
+                && !args.is_empty()
+            {
+                results.push(ChatChunk::ToolUseInputDelta {
+                    index,
+                    json: args.clone(),
+                });
+            }
         }
-        if let Some(ref args) = func.arguments
-            && !args.is_empty()
-        {
-            results.push(ChatChunk::ToolUseInputDelta { json: args.clone() });
+        if !results.is_empty() {
+            return results;
         }
-        return results;
     }
 
     if let Some(ref content) = delta.content
@@ -416,6 +475,15 @@ fn build_tools(tools: &[ToolDefinition]) -> Vec<Value> {
         .collect()
 }
 
+/// Parse a `Retry-After` header into a duration. Handles the common
+/// delta-seconds form (`Retry-After: 30`); HTTP-date form is treated as
+/// absent (callers fall back to exponential backoff).
+fn parse_retry_after(headers: &reqwest::header::HeaderMap) -> Option<std::time::Duration> {
+    let v = headers.get(reqwest::header::RETRY_AFTER)?.to_str().ok()?;
+    let secs: u64 = v.trim().parse().ok()?;
+    Some(std::time::Duration::from_secs(secs))
+}
+
 // --- Response types (OpenAI-compatible) ---
 
 #[derive(Debug, Deserialize)]
@@ -441,6 +509,8 @@ struct StreamChunk {
 #[derive(Debug, Deserialize)]
 struct StreamChoice {
     delta: StreamDelta,
+    #[serde(default)]
+    finish_reason: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -451,6 +521,13 @@ struct StreamDelta {
 
 #[derive(Debug, Deserialize)]
 struct StreamToolCall {
+    /// Position of this tool call within the assistant turn. The OpenAI
+    /// streaming spec sends one `index` per parallel tool call and keys
+    /// interleaved argument deltas by it. Providers that only ever emit a
+    /// single tool call may omit it; we fall back to the call's position in
+    /// the delta array (see `parse_stream_chunk`).
+    #[serde(default)]
+    index: Option<u32>,
     id: Option<String>,
     function: Option<StreamFunction>,
 }
@@ -618,10 +695,11 @@ mod tests {
                     content: Some("Hello".into()),
                     tool_calls: None,
                 },
+                finish_reason: None,
             }],
             usage: None,
         };
-        let result = parse_stream_chunk(&chunk);
+        let result = parse_stream_chunk(&chunk, &mut None);
         assert_eq!(result.len(), 1);
         assert!(matches!(&result[0], ChatChunk::TextDelta { text } if text == "Hello"));
     }
@@ -633,6 +711,7 @@ mod tests {
                 delta: StreamDelta {
                     content: None,
                     tool_calls: Some(vec![StreamToolCall {
+                        index: Some(0),
                         id: Some("call_abc".into()),
                         function: Some(StreamFunction {
                             name: Some("file_read".into()),
@@ -640,12 +719,16 @@ mod tests {
                         }),
                     }]),
                 },
+                finish_reason: None,
             }],
             usage: None,
         };
-        let result = parse_stream_chunk(&chunk);
+        let result = parse_stream_chunk(&chunk, &mut None);
         assert_eq!(result.len(), 1);
-        assert!(matches!(&result[0], ChatChunk::ToolUseStart { name, .. } if name == "file_read"));
+        assert!(matches!(
+            &result[0],
+            ChatChunk::ToolUseStart { name, id, index } if name == "file_read" && id == "call_abc" && *index == 0
+        ));
     }
 
     #[test]
@@ -657,9 +740,187 @@ mod tests {
                 completion_tokens: 50,
             }),
         };
-        let result = parse_stream_chunk(&chunk);
+        let result = parse_stream_chunk(&chunk, &mut None);
         assert_eq!(result.len(), 1);
-        assert!(matches!(&result[0], ChatChunk::Done { usage: Some(u) } if u.input_tokens == 100));
+        assert!(
+            matches!(&result[0], ChatChunk::Done { usage: Some(u), .. } if u.input_tokens == 100)
+        );
+    }
+
+    /// Helper to build a single-choice chunk carrying tool-call deltas.
+    fn tool_delta_chunk(tool_calls: Vec<StreamToolCall>) -> StreamChunk {
+        StreamChunk {
+            choices: vec![StreamChoice {
+                delta: StreamDelta {
+                    content: None,
+                    tool_calls: Some(tool_calls),
+                },
+                finish_reason: None,
+            }],
+            usage: None,
+        }
+    }
+
+    #[test]
+    fn parse_two_parallel_tool_calls_in_one_delta() {
+        // Regression for P1-1: the old parser did `tool_calls.first()` and
+        // silently dropped every call after the first.
+        let chunk = tool_delta_chunk(vec![
+            StreamToolCall {
+                index: Some(0),
+                id: Some("call_a".into()),
+                function: Some(StreamFunction {
+                    name: Some("file_read".into()),
+                    arguments: Some(r#"{"path":"a"}"#.into()),
+                }),
+            },
+            StreamToolCall {
+                index: Some(1),
+                id: Some("call_b".into()),
+                function: Some(StreamFunction {
+                    name: Some("file_read".into()),
+                    arguments: Some(r#"{"path":"b"}"#.into()),
+                }),
+            },
+        ]);
+        let result = parse_stream_chunk(&chunk, &mut None);
+        // start+args for each of the two calls
+        let starts: Vec<_> = result
+            .iter()
+            .filter_map(|c| match c {
+                ChatChunk::ToolUseStart { index, id, name } => {
+                    Some((*index, id.clone(), name.clone()))
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(starts.len(), 2, "both parallel tool calls must be emitted");
+        assert_eq!(starts[0], (0, "call_a".into(), "file_read".into()));
+        assert_eq!(starts[1], (1, "call_b".into(), "file_read".into()));
+    }
+
+    #[test]
+    fn tool_call_index_keys_interleaved_arg_deltas() {
+        // Two calls' argument deltas arrive in separate, interleaved chunks;
+        // each must keep its own index so the engine can route them.
+        let c1 = tool_delta_chunk(vec![StreamToolCall {
+            index: Some(0),
+            id: Some("call_a".into()),
+            function: Some(StreamFunction {
+                name: Some("a".into()),
+                arguments: Some(r#"{"x":"#.into()),
+            }),
+        }]);
+        let c2 = tool_delta_chunk(vec![StreamToolCall {
+            index: Some(1),
+            id: Some("call_b".into()),
+            function: Some(StreamFunction {
+                name: Some("b".into()),
+                arguments: Some(r#"{"y":"#.into()),
+            }),
+        }]);
+        let c3 = tool_delta_chunk(vec![StreamToolCall {
+            index: Some(0),
+            id: None,
+            function: Some(StreamFunction {
+                name: None,
+                arguments: Some("1}".into()),
+            }),
+        }]);
+        let mut all = Vec::new();
+        for c in [c1, c2, c3] {
+            all.extend(parse_stream_chunk(&c, &mut None));
+        }
+        // Deltas for index 0 should be "{"x":" then "1}"
+        let idx0_json: String = all
+            .iter()
+            .filter_map(|c| match c {
+                ChatChunk::ToolUseInputDelta { index: 0, json } => Some(json.clone()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(idx0_json, r#"{"x":1}"#);
+    }
+
+    #[test]
+    fn missing_tool_call_id_is_synthesized_not_empty() {
+        // Regression for P1-1: empty id must never reach the engine as an
+        // empty-string key.
+        let chunk = tool_delta_chunk(vec![StreamToolCall {
+            index: Some(2),
+            id: None,
+            function: Some(StreamFunction {
+                name: Some("thing".into()),
+                arguments: None,
+            }),
+        }]);
+        let result = parse_stream_chunk(&chunk, &mut None);
+        let id = result.iter().find_map(|c| match c {
+            ChatChunk::ToolUseStart { id, .. } => Some(id.clone()),
+            _ => None,
+        });
+        assert_eq!(id, Some("call_2".into()));
+    }
+
+    #[test]
+    fn missing_index_falls_back_to_array_position() {
+        // A single tool call with no index lands in slot 0 (single-tool path).
+        let chunk = tool_delta_chunk(vec![StreamToolCall {
+            index: None,
+            id: Some("call_x".into()),
+            function: Some(StreamFunction {
+                name: Some("solo".into()),
+                arguments: None,
+            }),
+        }]);
+        let result = parse_stream_chunk(&chunk, &mut None);
+        assert!(matches!(
+            &result[0],
+            ChatChunk::ToolUseStart { index: 0, .. }
+        ));
+    }
+
+    #[test]
+    fn finish_reason_rides_on_done() {
+        // A length-truncated stream: finish_reason captured on a choice, then
+        // attached to the Done emitted from the usage chunk.
+        let mut fr = Some(crate::types::FinishReason::Length);
+        let usage_chunk = StreamChunk {
+            choices: vec![],
+            usage: Some(StreamUsage {
+                prompt_tokens: 1,
+                completion_tokens: 2,
+            }),
+        };
+        let result = parse_stream_chunk(&usage_chunk, &mut fr);
+        assert!(matches!(
+            &result[0],
+            ChatChunk::Done {
+                finish_reason: Some(crate::types::FinishReason::Length),
+                ..
+            }
+        ));
+        assert!(
+            fr.is_none(),
+            "finish_reason should be taken, not duplicated"
+        );
+    }
+
+    #[test]
+    fn finish_reason_wire_mapping() {
+        use crate::types::FinishReason;
+        assert_eq!(FinishReason::from_openai("stop"), FinishReason::Stop);
+        assert_eq!(
+            FinishReason::from_openai("tool_calls"),
+            FinishReason::ToolCalls
+        );
+        assert_eq!(FinishReason::from_openai("length"), FinishReason::Length);
+        assert_eq!(
+            FinishReason::from_openai("content_filter"),
+            FinishReason::ContentFilter
+        );
+        assert!(FinishReason::from_openai("length").is_truncated());
+        assert!(!FinishReason::from_openai("stop").is_truncated());
     }
 
     #[test]

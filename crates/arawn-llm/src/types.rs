@@ -46,13 +46,80 @@ pub struct ToolDefinition {
     pub parameters: Value,
 }
 
+/// Why the model stopped generating, normalized across providers.
+///
+/// OpenAI-compatible providers report this as `finish_reason`
+/// (`stop` / `tool_calls` / `length` / `content_filter`); Anthropic reports
+/// it as `stop_reason` (`end_turn` / `tool_use` / `max_tokens` / …). Both are
+/// mapped onto this enum so the engine can tell a clean stop apart from a
+/// truncated one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FinishReason {
+    /// Natural end of the assistant turn.
+    Stop,
+    /// The model wants to call one or more tools.
+    ToolCalls,
+    /// Output was cut off by the token limit — the turn is incomplete.
+    Length,
+    /// Output was halted by a safety/content filter.
+    ContentFilter,
+    /// Any other/unrecognized reason, preserved verbatim.
+    Other(String),
+}
+
+impl FinishReason {
+    /// Map an OpenAI-compatible `finish_reason` wire value.
+    pub fn from_openai(s: &str) -> Self {
+        match s {
+            "stop" => Self::Stop,
+            "tool_calls" => Self::ToolCalls,
+            "length" => Self::Length,
+            "content_filter" => Self::ContentFilter,
+            other => Self::Other(other.to_string()),
+        }
+    }
+
+    /// Map an Anthropic `stop_reason` wire value.
+    pub fn from_anthropic(s: &str) -> Self {
+        match s {
+            "end_turn" | "stop_sequence" => Self::Stop,
+            "tool_use" => Self::ToolCalls,
+            "max_tokens" => Self::Length,
+            other => Self::Other(other.to_string()),
+        }
+    }
+
+    /// True when the model was cut off before finishing (token limit or
+    /// content filter), meaning any in-progress output may be incomplete.
+    pub fn is_truncated(&self) -> bool {
+        matches!(self, Self::Length | Self::ContentFilter)
+    }
+}
+
 /// Streaming chunk from the LLM.
+///
+/// Tool-call chunks carry an `index` so the engine can assemble multiple
+/// concurrent (parallel) tool calls whose deltas arrive interleaved — the
+/// OpenAI streaming spec keys interleaved `tool_calls` deltas by `index`,
+/// and Anthropic keys them by content-block index.
 #[derive(Debug, Clone)]
 pub enum ChatChunk {
-    TextDelta { text: String },
-    ToolUseStart { id: String, name: String },
-    ToolUseInputDelta { json: String },
-    Done { usage: Option<Usage> },
+    TextDelta {
+        text: String,
+    },
+    ToolUseStart {
+        index: u32,
+        id: String,
+        name: String,
+    },
+    ToolUseInputDelta {
+        index: u32,
+        json: String,
+    },
+    Done {
+        usage: Option<Usage>,
+        finish_reason: Option<FinishReason>,
+    },
 }
 
 /// Token usage statistics.

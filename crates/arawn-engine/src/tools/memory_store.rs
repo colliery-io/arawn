@@ -7,7 +7,7 @@ use tracing::{debug, info};
 use arawn_embed::Embedder;
 use arawn_llm::LlmClient;
 use arawn_memory::{
-    ConfidenceSource, Entity, EntityType, PersonProfile, RelationType, RelationToUser, Scope,
+    ConfidenceSource, Entity, EntityType, PersonProfile, RelationToUser, RelationType, Scope,
     StoreFactResult,
 };
 
@@ -252,12 +252,12 @@ impl Tool for MemoryStoreTool {
         // graph edge, and skip creating a single mis-titled entity.
         let person_intent = self.maybe_classify(entity_type, title, content).await;
 
-        if let Some(intent) = person_intent.as_ref() {
-            if let Some(bp) = intent.between_people.as_ref() {
-                return self
-                    .write_between_people_relation(&store, bp, ctx.session_id())
-                    .await;
-            }
+        if let Some(intent) = person_intent.as_ref()
+            && let Some(bp) = intent.between_people.as_ref()
+        {
+            return self
+                .write_between_people_relation(store, bp, ctx.session_id())
+                .await;
         }
 
         // Build entity
@@ -312,13 +312,13 @@ impl Tool for MemoryStoreTool {
         // merge with any existing profile so an earlier role/concerns row
         // isn't clobbered when only the relation is being captured.
         let mut relation_note = String::new();
-        if let Some(intent) = person_intent.as_ref() {
-            if let Some(rel) = intent.relation_to_user {
-                if let Err(e) = upsert_relation_to_user(store, entity_id, rel) {
-                    debug!(error = %e, "failed to upsert PersonProfile (non-fatal)");
-                } else {
-                    relation_note = format!(" [relation_to_user={}]", rel.as_str());
-                }
+        if let Some(intent) = person_intent.as_ref()
+            && let Some(rel) = intent.relation_to_user
+        {
+            if let Err(e) = upsert_relation_to_user(store, entity_id, rel) {
+                debug!(error = %e, "failed to upsert PersonProfile (non-fatal)");
+            } else {
+                relation_note = format!(" [relation_to_user={}]", rel.as_str());
             }
         }
 
@@ -412,7 +412,10 @@ mod tests {
                 Ok(arawn_llm::ChatChunk::TextDelta {
                     text: self.canned_json.clone(),
                 }),
-                Ok(arawn_llm::ChatChunk::Done { usage: None }),
+                Ok(arawn_llm::ChatChunk::Done {
+                    usage: None,
+                    finish_reason: None,
+                }),
             ];
             Ok(Box::pin(futures::stream::iter(chunks)))
         }
@@ -537,7 +540,8 @@ mod tests {
     #[tokio::test]
     async fn classifier_writes_person_profile_when_relation_to_user_detected() {
         let (_tmp, mgr, ctx) = setup();
-        let canned = r#"{"primary_name":"Sarah Lee","relation_to_user":"manages","between_people":null}"#;
+        let canned =
+            r#"{"primary_name":"Sarah Lee","relation_to_user":"manages","between_people":null}"#;
         let tool = MemoryStoreTool::new(mgr.clone(), None)
             .with_classifier(CannedIntentLlm::returning(canned), "test-model");
 
@@ -559,7 +563,11 @@ mod tests {
         let people = mgr.global.list_by_type(EntityType::Person, 10).unwrap();
         assert_eq!(people.len(), 1);
         assert_eq!(people[0].title, "Sarah Lee");
-        let profile = mgr.global.get_person_profile(people[0].id).unwrap().unwrap();
+        let profile = mgr
+            .global
+            .get_person_profile(people[0].id)
+            .unwrap()
+            .unwrap();
         assert_eq!(profile.relation_to_user, Some(RelationToUser::Manages));
     }
 
@@ -602,13 +610,17 @@ mod tests {
         let sarah = people.iter().find(|p| p.title == "Sarah").unwrap();
         let marcus = people.iter().find(|p| p.title == "Marcus").unwrap();
         let manages_edges = mgr.global.get_relations(sarah.id).unwrap();
-        assert!(manages_edges
-            .iter()
-            .any(|r| r.relation_type == RelationType::Manages && r.target_id == marcus.id));
+        assert!(
+            manages_edges
+                .iter()
+                .any(|r| r.relation_type == RelationType::Manages && r.target_id == marcus.id)
+        );
         let reports_edges = mgr.global.get_relations(marcus.id).unwrap();
-        assert!(reports_edges
-            .iter()
-            .any(|r| r.relation_type == RelationType::ReportsTo && r.target_id == sarah.id));
+        assert!(
+            reports_edges
+                .iter()
+                .any(|r| r.relation_type == RelationType::ReportsTo && r.target_id == sarah.id)
+        );
     }
 
     #[tokio::test]
@@ -631,7 +643,12 @@ mod tests {
         assert!(!result.content.contains("relation_to_user"));
         let people = mgr.global.list_by_type(EntityType::Person, 10).unwrap();
         assert_eq!(people.len(), 1);
-        assert!(mgr.global.get_person_profile(people[0].id).unwrap().is_none());
+        assert!(
+            mgr.global
+                .get_person_profile(people[0].id)
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[tokio::test]

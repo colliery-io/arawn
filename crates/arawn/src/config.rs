@@ -39,7 +39,7 @@ impl Default for LlmConfig {
     fn default() -> Self {
         Self {
             provider: "groq".into(),
-            model: "openai/gpt-oss-20b".into(),
+            model: "openai/gpt-oss-120b".into(),
             api_key: None,
             api_key_env: default_api_key_env(),
             base_url: None,
@@ -629,7 +629,7 @@ impl ArawnConfig {
 # Named LLM configurations — define models you have access to
 [llm.default]
 provider = "groq"
-model = "openai/gpt-oss-20b"
+model = "openai/gpt-oss-120b"
 api_key_env = "GROQ_API_KEY"
 context_window = 128000
 max_tokens = 4096
@@ -731,11 +731,30 @@ mod tests {
     use super::*;
 
     #[test]
+    fn first_chat_tutorial_matches_default_model() {
+        // Anti-drift pin (ARAWN-T-0472): the first-chat tutorial's example
+        // config must show the same model the code defaults to. Also fails if
+        // the tutorial file is missing — fencing the README link target.
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/src/tutorials/first-chat.md"
+        );
+        let doc = std::fs::read_to_string(path)
+            .unwrap_or_else(|e| panic!("first-chat.md must exist at {path}: {e}"));
+        let default_model = LlmConfig::default().model;
+        assert!(
+            doc.contains(&default_model),
+            "first-chat.md doesn't mention the default model '{default_model}' — \
+             update the tutorial when changing the default"
+        );
+    }
+
+    #[test]
     fn default_config_has_working_values() {
         let config = ArawnConfig::default();
         let engine_llm = config.engine_llm();
         assert_eq!(engine_llm.provider, "groq");
-        assert_eq!(engine_llm.model, "openai/gpt-oss-20b");
+        assert_eq!(engine_llm.model, "openai/gpt-oss-120b");
         assert_eq!(engine_llm.context_window, 128_000);
         assert_eq!(engine_llm.max_tokens, 4096);
         assert_eq!(config.engine.max_iterations, 20);
@@ -778,7 +797,7 @@ max_iterations = 10
         let toml = r#"
 [llm.default]
 provider = "groq"
-model = "openai/gpt-oss-20b"
+model = "openai/gpt-oss-120b"
 
 [llm.cheap]
 provider = "groq"
@@ -791,7 +810,7 @@ llm = "default"
 llm = "cheap"
 "#;
         let config: ArawnConfig = toml::from_str(toml).unwrap();
-        assert_eq!(config.engine_llm().model, "openai/gpt-oss-20b");
+        assert_eq!(config.engine_llm().model, "openai/gpt-oss-120b");
         assert_eq!(config.compactor_llm().model, "llama-3.3-70b-versatile");
     }
 
@@ -811,13 +830,13 @@ llm = "nonexistent"
         let config = ArawnConfig::load(tmp.path());
         // engine_llm() falls back to "default" when "nonexistent" not found
         let llm = config.engine_llm();
-        assert_eq!(llm.model, "openai/gpt-oss-20b"); // got the default
+        assert_eq!(llm.model, "openai/gpt-oss-120b"); // got the default
     }
 
     #[test]
     fn load_missing_file_uses_defaults() {
         let config = ArawnConfig::load(Path::new("/nonexistent/path"));
-        assert_eq!(config.engine_llm().model, "openai/gpt-oss-20b");
+        assert_eq!(config.engine_llm().model, "openai/gpt-oss-120b");
         assert_eq!(config.server.port, 3100);
     }
 
@@ -846,7 +865,7 @@ port = 9999
     fn generate_default_toml_is_parseable() {
         let toml_str = ArawnConfig::generate_default_toml();
         let parsed: ArawnConfig = toml::from_str(&toml_str).unwrap();
-        assert_eq!(parsed.engine_llm().model, "openai/gpt-oss-20b");
+        assert_eq!(parsed.engine_llm().model, "openai/gpt-oss-120b");
     }
 
     #[test]

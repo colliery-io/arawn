@@ -284,7 +284,7 @@ fn render_priority_modal(state: &PriorityModalState, frame: &mut Frame) {
     let modal_width = (area.width * 70 / 100)
         .max(40)
         .min(area.width.saturating_sub(4));
-    let modal_height = area.height.saturating_sub(4).min(24).max(10);
+    let modal_height = area.height.saturating_sub(4).clamp(10, 24);
     let rect = centered_rect(modal_width, modal_height, area);
 
     frame.render_widget(Clear, rect);
@@ -377,7 +377,7 @@ fn render_diary_editor(state: &DiaryEditorState, frame: &mut Frame) {
     let modal_width = (area.width * 80 / 100)
         .max(50)
         .min(area.width.saturating_sub(4));
-    let modal_height = area.height.saturating_sub(4).min(24).max(10);
+    let modal_height = area.height.saturating_sub(4).clamp(10, 24);
     let rect = centered_rect(modal_width, modal_height, area);
 
     frame.render_widget(Clear, rect);

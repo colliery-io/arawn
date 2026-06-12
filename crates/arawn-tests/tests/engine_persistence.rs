@@ -233,7 +233,6 @@ async fn tool_results_persisted_with_content() {
     }
 }
 
-
 #[tokio::test]
 async fn multiple_sessions_isolated() {
     let fix = Fixture::new();

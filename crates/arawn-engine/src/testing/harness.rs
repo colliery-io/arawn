@@ -258,19 +258,26 @@ mod tests {
             .with_script(vec![
                 MockResponse::raw(vec![
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "call_1".into(),
                         name: "shell".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"{"com"#.into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"mand":"#.into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#""echo split"}"#.into(),
                     },
-                    ChatChunk::Done { usage: None },
+                    ChatChunk::Done {
+                        usage: None,
+                        finish_reason: None,
+                    },
                 ]),
                 MockResponse::text("Got it"),
             ])
@@ -427,20 +434,27 @@ mod tests {
                 // Two tool calls in a single LLM response
                 MockResponse::raw(vec![
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c1".into(),
                         name: "file_read".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"{"path":"a.txt"}"#.into(),
                     },
                     ChatChunk::ToolUseStart {
+                        index: 1,
                         id: "c2".into(),
                         name: "file_read".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 1,
                         json: r#"{"path":"b.txt"}"#.into(),
                     },
-                    ChatChunk::Done { usage: None },
+                    ChatChunk::Done {
+                        usage: None,
+                        finish_reason: None,
+                    },
                 ]),
                 MockResponse::text("Both files read."),
             ])
@@ -495,13 +509,18 @@ mod tests {
                         text: "Let me think about this.".into(),
                     },
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c1".into(),
                         name: "think".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"{"thought":"planning next step"}"#.into(),
                     },
-                    ChatChunk::Done { usage: None },
+                    ChatChunk::Done {
+                        usage: None,
+                        finish_reason: None,
+                    },
                 ]),
                 MockResponse::text("Done."),
             ])
@@ -532,10 +551,12 @@ mod tests {
                 // No Done chunk — relies on flush path
                 MockResponse::raw(vec![
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c1".into(),
                         name: "think".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"{"thought":"no done"}"#.into(),
                     },
                 ]),
@@ -570,6 +591,7 @@ mod tests {
         let harness = TestHarness::builder()
             .with_script(vec![MockResponse::raw(vec![ChatChunk::Done {
                 usage: None,
+                finish_reason: None,
             }])])
             .build();
 
@@ -593,7 +615,10 @@ mod tests {
                 ChatChunk::TextDelta {
                     text: " world".into(),
                 },
-                ChatChunk::Done { usage: None },
+                ChatChunk::Done {
+                    usage: None,
+                    finish_reason: None,
+                },
             ])])
             .build();
 
@@ -610,17 +635,22 @@ mod tests {
             .with_script(vec![
                 MockResponse::raw(vec![
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c1".into(),
                         name: "think".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"{"thought":"deep thought"}"#.into(),
                     },
                     // Text appearing after tool start
                     ChatChunk::TextDelta {
                         text: "narration after tool".into(),
                     },
-                    ChatChunk::Done { usage: None },
+                    ChatChunk::Done {
+                        usage: None,
+                        finish_reason: None,
+                    },
                 ]),
                 MockResponse::text("Final."),
             ])
@@ -649,36 +679,48 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn harness_malformed_json_args_falls_back_to_empty_object() {
+    async fn harness_malformed_json_args_surface_stream_interrupted_error() {
+        // P1-1 contract change: a tool call whose accumulated arguments are
+        // non-empty but don't parse as JSON is treated as an interrupted
+        // stream. The tool MUST NOT be executed with a silent `{}` fallback —
+        // the engine surfaces an explicit error instead.
         let harness = TestHarness::builder()
             .with_tool(Box::new(ThinkTool))
             .with_script(vec![
                 MockResponse::raw(vec![
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c1".into(),
                         name: "think".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: "{{not valid json!!!".into(),
                     },
-                    ChatChunk::Done { usage: None },
+                    ChatChunk::Done {
+                        usage: None,
+                        finish_reason: None,
+                    },
                 ]),
                 MockResponse::text("Handled."),
             ])
             .build();
 
         let result = harness.run("Malformed args").await;
-        assert_eq!(result.final_text(), "Handled.");
-
-        // parse_arguments falls back to {} — the tool gets empty args
-        // ThinkTool requires "thought" field, so it may error or return empty
-        let msgs = result.session_messages();
-        match &msgs[2] {
-            Message::ToolResult { .. } => {
-                // Tool was invoked (not rejected at validation) — that's the key behavior
-            }
-            other => panic!("expected ToolResult at index 2, got: {other:?}"),
-        }
+        assert!(
+            result.final_text().contains("stream interrupted"),
+            "expected a stream-interrupted error, got: {}",
+            result.final_text()
+        );
+        // The tool was never executed — no ToolResult was produced.
+        let has_tool_result = result
+            .session_messages()
+            .iter()
+            .any(|m| matches!(m, Message::ToolResult { .. }));
+        assert!(
+            !has_tool_result,
+            "tool must not run on interrupted/malformed arguments"
+        );
     }
 
     #[tokio::test]
@@ -689,13 +731,18 @@ mod tests {
             .with_script(vec![
                 MockResponse::raw(vec![
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c1".into(),
                         name: "think".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"[1,2,3]"#.into(),
                     },
-                    ChatChunk::Done { usage: None },
+                    ChatChunk::Done {
+                        usage: None,
+                        finish_reason: None,
+                    },
                 ]),
                 MockResponse::text("Rejected."),
             ])
@@ -726,13 +773,18 @@ mod tests {
             .with_script(vec![
                 MockResponse::raw(vec![
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c1".into(),
                         name: "think".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#""just a string""#.into(),
                     },
-                    ChatChunk::Done { usage: None },
+                    ChatChunk::Done {
+                        usage: None,
+                        finish_reason: None,
+                    },
                 ]),
                 MockResponse::text("Rejected."),
             ])
@@ -760,11 +812,15 @@ mod tests {
             .with_script(vec![
                 MockResponse::raw(vec![
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c1".into(),
                         name: "think".into(),
                     },
                     // No ToolUseInputDelta — args will be empty string -> {}
-                    ChatChunk::Done { usage: None },
+                    ChatChunk::Done {
+                        usage: None,
+                        finish_reason: None,
+                    },
                 ]),
                 MockResponse::text("Empty args handled."),
             ])
@@ -836,7 +892,10 @@ mod tests {
         let harness = TestHarness::builder()
             .with_script(vec![MockResponse::raw(vec![
                 ChatChunk::TextDelta { text: "".into() },
-                ChatChunk::Done { usage: None },
+                ChatChunk::Done {
+                    usage: None,
+                    finish_reason: None,
+                },
             ])])
             .build();
 
@@ -855,13 +914,16 @@ mod tests {
             .with_script(vec![
                 MockResponse::raw(vec![
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c1".into(),
                         name: "think".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"{"thought":"planning"}"#.into(),
                     },
                     ChatChunk::Done {
+                        finish_reason: None,
                         usage: Some(Usage {
                             input_tokens: 100,
                             output_tokens: 50,
@@ -873,6 +935,7 @@ mod tests {
                         text: "Done.".into(),
                     },
                     ChatChunk::Done {
+                        finish_reason: None,
                         usage: Some(Usage {
                             input_tokens: 200,
                             output_tokens: 80,
@@ -924,7 +987,10 @@ mod tests {
         let harness = TestHarness::builder()
             .with_script(vec![
                 // First call: transient error (contains "rate")
-                MockResponse::error(LlmError::RateLimited("slow down".into())),
+                MockResponse::error(LlmError::RateLimited {
+                    message: "slow down".into(),
+                    retry_after: None,
+                }),
                 // Second call: success
                 MockResponse::text("recovered after retry"),
             ])
@@ -944,9 +1010,18 @@ mod tests {
         let harness = TestHarness::builder()
             .with_script(vec![
                 // 3 transient errors (MAX_RETRIES=2, so attempts 0,1,2)
-                MockResponse::error(LlmError::RateLimited("rate limit 1".into())),
-                MockResponse::error(LlmError::RateLimited("rate limit 2".into())),
-                MockResponse::error(LlmError::RateLimited("rate limit 3".into())),
+                MockResponse::error(LlmError::RateLimited {
+                    message: "rate limit 1".into(),
+                    retry_after: None,
+                }),
+                MockResponse::error(LlmError::RateLimited {
+                    message: "rate limit 2".into(),
+                    retry_after: None,
+                }),
+                MockResponse::error(LlmError::RateLimited {
+                    message: "rate limit 3".into(),
+                    retry_after: None,
+                }),
             ])
             .build();
 
@@ -1001,10 +1076,12 @@ mod tests {
             .with_script(vec![MockResponse::stream_error(
                 vec![
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c1".into(),
                         name: "think".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"{"thought":"partial"}"#.into(),
                     },
                 ],
@@ -1349,20 +1426,27 @@ mod tests {
                 // Turn 1: 2 parallel file reads
                 MockResponse::raw(vec![
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c1".into(),
                         name: "file_read".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"{"path":"a.txt"}"#.into(),
                     },
                     ChatChunk::ToolUseStart {
+                        index: 1,
                         id: "c2".into(),
                         name: "file_read".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 1,
                         json: r#"{"path":"b.txt"}"#.into(),
                     },
-                    ChatChunk::Done { usage: None },
+                    ChatChunk::Done {
+                        usage: None,
+                        finish_reason: None,
+                    },
                 ]),
                 // Turn 2: think about results
                 MockResponse::tool_call("c3", "think", r#"{"thought":"a=alpha, b=bravo"}"#),
@@ -1403,13 +1487,18 @@ mod tests {
                         text: "First, let me plan.".into(),
                     },
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c1".into(),
                         name: "think".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"{"thought":"step 1"}"#.into(),
                     },
-                    ChatChunk::Done { usage: None },
+                    ChatChunk::Done {
+                        usage: None,
+                        finish_reason: None,
+                    },
                 ]),
                 // Turn 2: narration + tool
                 MockResponse::raw(vec![
@@ -1417,13 +1506,18 @@ mod tests {
                         text: "Now analyzing.".into(),
                     },
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c2".into(),
                         name: "think".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"{"thought":"step 2"}"#.into(),
                     },
-                    ChatChunk::Done { usage: None },
+                    ChatChunk::Done {
+                        usage: None,
+                        finish_reason: None,
+                    },
                 ]),
                 // Turn 3: narration + tool
                 MockResponse::raw(vec![
@@ -1431,13 +1525,18 @@ mod tests {
                         text: "Almost done.".into(),
                     },
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c3".into(),
                         name: "think".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"{"thought":"step 3"}"#.into(),
                     },
-                    ChatChunk::Done { usage: None },
+                    ChatChunk::Done {
+                        usage: None,
+                        finish_reason: None,
+                    },
                 ]),
                 // Final text
                 MockResponse::text("All done with narration."),
@@ -1472,7 +1571,10 @@ mod tests {
                 // Turn 1: think succeeds
                 MockResponse::tool_call("c1", "think", r#"{"thought":"initial analysis"}"#),
                 // Turn 2: LLM call fails with rate limit (transient)
-                MockResponse::error(LlmError::RateLimited("slow down".into())),
+                MockResponse::error(LlmError::RateLimited {
+                    message: "slow down".into(),
+                    retry_after: None,
+                }),
                 // Turn 2 retry: succeeds with final text
                 MockResponse::text("Recovered after rate limit."),
             ])
@@ -1500,29 +1602,39 @@ mod tests {
             .with_script(vec![
                 MockResponse::raw(vec![
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c1".into(),
                         name: "think".into(),
                     },
                     // Split the argument JSON across 6 deltas
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"{"th"#.into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"ou"#.into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"gh"#.into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"t":"#.into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#""reassembled"#.into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#" correctly"}"#.into(),
                     },
-                    ChatChunk::Done { usage: None },
+                    ChatChunk::Done {
+                        usage: None,
+                        finish_reason: None,
+                    },
                 ]),
                 MockResponse::text("Args reassembled."),
             ])
@@ -1651,20 +1763,27 @@ mod tests {
                 // Parallel turn: think (read-only, allowed) + shell (write, blocked)
                 MockResponse::raw(vec![
                     ChatChunk::ToolUseStart {
+                        index: 0,
                         id: "c1".into(),
                         name: "think".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 0,
                         json: r#"{"thought":"planning"}"#.into(),
                     },
                     ChatChunk::ToolUseStart {
+                        index: 1,
                         id: "c2".into(),
                         name: "shell".into(),
                     },
                     ChatChunk::ToolUseInputDelta {
+                        index: 1,
                         json: r#"{"command":"echo hi"}"#.into(),
                     },
-                    ChatChunk::Done { usage: None },
+                    ChatChunk::Done {
+                        usage: None,
+                        finish_reason: None,
+                    },
                 ]),
                 // LLM acknowledges shell was blocked, reads a file instead
                 MockResponse::tool_call("c3", "file_read", r#"{"path":"info.txt"}"#),

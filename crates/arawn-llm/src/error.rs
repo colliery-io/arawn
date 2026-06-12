@@ -11,8 +11,14 @@ pub enum LlmError {
     #[error("model not found: {0}")]
     ModelNotFound(String),
 
-    #[error("rate limited: {0}")]
-    RateLimited(String),
+    #[error("rate limited: {message}")]
+    RateLimited {
+        message: String,
+        /// Server-suggested wait parsed from a `Retry-After` header, if the
+        /// provider sent one. The retry layer honors this instead of its own
+        /// exponential backoff.
+        retry_after: Option<std::time::Duration>,
+    },
 
     #[error("server error: {0}")]
     ServerError(String),
@@ -34,9 +40,25 @@ impl LlmError {
     /// Returns true if this error is transient and the request should be retried.
     pub fn is_retryable(&self) -> bool {
         match self {
-            LlmError::RateLimited(_) => true,
+            LlmError::RateLimited { .. } => true,
             LlmError::ServerError(_) => true,
-            LlmError::Request(e) => e.is_timeout() || e.is_connect() || e.is_request(),
+            LlmError::Request(e) => {
+                // Timeouts are always worth a retry.
+                if e.is_timeout() {
+                    return true;
+                }
+                // DNS resolution and TLS failures are effectively permanent for
+                // a given config (a typo'd provider URL, an expired cert) —
+                // retrying just burns 30+ seconds of backoff before the user
+                // sees the real problem. Bail out fast.
+                if is_permanent_transport_error(e) {
+                    return false;
+                }
+                // Genuine connection-level transients (resets, refused) are
+                // retryable. `is_request()` (request *construction*) is NOT —
+                // those are permanent client/config bugs, not transient.
+                e.is_connect()
+            }
             // Certain API errors are transient (malformed LLM output that may succeed on retry).
             // - `tool_use_failed`: Anthropic's signal for malformed tool-call output.
             // - `overloaded`: Anthropic's transient capacity signal.
@@ -65,6 +87,16 @@ impl LlmError {
 
     /// Create from an HTTP status code + body.
     pub fn from_status(status: u16, body: String) -> Self {
+        Self::from_status_with_retry_after(status, body, None)
+    }
+
+    /// Like [`from_status`], but threads a `Retry-After` duration (extracted
+    /// from the response headers by the provider client) onto a 429.
+    pub fn from_status_with_retry_after(
+        status: u16,
+        body: String,
+        retry_after: Option<std::time::Duration>,
+    ) -> Self {
         // Try to extract a clean error message from JSON response bodies
         let message = extract_api_message(&body).unwrap_or(body);
 
@@ -72,9 +104,25 @@ impl LlmError {
             401 => LlmError::Auth(format!("HTTP 401: {message}")),
             403 => LlmError::Auth(format!("HTTP 403: {message}")),
             404 => LlmError::ModelNotFound(format!("HTTP 404: {message}")),
-            429 => LlmError::RateLimited(format!("HTTP 429: {message}")),
+            // 408 Request Timeout is transient — the request never completed,
+            // a retry can succeed. Classed as a server error so the retry
+            // layer picks it up.
+            408 => LlmError::ServerError(format!("HTTP 408 (request timeout): {message}")),
+            429 => LlmError::RateLimited {
+                message: format!("HTTP 429: {message}"),
+                retry_after,
+            },
             500..=599 => LlmError::ServerError(format!("HTTP {status}: {message}")),
             _ => LlmError::Api(format!("HTTP {status}: {message}")),
+        }
+    }
+
+    /// The server-suggested retry delay, if this is a rate-limit error that
+    /// carried a `Retry-After`.
+    pub fn retry_after(&self) -> Option<std::time::Duration> {
+        match self {
+            LlmError::RateLimited { retry_after, .. } => *retry_after,
+            _ => None,
         }
     }
 
@@ -82,8 +130,11 @@ impl LlmError {
     pub fn user_message(&self) -> String {
         match self {
             LlmError::Auth(_) => {
-                "Authentication failed — check that your API key is set correctly \
-                 (GROQ_API_KEY environment variable)."
+                // Provider-agnostic: the exact env var differs per provider
+                // and the startup fail-fast path (build_llm_client) names it
+                // precisely. At runtime we only know the request was rejected.
+                "Authentication failed — check that your API key is valid and set \
+                 (via `api_key` or the `api_key_env` for this provider in arawn.toml)."
                     .to_string()
             }
             LlmError::ModelNotFound(msg) => {
@@ -92,11 +143,16 @@ impl LlmError {
                      Check the model name in arawn.toml. ({msg})"
                 )
             }
-            LlmError::RateLimited(_) => {
-                "Rate limited by the API provider. Arawn will retry automatically \
-                 with exponential backoff. If this persists, check your plan limits."
-                    .to_string()
-            }
+            LlmError::RateLimited { retry_after, .. } => match retry_after {
+                Some(d) => format!(
+                    "Rate limited by the API provider. Arawn will retry automatically \
+                     after the server-suggested {}s. If this persists, check your plan limits.",
+                    d.as_secs()
+                ),
+                None => "Rate limited by the API provider. Arawn will retry automatically \
+                         with exponential backoff. If this persists, check your plan limits."
+                    .to_string(),
+            },
             LlmError::ServerError(_) => {
                 "The API provider returned a server error. This is usually temporary — \
                  Arawn will retry automatically."
@@ -132,6 +188,34 @@ impl LlmError {
             }
         }
     }
+}
+
+/// Heuristic: is this reqwest error a *permanent* transport failure (DNS
+/// resolution or TLS), as opposed to a transient connection problem?
+///
+/// reqwest lumps DNS, TLS, and TCP failures under `is_connect()`, so we have
+/// to sniff the error's source chain to tell a typo'd host / bad certificate
+/// (permanent) from a connection reset (transient, worth retrying).
+fn is_permanent_transport_error(e: &reqwest::Error) -> bool {
+    use std::error::Error;
+    let mut src: Option<&dyn Error> = Some(e);
+    while let Some(err) = src {
+        let msg = err.to_string().to_lowercase();
+        if msg.contains("dns")
+            || msg.contains("failed to lookup address")
+            || msg.contains("name or service not known")
+            || msg.contains("nodename nor servname")
+            || msg.contains("no such host")
+            || msg.contains("certificate")
+            || msg.contains("tls")
+            || msg.contains("ssl")
+            || msg.contains("handshake")
+        {
+            return true;
+        }
+        src = err.source();
+    }
+    false
 }
 
 /// Maximum length of `failed_generation` content to include in error
@@ -196,6 +280,18 @@ mod tests {
     }
 
     #[test]
+    fn auth_user_message_is_provider_agnostic() {
+        // Regression: the runtime auth message must NOT hardcode a single
+        // provider's env var — it's shown regardless of which provider failed.
+        let msg = LlmError::Auth("HTTP 401: bad key".into()).user_message();
+        assert!(
+            !msg.contains("GROQ_API_KEY"),
+            "must not hardcode GROQ: {msg}"
+        );
+        assert!(msg.to_lowercase().contains("api key"));
+    }
+
+    #[test]
     fn from_status_404_is_model_not_found() {
         let err = LlmError::from_status(
             404,
@@ -209,9 +305,27 @@ mod tests {
     #[test]
     fn from_status_429_is_rate_limited() {
         let err = LlmError::from_status(429, "too many requests".into());
-        assert!(matches!(err, LlmError::RateLimited(_)));
+        assert!(matches!(err, LlmError::RateLimited { .. }));
         assert!(err.is_retryable());
         assert!(err.user_message().contains("Rate limited"));
+    }
+
+    #[test]
+    fn from_status_408_is_retryable_server_error() {
+        let err = LlmError::from_status(408, "request timeout".into());
+        assert!(matches!(err, LlmError::ServerError(_)));
+        assert!(err.is_retryable(), "408 should be retried");
+    }
+
+    #[test]
+    fn rate_limited_carries_retry_after() {
+        let err = LlmError::from_status_with_retry_after(
+            429,
+            "slow down".into(),
+            Some(std::time::Duration::from_secs(12)),
+        );
+        assert_eq!(err.retry_after(), Some(std::time::Duration::from_secs(12)));
+        assert!(err.user_message().contains("12s"));
     }
 
     #[test]

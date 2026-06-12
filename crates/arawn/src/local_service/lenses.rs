@@ -1,6 +1,7 @@
 //! `LocalService` inherent methods backing the `lenses.*` portion of
 //! `ArawnService`. The trait shell in `super::mod` delegates to these.
 
+use crate::lock_ext::Recover;
 use std::path::PathBuf;
 
 use arawn_core::Lens;
@@ -10,7 +11,7 @@ use super::LocalService;
 
 impl LocalService {
     pub(super) async fn list_lenses_inner(&self) -> Result<Vec<LensInfo>, ServiceError> {
-        let store = self.store.lock().unwrap();
+        let store = self.store.lock().recover();
         let lenses = store.list_lenses()?;
 
         Ok(lenses
@@ -30,7 +31,7 @@ impl LocalService {
         root_dir: PathBuf,
     ) -> Result<LensInfo, ServiceError> {
         let ws = Lens::new(&name, &root_dir);
-        let store = self.store.lock().unwrap();
+        let store = self.store.lock().recover();
         store.create_lens(&ws)?;
 
         Ok(LensInfo {

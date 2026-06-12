@@ -111,7 +111,11 @@ impl UatCalendarUpcomingTool {
             let attendees: Vec<String> = metadata
                 .get("attendees")
                 .and_then(|v| v.as_array())
-                .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default();
             let description = if body == title || body.is_empty() {
                 None
@@ -269,8 +273,7 @@ mod tests {
 
     fn fixture_dir() -> tempfile::TempDir {
         let tmp = tempfile::tempdir().unwrap();
-        let store =
-            ProjectionStore::open(&tmp.path().join("projections.db")).unwrap();
+        let store = ProjectionStore::open(&tmp.path().join("projections.db")).unwrap();
         store.ensure_feed_type(FEED_TYPE).unwrap();
         let now = Utc::now();
         let in_window = CalendarEventProjection {
@@ -318,7 +321,11 @@ mod tests {
         let tool = UatCalendarUpcomingTool::new(tmp.path().to_path_buf());
         let now = Utc::now();
         let events = tool.list_window_events(now, 24).unwrap();
-        assert_eq!(events.len(), 1, "expected only in-window event, got {events:?}");
+        assert_eq!(
+            events.len(),
+            1,
+            "expected only in-window event, got {events:?}"
+        );
         assert_eq!(events[0].summary.as_deref(), Some("Standup"));
         assert_eq!(events[0].location.as_deref(), Some("Zoom"));
         assert_eq!(events[0].attendees, vec!["alice@x".to_string()]);

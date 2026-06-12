@@ -1,5 +1,6 @@
 pub mod agent;
 pub mod ask_user;
+pub mod cadence_check;
 pub mod ceremony;
 pub mod daily;
 pub mod enter_plan_mode;
@@ -11,7 +12,6 @@ pub mod file_write;
 pub mod glob;
 pub mod grep;
 pub mod lens;
-pub mod cadence_check;
 pub mod memory_search;
 pub mod memory_store;
 pub mod person_brief;
@@ -33,6 +33,7 @@ pub mod weekly;
 
 pub use agent::AgentTool;
 pub use ask_user::AskUserTool;
+pub use cadence_check::CadenceCheckTool;
 pub use ceremony::{
     RetroCurrentTool, RetroListItemsTool, RetroPatchItemTool, RetroRunTool, RetroSaveDiaryTool,
     RetroSetCadenceTool,
@@ -50,10 +51,8 @@ pub use glob::GlobTool;
 pub use grep::GrepTool;
 pub use lens::{
     BindBackfillHook, LensBindTool, LensCreateTool, LensDeleteTool, LensDescribeTool, LensListTool,
-    LensProposeOntologyTool, LensShowTool, LensUnbindTool,
-    SessionLens, UnbindHook,
+    LensProposeOntologyTool, LensShowTool, LensUnbindTool, SessionLens, UnbindHook,
 };
-pub use cadence_check::CadenceCheckTool;
 pub use memory_search::MemorySearchTool;
 pub use memory_store::MemoryStoreTool;
 pub use person_brief::PersonBriefTool;

@@ -155,7 +155,6 @@ mod tests {
         assert!(ont.contains("ledger").unwrap());
     }
 
-
     #[tokio::test]
     async fn show_defaults_to_active() {
         let (tmp, store, active) = setup();
@@ -767,7 +766,6 @@ mod tests {
         let found = all.iter().find(|w| w.name == "temp").unwrap();
         assert!(found.archived);
     }
-
 
     #[tokio::test]
     async fn show_includes_ontology() {

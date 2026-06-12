@@ -7,7 +7,7 @@
 //! tools (`drive_list`, `drive_get_metadata`, …) can come in T-G or
 //! whenever a scenario calls for them; the shared pattern is identical.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use arawn_tool::{PermissionCategory, Tool, ToolCategory, ToolContext, ToolError, ToolOutput};
 use async_trait::async_trait;
@@ -30,7 +30,7 @@ struct FileSummary {
     owners: Vec<String>,
 }
 
-fn open_store(data_dir: &PathBuf) -> Result<ProjectionStore, ToolError> {
+fn open_store(data_dir: &Path) -> Result<ProjectionStore, ToolError> {
     let store = ProjectionStore::open(&data_dir.join("projections.db"))
         .map_err(|e| ToolError::ExecutionFailed(format!("open projections: {e}")))?;
     store
@@ -162,8 +162,20 @@ fn strip_drive_query(query: &str) -> String {
     // `t.to_ascii_lowercase()` lookups hit case-insensitively
     // (`mimeType` → `mimetype` etc.).
     let stop = [
-        "and", "or", "not", "in", "contains", "true", "false", "null",
-        "name", "mimetype", "modifiedtime", "parents", "trashed", "fulltext",
+        "and",
+        "or",
+        "not",
+        "in",
+        "contains",
+        "true",
+        "false",
+        "null",
+        "name",
+        "mimetype",
+        "modifiedtime",
+        "parents",
+        "trashed",
+        "fulltext",
     ];
     out.split_whitespace()
         .filter(|t| !stop.contains(&t.to_ascii_lowercase().as_str()))
@@ -187,8 +199,16 @@ mod tests {
         store.ensure_feed_type(FEED_TYPE).unwrap();
         let now = Utc::now();
         for (i, (name, body, mime)) in [
-            ("Q3 Budget.xlsx", "Q3 budget projections", "application/vnd.ms-excel"),
-            ("RFC-0042.md", "Postgres replication topology", "text/markdown"),
+            (
+                "Q3 Budget.xlsx",
+                "Q3 budget projections",
+                "application/vnd.ms-excel",
+            ),
+            (
+                "RFC-0042.md",
+                "Postgres replication topology",
+                "text/markdown",
+            ),
             ("vacation.jpg", "", "image/jpeg"),
         ]
         .iter()
@@ -216,7 +236,8 @@ mod tests {
         let tool = UatDriveSearchTool::new(tmp.path().to_path_buf());
         let hits = tool.search("name contains 'budget'", 10).unwrap();
         assert!(
-            hits.iter().any(|f| f.name.as_deref() == Some("Q3 Budget.xlsx")),
+            hits.iter()
+                .any(|f| f.name.as_deref() == Some("Q3 Budget.xlsx")),
             "expected budget hit, got {hits:?}"
         );
     }
@@ -227,7 +248,8 @@ mod tests {
         let tool = UatDriveSearchTool::new(tmp.path().to_path_buf());
         let hits = tool.search("Postgres", 10).unwrap();
         assert!(
-            hits.iter().any(|f| f.name.as_deref() == Some("RFC-0042.md")),
+            hits.iter()
+                .any(|f| f.name.as_deref() == Some("RFC-0042.md")),
             "expected RFC hit via body text, got {hits:?}"
         );
     }
@@ -238,7 +260,13 @@ mod tests {
         assert!(q.contains("budget"));
         assert!(q.contains("application"));
         // Operators / keywords are gone (case-insensitive).
-        assert!(!q.split_whitespace().any(|t| t.eq_ignore_ascii_case("contains")));
-        assert!(!q.split_whitespace().any(|t| t.eq_ignore_ascii_case("mimeType")));
+        assert!(
+            !q.split_whitespace()
+                .any(|t| t.eq_ignore_ascii_case("contains"))
+        );
+        assert!(
+            !q.split_whitespace()
+                .any(|t| t.eq_ignore_ascii_case("mimeType"))
+        );
     }
 }

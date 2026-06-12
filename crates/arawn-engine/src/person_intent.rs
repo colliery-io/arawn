@@ -95,9 +95,7 @@ pub async fn classify_person_intent(
     client: &Arc<dyn LlmClient>,
     model: &str,
 ) -> PersonIntent {
-    let prompt = format!(
-        "Classify this memory-write text. Output JSON only.\n\nTEXT: {text}",
-    );
+    let prompt = format!("Classify this memory-write text. Output JSON only.\n\nTEXT: {text}",);
     match run_classifier(&prompt, client, model).await {
         Ok(raw) => parse_intent(&raw),
         Err(e) => {
@@ -186,7 +184,8 @@ mod tests {
 
     #[test]
     fn parse_intent_handles_plain_fences_no_lang() {
-        let raw = "```\n{\"primary_name\":null,\"relation_to_user\":null,\"between_people\":null}\n```";
+        let raw =
+            "```\n{\"primary_name\":null,\"relation_to_user\":null,\"between_people\":null}\n```";
         let intent = parse_intent(raw);
         assert_eq!(intent, PersonIntent::default());
     }

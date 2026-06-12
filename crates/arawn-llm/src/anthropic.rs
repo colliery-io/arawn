@@ -78,8 +78,19 @@ impl LlmClient for AnthropicClient {
 
         let status = response.status().as_u16();
         if status != 200 {
+            // Capture Retry-After (delta-seconds form) before consuming the body.
+            let retry_after = response
+                .headers()
+                .get(reqwest::header::RETRY_AFTER)
+                .and_then(|v| v.to_str().ok())
+                .and_then(|v| v.trim().parse::<u64>().ok())
+                .map(std::time::Duration::from_secs);
             let body_text = response.text().await.unwrap_or_default();
-            return Err(LlmError::from_status(status, body_text));
+            return Err(LlmError::from_status_with_retry_after(
+                status,
+                body_text,
+                retry_after,
+            ));
         }
 
         let byte_stream = response.bytes_stream();
@@ -112,7 +123,7 @@ impl LlmClient for AnthropicClient {
 
                     if let Some(data) = line.strip_prefix("data: ") {
                         if data == "[DONE]" {
-                            yield Ok(ChatChunk::Done { usage: None });
+                            yield Ok(ChatChunk::Done { usage: None, finish_reason: None });
                             return;
                         }
 
@@ -124,12 +135,16 @@ impl LlmClient for AnthropicClient {
                                     "content_block_start" => {
                                         let block = &event["content_block"];
                                         if block["type"] == "tool_use" {
+                                            // Anthropic keys content blocks (including parallel
+                                            // tool_use blocks) by a top-level `index`.
+                                            let index = event["index"].as_u64().unwrap_or(0) as u32;
                                             let id = block["id"].as_str().unwrap_or("").to_string();
                                             let name = block["name"].as_str().unwrap_or("").to_string();
-                                            yield Ok(ChatChunk::ToolUseStart { id, name });
+                                            yield Ok(ChatChunk::ToolUseStart { index, id, name });
                                         }
                                     }
                                     "content_block_delta" => {
+                                        let index = event["index"].as_u64().unwrap_or(0) as u32;
                                         let delta = &event["delta"];
                                         match delta["type"].as_str().unwrap_or("") {
                                             "text_delta" => {
@@ -141,7 +156,7 @@ impl LlmClient for AnthropicClient {
                                             "input_json_delta" => {
                                                 let json = delta["partial_json"].as_str().unwrap_or("").to_string();
                                                 if !json.is_empty() {
-                                                    yield Ok(ChatChunk::ToolUseInputDelta { json });
+                                                    yield Ok(ChatChunk::ToolUseInputDelta { index, json });
                                                 }
                                             }
                                             _ => {}
@@ -152,10 +167,14 @@ impl LlmClient for AnthropicClient {
                                                 input_tokens: u["input_tokens"].as_u64().unwrap_or(0) as u32,
                                                 output_tokens: u["output_tokens"].as_u64().unwrap_or(0) as u32,
                                             });
+                                        // Anthropic reports the stop reason in message_delta.
+                                        let finish_reason = event["delta"]["stop_reason"]
+                                            .as_str()
+                                            .map(crate::types::FinishReason::from_anthropic);
                                         // Don't emit Done here — wait for message_stop
                                         if let Some(u) = usage {
                                             // Store usage for message_stop
-                                            yield Ok(ChatChunk::Done { usage: Some(u) });
+                                            yield Ok(ChatChunk::Done { usage: Some(u), finish_reason });
                                         }
                                     }
                                     "message_stop" => {

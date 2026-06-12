@@ -386,9 +386,7 @@ mod tests {
                  (id, feed_id, source_id, source_ts, title, body_text, \
                   metadata, body_hash, created_at, updated_at) \
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-            params![
-                id, "test-feed", id, ts, title, "", metadata, "", now, now,
-            ],
+            params![id, "test-feed", id, ts, title, "", metadata, "", now, now,],
         )
         .unwrap();
     }
@@ -474,13 +472,13 @@ mod tests {
         let (_tmp, mgr, projections, ctx) = setup();
         make_direct(&mgr, "Marcus");
         // Add a manager (ReportsToUser).
-        let david = Entity::new(EntityType::Person, "David").with_confidence(ConfidenceSource::Stated);
+        let david =
+            Entity::new(EntityType::Person, "David").with_confidence(ConfidenceSource::Stated);
         let did = david.id;
         mgr.global.insert_entity(&david).unwrap();
         mgr.global
             .upsert_person_profile(
-                &PersonProfile::new(did)
-                    .with_relation_to_user(RelationToUser::ReportsToUser),
+                &PersonProfile::new(did).with_relation_to_user(RelationToUser::ReportsToUser),
             )
             .unwrap();
 

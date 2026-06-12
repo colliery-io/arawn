@@ -19,7 +19,7 @@ use tracing::{debug, warn};
 use arawn_llm::LlmClient;
 use arawn_memory::{Entity, RelationType};
 
-use crate::cursor::CursorStore;
+use crate::cursor::CursorFactory;
 use crate::error::StewardError;
 use crate::journal::{Journal, JournalRecord};
 use crate::llm_text::{complete_text, extract_json_block};
@@ -50,14 +50,14 @@ pub struct ReshelveSubroutine {
     config: ReshelveConfig,
     /// Resolves the lens's cursor store. Returning a fresh handle
     /// per call is fine — `Connection::open` is cheap on the same path.
-    cursor_factory: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync>,
+    cursor_factory: CursorFactory,
 }
 
 impl ReshelveSubroutine {
     pub fn new(
         client: Arc<dyn LlmClient>,
         model: impl Into<String>,
-        cursor_factory: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync>,
+        cursor_factory: CursorFactory,
     ) -> Self {
         Self {
             client,
@@ -430,6 +430,7 @@ fn fts_quote(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cursor::CursorStore;
     use std::collections::VecDeque;
     use std::pin::Pin;
     use std::sync::Mutex;
@@ -476,7 +477,10 @@ mod tests {
             let text = v.to_string();
             let items: Vec<Result<ChatChunk, LlmError>> = vec![
                 Ok(ChatChunk::TextDelta { text }),
-                Ok(ChatChunk::Done { usage: None }),
+                Ok(ChatChunk::Done {
+                    usage: None,
+                    finish_reason: None,
+                }),
             ];
             Ok(Box::pin(stream::iter(items)))
         }
@@ -486,7 +490,7 @@ mod tests {
         tmp: tempfile::TempDir,
         memory: Arc<MemoryManager>,
         journal: Arc<Journal>,
-        cursor_factory: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync>,
+        cursor_factory: CursorFactory,
     }
 
     fn setup() -> Fixture {
@@ -494,7 +498,7 @@ mod tests {
         let mem = Arc::new(MemoryManager::open(tmp.path(), "ws-pat", None).unwrap());
         let j = Arc::new(Journal::open(tmp.path(), "ws-pat").unwrap());
         let dir = tmp.path().to_path_buf();
-        let cursor_factory: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync> =
+        let cursor_factory: CursorFactory =
             Arc::new(move |name: &str| CursorStore::open(&dir, name));
         Fixture {
             tmp,

@@ -14,8 +14,8 @@ pub use types::{
     FeedRegisterSpec, FeedRemoveDto, FeedSchemaDto, FeedSummaryDto, FeedTemplateInfo,
     ForgetCandidate, ForgetResult, IntegrationStatus, InventoryItem, LensInfo, MemoryStoreResult,
     MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption, OAuthFlowStarted,
-    PermissionAuditEntry, PermissionModeInfo, PermissionsStatus,
-    ServerCapabilities, ServerNotice, SessionDetail, SessionInfo, WorkflowInfo,
+    PermissionAuditEntry, PermissionModeInfo, PermissionsStatus, ServerCapabilities, ServerNotice,
+    SessionDetail, SessionInfo, WorkflowInfo,
 };
 
 /// The service contract between any UI client and the Arawn backend.

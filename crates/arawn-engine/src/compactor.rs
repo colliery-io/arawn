@@ -139,9 +139,36 @@ impl Compactor {
         // Format: strip <analysis>, extract <summary>, wrap with continuation framing
         let formatted = get_compact_user_summary_message(&raw_summary, true);
 
-        // Compact the session
+        // Validate the summary actually shrinks the window BEFORE mutating the
+        // session. A verbose model can emit a summary larger than the messages
+        // it replaces; committing that would make the session *bigger* and the
+        // circuit breaker would record it as a "success". Project the
+        // post-compaction message set and bail out — leaving history intact —
+        // if it doesn't help.
+        let summarized_count = split_point;
+        let mut projected: Vec<Message> = Vec::with_capacity(self.keep_recent + 1);
+        projected.push(Message::Summary {
+            content: formatted.clone(),
+            original_count: summarized_count,
+            estimated_tokens_saved: 0,
+        });
+        projected.extend_from_slice(&session.messages()[split_point..]);
+        let tokens_after = TokenEstimator::estimate_messages(&projected);
+
+        if tokens_after >= tokens_before {
+            warn!(
+                tokens_before,
+                tokens_after,
+                "compaction summary did not reduce context — discarding it, history left intact"
+            );
+            return Err(EngineError::Other(anyhow::anyhow!(
+                "compaction produced a non-shrinking summary \
+                 ({tokens_before} → {tokens_after} estimated tokens)"
+            )));
+        }
+
+        // Shrinks — safe to commit.
         let summarized = session.compact(formatted, self.keep_recent);
-        let tokens_after = TokenEstimator::estimate_messages(session.messages());
 
         info!(
             messages_summarized = summarized,
@@ -156,6 +183,13 @@ impl Compactor {
             tokens_before,
             tokens_after,
         })
+    }
+
+    /// The number of recent messages this compactor keeps verbatim. Exposed so
+    /// the engine's microcompaction can share the same window instead of
+    /// hardcoding its own.
+    pub fn keep_recent(&self) -> usize {
+        self.keep_recent
     }
 
     async fn call_llm(&self, request: ChatRequest) -> Result<String, EngineError> {
@@ -309,5 +343,33 @@ mod tests {
         let result = compactor.compact(&mut session, &limits).await.unwrap();
         assert_eq!(result.messages_summarized, 0);
         assert_eq!(session.messages().len(), 5); // unchanged
+    }
+
+    #[tokio::test]
+    async fn compact_rejects_non_shrinking_summary() {
+        // A verbose model returns a summary far larger than what it replaces.
+        // Compaction must fail AND leave the session untouched, rather than
+        // committing a change that makes the context bigger.
+        let huge = "y".repeat(20_000);
+        let mock = Arc::new(MockLlmClient::new(vec![MockResponse::text(&format!(
+            "<summary>{huge}</summary>"
+        ))]));
+        let compactor = Compactor::with_keep_recent(mock, "test-model".to_string(), 3);
+        let mut session = make_session_with_messages(10);
+        let before_len = session.messages().len();
+        let limits = ModelLimits::new(100, 0.85);
+
+        let result = compactor.compact(&mut session, &limits).await;
+        assert!(result.is_err(), "non-shrinking compaction must be rejected");
+        assert_eq!(
+            session.messages().len(),
+            before_len,
+            "history must be left intact when compaction is discarded"
+        );
+        // No Summary message was inserted.
+        assert!(
+            !matches!(session.messages()[0], Message::Summary { .. }),
+            "no summary should have been committed"
+        );
     }
 }

@@ -20,7 +20,7 @@ use arawn_llm::LlmClient;
 use arawn_memory::Entity;
 use arawn_storage::Store;
 
-use crate::cursor::CursorStore;
+use crate::cursor::CursorFactory;
 use crate::error::StewardError;
 use crate::journal::{Journal, JournalRecord};
 use crate::llm_text::{complete_text, extract_json_block};
@@ -50,7 +50,7 @@ pub struct DoorWatchSubroutine {
     client: Arc<dyn LlmClient>,
     model: String,
     config: DoorWatchConfig,
-    cursor_factory: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync>,
+    cursor_factory: CursorFactory,
     store: Arc<Mutex<Store>>,
     memory_resolver: MemoryResolver,
 }
@@ -59,7 +59,7 @@ impl DoorWatchSubroutine {
     pub fn new(
         client: Arc<dyn LlmClient>,
         model: impl Into<String>,
-        cursor_factory: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync>,
+        cursor_factory: CursorFactory,
         store: Arc<Mutex<Store>>,
         memory_resolver: MemoryResolver,
     ) -> Self {
@@ -313,6 +313,7 @@ fn brief(e: &Entity) -> serde_json::Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cursor::CursorStore;
     use std::collections::VecDeque;
     use std::pin::Pin;
 
@@ -353,7 +354,10 @@ mod tests {
                 Ok(ChatChunk::TextDelta {
                     text: v.to_string(),
                 }),
-                Ok(ChatChunk::Done { usage: None }),
+                Ok(ChatChunk::Done {
+                    usage: None,
+                    finish_reason: None,
+                }),
             ])))
         }
     }
@@ -362,7 +366,7 @@ mod tests {
         tempfile::TempDir,
         Arc<Mutex<Store>>,
         MemoryResolver,
-        Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync>,
+        CursorFactory,
     ) {
         let tmp = tempfile::tempdir().unwrap();
         let store = Store::open(tmp.path()).unwrap();
@@ -381,8 +385,7 @@ mod tests {
                 .map_err(|e| StewardError::Memory(e.to_string()))
         });
         let dir2 = tmp.path().to_path_buf();
-        let cf: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync> =
-            Arc::new(move |n: &str| CursorStore::open(&dir2, n));
+        let cf: CursorFactory = Arc::new(move |n: &str| CursorStore::open(&dir2, n));
         (tmp, store, resolver, cf)
     }
 
@@ -473,8 +476,7 @@ mod tests {
                 .map_err(|e| StewardError::Memory(e.to_string()))
         });
         let dir2 = tmp.path().to_path_buf();
-        let cf: Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync> =
-            Arc::new(move |n: &str| CursorStore::open(&dir2, n));
+        let cf: CursorFactory = Arc::new(move |n: &str| CursorStore::open(&dir2, n));
 
         let mem = (resolver)("scratch").unwrap();
         mem.lens

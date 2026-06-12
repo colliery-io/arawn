@@ -249,7 +249,7 @@ impl UsageTracker {
         }
 
         let mut models: Vec<ModelUsageStats> = by_model.into_values().collect();
-        models.sort_by(|a, b| b.total_tokens().cmp(&a.total_tokens()));
+        models.sort_by_key(|m| std::cmp::Reverse(m.total_tokens()));
         let mut by_site_v: Vec<CallSiteStats> = sites.into_values().collect();
         by_site_v.sort_by(|a, b| {
             (b.total_prompt_tokens + b.total_completion_tokens)

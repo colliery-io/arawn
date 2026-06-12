@@ -5,7 +5,7 @@
 //! prose. UAT mirrors that workflow: list distinct channel ids from
 //! `slack_messages` rows, then return messages for a given channel.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use arawn_tool::{PermissionCategory, Tool, ToolCategory, ToolContext, ToolError, ToolOutput};
 use async_trait::async_trait;
@@ -40,7 +40,7 @@ struct ChannelSummary {
     purpose: Option<String>,
 }
 
-fn open_store(data_dir: &PathBuf) -> Result<ProjectionStore, ToolError> {
+fn open_store(data_dir: &Path) -> Result<ProjectionStore, ToolError> {
     let store = ProjectionStore::open(&data_dir.join("projections.db"))
         .map_err(|e| ToolError::ExecutionFailed(format!("open projections: {e}")))?;
     store
@@ -93,8 +93,11 @@ impl UatSlackListChannelsTool {
                 Some(id) => id,
                 None => continue,
             };
-            let name = id.strip_prefix('C').or_else(|| id.strip_prefix('G'))
-                .or_else(|| id.strip_prefix('D')).or_else(|| id.strip_prefix('M'))
+            let name = id
+                .strip_prefix('C')
+                .or_else(|| id.strip_prefix('G'))
+                .or_else(|| id.strip_prefix('D'))
+                .or_else(|| id.strip_prefix('M'))
                 .map(|rest| rest.trim_start_matches('-').to_string())
                 .unwrap_or_else(|| id.clone());
             out.push(ChannelSummary {
@@ -150,7 +153,11 @@ impl UatSlackHistoryTool {
         Self { data_dir }
     }
 
-    fn channel_history(&self, channel: &str, limit: usize) -> Result<Vec<MessageSummary>, ToolError> {
+    fn channel_history(
+        &self,
+        channel: &str,
+        limit: usize,
+    ) -> Result<Vec<MessageSummary>, ToolError> {
         let store = open_store(&self.data_dir)?;
         let conn = store.conn().lock().unwrap();
         let mut stmt = conn
@@ -191,10 +198,8 @@ impl UatSlackHistoryTool {
                     arr.iter()
                         .filter_map(|r| {
                             let name = r.get("name").and_then(|v| v.as_str())?.to_string();
-                            let count = r
-                                .get("count")
-                                .and_then(|v| v.as_u64())
-                                .unwrap_or(1) as usize;
+                            let count =
+                                r.get("count").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
                             Some(ReactionSummary { name, count })
                         })
                         .collect()

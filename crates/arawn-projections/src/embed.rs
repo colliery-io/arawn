@@ -57,15 +57,16 @@ pub struct EmbedPassOutcome {
     pub errors: usize,
 }
 
+/// Boxed future returned by [`Embedder::embed_batch`] — a batch of texts
+/// mapped to a batch of embedding vectors (or an error string).
+pub type EmbedFuture<'a> = Pin<Box<dyn Future<Output = Result<Vec<Vec<f32>>, String>> + Send + 'a>>;
+
 /// Lightweight embedding interface this crate consumes. Implemented
 /// for any type that can map a batch of texts to a batch of f32
 /// vectors. Keeps `arawn-projections` from depending on `arawn-embed`
 /// directly — the caller passes any concrete impl.
 pub trait Embedder: Send + Sync {
-    fn embed_batch<'a>(
-        &'a self,
-        texts: &'a [&'a str],
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<Vec<f32>>, String>> + Send + 'a>>;
+    fn embed_batch<'a>(&'a self, texts: &'a [&'a str]) -> EmbedFuture<'a>;
 }
 
 /// Run a single embed pass over every embeddable feed type, capped at

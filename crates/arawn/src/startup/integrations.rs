@@ -3,6 +3,7 @@
 //! registered into `service` + `registry`; the function returns handles
 //! for the integrations the continual-feeds block needs downstream.
 
+use crate::lock_ext::Recover;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -330,7 +331,7 @@ pub fn wire_integrations(
         // I-0050 T-0327 — wire the late-bound cell so the bind hook
         // can run list_org_repos expansion when github:org:owner
         // bindings land.
-        *github_for_bind_hook.write().unwrap() = Some(Arc::clone(&github));
+        *github_for_bind_hook.write().recover() = Some(Arc::clone(&github));
         github_integration_for_feeds = Some(github);
     } else {
         github_integration_for_feeds = None;

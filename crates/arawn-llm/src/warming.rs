@@ -150,6 +150,7 @@ mod tests {
                 input_tokens: 1,
                 output_tokens: 1,
             }),
+            finish_reason: None,
         }])
     }
 
@@ -332,8 +333,9 @@ mod tests {
             "HTTP 500: internal".into()
         )));
         assert!(!looks_like_cold_restart(&LlmError::Auth("HTTP 401".into())));
-        assert!(!looks_like_cold_restart(&LlmError::RateLimited(
-            "HTTP 429".into()
-        )));
+        assert!(!looks_like_cold_restart(&LlmError::RateLimited {
+            message: "HTTP 429".into(),
+            retry_after: None,
+        }));
     }
 }

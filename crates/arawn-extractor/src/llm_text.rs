@@ -47,11 +47,10 @@ pub async fn complete_text(
     let mut out = String::new();
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|e| ExtractionError::Llm(e.to_string()))?;
-        match chunk {
-            arawn_llm::types::ChatChunk::TextDelta { text } => out.push_str(&text),
-            // The chain stages prompt the model for plain JSON text;
-            // tool-use chunks should not occur and are ignored if they do.
-            _ => {}
+        // The chain stages prompt the model for plain JSON text; tool-use
+        // chunks should not occur and are ignored if they do.
+        if let arawn_llm::types::ChatChunk::TextDelta { text } = chunk {
+            out.push_str(&text);
         }
     }
     Ok(out)

@@ -2,6 +2,7 @@
 //! of I-0054 T-E. Registers per-feed cloacina cron schedules that
 //! route through arawn-feeds' template dispatcher.
 
+use crate::lock_ext::Recover;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -83,7 +84,7 @@ pub async fn wire_continual_feeds(
                         // T-0329 — also expose the runtime to the
                         // bind/unbind hooks so they can hot-add or
                         // hot-remove cron schedules.
-                        *feed_runtime_for_hooks.write().unwrap() = Some(Arc::clone(&runtime));
+                        *feed_runtime_for_hooks.write().recover() = Some(Arc::clone(&runtime));
                         info!("feed runtime started");
                     }
                     Err(e) => warn!(error = %e, "feed runtime failed to start"),

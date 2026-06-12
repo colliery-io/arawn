@@ -35,6 +35,8 @@ pub enum ClusterMode {
 }
 
 impl ClusterMode {
+    // Returns `Option` (not `Result`), so it's an inherent method, not `FromStr`.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "tag" => Some(Self::Tag),
@@ -342,7 +344,10 @@ mod tests {
                 Ok(ChatChunk::TextDelta {
                     text: v.to_string(),
                 }),
-                Ok(ChatChunk::Done { usage: None }),
+                Ok(ChatChunk::Done {
+                    usage: None,
+                    finish_reason: None,
+                }),
             ])))
         }
     }

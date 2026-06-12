@@ -127,7 +127,6 @@ impl<'a> SessionStore<'a> {
         )?;
         Ok(())
     }
-
 }
 
 /// Session metadata as stored in SQLite (no messages — those are in JSONL).
@@ -289,5 +288,4 @@ mod tests {
         assert_eq!(scratches.len(), 2);
         assert!(scratches.iter().all(|s| s.lens_id.is_none()));
     }
-
 }

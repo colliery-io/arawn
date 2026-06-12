@@ -488,11 +488,7 @@ pub(super) fn render_empty_chat_brief(app: &App, frame: &mut Frame, area: ratatu
     frame.render_widget(para, inner);
 }
 
-pub(super) fn render_idle_hero(
-    frame: &mut Frame,
-    area: ratatui::layout::Rect,
-    no_model: bool,
-) {
+pub(super) fn render_idle_hero(frame: &mut Frame, area: ratatui::layout::Rect, no_model: bool) {
     let chrome = Style::default().fg(theme::CHROME);
     let dim = Style::default().fg(theme::SUBTEXT0);
     let hint = Style::default().fg(theme::OVERLAY1);
@@ -525,10 +521,7 @@ pub(super) fn render_idle_hero(
         hero_lines.extend([
             Line::from(Span::styled("No LLM provider configured.", warn)),
             Line::from(Span::styled("Run `arawn doctor` to diagnose.", hint)),
-            Line::from(Span::styled(
-                "Edit `~/.arawn/arawn.toml` to set one.",
-                hint,
-            )),
+            Line::from(Span::styled("Edit `~/.arawn/arawn.toml` to set one.", hint)),
             Line::from(""),
         ]);
     }

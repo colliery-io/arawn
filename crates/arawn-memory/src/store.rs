@@ -202,9 +202,7 @@ impl MemoryStore {
                 "DELETE FROM person_profile WHERE entity_id = ?1",
                 params![id_str.clone()],
             )
-            .map_err(|e| {
-                MemoryError::Storage(format!("person_profile cascade delete: {e}"))
-            })?;
+            .map_err(|e| MemoryError::Storage(format!("person_profile cascade delete: {e}")))?;
             Ok(())
         })?;
         Ok(true)
@@ -678,8 +676,7 @@ impl MemoryStore {
                  WHERE entity_id = ?1",
             )
             .map_err(|e| MemoryError::Storage(format!("prepare get_person_profile: {e}")))?;
-        let row =
-            stmt.query_row(params![entity_id.to_string()], parse_person_profile_row);
+        let row = stmt.query_row(params![entity_id.to_string()], parse_person_profile_row);
         match row {
             Ok(p) => Ok(Some(p)),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
@@ -717,17 +714,13 @@ impl MemoryStore {
                  WHERE relation_to_user = ?1
                  ORDER BY updated_at DESC",
             )
-            .map_err(|e| {
-                MemoryError::Storage(format!("prepare list_by_relation_to_user: {e}"))
-            })?;
+            .map_err(|e| MemoryError::Storage(format!("prepare list_by_relation_to_user: {e}")))?;
         let rows = stmt
             .query_map(params![rel.as_str()], parse_person_profile_row)
             .map_err(|e| MemoryError::Storage(format!("query list_by_relation_to_user: {e}")))?;
         let mut out = Vec::new();
         for row in rows {
-            out.push(
-                row.map_err(|e| MemoryError::Storage(format!("row list_by_relation: {e}")))?,
-            );
+            out.push(row.map_err(|e| MemoryError::Storage(format!("row list_by_relation: {e}")))?);
         }
         Ok(out)
     }
@@ -739,11 +732,7 @@ impl MemoryStore {
 fn parse_person_profile_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<PersonProfile> {
     let entity_id_str: String = row.get(0)?;
     let entity_id = Uuid::parse_str(&entity_id_str).map_err(|e| {
-        rusqlite::Error::FromSqlConversionFailure(
-            0,
-            rusqlite::types::Type::Text,
-            Box::new(e),
-        )
+        rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
     })?;
     let role: Option<String> = row.get(1)?;
     let relation_to_user_str: Option<String> = row.get(2)?;
@@ -764,7 +753,9 @@ fn parse_person_profile_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<PersonP
         relation_to_user: relation_to_user_str
             .as_deref()
             .and_then(RelationToUser::from_str),
-        reports_to_person_id: reports_to_str.as_deref().and_then(|s| Uuid::parse_str(s).ok()),
+        reports_to_person_id: reports_to_str
+            .as_deref()
+            .and_then(|s| Uuid::parse_str(s).ok()),
         hire_date: hire_date_str
             .as_deref()
             .and_then(|s| NaiveDate::parse_from_str(s, "%Y-%m-%d").ok()),

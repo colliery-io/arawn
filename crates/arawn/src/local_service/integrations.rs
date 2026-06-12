@@ -1,6 +1,7 @@
 //! `LocalService` inherent methods backing the `integrations.*` portion of
 //! `ArawnService`. The trait shell in `super::mod` delegates to these.
 
+use crate::lock_ext::Recover;
 use std::sync::Arc;
 
 use arawn_service::ServiceError;
@@ -16,7 +17,7 @@ impl LocalService {
         let entries: Vec<(String, Arc<dyn arawn_integrations::Integration>)> = self
             .integration_registry
             .read()
-            .unwrap()
+            .recover()
             .iter()
             .map(|(k, v)| (k.clone(), Arc::clone(v)))
             .collect();
@@ -37,7 +38,7 @@ impl LocalService {
         let integration = self
             .integration_registry
             .read()
-            .unwrap()
+            .recover()
             .get(service)
             .cloned()
             .ok_or_else(|| {
@@ -91,7 +92,7 @@ impl LocalService {
             // Idempotent: silently swallows the UNIQUE-constraint
             // duplicate when the feed already exists.
             if succeeded {
-                let runtime = feed_runtime_for_task.read().unwrap().clone();
+                let runtime = feed_runtime_for_task.read().recover().clone();
                 if let Some(runtime) = runtime
                     && let Some((template, feed_id)) = default_feed_for_service(&service_name)
                 {
@@ -166,7 +167,7 @@ impl LocalService {
         let integration = self
             .integration_registry
             .read()
-            .unwrap()
+            .recover()
             .get(service)
             .cloned()
             .ok_or_else(|| {

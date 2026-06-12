@@ -88,7 +88,11 @@ pub fn search_labeled_stores(
 
     let mut hits: Vec<LabeledHit> = fused
         .into_values()
-        .map(|(lens, entity, score)| LabeledHit { lens, entity, score })
+        .map(|(lens, entity, score)| LabeledHit {
+            lens,
+            entity,
+            score,
+        })
         .collect();
     hits.sort_by(|a, b| {
         b.score
@@ -107,7 +111,8 @@ mod tests {
     fn store_with(entities: &[(&str, &str)]) -> Arc<MemoryStore> {
         let s = MemoryStore::in_memory().expect("open");
         for (title, content) in entities {
-            let e = Entity::new(EntityType::Note, title.to_string()).with_content(content.to_string());
+            let e =
+                Entity::new(EntityType::Note, title.to_string()).with_content(content.to_string());
             s.insert_entity(&e).expect("insert");
         }
         Arc::new(s)
@@ -117,14 +122,21 @@ mod tests {
     fn fuses_and_labels_hits_across_stores() {
         // Two lens stores, each with a distinct matching note.
         let work = store_with(&[("Postgres migration", "we chose postgres 16 for the ledger")]);
-        let home = store_with(&[("Postgres at home", "the postgres backup script for home nas")]);
+        let home = store_with(&[(
+            "Postgres at home",
+            "the postgres backup script for home nas",
+        )]);
 
         let stores = vec![("work".to_string(), work), ("home".to_string(), home)];
         let hits = search_labeled_stores(&stores, "postgres", None, 10);
 
         assert!(hits.len() >= 2, "should surface hits from both lenses");
-        let lenses: std::collections::HashSet<&str> = hits.iter().map(|h| h.lens.as_str()).collect();
-        assert!(lenses.contains("work") && lenses.contains("home"), "both lenses labeled: {lenses:?}");
+        let lenses: std::collections::HashSet<&str> =
+            hits.iter().map(|h| h.lens.as_str()).collect();
+        assert!(
+            lenses.contains("work") && lenses.contains("home"),
+            "both lenses labeled: {lenses:?}"
+        );
         // Every hit carries the lens it came from and a positive fused score.
         assert!(hits.iter().all(|h| !h.lens.is_empty() && h.score > 0.0));
     }

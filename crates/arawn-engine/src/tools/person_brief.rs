@@ -169,10 +169,7 @@ fn resolve_person(store: &MemoryStore, name: &str) -> Result<Option<Entity>, Too
     let people = store
         .list_by_type(EntityType::Person, 200)
         .map_err(|e| ToolError::ExecutionFailed(format!("list persons: {e}")))?;
-    if let Some(exact) = people
-        .iter()
-        .find(|e| e.title.eq_ignore_ascii_case(name))
-    {
+    if let Some(exact) = people.iter().find(|e| e.title.eq_ignore_ascii_case(name)) {
         return Ok(Some(exact.clone()));
     }
     let needle = name.to_lowercase();
@@ -251,13 +248,13 @@ fn format_brief(
     }
 
     // Free-text notes on the Person entity itself.
-    if let Some(content) = &person.content {
-        if !content.is_empty() {
-            out.push_str("\n## Notes\n");
-            out.push_str(content);
-            if !content.ends_with('\n') {
-                out.push('\n');
-            }
+    if let Some(content) = &person.content
+        && !content.is_empty()
+    {
+        out.push_str("\n## Notes\n");
+        out.push_str(content);
+        if !content.ends_with('\n') {
+            out.push('\n');
         }
     }
 
@@ -328,8 +325,8 @@ mod tests {
     #[tokio::test]
     async fn returns_brief_with_profile_role_and_relation() {
         let (_tmp, mgr, ctx) = setup();
-        let sarah = Entity::new(EntityType::Person, "Sarah Lee")
-            .with_confidence(ConfidenceSource::Stated);
+        let sarah =
+            Entity::new(EntityType::Person, "Sarah Lee").with_confidence(ConfidenceSource::Stated);
         mgr.global.insert_entity(&sarah).unwrap();
         mgr.global
             .upsert_person_profile(
@@ -345,7 +342,11 @@ mod tests {
             .await
             .unwrap();
         assert!(!result.is_error);
-        assert!(result.content.contains("Sarah Lee"), "got:\n{}", result.content);
+        assert!(
+            result.content.contains("Sarah Lee"),
+            "got:\n{}",
+            result.content
+        );
         assert!(result.content.contains("Senior EM"));
         assert!(result.content.contains("you manage"));
     }
@@ -393,10 +394,7 @@ mod tests {
         mgr.global.upsert_person_profile(&profile).unwrap();
 
         let tool = PersonBriefTool::new(mgr, None);
-        let result = tool
-            .execute(&ctx, json!({"name": "Marcus"}))
-            .await
-            .unwrap();
+        let result = tool.execute(&ctx, json!({"name": "Marcus"})).await.unwrap();
         assert!(result.content.contains("## Growth themes"));
         assert!(result.content.contains("cross-team influence"));
         assert!(result.content.contains("## Current concerns"));
@@ -423,7 +421,10 @@ mod tests {
         let person = Entity::new(EntityType::Person, "David Chen");
         mgr.global.insert_entity(&person).unwrap();
         // Unrelated fact mentioning David — should appear in the brief.
-        let fact = Entity::new(EntityType::Decision, "Approved staffing plan with David Chen");
+        let fact = Entity::new(
+            EntityType::Decision,
+            "Approved staffing plan with David Chen",
+        );
         mgr.global.insert_entity(&fact).unwrap();
 
         let tool = PersonBriefTool::new(mgr, None);

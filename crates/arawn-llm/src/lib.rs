@@ -18,6 +18,6 @@ pub use mock::{MockLlmClient, MockResponse};
 pub use openai_compat::OpenAICompatibleClient;
 pub use retry::RetryClient;
 pub use types::{
-    ChatChunk, ChatContent, ChatMessage, ChatRequest, ToolCall, ToolDefinition, Usage,
+    ChatChunk, ChatContent, ChatMessage, ChatRequest, FinishReason, ToolCall, ToolDefinition, Usage,
 };
 pub use warming::{DEFAULT_WARMUP_TTL, WarmingClient};

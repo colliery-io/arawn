@@ -333,7 +333,10 @@ mod tests {
             EntityType::Note,
         ] {
             assert!(
-                std::ptr::eq(Arc::as_ptr(mgr.store_for_type(et)), Arc::as_ptr(&mgr.global)),
+                std::ptr::eq(
+                    Arc::as_ptr(mgr.store_for_type(et)),
+                    Arc::as_ptr(&mgr.global)
+                ),
                 "expected {et:?} to route to the global store under the global-memory model",
             );
         }

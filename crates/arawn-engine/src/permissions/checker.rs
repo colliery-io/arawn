@@ -165,6 +165,10 @@ pub enum DecisionReason {
     Prompted,
     /// No checker is wired (default-allow, internal callers).
     NoChecker,
+    /// The decision resolved to `Ask`, but no interactive prompter is
+    /// attached, so it failed closed. This is a wiring/config problem, not a
+    /// user denial — surfaced distinctly so it's diagnosable.
+    AskWithoutPrompter,
 }
 
 impl DecisionReason {
@@ -188,6 +192,11 @@ impl DecisionReason {
             }
             DecisionReason::Prompted => "user prompt".to_string(),
             DecisionReason::NoChecker => "no permission checker configured".to_string(),
+            DecisionReason::AskWithoutPrompter => {
+                "permission 'ask' was required but no interactive prompter is attached \
+                 (a wiring/configuration issue — not a user denial)"
+                    .to_string()
+            }
         }
     }
 }
@@ -397,11 +406,18 @@ impl PermissionChecker {
                 self.fire_permission_request_hook(tool_name, tool_input)
                     .await;
                 let prompted = self.prompt_user(tool_name, tool_input).await;
+                // Distinguish "the user denied" from "we couldn't even ask
+                // because no prompter is wired" — the latter is a config bug.
+                let reason = if prompted == PermissionDecision::Denied && self.prompter.is_none() {
+                    DecisionReason::AskWithoutPrompter
+                } else {
+                    DecisionReason::Prompted
+                };
                 if prompted == PermissionDecision::Denied {
-                    self.fire_permission_denied_hook(tool_name, tool_input, "user prompt")
+                    self.fire_permission_denied_hook(tool_name, tool_input, &reason.display())
                         .await;
                 }
-                (prompted, DecisionReason::Prompted)
+                (prompted, reason)
             }
             // NoMatch = no explicit rule applies. Fall back to permission mode.
             PermissionDecision::NoMatch => {
@@ -414,6 +430,14 @@ impl PermissionChecker {
                         self.fire_permission_request_hook(tool_name, tool_input)
                             .await;
                         let prompted = self.prompt_user(tool_name, tool_input).await;
+                        // A denial with no prompter wired is a config bug, not a
+                        // mode fallback — report it distinctly so it's diagnosable.
+                        let reason =
+                            if prompted == PermissionDecision::Denied && self.prompter.is_none() {
+                                DecisionReason::AskWithoutPrompter
+                            } else {
+                                reason
+                            };
                         if prompted == PermissionDecision::Denied {
                             self.fire_permission_denied_hook(
                                 tool_name,
@@ -1086,6 +1110,27 @@ mod tests {
         assert!(
             display.contains("mode default"),
             "expected mode default reason: {display}"
+        );
+    }
+
+    #[tokio::test]
+    async fn check_explained_ask_without_prompter_is_diagnosable() {
+        // P1-9 (ARAWN-T-0474): default mode asks for Shell tools. With no
+        // prompter attached the check must fail closed AND report the missing
+        // prompter distinctly — not as an ordinary user denial.
+        let checker = PermissionChecker::new(vec![]); // no prompter, default Ask mode
+        let (decision, reason) = checker
+            .check_explained("shell", "rm -rf /tmp/x", PermissionCategory::Shell)
+            .await;
+        assert_eq!(decision, PermissionDecision::Denied);
+        assert!(
+            matches!(reason, DecisionReason::AskWithoutPrompter),
+            "expected AskWithoutPrompter, got: {reason:?}"
+        );
+        assert!(
+            reason.display().contains("no interactive prompter"),
+            "denial must name the missing prompter: {}",
+            reason.display()
         );
     }
 

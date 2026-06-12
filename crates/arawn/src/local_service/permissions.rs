@@ -1,6 +1,7 @@
 //! `LocalService` inherent methods backing the `permissions.*` portion of
 //! `ArawnService`. The trait shell in `super::mod` delegates to these.
 
+use crate::lock_ext::Recover;
 use arawn_service::{PermissionModeInfo, ServiceError};
 use tracing::info;
 
@@ -10,7 +11,7 @@ impl LocalService {
     pub(super) async fn get_permission_mode_inner(
         &self,
     ) -> Result<PermissionModeInfo, ServiceError> {
-        let mode = *self.permission_mode.read().unwrap();
+        let mode = *self.permission_mode.read().recover();
         Ok(PermissionModeInfo {
             mode: serde_json::to_value(mode)
                 .ok()
@@ -29,7 +30,7 @@ impl LocalService {
                     "unknown mode '{mode_str}'. Valid: ask, edits, full, plan"
                 ))
             })?;
-        *self.permission_mode.write().unwrap() = mode;
+        *self.permission_mode.write().recover() = mode;
         info!(mode = %mode_str, "permission mode updated");
         Ok(PermissionModeInfo {
             mode: mode_str.to_string(),
@@ -55,8 +56,8 @@ impl LocalService {
     ) -> Result<arawn_service::PermissionsStatus, ServiceError> {
         use arawn_engine::permissions::{PermissionDecision, RuleKind};
 
-        let rules = self.permission_rules.read().unwrap().clone();
-        let mode = *self.permission_mode.read().unwrap();
+        let rules = self.permission_rules.read().recover().clone();
+        let mode = *self.permission_mode.read().recover();
         let mode_str = format!("{mode:?}").to_lowercase();
 
         let mut allow_rules = Vec::new();
@@ -74,7 +75,7 @@ impl LocalService {
         let recent_decisions = self
             .permission_audit
             .lock()
-            .unwrap()
+            .recover()
             .iter()
             .map(|e| {
                 let decision_str = match e.decision {

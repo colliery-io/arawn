@@ -2,7 +2,7 @@
 id: permission-system-user-approval
 level: task
 title: "Permission system — user approval gates for tool execution"
-short_code: "ARAWN-T-0034"
+short_code: ARAWN-T-0034
 created_at: 2026-04-01T11:01:57.116769+00:00
 updated_at: 2026-04-01T11:01:57.116769+00:00
 parent: 

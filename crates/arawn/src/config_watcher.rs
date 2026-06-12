@@ -3,6 +3,7 @@
 //! Spawned as a background task in serve mode. Uses notify for file watching
 //! with debouncing.
 
+use crate::lock_ext::Recover;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -128,7 +129,7 @@ impl ConfigWatcher {
         let new_rules =
             arawn_engine::permissions::load_permissions_from_file(&self.config_path).into_rules();
         {
-            let mut rules = self.permission_rules.write().unwrap();
+            let mut rules = self.permission_rules.write().recover();
             *rules = new_rules;
         }
         info!("permission rules reloaded");

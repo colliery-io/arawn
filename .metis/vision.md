@@ -44,7 +44,9 @@ single user whether they're running an engineering org or planning a vacation.
 
 A single Rust binary that:
 
-- Provides an interactive TUI for chat and reviewing action items.
+- Provides an interactive TUI for chat, and a web GUI (served from the same
+  binary) for reviewing action items, briefs, signals, and system health
+  (ADR ARAWN-A-0005).
 - Runs **feeds** that ingest external sources on configurable cadences (email,
   calendar, GitHub, Slack, filesystem) into a queryable corpus.
 - Runs **lenses** — standing, memory-aware extractors that continuously pull
@@ -91,8 +93,10 @@ chat.
 
 ### Interactive Chat
 
-TUI-based conversational interface for asking questions, giving instructions,
-and reviewing what Arawn has found. The chat reads signals across every lens
+Conversational interface for asking questions and giving instructions —
+available in the TUI (the fast terminal path) and the web GUI; structured
+*review* of what Arawn has found lives primarily in the GUI (ADR
+ARAWN-A-0005). The chat reads signals across every lens
 and the global memory, and labels its sources so the user sees which lenses an
 answer drew from.
 
@@ -104,7 +108,8 @@ own; named lenses do.
 
 A unified view of things that need your attention, sourced from extracted
 signals (via ceremonies and steward subroutines) or manual capture. Action
-items can be reviewed, snoozed, or dismissed from the TUI.
+items can be reviewed, snoozed, or dismissed — primarily from the web GUI
+(ADR ARAWN-A-0005), exposed protocol-first so any client can render them.
 
 ### Knowledge Persistence
 
@@ -151,7 +156,8 @@ request and set defaults via `arawn.md`.
    sees global memory and signals from every lens.
 2. Lenses extract signals from at least two feed families (Gmail + GitHub,
    say) into per-lens palaces.
-3. Action items surfaced in the TUI from extracted signals.
+3. Action items surfaced in a client (web GUI as primary review surface)
+   from extracted signals.
 4. Memory writes (`/remember`, `memory_store`) land globally and influence
    every lens's extraction.
 5. Stable on a low-resource system (<500 MB memory).
@@ -195,11 +201,16 @@ protocols. Keep module boundaries clean.
 - Rust (stable toolchain), must cross-compile for ARM64.
 - SQLite as sole database (graphqlite for graph, raw tables for entities).
 - cloacina for workflow orchestration.
-- No heavy runtimes (no Node.js, no JVM).
+- No heavy runtimes shipped or required at runtime (no Node.js, no JVM).
+  Frontend build tooling for the web GUI runs at build time only
+  (ADR ARAWN-A-0005).
 
 ### Scope
 
-- TUI as primary interface (no web UI in v1).
+- TUI is the chat client; a web GUI served from the binary is the primary
+  review/triage surface (amended 2026-06-11 per ADR ARAWN-A-0005; was "TUI as
+  primary interface, no web UI in v1"). The GUI ships only after the
+  daily-drivability hardening lands (ARAWN-I-0067 Phases 1–2).
 - Single-user only — the multi-user reshape is the separate **AWEN** project.
 - No voice/audio processing.
 - No messaging platform integrations beyond what we already wire (WhatsApp,

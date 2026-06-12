@@ -1,12 +1,11 @@
 //! `LocalService` inherent methods backing the `sessions.*` portion of
 //! `ArawnService`. The trait shell in `super::mod` delegates to these.
 
+use crate::lock_ext::Recover;
 use std::pin::Pin;
 
 use arawn_core::{Message, Session};
-use arawn_service::{
-    ArawnService, EngineEvent, ServiceError, SessionDetail, SessionInfo,
-};
+use arawn_service::{ArawnService, EngineEvent, ServiceError, SessionDetail, SessionInfo};
 use arawn_storage::JsonlMessageStore;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, instrument, warn};
@@ -19,7 +18,7 @@ impl LocalService {
         &self,
         lens_id: Option<Uuid>,
     ) -> Result<Vec<SessionInfo>, ServiceError> {
-        let store = self.store.lock().unwrap();
+        let store = self.store.lock().recover();
         let metas = match lens_id {
             Some(ws_id) => store.list_sessions_for_lens(ws_id),
             None => store.list_scratch_sessions(),
@@ -45,7 +44,7 @@ impl LocalService {
         };
 
         {
-            let store = self.store.lock().unwrap();
+            let store = self.store.lock().recover();
             store.create_session(&session)?;
         }
 
@@ -75,7 +74,7 @@ impl LocalService {
     pub(super) async fn load_session_inner(&self, id: Uuid) -> Result<SessionDetail, ServiceError> {
         // Get metadata from SQLite (sync, hold lock briefly)
         let (meta, ws_dir) = {
-            let store = self.store.lock().unwrap();
+            let store = self.store.lock().recover();
             let meta = store
                 .get_session_meta(id)?
                 .ok_or_else(|| ServiceError::NotFound(format!("session {id}")))?;
@@ -105,7 +104,7 @@ impl LocalService {
         // Refuse if a generation is in flight on this session — truncating
         // mid-stream would corrupt persistent state.
         {
-            let active = self.active_sessions.lock().unwrap();
+            let active = self.active_sessions.lock().recover();
             if active.contains(&id) {
                 return Err(ServiceError::InvalidOperation(
                     "Session is currently processing a message; cancel first.".into(),
@@ -114,7 +113,7 @@ impl LocalService {
         }
 
         let (_meta, ws_dir) = {
-            let store = self.store.lock().unwrap();
+            let store = self.store.lock().recover();
             let meta = store
                 .get_session_meta(id)?
                 .ok_or_else(|| ServiceError::NotFound(format!("session {id}")))?;
@@ -155,7 +154,7 @@ impl LocalService {
     ) -> Result<Pin<Box<dyn futures::Stream<Item = EngineEvent> + Send>>, ServiceError> {
         // Prevent concurrent send_message calls to the same session
         {
-            let mut active = self.active_sessions.lock().unwrap();
+            let mut active = self.active_sessions.lock().recover();
             if !active.insert(session_id) {
                 return Err(ServiceError::InvalidOperation(
                     "Session is currently processing a message. Wait for the current request to complete.".into(),
@@ -209,7 +208,7 @@ impl LocalService {
         engine = engine.with_cancel_token(cancel_token.clone());
         self.cancel_tokens
             .lock()
-            .unwrap()
+            .recover()
             .insert(session_id, cancel_token);
 
         let data_dir = self.data_dir.clone();
@@ -250,6 +249,12 @@ impl LocalService {
                                     content,
                                     is_error,
                                 })
+                                .await;
+                            let _ = event_tx_progress.send(EngineEvent::Flush).await;
+                        }
+                        arawn_engine::ProgressEvent::Notice { message } => {
+                            let _ = event_tx_progress
+                                .send(EngineEvent::Warning { message })
                                 .await;
                             let _ = event_tx_progress.send(EngineEvent::Flush).await;
                         }
@@ -339,15 +344,20 @@ impl LocalService {
             }
 
             // Release the session lock and cancel token so new messages can be sent
-            active_sessions.lock().unwrap().remove(&session_id);
-            cancel_tokens.lock().unwrap().remove(&session_id);
+            active_sessions.lock().recover().remove(&session_id);
+            cancel_tokens.lock().recover().remove(&session_id);
         });
 
         Ok(Box::pin(tokio_stream::wrappers::ReceiverStream::new(rx)))
     }
 
     pub(super) async fn cancel_inner(&self, session_id: Uuid) -> Result<(), ServiceError> {
-        let token = self.cancel_tokens.lock().unwrap().get(&session_id).cloned();
+        let token = self
+            .cancel_tokens
+            .lock()
+            .recover()
+            .get(&session_id)
+            .cloned();
         match token {
             Some(token) => {
                 info!(%session_id, "cancelling engine run");
@@ -366,7 +376,7 @@ impl LocalService {
         request_id: &str,
         selected_index: Option<usize>,
     ) -> Result<(), ServiceError> {
-        let mut pending = self.pending_modals.lock().unwrap();
+        let mut pending = self.pending_modals.lock().recover();
         if let Some(tx) = pending.remove(request_id) {
             let _ = tx.send(selected_index);
             Ok(())

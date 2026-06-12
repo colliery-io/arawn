@@ -11,6 +11,10 @@ use rusqlite::{Connection, OptionalExtension, params};
 
 use crate::error::StewardError;
 
+/// Opens a fresh per-lens [`CursorStore`] by name. Shared by every steward
+/// subroutine so the (otherwise verbose) closure type has one name.
+pub type CursorFactory = Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync>;
+
 pub struct CursorStore {
     conn: Arc<Mutex<Connection>>,
 }

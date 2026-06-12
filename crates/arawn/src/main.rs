@@ -1,3 +1,4 @@
+use arawn_bin::lock_ext::Recover;
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -34,6 +35,11 @@ const DEFAULT_MODEL: &str = "llama-3.3-70b-versatile";
 /// Default file log filter: debug for arawn crates, warn for third-party.
 const FILE_LOG_FILTER: &str = "warn,arawn=debug,arawn_bin=debug,arawn_tui=debug,arawn_engine=debug,arawn_llm=debug,arawn_storage=debug,arawn_core=debug,arawn_mcp=debug,arawn_memory=debug,arawn_service=debug,arawn_embed=debug";
 
+/// Factory that opens a per-lens `CursorStore` against the shared data dir.
+type CursorStoreFactory = std::sync::Arc<
+    dyn Fn(&str) -> Result<arawn_steward::CursorStore, arawn_steward::StewardError> + Send + Sync,
+>;
+
 #[tokio::main]
 async fn main() -> Result<()> {
     // Parse CLI args
@@ -68,6 +74,21 @@ async fn main() -> Result<()> {
 
     #[derive(Subcommand)]
     enum Command {
+        /// Scaffold a starter arawn.toml in the data directory
+        Init {
+            /// LLM provider (groq, openai, anthropic, ollama, …)
+            #[arg(long, default_value = "groq")]
+            provider: String,
+            /// Model name (defaults to the built-in default for the provider)
+            #[arg(long)]
+            model: Option<String>,
+            /// Env var holding the API key (defaults per provider)
+            #[arg(long)]
+            api_key_env: Option<String>,
+            /// Overwrite an existing arawn.toml
+            #[arg(long)]
+            force: bool,
+        },
         /// Start the WebSocket server
         Serve {
             /// Server port
@@ -110,6 +131,37 @@ async fn main() -> Result<()> {
     }
 
     let cli = Cli::parse();
+
+    // Handle init subcommand immediately (exits process). Runs before the
+    // heavy startup path — it writes config, it doesn't need one.
+    if let Some(Command::Init {
+        provider,
+        model,
+        api_key_env,
+        force,
+    }) = &cli.command
+    {
+        let base = cli
+            .data_dir
+            .as_deref()
+            .map(String::from)
+            .or_else(arawn_bin::startup::dirs_path)
+            .unwrap_or_else(|| ".arawn".into());
+        let data_dir = std::path::PathBuf::from(base);
+        let opts = arawn_bin::startup::init::InitOptions {
+            provider: provider.clone(),
+            model: model.clone(),
+            api_key_env: api_key_env.clone(),
+            force: *force,
+        };
+        match arawn_bin::startup::init::run_init(&data_dir, opts) {
+            Ok(()) => std::process::exit(0),
+            Err(e) => {
+                eprintln!("Error: {e}");
+                std::process::exit(1);
+            }
+        }
+    }
 
     // Handle plugin subcommand immediately (exits process)
     if let Some(Command::Plugin { args: plugin_args }) = &cli.command {
@@ -476,10 +528,7 @@ async fn main() -> Result<()> {
             // engine LLM client + model.
             registry.register(Box::new(
                 arawn_engine::MemoryStoreTool::new(Arc::clone(router), embedder.clone())
-                    .with_classifier(
-                        llm_pool.engine(),
-                        llm_pool.engine_config().model.clone(),
-                    ),
+                    .with_classifier(llm_pool.engine(), llm_pool.engine_config().model.clone()),
             ));
             registry.register(Box::new(arawn_engine::MemorySearchTool::new(
                 Arc::clone(router),
@@ -699,11 +748,8 @@ async fn main() -> Result<()> {
             // opens a fresh CursorStore per lens against the
             // same data dir.
             let data_dir_clone = std::path::PathBuf::from(&data_dir);
-            let cursor_factory: Arc<
-                dyn Fn(&str) -> Result<arawn_steward::CursorStore, arawn_steward::StewardError>
-                    + Send
-                    + Sync,
-            > = Arc::new(move |name: &str| arawn_steward::CursorStore::open(&data_dir_clone, name));
+            let cursor_factory: CursorStoreFactory =
+                Arc::new(move |name: &str| arawn_steward::CursorStore::open(&data_dir_clone, name));
             // Steward subroutines are focused summarisation/extraction
             // tasks — `hint:medium` is the right tier. Resolved via
             // `[routing.hints]` config — pure model-name lookup, no
@@ -783,7 +829,12 @@ async fn main() -> Result<()> {
         // tools AND the memory router so they observe the same session-level state.
         // Idempotently materialize the scratch lens so first-boot users
         // land in a valid scope.
-        if let Err(e) = service.shared_store().lock().unwrap().ensure_scratch_lens() {
+        if let Err(e) = service
+            .shared_store()
+            .lock()
+            .recover()
+            .ensure_scratch_lens()
+        {
             warn!(error = %e, "failed to ensure scratch lens");
         }
         registry.register(Box::new(arawn_engine::LensCreateTool::new(
@@ -908,10 +959,10 @@ async fn main() -> Result<()> {
                             // one github-repo:owner/name feed per repo.
                             match arawn_engine::tools::lens::parse_github_scope(feed_id) {
                                 Some(arawn_engine::tools::lens::GithubScope::Org { owner }) => {
-                                    let gh = self.github.read().unwrap().clone();
+                                    let gh = self.github.read().recover().clone();
                                     if let Some(gh) = gh {
                                         let store = Arc::clone(&self.store);
-                                        let frt = self.feed_runtime.read().unwrap().clone();
+                                        let frt = self.feed_runtime.read().recover().clone();
                                         let ws = lens_name.to_string();
                                         tokio::spawn(async move {
                                             arawn_bin::startup::expand_github_org(
@@ -935,7 +986,7 @@ async fn main() -> Result<()> {
                                     // schedule for the newly-inserted
                                     // github-repo:owner/name feed so it
                                     // starts polling without a restart.
-                                    let frt = self.feed_runtime.read().unwrap().clone();
+                                    let frt = self.feed_runtime.read().recover().clone();
                                     if let Some(frt) = frt {
                                         let store = Arc::clone(&self.store);
                                         let feed_id_full = format!("github-repo:{owner}/{name}");
@@ -956,7 +1007,7 @@ async fn main() -> Result<()> {
                         // Reach into the feeds table via the shared
                         // storage Database to resolve template → feed_types.
                         let template = {
-                            let store = self.store.lock().unwrap();
+                            let store = self.store.lock().recover();
                             let feed_store = arawn_feeds::FeedStore::new(store.database().conn());
                             match feed_store.get(feed_id) {
                                 Ok(Some(rec)) => rec.template,
@@ -999,9 +1050,14 @@ async fn main() -> Result<()> {
             }
             impl arawn_engine::UnbindHook for FeedRuntimeUnbindHook {
                 fn on_unbind(&self, removed_feed_ids: &[String]) {
-                    let Some(frt) = self.feed_runtime.read().unwrap().clone() else {
+                    let Some(frt) = self.feed_runtime.read().recover().clone() else {
                         return;
                     };
+                    // `.cloned()` is required, not redundant: each `id` is moved
+                    // into a spawned task that outlives this method, so it must
+                    // be owned. (clippy::unnecessary_to_owned's autofix here
+                    // produces an E0521 borrow-escape — do not apply it.)
+                    #[allow(clippy::unnecessary_to_owned)]
                     for id in removed_feed_ids.iter().cloned() {
                         let frt = Arc::clone(&frt);
                         tokio::spawn(async move {
@@ -1240,6 +1296,13 @@ async fn main() -> Result<()> {
 
     // Handle TUI mode
     if tui_mode || (prompt_parts.is_empty() && session_id.is_none() && !list_sessions) {
+        // Preflight: confirm the server is reachable BEFORE the TUI enters
+        // raw mode / the alternate screen. Otherwise a missing server shows
+        // up as a raw WebSocket error on a half-initialized terminal.
+        if let Err(msg) = preflight_server(&tui_url).await {
+            eprintln!("{msg}");
+            std::process::exit(1);
+        }
         info!("launching TUI, connecting to {}", tui_url);
         arawn_tui::run_tui(&tui_url, &config.engine_llm().model)
             .await
@@ -1275,6 +1338,55 @@ async fn main() -> Result<()> {
     // The server handles the engine, tools, persistence — we just send/receive.
     let server_url = format!("ws://127.0.0.1:{}/ws", config.server.port);
     arawn_bin::startup::run_cli_via_server(&server_url, &user_input, session_id).await
+}
+
+/// Quick TCP reachability check for the TUI's target server, run *before*
+/// entering raw mode. Returns a ready-to-print error message on failure so a
+/// missing server reads as one clean line rather than a corrupted terminal.
+async fn preflight_server(ws_url: &str) -> std::result::Result<(), String> {
+    let parsed =
+        url::Url::parse(ws_url).map_err(|e| format!("Invalid server URL '{ws_url}': {e}"))?;
+    let host = parsed.host_str().unwrap_or("127.0.0.1").to_string();
+    let port = parsed.port().unwrap_or(3100);
+    let addr = format!("{host}:{port}");
+    match tokio::time::timeout(
+        std::time::Duration::from_millis(800),
+        tokio::net::TcpStream::connect(&addr),
+    )
+    .await
+    {
+        Ok(Ok(_)) => Ok(()),
+        // Connection refused, or the 800ms probe elapsed.
+        Ok(Err(_)) | Err(_) => Err(format!(
+            "Cannot reach the arawn server at {addr}.\n\
+             Start it first in another terminal:  arawn serve\n\
+             (or point the TUI at a running server with --url)"
+        )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn preflight_fails_for_unreachable_server() {
+        // Port 1 is reserved/closed — the connect refuses fast.
+        let err = preflight_server("ws://127.0.0.1:1/ws")
+            .await
+            .expect_err("should be unreachable");
+        assert!(err.contains("Cannot reach"), "got: {err}");
+        assert!(
+            err.contains("arawn serve"),
+            "should suggest starting it: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn preflight_rejects_malformed_url() {
+        let err = preflight_server("not a url").await.expect_err("bad url");
+        assert!(err.contains("Invalid server URL"), "got: {err}");
+    }
 }
 
 // T-0362: `render_usage_human` moved to

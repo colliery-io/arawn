@@ -92,8 +92,7 @@ impl<'a> MemoryStack<'a> {
 
         // Track ids already shown so the legacy `people:` fallback below
         // doesn't double-print directs/managers/peers.
-        let mut accounted: std::collections::HashSet<uuid::Uuid> =
-            std::collections::HashSet::new();
+        let mut accounted: std::collections::HashSet<uuid::Uuid> = std::collections::HashSet::new();
         for p in directs.iter().chain(managers.iter()).chain(peers.iter()) {
             accounted.insert(p.entity_id);
         }
@@ -136,11 +135,7 @@ impl<'a> MemoryStack<'a> {
     /// Render one relation bucket — "you manage: Sarah (Senior EM), Marcus".
     /// Caps at 5 entries to keep L0 within budget; skips empty buckets so
     /// the L0 output doesn't carry placeholder lines for unused tiers.
-    fn render_relation_bucket(
-        &self,
-        label: &str,
-        profiles: &[PersonProfile],
-    ) -> Option<String> {
+    fn render_relation_bucket(&self, label: &str, profiles: &[PersonProfile]) -> Option<String> {
         if profiles.is_empty() {
             return None;
         }
@@ -417,9 +412,18 @@ mod tests {
             .lines()
             .find(|l| l.starts_with("you manage: "))
             .unwrap_or_else(|| panic!("no `you manage` line in:\n{out}"));
-        assert!(manage_line.contains("Sarah Lee (Senior EM)"), "got: {manage_line}");
-        assert!(manage_line.contains("Marcus (Staff Eng)"), "got: {manage_line}");
-        assert!(out.contains("you report to: David Chen (VP)"), "got:\n{out}");
+        assert!(
+            manage_line.contains("Sarah Lee (Senior EM)"),
+            "got: {manage_line}"
+        );
+        assert!(
+            manage_line.contains("Marcus (Staff Eng)"),
+            "got: {manage_line}"
+        );
+        assert!(
+            out.contains("you report to: David Chen (VP)"),
+            "got:\n{out}"
+        );
         assert!(out.contains("peers: Anita"), "got:\n{out}");
         // No leftover plain `people:` line — every Person is accounted for.
         assert!(!out.contains("\npeople:"), "got:\n{out}");

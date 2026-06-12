@@ -9,6 +9,7 @@
 //! 5. WS server resolves the pending oneshot via the shared map
 //! 6. prompt() returns the selected index
 
+use crate::lock_ext::Recover;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -48,7 +49,7 @@ impl ModalPrompt for ChannelModalPrompt {
         // Register the pending response
         self.pending
             .lock()
-            .unwrap()
+            .recover()
             .insert(request_id.clone(), response_tx);
 
         // Convert engine ModalOptions to service ModalPromptOptions
@@ -71,7 +72,7 @@ impl ModalPrompt for ChannelModalPrompt {
 
         if self.tx.send(event).await.is_err() {
             // Channel closed — clean up and deny
-            self.pending.lock().unwrap().remove(&request_id);
+            self.pending.lock().recover().remove(&request_id);
             return None;
         }
 

@@ -14,19 +14,11 @@ workflow runtime for scheduled background jobs.
 # 1. Build
 cargo build --release
 
-# 2. Configure (you can do this manually or wait for `arawn init` — see T-0194)
-mkdir -p ~/.arawn
-cat > ~/.arawn/arawn.toml <<'EOF'
-[llm.default]
-provider = "groq"
-model = "openai/gpt-oss-120b"
-api_key_env = "GROQ_API_KEY"
+# 2. Scaffold a starter config (~/.arawn/arawn.toml)
+./target/release/arawn init --provider groq
+# (override the model/key env with --model / --api-key-env; --force overwrites)
 
-[engine]
-llm = "default"
-EOF
-
-# 3. Set the API key
+# 3. Set the API key (arawn init prints the exact variable to export)
 export GROQ_API_KEY=gsk_…
 
 # 4. Run the server
@@ -41,7 +33,7 @@ The agent has tools for shell, file editing, web search, and more.
 
 For Ollama Cloud (`OLLAMA_API_KEY` instead, model like `gemma4:31b-cloud`,
 provider `https://ollama.com/v1`) and the full troubleshooting walkthrough,
-see **[docs/src/getting-started.md](docs/src/getting-started.md)**.
+see **[docs/src/tutorials/first-chat.md](docs/src/tutorials/first-chat.md)**.
 
 ## What's in here
 

@@ -1,6 +1,6 @@
 # Code Index
 
-> Generated: 2026-06-01T02:12:51Z | 423 files | Python, Rust
+> Generated: 2026-06-12T10:55:59Z | 425 files | Python, Rust
 
 ## Project Structure
 
@@ -24,6 +24,7 @@
 │   │       │   ├── mod.rs
 │   │       │   ├── permissions.rs
 │   │       │   └── sessions.rs
+│   │       ├── lock_ext.rs
 │   │       ├── main.rs
 │   │       ├── plugin_cmd.rs
 │   │       ├── startup/
@@ -34,6 +35,7 @@
 │   │       │   ├── feeds_helpers.rs
 │   │       │   ├── helpers.rs
 │   │       │   ├── hooks.rs
+│   │       │   ├── init.rs
 │   │       │   ├── integrations.rs
 │   │       │   └── mod.rs
 │   │       └── ws_server/
@@ -558,13 +560,13 @@
 
 #### crates/arawn/src/channel_prompt.rs
 
-- pub `PendingModals` type L23 — `= Arc<Mutex<HashMap<String, oneshot::Sender<Option<usize>>>>>` — Shared map of pending modal responses.
-- pub `new_pending_modals` function L26-28 — `() -> PendingModals` — Create a new empty pending modals map.
-- pub `ChannelModalPrompt` struct L31-34 — `{ tx: mpsc::Sender<EngineEvent>, pending: PendingModals }` — ModalPrompt that sends via an EngineEvent channel and waits for response.
-- pub `new` function L37-39 — `(tx: mpsc::Sender<EngineEvent>, pending: PendingModals) -> Self` — 6.
--  `ChannelModalPrompt` type L36-40 — `= ChannelModalPrompt` — 6.
--  `ChannelModalPrompt` type L43-84 — `impl ModalPrompt for ChannelModalPrompt` — 6.
--  `prompt` function L44-83 — `(&self, request: ModalRequest) -> Option<usize>` — 6.
+- pub `PendingModals` type L24 — `= Arc<Mutex<HashMap<String, oneshot::Sender<Option<usize>>>>>` — Shared map of pending modal responses.
+- pub `new_pending_modals` function L27-29 — `() -> PendingModals` — Create a new empty pending modals map.
+- pub `ChannelModalPrompt` struct L32-35 — `{ tx: mpsc::Sender<EngineEvent>, pending: PendingModals }` — ModalPrompt that sends via an EngineEvent channel and waits for response.
+- pub `new` function L38-40 — `(tx: mpsc::Sender<EngineEvent>, pending: PendingModals) -> Self` — 6.
+-  `ChannelModalPrompt` type L37-41 — `= ChannelModalPrompt` — 6.
+-  `ChannelModalPrompt` type L44-85 — `impl ModalPrompt for ChannelModalPrompt` — 6.
+-  `prompt` function L45-84 — `(&self, request: ModalRequest) -> Option<usize>` — 6.
 
 #### crates/arawn/src/config.rs
 
@@ -633,30 +635,31 @@
 -  `ArawnConfig` type L469-718 — `= ArawnConfig`
 -  `apply_env_overrides` function L525-543 — `(&mut self)`
 -  `expand_tilde` function L720-727 — `(path: &str) -> PathBuf`
--  `tests` module L730-913 — `-`
--  `default_config_has_working_values` function L734-743 — `()`
--  `load_from_toml_string` function L746-766 — `()`
--  `compactor_falls_back_to_engine_llm` function L769-774 — `()`
--  `compactor_uses_own_llm_when_specified` function L777-796 — `()`
--  `missing_llm_name_falls_back_to_default_via_load` function L799-815 — `()`
--  `load_missing_file_uses_defaults` function L818-822 — `()`
--  `load_from_tempdir` function L825-843 — `()`
--  `generate_default_toml_is_parseable` function L846-850 — `()`
--  `tilde_expansion` function L853-856 — `()`
--  `empty_config_has_no_ceremony_overrides` function L859-865 — `()`
--  `ceremonies_table_parses_full_block` function L868-883 — `()`
--  `ceremonies_disabled_observed` function L886-898 — `()`
--  `ceremonies_partial_block_keeps_other_fields_none` function L901-912 — `()`
+-  `tests` module L730-932 — `-`
+-  `first_chat_tutorial_matches_default_model` function L734-750 — `()`
+-  `default_config_has_working_values` function L753-762 — `()`
+-  `load_from_toml_string` function L765-785 — `()`
+-  `compactor_falls_back_to_engine_llm` function L788-793 — `()`
+-  `compactor_uses_own_llm_when_specified` function L796-815 — `()`
+-  `missing_llm_name_falls_back_to_default_via_load` function L818-834 — `()`
+-  `load_missing_file_uses_defaults` function L837-841 — `()`
+-  `load_from_tempdir` function L844-862 — `()`
+-  `generate_default_toml_is_parseable` function L865-869 — `()`
+-  `tilde_expansion` function L872-875 — `()`
+-  `empty_config_has_no_ceremony_overrides` function L878-884 — `()`
+-  `ceremonies_table_parses_full_block` function L887-902 — `()`
+-  `ceremonies_disabled_observed` function L905-917 — `()`
+-  `ceremonies_partial_block_keeps_other_fields_none` function L920-931 — `()`
 
 #### crates/arawn/src/config_watcher.rs
 
-- pub `ConfigWatcher` struct L21-31 — `{ config_path: PathBuf, data_dir: PathBuf, permission_rules: Arc<std::sync::RwLo...` — Watches config files and dispatches live updates to running subsystems.
-- pub `new` function L34-49 — `( config_path: PathBuf, data_dir: PathBuf, permission_rules: Arc<std::sync::RwLo...` — with debouncing.
-- pub `with_notify` function L52-55 — `(mut self, notify: Arc<dyn Fn(bool, String) + Send + Sync>) -> Self` — Attach a notify callback fired after each reload completes.
-- pub `spawn` function L58-64 — `(self) -> tokio::task::JoinHandle<()>` — Spawn the file watcher as a background tokio task.
--  `ConfigWatcher` type L33-162 — `= ConfigWatcher` — with debouncing.
--  `run` function L66-122 — `(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>` — with debouncing.
--  `reload` function L124-161 — `(&self)` — with debouncing.
+- pub `ConfigWatcher` struct L22-32 — `{ config_path: PathBuf, data_dir: PathBuf, permission_rules: Arc<std::sync::RwLo...` — Watches config files and dispatches live updates to running subsystems.
+- pub `new` function L35-50 — `( config_path: PathBuf, data_dir: PathBuf, permission_rules: Arc<std::sync::RwLo...` — with debouncing.
+- pub `with_notify` function L53-56 — `(mut self, notify: Arc<dyn Fn(bool, String) + Send + Sync>) -> Self` — Attach a notify callback fired after each reload completes.
+- pub `spawn` function L59-65 — `(self) -> tokio::task::JoinHandle<()>` — Spawn the file watcher as a background tokio task.
+-  `ConfigWatcher` type L34-163 — `= ConfigWatcher` — with debouncing.
+-  `run` function L67-123 — `(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>` — with debouncing.
+-  `reload` function L125-162 — `(&self)` — with debouncing.
 
 #### crates/arawn/src/doctor.rs
 
@@ -705,9 +708,10 @@
 - pub `doctor` module L4 — `-`
 - pub `llm_pool` module L5 — `-`
 - pub `local_service` module L6 — `-`
-- pub `plugin_cmd` module L7 — `-`
-- pub `startup` module L8 — `-`
-- pub `ws_server` module L9 — `-`
+- pub `lock_ext` module L7 — `-`
+- pub `plugin_cmd` module L8 — `-`
+- pub `startup` module L9 — `-`
+- pub `ws_server` module L10 — `-`
 
 #### crates/arawn/src/llm_pool.rs
 
@@ -754,22 +758,32 @@
 -  `resolve_hint_concrete_model_passes_through` function L557-561 — `()` — surfaces here, not mid-session.
 -  `resolve_hint_with_missing_profile_falls_back_silently` function L564-582 — `()` — surfaces here, not mid-session.
 
+#### crates/arawn/src/lock_ext.rs
+
+- pub `Recover` interface L21-24 — `{ fn recover() }` — Extension over `LockResult` (the return of `Mutex::lock` / `RwLock::read` /
+-  `recover` function L28-30 — `(self) -> T` — and to keep `Mutex<Store>` compatible with the engine/steward crates.)
+
 #### crates/arawn/src/main.rs
 
--  `EmbedderBridge` struct L11-13 — `{ inner: Arc<dyn arawn_embed::Embedder> }` — Adapter from `arawn_embed::Embedder` to the trait
--  `EmbedderBridge` type L15-26 — `= EmbedderBridge`
--  `embed_batch` function L16-25 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
--  `DEFAULT_MODEL` variable L32 — `: &str`
--  `FILE_LOG_FILTER` variable L35 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
--  `main` function L38-1278 — `() -> Result<()>`
--  `Cli` struct L48-67 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
--  `Command` enum L70-110 — `Serve | Tui | Plugin | Doctor | Usage`
--  `ExtractorBindHook` struct L873-882 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
--  `ExtractorBindHook` type L883-982 — `= ExtractorBindHook`
--  `on_bind` function L884-981 — `(&self, lens_name: &str, feed_id: &str)`
--  `FeedRuntimeUnbindHook` struct L997-999 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
--  `FeedRuntimeUnbindHook` type L1000-1015 — `= FeedRuntimeUnbindHook`
--  `on_unbind` function L1001-1014 — `(&self, removed_feed_ids: &[String])`
+-  `EmbedderBridge` struct L12-14 — `{ inner: Arc<dyn arawn_embed::Embedder> }` — Adapter from `arawn_embed::Embedder` to the trait
+-  `EmbedderBridge` type L16-27 — `= EmbedderBridge`
+-  `embed_batch` function L17-26 — `( &'a self, texts: &'a [&'a str], ) -> std::pin::Pin< Box<dyn std::future::Futur...`
+-  `DEFAULT_MODEL` variable L33 — `: &str`
+-  `FILE_LOG_FILTER` variable L36 — `: &str` — Default file log filter: debug for arawn crates, warn for third-party.
+-  `CursorStoreFactory` type L39-41 — `= std::sync::Arc< dyn Fn(&str) -> Result<arawn_steward::CursorStore, arawn_stewa...` — Factory that opens a per-lens `CursorStore` against the shared data dir.
+-  `main` function L44-1341 — `() -> Result<()>`
+-  `Cli` struct L54-73 — `{ command: Option<Command>, data_dir: Option<String>, session: Option<Uuid>, lis...`
+-  `Command` enum L76-131 — `Init | Serve | Tui | Plugin | Doctor | Usage`
+-  `ExtractorBindHook` struct L924-933 — `{ runner: Arc<arawn_extractor::ExtractorRunner>, store: Arc<std::sync::Mutex<ara...`
+-  `ExtractorBindHook` type L934-1033 — `= ExtractorBindHook`
+-  `on_bind` function L935-1032 — `(&self, lens_name: &str, feed_id: &str)`
+-  `FeedRuntimeUnbindHook` struct L1048-1050 — `{ feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>> }`
+-  `FeedRuntimeUnbindHook` type L1051-1071 — `= FeedRuntimeUnbindHook`
+-  `on_unbind` function L1052-1070 — `(&self, removed_feed_ids: &[String])`
+-  `preflight_server` function L1346-1366 — `(ws_url: &str) -> std::result::Result<(), String>` — Quick TCP reachability check for the TUI's target server, run *before*
+-  `tests` module L1369-1390 — `-`
+-  `preflight_fails_for_unreachable_server` function L1373-1383 — `()`
+-  `preflight_rejects_malformed_url` function L1386-1389 — `()`
 
 #### crates/arawn/src/plugin_cmd.rs
 
@@ -824,16 +838,16 @@
 
 #### crates/arawn/src/local_service/integrations.rs
 
--  `LocalService` type L10-189 — `= LocalService` — `ArawnService`.
--  `list_integrations_inner` function L11-31 — `( &self, ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>` — `ArawnService`.
--  `start_oauth_flow_inner` function L33-160 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...` — `ArawnService`.
--  `disconnect_integration_inner` function L162-188 — `( &self, service: &str, ) -> Result<(), ServiceError>` — `ArawnService`.
+-  `LocalService` type L11-190 — `= LocalService` — `ArawnService`.
+-  `list_integrations_inner` function L12-32 — `( &self, ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>` — `ArawnService`.
+-  `start_oauth_flow_inner` function L34-161 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...` — `ArawnService`.
+-  `disconnect_integration_inner` function L163-189 — `( &self, service: &str, ) -> Result<(), ServiceError>` — `ArawnService`.
 
 #### crates/arawn/src/local_service/lenses.rs
 
--  `LocalService` type L11-43 — `= LocalService` — `ArawnService`.
--  `list_lenses_inner` function L12-25 — `(&self) -> Result<Vec<LensInfo>, ServiceError>` — `ArawnService`.
--  `create_lens_inner` function L27-42 — `( &self, name: String, root_dir: PathBuf, ) -> Result<LensInfo, ServiceError>` — `ArawnService`.
+-  `LocalService` type L12-44 — `= LocalService` — `ArawnService`.
+-  `list_lenses_inner` function L13-26 — `(&self) -> Result<Vec<LensInfo>, ServiceError>` — `ArawnService`.
+-  `create_lens_inner` function L28-43 — `( &self, name: String, root_dir: PathBuf, ) -> Result<LensInfo, ServiceError>` — `ArawnService`.
 
 #### crates/arawn/src/local_service/memory.rs
 
@@ -844,114 +858,117 @@
 
 #### crates/arawn/src/local_service/mod.rs
 
-- pub `LocalService` struct L31-102 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, reg...` — In-process implementation of ArawnService.
-- pub `new` function L105-139 — `( store: Store, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, registry: Arc<T...`
-- pub `with_hook_runner` function L145-148 — `(mut self, runner: Arc<arawn_engine::hooks::HookRunner>) -> Self` — Attach a hook runner.
-- pub `hook_runner_clone` function L152-154 — `(&self) -> Option<Arc<arawn_engine::hooks::HookRunner>>` — Get a clone of the optional hook runner.
-- pub `todo_event_sender` function L158-160 — `(&self) -> arawn_storage::TodoEventSender` — Sender for todo events — RPC handlers clone this when
-- pub `subscribe_todo_events` function L164-166 — `(&self) -> arawn_storage::TodoEventReceiver` — Subscribe to the todo event channel — main.rs spawns a
-- pub `set_ceremony_service` function L170-172 — `(&self, svc: Arc<arawn_ceremonies::CeremonyService>)` — Wire the ceremony service.
-- pub `ceremony_service` function L175-177 — `(&self) -> Option<Arc<arawn_ceremonies::CeremonyService>>` — Shared reference to the ceremony service, if wired.
-- pub `with_active_lens` function L182-185 — `(mut self, ws: arawn_engine::SessionLens) -> Self` — Wire the shared `SessionLens` shim.
-- pub `set_feed_runtime` function L190-192 — `(&self, runtime: Arc<arawn_feeds::FeedRuntime>)` — Hand the live feed runtime to the service so `/watch` and
-- pub `register_integration` function L202-209 — `(&self, integration: Arc<dyn arawn_integrations::Integration>)` — Register an external integration.
-- pub `shared_integrations` function L213-217 — `( &self, ) -> Arc<std::sync::RwLock<HashMap<String, Arc<dyn arawn_integrations::...` — Shared reference to the integration registry — for tools that want
-- pub `subscribe_notices` function L223-227 — `( &self, ) -> tokio::sync::broadcast::Receiver<arawn_service::ServerNotice>` — Subscribe to server-wide notices (plugin/config hot-reload, etc.).
-- pub `notice_sender` function L231-233 — `(&self) -> tokio::sync::broadcast::Sender<arawn_service::ServerNotice>` — Get a sender clone — used to wire watchers (plugin runtime, config
-- pub `with_permission_rules` function L235-238 — `(self, rules: Vec<PermissionRule>) -> Self`
-- pub `with_permission_mode` function L243-246 — `(self, mode: arawn_engine::permissions::PermissionMode) -> Self` — T-0347: override the starting permission mode (declared in
-- pub `shared_store` function L250-252 — `(&self) -> Arc<Mutex<Store>>` — Get a reference to the shared permission rules for hot-reload.
-- pub `shared_llm` function L254-256 — `(&self) -> Arc<dyn LlmClient>`
-- pub `shared_compactor_llm` function L260-262 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM (separate client when `[compactor]` config selects a
-- pub `compactor_model` function L265-267 — `(&self) -> &str` — Model name used by the compactor.
-- pub `shared_llm_pool` function L271-273 — `(&self) -> Arc<LlmClientPool>` — Shared reference to the LLM pool — used by tools/agents that resolve
-- pub `shared_registry` function L275-277 — `(&self) -> Arc<ToolRegistry>`
-- pub `engine_config` function L279-281 — `(&self) -> &QueryEngineConfig`
-- pub `shared_permission_rules` function L283-285 — `(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>>`
-- pub `shared_permission_mode` function L287-291 — `( &self, ) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>`
-- pub `with_skill_registry` function L293-299 — `( mut self, registry: Arc<arawn_engine::skills::SkillRegistry>, ) -> Self`
-- pub `with_plugin_registry` function L301-307 — `( mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>, ) -> Self`
-- pub `with_plan_state` function L309-312 — `(mut self, state: Arc<PlanModeState>) -> Self`
-- pub `with_background_tasks` function L314-317 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
-- pub `with_memory_manager` function L319-322 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
--  `LocalService` type L104-568 — `= LocalService`
--  `feed_runtime_or_err` function L194-198 — `(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError>`
--  `load_session_state` function L326-364 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Lens, String...` — Load session metadata, resolve lens, and load message history.
--  `build_session_context` function L368-503 — `( &self, session_id: Uuid, lens: &Lens, ws_dir: &str, workspace_dir: &std::path:...` — Build a EngineToolContext and per-session PromptContext for the engine.
--  `build_engine` function L507-567 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
--  `infer_entity_type` function L571-592 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
--  `commands` module L596 — `-`
--  `feeds` module L597 — `-`
--  `integrations` module L598 — `-`
--  `lenses` module L599 — `-`
--  `memory` module L600 — `-`
--  `permissions` module L601 — `-`
--  `sessions` module L602 — `-`
--  `LocalService` type L605-747 — `impl ArawnService for LocalService`
--  `list_lenses` function L606-608 — `(&self) -> Result<Vec<LensInfo>, ServiceError>`
--  `create_lens` function L609-611 — `(&self, name: String, root_dir: PathBuf) -> Result<LensInfo, ServiceError>`
--  `list_sessions` function L612-614 — `(&self, lens_id: Option<Uuid>) -> Result<Vec<SessionInfo>, ServiceError>`
--  `create_session` function L615-617 — `(&self, lens_id: Option<Uuid>) -> Result<SessionInfo, ServiceError>`
--  `load_session` function L618-620 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
--  `truncate_session_at_user_message` function L621-628 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...`
--  `send_message` function L629-635 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
--  `cancel` function L636-638 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
--  `resolve_user_input` function L639-646 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
--  `query_inventory` function L647-649 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
--  `list_available_commands` function L650-652 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
--  `list_workflows` function L653-655 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
--  `remember_fact` function L656-658 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
--  `memory_summary` function L659-661 — `(&self) -> Result<MemorySummary, ServiceError>`
--  `forget_entity` function L662-664 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
--  `get_permission_mode` function L665-667 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
--  `set_permission_mode` function L668-673 — `( &self, mode_str: &str, ) -> Result<PermissionModeInfo, ServiceError>`
--  `get_capabilities` function L674-676 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
--  `get_permissions_status` function L677-681 — `( &self, ) -> Result<arawn_service::PermissionsStatus, ServiceError>`
--  `list_integrations` function L682-686 — `( &self, ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
--  `start_oauth_flow` function L687-692 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
--  `disconnect_integration` function L693-695 — `(&self, service: &str) -> Result<(), ServiceError>`
--  `feed_register` function L696-701 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...`
--  `feed_list` function L702-704 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
--  `feed_pause` function L705-710 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_resume` function L711-716 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_run` function L717-719 — `(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
--  `feed_discover` function L720-725 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...`
--  `feed_schema` function L726-731 — `( &self, template: &str, ) -> Result<arawn_service::FeedSchemaDto, ServiceError>`
--  `feed_templates` function L732-740 — `(&self) -> Result<Vec<arawn_service::FeedTemplateInfo>, ServiceError>`
--  `feed_remove` function L741-746 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
--  `default_feed_for_service` function L754-763 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
--  `current_summary` function L765-775 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
--  `feed_err` function L777-784 — `(e: arawn_feeds::FeedError) -> ServiceError`
--  `feed_summary_to_dto` function L786-801 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
--  `OAuthFlowCtx` struct L806-810 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
--  `OAuthFlowCtx` type L813-835 — `= OAuthFlowCtx`
--  `service` function L814-816 — `(&self) -> &str`
--  `publish_auth_url` function L818-825 — `(&self, url: &url::Url)`
--  `publish_progress` function L827-834 — `(&self, message: &str)`
--  `resolve_ws_dir_from_store` function L838-851 — `( store: &Store, ws_id: Option<Uuid>, ) -> Result<String, ServiceError>` — Resolve lens directory name from store.
--  `first_sentence` function L855-866 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
--  `feed_default_tests` module L869-906 — `-`
--  `known_services_each_have_a_default_feed` function L873-899 — `()`
--  `unknown_service_has_no_default_feed` function L902-905 — `()`
+- pub `LocalService` struct L32-103 — `{ store: Arc<Mutex<Store>>, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, reg...` — In-process implementation of ArawnService.
+- pub `new` function L106-140 — `( store: Store, data_dir: PathBuf, llm_pool: Arc<LlmClientPool>, registry: Arc<T...`
+- pub `with_hook_runner` function L146-149 — `(mut self, runner: Arc<arawn_engine::hooks::HookRunner>) -> Self` — Attach a hook runner.
+- pub `hook_runner_clone` function L153-155 — `(&self) -> Option<Arc<arawn_engine::hooks::HookRunner>>` — Get a clone of the optional hook runner.
+- pub `todo_event_sender` function L159-161 — `(&self) -> arawn_storage::TodoEventSender` — Sender for todo events — RPC handlers clone this when
+- pub `subscribe_todo_events` function L165-167 — `(&self) -> arawn_storage::TodoEventReceiver` — Subscribe to the todo event channel — main.rs spawns a
+- pub `set_ceremony_service` function L171-173 — `(&self, svc: Arc<arawn_ceremonies::CeremonyService>)` — Wire the ceremony service.
+- pub `ceremony_service` function L176-178 — `(&self) -> Option<Arc<arawn_ceremonies::CeremonyService>>` — Shared reference to the ceremony service, if wired.
+- pub `with_active_lens` function L183-186 — `(mut self, ws: arawn_engine::SessionLens) -> Self` — Wire the shared `SessionLens` shim.
+- pub `set_feed_runtime` function L191-193 — `(&self, runtime: Arc<arawn_feeds::FeedRuntime>)` — Hand the live feed runtime to the service so `/watch` and
+- pub `register_integration` function L203-210 — `(&self, integration: Arc<dyn arawn_integrations::Integration>)` — Register an external integration.
+- pub `shared_integrations` function L214-218 — `( &self, ) -> Arc<std::sync::RwLock<HashMap<String, Arc<dyn arawn_integrations::...` — Shared reference to the integration registry — for tools that want
+- pub `subscribe_notices` function L224-228 — `( &self, ) -> tokio::sync::broadcast::Receiver<arawn_service::ServerNotice>` — Subscribe to server-wide notices (plugin/config hot-reload, etc.).
+- pub `notice_sender` function L232-234 — `(&self) -> tokio::sync::broadcast::Sender<arawn_service::ServerNotice>` — Get a sender clone — used to wire watchers (plugin runtime, config
+- pub `with_permission_rules` function L236-239 — `(self, rules: Vec<PermissionRule>) -> Self`
+- pub `with_permission_mode` function L244-247 — `(self, mode: arawn_engine::permissions::PermissionMode) -> Self` — T-0347: override the starting permission mode (declared in
+- pub `shared_store` function L251-253 — `(&self) -> Arc<Mutex<Store>>` — Get a reference to the shared permission rules for hot-reload.
+- pub `shared_llm` function L255-257 — `(&self) -> Arc<dyn LlmClient>`
+- pub `shared_compactor_llm` function L261-263 — `(&self) -> Arc<dyn LlmClient>` — Compactor LLM (separate client when `[compactor]` config selects a
+- pub `compactor_model` function L266-268 — `(&self) -> &str` — Model name used by the compactor.
+- pub `shared_llm_pool` function L272-274 — `(&self) -> Arc<LlmClientPool>` — Shared reference to the LLM pool — used by tools/agents that resolve
+- pub `shared_registry` function L276-278 — `(&self) -> Arc<ToolRegistry>`
+- pub `engine_config` function L280-282 — `(&self) -> &QueryEngineConfig`
+- pub `shared_permission_rules` function L284-286 — `(&self) -> Arc<std::sync::RwLock<Vec<PermissionRule>>>`
+- pub `shared_permission_mode` function L288-292 — `( &self, ) -> Arc<std::sync::RwLock<arawn_engine::permissions::PermissionMode>>`
+- pub `with_skill_registry` function L294-300 — `( mut self, registry: Arc<arawn_engine::skills::SkillRegistry>, ) -> Self`
+- pub `with_plugin_registry` function L302-308 — `( mut self, registry: Arc<arawn_engine::plugins::PluginRegistry>, ) -> Self`
+- pub `with_plan_state` function L310-313 — `(mut self, state: Arc<PlanModeState>) -> Self`
+- pub `with_background_tasks` function L315-318 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
+- pub `with_memory_manager` function L320-323 — `(mut self, mgr: Arc<arawn_memory::MemoryManager>) -> Self`
+-  `LocalService` type L105-569 — `= LocalService`
+-  `feed_runtime_or_err` function L195-199 — `(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError>`
+-  `load_session_state` function L327-365 — `( &self, session_id: Uuid, ) -> Result<(arawn_storage::SessionMeta, Lens, String...` — Load session metadata, resolve lens, and load message history.
+-  `build_session_context` function L369-504 — `( &self, session_id: Uuid, lens: &Lens, ws_dir: &str, workspace_dir: &std::path:...` — Build a EngineToolContext and per-session PromptContext for the engine.
+-  `build_engine` function L508-568 — `( &self, prompt_context: Option<arawn_engine::PromptContext>, event_tx: &mpsc::S...` — Build a QueryEngine configured with compactor, skills, plugins, and plan state.
+-  `infer_entity_type` function L572-593 — `(text: &str) -> (arawn_memory::EntityType, String)` — Infer entity type from text patterns.
+-  `commands` module L597 — `-`
+-  `feeds` module L598 — `-`
+-  `integrations` module L599 — `-`
+-  `lenses` module L600 — `-`
+-  `memory` module L601 — `-`
+-  `permissions` module L602 — `-`
+-  `sessions` module L603 — `-`
+-  `LocalService` type L606-748 — `impl ArawnService for LocalService`
+-  `list_lenses` function L607-609 — `(&self) -> Result<Vec<LensInfo>, ServiceError>`
+-  `create_lens` function L610-612 — `(&self, name: String, root_dir: PathBuf) -> Result<LensInfo, ServiceError>`
+-  `list_sessions` function L613-615 — `(&self, lens_id: Option<Uuid>) -> Result<Vec<SessionInfo>, ServiceError>`
+-  `create_session` function L616-618 — `(&self, lens_id: Option<Uuid>) -> Result<SessionInfo, ServiceError>`
+-  `load_session` function L619-621 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>`
+-  `truncate_session_at_user_message` function L622-629 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...`
+-  `send_message` function L630-636 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...`
+-  `cancel` function L637-639 — `(&self, session_id: Uuid) -> Result<(), ServiceError>`
+-  `resolve_user_input` function L640-647 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...`
+-  `query_inventory` function L648-650 — `(&self, kind: &str) -> Result<Vec<InventoryItem>, ServiceError>`
+-  `list_available_commands` function L651-653 — `(&self) -> Result<Vec<CommandInfo>, ServiceError>`
+-  `list_workflows` function L654-656 — `(&self) -> Result<Vec<WorkflowInfo>, ServiceError>`
+-  `remember_fact` function L657-659 — `(&self, text: &str) -> Result<MemoryStoreResult, ServiceError>`
+-  `memory_summary` function L660-662 — `(&self) -> Result<MemorySummary, ServiceError>`
+-  `forget_entity` function L663-665 — `(&self, query: &str) -> Result<ForgetResult, ServiceError>`
+-  `get_permission_mode` function L666-668 — `(&self) -> Result<PermissionModeInfo, ServiceError>`
+-  `set_permission_mode` function L669-674 — `( &self, mode_str: &str, ) -> Result<PermissionModeInfo, ServiceError>`
+-  `get_capabilities` function L675-677 — `(&self) -> Result<arawn_service::ServerCapabilities, ServiceError>`
+-  `get_permissions_status` function L678-682 — `( &self, ) -> Result<arawn_service::PermissionsStatus, ServiceError>`
+-  `list_integrations` function L683-687 — `( &self, ) -> Result<Vec<arawn_service::IntegrationStatus>, ServiceError>`
+-  `start_oauth_flow` function L688-693 — `( &self, service: &str, ) -> Result<arawn_service::OAuthFlowStarted, ServiceErro...`
+-  `disconnect_integration` function L694-696 — `(&self, service: &str) -> Result<(), ServiceError>`
+-  `feed_register` function L697-702 — `( &self, spec: arawn_service::FeedRegisterSpec, ) -> Result<arawn_service::FeedS...`
+-  `feed_list` function L703-705 — `(&self) -> Result<Vec<arawn_service::FeedSummaryDto>, ServiceError>`
+-  `feed_pause` function L706-711 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_resume` function L712-717 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_run` function L718-720 — `(&self, feed_id: &str) -> Result<arawn_service::FeedSummaryDto, ServiceError>`
+-  `feed_discover` function L721-726 — `( &self, template: &str, ) -> Result<arawn_service::FeedDiscoverDto, ServiceErro...`
+-  `feed_schema` function L727-732 — `( &self, template: &str, ) -> Result<arawn_service::FeedSchemaDto, ServiceError>`
+-  `feed_templates` function L733-741 — `(&self) -> Result<Vec<arawn_service::FeedTemplateInfo>, ServiceError>`
+-  `feed_remove` function L742-747 — `( &self, feed_id: &str, ) -> Result<arawn_service::FeedRemoveDto, ServiceError>`
+-  `default_feed_for_service` function L755-764 — `(service: &str) -> Option<(&'static str, &'static str)>` — Personal default feed registered automatically the first time
+-  `current_summary` function L766-776 — `( runtime: &arawn_feeds::FeedRuntime, feed_id: &str, ) -> Result<arawn_service::...`
+-  `feed_err` function L778-785 — `(e: arawn_feeds::FeedError) -> ServiceError`
+-  `feed_summary_to_dto` function L787-802 — `(s: arawn_feeds::FeedSummary) -> arawn_service::FeedSummaryDto`
+-  `OAuthFlowCtx` struct L807-811 — `{ service: String, url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sende...` — Glue that lets `LocalService::start_oauth_flow` bridge the integration's
+-  `OAuthFlowCtx` type L814-836 — `= OAuthFlowCtx`
+-  `service` function L815-817 — `(&self) -> &str`
+-  `publish_auth_url` function L819-826 — `(&self, url: &url::Url)`
+-  `publish_progress` function L828-835 — `(&self, message: &str)`
+-  `resolve_ws_dir_from_store` function L839-852 — `( store: &Store, ws_id: Option<Uuid>, ) -> Result<String, ServiceError>` — Resolve lens directory name from store.
+-  `first_sentence` function L856-867 — `(s: &str) -> String` — Extract the first sentence and sanitize for use in a markdown table cell.
+-  `feed_default_tests` module L870-907 — `-`
+-  `known_services_each_have_a_default_feed` function L874-900 — `()`
+-  `unknown_service_has_no_default_feed` function L903-906 — `()`
+-  `poison_recovery_tests` module L916-966 — `-` — P1-2 (ARAWN-T-0469): the service must survive a panic in a background
+-  `rwlock_read_recovers_after_writer_panic` function L922-950 — `()`
+-  `mutex_recovers_after_holder_panic` function L953-965 — `()`
 
 #### crates/arawn/src/local_service/permissions.rs
 
--  `LocalService` type L9-105 — `= LocalService` — `ArawnService`.
--  `get_permission_mode_inner` function L10-20 — `( &self, ) -> Result<PermissionModeInfo, ServiceError>` — `ArawnService`.
--  `set_permission_mode_inner` function L22-37 — `( &self, mode_str: &str, ) -> Result<PermissionModeInfo, ServiceError>` — `ArawnService`.
--  `get_capabilities_inner` function L39-51 — `( &self, ) -> Result<arawn_service::ServerCapabilities, ServiceError>` — `ArawnService`.
--  `get_permissions_status_inner` function L53-104 — `( &self, ) -> Result<arawn_service::PermissionsStatus, ServiceError>` — `ArawnService`.
+-  `LocalService` type L10-106 — `= LocalService` — `ArawnService`.
+-  `get_permission_mode_inner` function L11-21 — `( &self, ) -> Result<PermissionModeInfo, ServiceError>` — `ArawnService`.
+-  `set_permission_mode_inner` function L23-38 — `( &self, mode_str: &str, ) -> Result<PermissionModeInfo, ServiceError>` — `ArawnService`.
+-  `get_capabilities_inner` function L40-52 — `( &self, ) -> Result<arawn_service::ServerCapabilities, ServiceError>` — `ArawnService`.
+-  `get_permissions_status_inner` function L54-105 — `( &self, ) -> Result<arawn_service::PermissionsStatus, ServiceError>` — `ArawnService`.
 
 #### crates/arawn/src/local_service/sessions.rs
 
--  `LocalService` type L17-379 — `= LocalService` — `ArawnService`.
--  `list_sessions_inner` function L18-36 — `( &self, lens_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError>` — `ArawnService`.
--  `create_session_inner` function L38-73 — `( &self, lens_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>` — `ArawnService`.
--  `load_session_inner` function L75-98 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>` — `ArawnService`.
--  `truncate_session_at_user_message_inner` function L100-148 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...` — `ArawnService`.
--  `send_message_inner` function L151-347 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...` — `ArawnService`.
--  `cancel_inner` function L349-362 — `(&self, session_id: Uuid) -> Result<(), ServiceError>` — `ArawnService`.
--  `resolve_user_input_inner` function L364-378 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...` — `ArawnService`.
+-  `LocalService` type L16-389 — `= LocalService` — `ArawnService`.
+-  `list_sessions_inner` function L17-35 — `( &self, lens_id: Option<Uuid>, ) -> Result<Vec<SessionInfo>, ServiceError>` — `ArawnService`.
+-  `create_session_inner` function L37-72 — `( &self, lens_id: Option<Uuid>, ) -> Result<SessionInfo, ServiceError>` — `ArawnService`.
+-  `load_session_inner` function L74-97 — `(&self, id: Uuid) -> Result<SessionDetail, ServiceError>` — `ArawnService`.
+-  `truncate_session_at_user_message_inner` function L99-147 — `( &self, id: Uuid, user_message_index: usize, ) -> Result<SessionDetail, Service...` — `ArawnService`.
+-  `send_message_inner` function L150-352 — `( &self, session_id: Uuid, content: String, ) -> Result<Pin<Box<dyn futures::Str...` — `ArawnService`.
+-  `cancel_inner` function L354-372 — `(&self, session_id: Uuid) -> Result<(), ServiceError>` — `ArawnService`.
+-  `resolve_user_input_inner` function L374-388 — `( &self, request_id: &str, selected_index: Option<usize>, ) -> Result<(), Servic...` — `ArawnService`.
 
 ### crates/arawn/src/startup
 
@@ -972,7 +989,7 @@
 
 #### crates/arawn/src/startup/feeds.rs
 
-- pub `wire_continual_feeds` function L15-98 — `( workflow_runner_handle: Option<&Arc<arawn_workflow::WorkflowRunner>>, data_dir...` — Wire the continual data-feed runtime.
+- pub `wire_continual_feeds` function L16-99 — `( workflow_runner_handle: Option<&Arc<arawn_workflow::WorkflowRunner>>, data_dir...` — Wire the continual data-feed runtime.
 
 #### crates/arawn/src/startup/feeds_helpers.rs
 
@@ -981,11 +998,16 @@
 
 #### crates/arawn/src/startup/helpers.rs
 
-- pub `build_llm_client` function L11-45 — `(config: &crate::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
-- pub `register_default_tools` function L48-100 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &crate::ArawnConfig, data_...` — Register all default tools into the registry.
-- pub `connect_mcp_servers` function L103-147 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
-- pub `register_workflow_tools` function L150-167 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
-- pub `dirs_path` function L169-178 — `() -> Option<String>` — main hotspot file.
+- pub `build_llm_client` function L11-46 — `(config: &crate::LlmConfig) -> Result<Arc<dyn arawn_llm::LlmClient>>` — Build the appropriate LLM client based on provider config.
+- pub `register_default_tools` function L70-122 — `( registry: &Arc<arawn_engine::ToolRegistry>, config: &crate::ArawnConfig, data_...` — Register all default tools into the registry.
+- pub `connect_mcp_servers` function L125-169 — `( data_dir: &str, plugin_result: &arawn_engine::plugins::PluginLoadResult, regis...` — Connect to MCP servers from config and plugins.
+- pub `register_workflow_tools` function L172-189 — `( registry: &Arc<arawn_engine::ToolRegistry>, workflows_dir: std::path::PathBuf,...` — Register workflow management tools.
+- pub `dirs_path` function L191-200 — `() -> Option<String>` — main hotspot file.
+-  `provider_requires_key` function L52-57 — `(provider: &str) -> bool` — Does this provider require an API key? Cloud providers do; local ones
+-  `missing_key_error` function L60-67 — `(config: &crate::LlmConfig) -> anyhow::Error` — A fail-fast startup error that names the exact env var the user should set.
+-  `tests` module L203-244 — `-` — main hotspot file.
+-  `cloud_provider_without_key_fails_fast_naming_env_var` function L208-231 — `()` — main hotspot file.
+-  `local_provider_without_key_still_builds` function L234-243 — `()` — main hotspot file.
 
 #### crates/arawn/src/startup/hooks.rs
 
@@ -998,11 +1020,25 @@
 -  `loads_project_only_settings` function L104-113 — `()` — call sites live in T-B/C/D (ARAWN-T-0413/0414/0415).
 -  `merges_user_and_project_settings` function L116-129 — `()` — call sites live in T-B/C/D (ARAWN-T-0413/0414/0415).
 
+#### crates/arawn/src/startup/init.rs
+
+- pub `InitOptions` struct L16-21 — `{ provider: String, model: Option<String>, api_key_env: Option<String>, force: b...` — Options for `arawn init`, mapped 1:1 from the CLI flags.
+- pub `run_init` function L76-97 — `(data_dir: &Path, opts: InitOptions) -> Result<()>` — Write `arawn.toml` into `data_dir`, then print next steps.
+-  `default_key_env` function L24-35 — `(provider: &str) -> &'static str` — Conventional env var holding a provider's API key.
+-  `render_config` function L40-73 — `(opts: &InitOptions) -> Result<(String, String)>` — Render the minimal `[llm.default]` + `[engine]` config for these options.
+-  `tests` module L100-168 — `-` — drift from the built-in default.
+-  `opts` function L103-110 — `(provider: &str) -> InitOptions` — drift from the built-in default.
+-  `rendered_config_parses_and_uses_code_default_model` function L113-123 — `()` — drift from the built-in default.
+-  `provider_picks_conventional_key_env` function L126-131 — `()` — drift from the built-in default.
+-  `explicit_overrides_win` function L134-145 — `()` — drift from the built-in default.
+-  `refuses_to_overwrite_without_force` function L148-153 — `()` — drift from the built-in default.
+-  `writes_then_force_overwrites` function L156-167 — `()` — drift from the built-in default.
+
 #### crates/arawn/src/startup/integrations.rs
 
-- pub `IntegrationsForFeeds` struct L16-23 — `{ atlassian: Option<Arc<arawn_integrations::atlassian::AtlassianIntegration>>, c...` — Handles to the integrations that the continual-feeds setup needs.
-- pub `wire_integrations` function L27-395 — `( config: &ArawnConfig, data_dir: &str, service: &mut LocalService, registry: &A...` — Register Gmail, Calendar, Drive, Atlassian, GitHub, and Slack integrations.
-- pub `wire_uat_mock_integrations` function L407-462 — `( data_dir: &str, service: &mut LocalService, registry: &Arc<arawn_engine::ToolR...` — ARAWN-I-0062 T-A: register lifecycle-level `UatMockIntegration`s based on
+- pub `IntegrationsForFeeds` struct L17-24 — `{ atlassian: Option<Arc<arawn_integrations::atlassian::AtlassianIntegration>>, c...` — Handles to the integrations that the continual-feeds setup needs.
+- pub `wire_integrations` function L28-396 — `( config: &ArawnConfig, data_dir: &str, service: &mut LocalService, registry: &A...` — Register Gmail, Calendar, Drive, Atlassian, GitHub, and Slack integrations.
+- pub `wire_uat_mock_integrations` function L408-463 — `( data_dir: &str, service: &mut LocalService, registry: &Arc<arawn_engine::ToolR...` — ARAWN-I-0062 T-A: register lifecycle-level `UatMockIntegration`s based on
 
 #### crates/arawn/src/startup/mod.rs
 
@@ -1013,7 +1049,8 @@
 - pub `feeds_helpers` module L8 — `-` — Grouped by concern; each submodule is `pub` so `main` can use them.
 - pub `helpers` module L9 — `-` — Grouped by concern; each submodule is `pub` so `main` can use them.
 - pub `hooks` module L10 — `-` — Grouped by concern; each submodule is `pub` so `main` can use them.
-- pub `integrations` module L11 — `-` — Grouped by concern; each submodule is `pub` so `main` can use them.
+- pub `init` module L11 — `-` — Grouped by concern; each submodule is `pub` so `main` can use them.
+- pub `integrations` module L12 — `-` — Grouped by concern; each submodule is `pub` so `main` can use them.
 
 ### crates/arawn/src/ws_server
 
@@ -1026,8 +1063,8 @@
 #### crates/arawn/src/ws_server/mod.rs
 
 - pub `read_token_file` function L247-258 — `() -> Option<String>` — Read the auth token from {data_dir}/server.token.
-- pub `run_server` function L261-313 — `(service: LocalService, host: &str, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
-- pub `handle_connection_public` function L403-405 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
+- pub `run_server` function L261-330 — `(service: LocalService, host: &str, port: u16) -> anyhow::Result<()>` — Start the WebSocket server on the given port.
+- pub `handle_connection_public` function L420-422 — `(socket: WebSocket, service: Arc<LocalService>)` — Handle a single WebSocket connection.
 -  `ceremonies` module L23 — `-`
 -  `todos` module L24 — `-`
 -  `PROTOCOL_VERSION` variable L27 — `: &str` — Protocol version reported by the `hello` handshake.
@@ -1045,17 +1082,17 @@
 -  `is_loopback_host` function L215-223 — `(host: &str) -> bool` — Generate a random auth token for WebSocket connections.
 -  `generate_auth_token` function L225-232 — `() -> String`
 -  `write_token_file` function L235-243 — `( data_dir: &std::path::Path, token: &str, ) -> std::io::Result<std::path::PathB...` — Write the auth token to {data_dir}/server.token for clients to read.
--  `shutdown_signal` function L316-338 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
--  `decision_handler` function L343-362 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
--  `WsQueryParams` struct L366-368 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
--  `ws_handler` function L370-400 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
--  `handle_connection` function L407-1356 — `(socket: WebSocket, service: Arc<LocalService>)`
--  `tests` module L1359-1431 — `-`
--  `from_service_error_preserves_structured_detail_for_typed_variants` function L1366-1380 — `()` — Typed Storage error should round-trip through the wire payload with
--  `from_service_error_omits_details_for_string_only_variants` function L1386-1397 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
--  `loopback_hosts_are_recognized` function L1404-1409 — `()`
--  `non_loopback_hosts_flagged` function L1412-1418 — `()`
--  `from_service_error_preserves_engine_error_kind` function L1421-1430 — `()`
+-  `shutdown_signal` function L333-355 — `()` — Wait for a shutdown signal (Ctrl-C / SIGTERM).
+-  `decision_handler` function L360-379 — `( State(AppState { service, .. }): State<AppState>, Json(req): Json<arawn_workfl...` — HTTP endpoint for workflow decision tasks.
+-  `WsQueryParams` struct L383-385 — `{ token: Option<String> }` — Query parameters for WebSocket connection.
+-  `ws_handler` function L387-417 — `( ws: WebSocketUpgrade, Query(params): Query<WsQueryParams>, State(state): State...`
+-  `handle_connection` function L424-1373 — `(socket: WebSocket, service: Arc<LocalService>)`
+-  `tests` module L1376-1448 — `-`
+-  `from_service_error_preserves_structured_detail_for_typed_variants` function L1383-1397 — `()` — Typed Storage error should round-trip through the wire payload with
+-  `from_service_error_omits_details_for_string_only_variants` function L1403-1414 — `()` — String-only variants (NotFound, InvalidOperation, Internal) keep
+-  `loopback_hosts_are_recognized` function L1421-1426 — `()`
+-  `non_loopback_hosts_flagged` function L1429-1435 — `()`
+-  `from_service_error_preserves_engine_error_kind` function L1438-1447 — `()`
 
 #### crates/arawn/src/ws_server/todos.rs
 
@@ -1576,7 +1613,7 @@
 - pub `CeremonyService` struct L124-128 — `{ conn: ConnHandle, dispatcher: Arc<dyn CeremonyDispatcher>, events: Option<Cere...` — The methods correspond 1:1 to the `ceremonies.*` WS-RPC method
 - pub `new` function L131-137 — `(conn: ConnHandle, dispatcher: Arc<dyn CeremonyDispatcher>) -> Self` — Filed as a follow-up.
 - pub `with_events` function L142-145 — `(mut self, sender: CeremonyEventSender) -> Self` — Attach the event sender.
-- pub `set_retro_cadence` function L156-177 — `( &self, cadence_str: &str, anchor: Option<chrono::NaiveDate>, ) -> Result<crate...` — `ceremonies.set_retro_cadence` — persist a new retro cadence
+- pub `set_retro_cadence` function L156-177 — `( &self, cadence_str: &str, anchor: Option<chrono::NaiveDate>, ) -> Result<crate...` — `ceremonies.set_retro_cadence` — persist a new retro cadence and
 - pub `get_today` function L182-185 — `(&self) -> Result<Option<TabletDto>, CeremonyError>` — `ceremonies.get_today` — today's daily tablet, if any.
 - pub `get_by_period` function L188-206 — `( &self, kind: &str, period_key: &str, ) -> Result<Option<TabletDto>, CeremonyEr...` — `ceremonies.get_by_period` — specific tablet.
 - pub `list_items` function L210-236 — `( &self, tablet_id: &str, section_key: Option<&str>, ) -> Result<Vec<ItemDto>, C...` — `ceremonies.list_items` — items in a tablet, optionally
@@ -1584,52 +1621,52 @@
 - pub `add_item` function L289-341 — `(&self, req: AddItemRequest) -> Result<ItemDto, CeremonyError>` — `ceremonies.add_item` — user-write path.
 - pub `run` function L344-346 — `(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError>` — `ceremonies.run` — manual trigger; idempotent per period_key.
 - pub `add_rolling_todo` function L356-384 — `( &self, body: &str, origin_tablet_id: &str, ) -> Result<String, CeremonyError>` — User-write helper used by `daily_add_todo`: insert a row into
-- pub `confirm_priority` function L390-538 — `(&self, item_id: &str) -> Result<PriorityDto, CeremonyError>` — `ceremonies.confirm_priority` — promote a priority candidate
-- pub `reject_priority` function L543-580 — `(&self, item_id: &str) -> Result<(), CeremonyError>` — `ceremonies.reject_priority` — delete a priority candidate item.
-- pub `add_priority` function L585-642 — `(&self, req: AddPriorityRequest) -> Result<PriorityDto, CeremonyError>` — `ceremonies.add_priority` — user-write path.
-- pub `list_priorities` function L647-747 — `(&self, tablet_id: &str) -> Result<Vec<PriorityDto>, CeremonyError>` — `ceremonies.list_priorities` — union of confirmed priorities
-- pub `get_diary` function L763-776 — `(&self, tablet_id: &str) -> Result<Option<String>, CeremonyError>` — `ceremonies.upsert_diary` — writes (or replaces) the user's
-- pub `upsert_diary` function L778-834 — `(&self, tablet_id: &str, body: &str) -> Result<(), CeremonyError>` — Filed as a follow-up.
-- pub `list_notifications` function L840-870 — `(&self) -> Result<Vec<NotificationDto>, CeremonyError>` — `ceremonies.list_notifications` — tablets the user has not
--  `CeremonyService` type L130-871 — `= CeremonyService` — Filed as a follow-up.
--  `row_to_tablet` function L875-890 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<TabletDto>` — Filed as a follow-up.
--  `row_to_item` function L892-906 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<ItemDto>` — Filed as a follow-up.
--  `kind_str` function L908-918 — `(k: &ItemKind) -> &'static str` — Filed as a follow-up.
--  `tests` module L921-1570 — `-` — Filed as a follow-up.
--  `open_test_db` function L932-939 — `() -> (TempDir, ConnHandle)` — Filed as a follow-up.
--  `ScriptedPlugin` struct L941-945 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>>, period: String }` — Filed as a follow-up.
--  `ScriptedPlugin` type L947-974 — `impl Ceremony for ScriptedPlugin` — Filed as a follow-up.
--  `kind` function L948-950 — `(&self) -> &'static str` — Filed as a follow-up.
--  `period_key` function L951-953 — `(&self, _now: chrono::DateTime<Utc>) -> String` — Filed as a follow-up.
--  `period_window` function L954-960 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — Filed as a follow-up.
--  `default_schedule` function L961-963 — `(&self) -> CronSchedule` — Filed as a follow-up.
--  `gather` function L964-966 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — Filed as a follow-up.
--  `compose` function L967-973 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — Filed as a follow-up.
--  `build_service_with_items` function L976-1010 — `( kind: &'static str, period: &str, ) -> (TempDir, CeremonyService, String)` — Filed as a follow-up.
--  `run_generates_and_get_by_period_reads_back` function L1013-1020 — `()` — Filed as a follow-up.
--  `list_items_filters_by_section` function L1023-1032 — `()` — Filed as a follow-up.
--  `patch_item_toggles_done` function L1035-1064 — `()` — Filed as a follow-up.
--  `add_item_inserts_user_row_with_null_citation_and_next_ordinal` function L1067-1084 — `()` — Filed as a follow-up.
--  `list_notifications_surfaces_open_tablets` function L1087-1094 — `()` — Filed as a follow-up.
--  `get_today_returns_none_when_no_daily_tablet` function L1097-1103 — `()` — Filed as a follow-up.
--  `dispatch_emits_tablet_generated_event` function L1106-1140 — `()` — Filed as a follow-up.
--  `upsert_diary_writes_row_and_flips_status` function L1143-1171 — `()` — Filed as a follow-up.
--  `upsert_diary_is_idempotent_and_replaces_body` function L1174-1195 — `()` — Filed as a follow-up.
--  `upsert_diary_rejects_non_retro_tablet` function L1198-1215 — `()` — Filed as a follow-up.
--  `upsert_diary_rejects_unknown_tablet` function L1218-1224 — `()` — Filed as a follow-up.
--  `upsert_diary_emits_diary_updated_event` function L1227-1242 — `()` — Filed as a follow-up.
--  `service_internals` function L1248-1253 — `(service: &CeremonyService) -> (ConnHandle, (), ())` — Tiny accessor for the in-test connection so the diary tests
--  `build_weekly_with_priority_candidates` function L1259-1296 — `( n: usize, ) -> (TempDir, CeremonyService, String, Vec<String>)` — Build a weekly tablet with N priority candidate items via raw
--  `confirm_priority_happy_path_inserts_row_and_copies_citation` function L1299-1317 — `()` — Filed as a follow-up.
--  `confirm_priority_preserves_rationale_from_body` function L1320-1365 — `()` — Filed as a follow-up.
--  `confirm_priority_leaves_rationale_null_when_body_has_none` function L1368-1386 — `()` — Filed as a follow-up.
--  `confirm_priority_is_idempotent` function L1389-1404 — `()` — Filed as a follow-up.
--  `confirm_priority_rejects_non_priority_item` function L1407-1434 — `()` — Filed as a follow-up.
--  `reject_priority_deletes_item_and_priority_row` function L1437-1459 — `()` — Filed as a follow-up.
--  `add_priority_inserts_with_null_citation` function L1462-1485 — `()` — Filed as a follow-up.
--  `list_priorities_unions_confirmed_and_candidates_deduped` function L1488-1517 — `()` — Filed as a follow-up.
--  `confirm_priority_emits_priority_confirmed_event` function L1520-1537 — `()` — Filed as a follow-up.
--  `patch_item_emits_item_updated_event` function L1540-1569 — `()` — Filed as a follow-up.
+- pub `confirm_priority` function L390-540 — `(&self, item_id: &str) -> Result<PriorityDto, CeremonyError>` — `ceremonies.confirm_priority` — promote a priority candidate
+- pub `reject_priority` function L545-582 — `(&self, item_id: &str) -> Result<(), CeremonyError>` — `ceremonies.reject_priority` — delete a priority candidate item.
+- pub `add_priority` function L587-644 — `(&self, req: AddPriorityRequest) -> Result<PriorityDto, CeremonyError>` — `ceremonies.add_priority` — user-write path.
+- pub `list_priorities` function L649-749 — `(&self, tablet_id: &str) -> Result<Vec<PriorityDto>, CeremonyError>` — `ceremonies.list_priorities` — union of confirmed priorities
+- pub `get_diary` function L765-778 — `(&self, tablet_id: &str) -> Result<Option<String>, CeremonyError>` — `ceremonies.upsert_diary` — writes (or replaces) the user's
+- pub `upsert_diary` function L780-836 — `(&self, tablet_id: &str, body: &str) -> Result<(), CeremonyError>` — Filed as a follow-up.
+- pub `list_notifications` function L842-872 — `(&self) -> Result<Vec<NotificationDto>, CeremonyError>` — `ceremonies.list_notifications` — tablets the user has not
+-  `CeremonyService` type L130-873 — `= CeremonyService` — Filed as a follow-up.
+-  `row_to_tablet` function L877-892 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<TabletDto>` — Filed as a follow-up.
+-  `row_to_item` function L894-908 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<ItemDto>` — Filed as a follow-up.
+-  `kind_str` function L910-920 — `(k: &ItemKind) -> &'static str` — Filed as a follow-up.
+-  `tests` module L923-1572 — `-` — Filed as a follow-up.
+-  `open_test_db` function L934-941 — `() -> (TempDir, ConnHandle)` — Filed as a follow-up.
+-  `ScriptedPlugin` struct L943-947 — `{ kind: &'static str, items: std::sync::Mutex<Vec<NewItem>>, period: String }` — Filed as a follow-up.
+-  `ScriptedPlugin` type L949-976 — `impl Ceremony for ScriptedPlugin` — Filed as a follow-up.
+-  `kind` function L950-952 — `(&self) -> &'static str` — Filed as a follow-up.
+-  `period_key` function L953-955 — `(&self, _now: chrono::DateTime<Utc>) -> String` — Filed as a follow-up.
+-  `period_window` function L956-962 — `( &self, _period_key: &str, ) -> Result<(chrono::DateTime<Utc>, chrono::DateTime...` — Filed as a follow-up.
+-  `default_schedule` function L963-965 — `(&self) -> CronSchedule` — Filed as a follow-up.
+-  `gather` function L966-968 — `(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError>` — Filed as a follow-up.
+-  `compose` function L969-975 — `( &self, _ctx: &dyn CeremonyCtx, _facts: GatheredFacts, ) -> Result<Vec<NewItem>...` — Filed as a follow-up.
+-  `build_service_with_items` function L978-1012 — `( kind: &'static str, period: &str, ) -> (TempDir, CeremonyService, String)` — Filed as a follow-up.
+-  `run_generates_and_get_by_period_reads_back` function L1015-1022 — `()` — Filed as a follow-up.
+-  `list_items_filters_by_section` function L1025-1034 — `()` — Filed as a follow-up.
+-  `patch_item_toggles_done` function L1037-1066 — `()` — Filed as a follow-up.
+-  `add_item_inserts_user_row_with_null_citation_and_next_ordinal` function L1069-1086 — `()` — Filed as a follow-up.
+-  `list_notifications_surfaces_open_tablets` function L1089-1096 — `()` — Filed as a follow-up.
+-  `get_today_returns_none_when_no_daily_tablet` function L1099-1105 — `()` — Filed as a follow-up.
+-  `dispatch_emits_tablet_generated_event` function L1108-1142 — `()` — Filed as a follow-up.
+-  `upsert_diary_writes_row_and_flips_status` function L1145-1173 — `()` — Filed as a follow-up.
+-  `upsert_diary_is_idempotent_and_replaces_body` function L1176-1197 — `()` — Filed as a follow-up.
+-  `upsert_diary_rejects_non_retro_tablet` function L1200-1217 — `()` — Filed as a follow-up.
+-  `upsert_diary_rejects_unknown_tablet` function L1220-1226 — `()` — Filed as a follow-up.
+-  `upsert_diary_emits_diary_updated_event` function L1229-1244 — `()` — Filed as a follow-up.
+-  `service_internals` function L1250-1255 — `(service: &CeremonyService) -> (ConnHandle, (), ())` — Tiny accessor for the in-test connection so the diary tests
+-  `build_weekly_with_priority_candidates` function L1261-1298 — `( n: usize, ) -> (TempDir, CeremonyService, String, Vec<String>)` — Build a weekly tablet with N priority candidate items via raw
+-  `confirm_priority_happy_path_inserts_row_and_copies_citation` function L1301-1319 — `()` — Filed as a follow-up.
+-  `confirm_priority_preserves_rationale_from_body` function L1322-1367 — `()` — Filed as a follow-up.
+-  `confirm_priority_leaves_rationale_null_when_body_has_none` function L1370-1388 — `()` — Filed as a follow-up.
+-  `confirm_priority_is_idempotent` function L1391-1406 — `()` — Filed as a follow-up.
+-  `confirm_priority_rejects_non_priority_item` function L1409-1436 — `()` — Filed as a follow-up.
+-  `reject_priority_deletes_item_and_priority_row` function L1439-1461 — `()` — Filed as a follow-up.
+-  `add_priority_inserts_with_null_citation` function L1464-1487 — `()` — Filed as a follow-up.
+-  `list_priorities_unions_confirmed_and_candidates_deduped` function L1490-1519 — `()` — Filed as a follow-up.
+-  `confirm_priority_emits_priority_confirmed_event` function L1522-1539 — `()` — Filed as a follow-up.
+-  `patch_item_emits_item_updated_event` function L1542-1571 — `()` — Filed as a follow-up.
 
 #### crates/arawn-ceremonies/src/types.rs
 
@@ -2255,18 +2292,20 @@
 - pub `new` function L33-39 — `(llm: Arc<dyn LlmClient>, model: impl Into<String>) -> Self`
 - pub `with_keep_recent` function L41-51 — `( llm: Arc<dyn LlmClient>, model: impl Into<String>, keep_recent: usize, ) -> Se...`
 - pub `should_compact` function L54-67 — `( &self, session: &Session, limits: &ModelLimits, tool_tokens: u32, system_token...` — Check if the session needs compaction based on token estimates.
-- pub `compact` function L70-159 — `( &self, session: &mut Session, _limits: &ModelLimits, ) -> Result<CompactionRes...` — Compact the session by summarizing old messages via LLM.
+- pub `compact` function L70-186 — `( &self, session: &mut Session, _limits: &ModelLimits, ) -> Result<CompactionRes...` — Compact the session by summarizing old messages via LLM.
+- pub `keep_recent` function L191-193 — `(&self) -> usize` — The number of recent messages this compactor keeps verbatim.
 -  `DEFAULT_KEEP_RECENT` variable L15 — `: usize`
--  `Compactor` type L32-190 — `= Compactor`
--  `call_llm` function L161-189 — `(&self, request: ChatRequest) -> Result<String, EngineError>`
--  `tests` module L193-313 — `-`
--  `make_session_with_messages` function L198-215 — `(count: usize) -> Session`
--  `should_compact_false_under_threshold` function L218-225 — `()`
--  `should_compact_true_over_threshold` function L228-235 — `()`
--  `should_compact_false_too_few_messages` function L238-245 — `()`
--  `compact_produces_summary` function L248-267 — `()`
--  `compact_preserves_recent_messages` function L270-300 — `()`
--  `compact_noop_when_few_messages` function L303-312 — `()`
+-  `Compactor` type L32-224 — `= Compactor`
+-  `call_llm` function L195-223 — `(&self, request: ChatRequest) -> Result<String, EngineError>`
+-  `tests` module L227-375 — `-`
+-  `make_session_with_messages` function L232-249 — `(count: usize) -> Session`
+-  `should_compact_false_under_threshold` function L252-259 — `()`
+-  `should_compact_true_over_threshold` function L262-269 — `()`
+-  `should_compact_false_too_few_messages` function L272-279 — `()`
+-  `compact_produces_summary` function L282-301 — `()`
+-  `compact_preserves_recent_messages` function L304-334 — `()`
+-  `compact_noop_when_few_messages` function L337-346 — `()`
+-  `compact_rejects_non_shrinking_summary` function L349-374 — `()`
 
 #### crates/arawn-engine/src/context.rs
 
@@ -2379,17 +2418,17 @@
 
 - pub `BetweenPeople` struct L27-33 — `{ manager_name: String, report_name: String }` — Two non-self people in a manager/report relationship the user has
 - pub `PersonIntent` struct L40-57 — `{ primary_name: Option<String>, relation_to_user: Option<RelationToUser>, betwee...` — Structured intent extracted from a memory-store text by the LLM
-- pub `classify_person_intent` function L93-108 — `( text: &str, client: &Arc<dyn LlmClient>, model: &str, ) -> PersonIntent` — Classify a memory-write text into a structured `PersonIntent`.
+- pub `classify_person_intent` function L93-106 — `( text: &str, client: &Arc<dyn LlmClient>, model: &str, ) -> PersonIntent` — Classify a memory-write text into a structured `PersonIntent`.
 -  `SYSTEM_PROMPT` variable L59-87 — `: &str` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
--  `run_classifier` function L110-140 — `( prompt: &str, client: &Arc<dyn LlmClient>, model: &str, ) -> Result<String, St...` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
--  `parse_intent` function L144-161 — `(raw: &str) -> PersonIntent` — Lenient JSON extraction — strips common fence patterns (```json ...
--  `tests` module L164-222 — `-` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
--  `parse_intent_handles_plain_json` function L168-174 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
--  `parse_intent_handles_fenced_json` function L177-185 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
--  `parse_intent_handles_plain_fences_no_lang` function L188-192 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
--  `parse_intent_returns_default_on_garbage` function L195-199 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
--  `parse_intent_returns_default_on_partial_json` function L202-206 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
--  `parse_intent_accepts_each_relation_to_user_variant` function L209-221 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `run_classifier` function L108-138 — `( prompt: &str, client: &Arc<dyn LlmClient>, model: &str, ) -> Result<String, St...` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `parse_intent` function L142-159 — `(raw: &str) -> PersonIntent` — Lenient JSON extraction — strips common fence patterns (```json ...
+-  `tests` module L162-221 — `-` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `parse_intent_handles_plain_json` function L166-172 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `parse_intent_handles_fenced_json` function L175-183 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `parse_intent_handles_plain_fences_no_lang` function L186-191 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `parse_intent_returns_default_on_garbage` function L194-198 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `parse_intent_returns_default_on_partial_json` function L201-205 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
+-  `parse_intent_accepts_each_relation_to_user_variant` function L208-220 — `()` — one-shot completion with a JSON-only prompt, then `serde_json` parse.
 
 #### crates/arawn-engine/src/plan.rs
 
@@ -2421,111 +2460,114 @@
 
 #### crates/arawn-engine/src/query_engine.rs
 
-- pub `ProgressEvent` enum L25-40 — `AssistantText | ToolCallStart | ToolCallResult` — Live progress events emitted during the engine loop.
-- pub `IntegrationCapabilitiesFn` type L53 — `= std::sync::Arc<dyn Fn() -> Vec<String> + Send + Sync>` — Provider for dynamic integration capability summaries.
-- pub `ConnectedServicesFn` type L68 — `= std::sync::Arc<dyn Fn() -> Vec<String> + Send + Sync>` — Provider for the set of currently-connected integration service names.
-- pub `PromptContext` struct L72-98 — `{ prompts_dir: Option<std::path::PathBuf>, os: String, shell: String, cwd: std::...` — Cached context for building system prompts per-turn.
-- pub `QueryEngineConfig` struct L102-117 — `{ model: String, max_iterations: usize, system_prompt: String, max_tokens: Optio...` — Configuration for the query engine.
-- pub `QueryEngine` struct L135-156 — `{ llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...` — The agentic loop: prompt → LLM → tool_use → execute → feed result → loop.
-- pub `new` function L159-176 — `(llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>) -> Self`
-- pub `with_config` function L178-199 — `( llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...`
-- pub `with_compactor` function L201-204 — `(mut self, compactor: Compactor) -> Self`
-- pub `with_permission_checker` function L206-209 — `(mut self, checker: Arc<PermissionChecker>) -> Self`
-- pub `with_hook_runner` function L211-214 — `(mut self, runner: Arc<HookRunner>) -> Self`
-- pub `with_skill_registry` function L216-219 — `(mut self, registry: Arc<crate::skills::SkillRegistry>) -> Self`
-- pub `with_plugin_registry` function L221-224 — `(mut self, registry: Arc<crate::plugins::PluginRegistry>) -> Self`
-- pub `with_plan_state` function L226-229 — `(mut self, plan_state: Arc<PlanModeState>) -> Self`
-- pub `plan_state` function L232-234 — `(&self) -> Option<&Arc<PlanModeState>>` — Get the plan mode state (if configured).
-- pub `with_background_tasks` function L236-239 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
-- pub `with_progress_sender` function L242-245 — `(mut self, tx: tokio::sync::mpsc::Sender<ProgressEvent>) -> Self` — Set a channel for live progress events during the engine loop.
-- pub `with_cancel_token` function L248-251 — `(mut self, token: tokio_util::sync::CancellationToken) -> Self` — Set a cancellation token — checked at each loop iteration and before tool execution.
-- pub `fire_hook` function L270-276 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
-- pub `run` function L279-640 — `( &mut self, session: &mut Session, ctx: &dyn arawn_tool::ToolContext, ) -> Resu...` — Run the agentic loop for a session.
--  `DEFAULT_MAX_ITERATIONS` variable L19 — `: usize`
--  `MAX_COMPACT_FAILURES` variable L20 — `: u32`
--  `DEFAULT_SYSTEM_PROMPT` variable L41 — `: &str`
--  `QueryEngineConfig` type L119-132 — `impl Default for QueryEngineConfig`
--  `default` function L120-131 — `() -> Self`
--  `QueryEngine` type L158-1069 — `= QueryEngine`
--  `is_cancelled` function L254-256 — `(&self) -> bool` — Check if cancellation has been requested.
--  `emit_progress` function L259-263 — `(&self, event: ProgressEvent)` — Emit a progress event if a sender is configured.
--  `build_request` function L642-758 — `(&self, session: &Session) -> ChatRequest`
--  `stream_response_with_retry` function L778-820 — `( &self, session: &Session, _ctx: &dyn arawn_tool::ToolContext, ) -> Result<Asse...` — Retry the request-build-and-stream cycle when the stream fails mid-flight.
--  `MAX_RETRIES` variable L783 — `: u32`
--  `BASE_DELAY_MS` variable L784 — `: u64`
--  `stream_response` function L822-893 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
--  `execute_tool` function L895-1068 — `( &self, ctx: &dyn arawn_tool::ToolContext, tool_use_id: &str, name: &str, argum...`
--  `parse_arguments` function L1071-1080 — `(raw: &str) -> serde_json::Value`
--  `AssembledResponse` struct L1083-1087 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
--  `AssembledToolCall` struct L1089-1093 — `{ id: String, name: String, arguments: serde_json::Value }`
--  `ToolResult` struct L1095-1098 — `{ content: String, is_error: bool }`
--  `FILTER_BYPASS_CONTEXT_THRESHOLD` variable L1113 — `: u32` — Filter tool definitions to only contextually relevant ones for this turn.
--  `filter_tools_for_context` function L1115-1303 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...`
--  `tests` module L1306-2125 — `-`
--  `MockLlm` struct L1319-1321 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
--  `MockLlm` type L1323-1353 — `= MockLlm`
--  `new` function L1324-1328 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
--  `text` function L1331-1338 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
--  `tool_call` function L1341-1352 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
--  `MockLlm` type L1356-1372 — `impl LlmClient for MockLlm`
--  `stream` function L1357-1371 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
--  `setup` function L1374-1379 — `() -> (Lens, Session, EngineToolContext)`
--  `text_only_response` function L1382-1395 — `()`
--  `single_tool_call` function L1398-1416 — `()`
--  `tool_not_found` function L1419-1441 — `()`
--  `max_iterations_exceeded` function L1444-1471 — `()`
--  `multi_turn_tool_chain` function L1474-1493 — `()`
--  `SlowTool` struct L1497-1499 — `{ sleep_ms: u64 }` — Tool that intentionally sleeps for a duration so timeout tests can
--  `SlowTool` type L1502-1523 — `impl Tool for SlowTool`
--  `name` function L1503-1505 — `(&self) -> &str`
--  `description` function L1506-1508 — `(&self) -> &str`
--  `parameters_schema` function L1509-1511 — `(&self) -> serde_json::Value`
--  `execute` function L1512-1519 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: serde_json::Value, ) -> Re...`
--  `is_read_only` function L1520-1522 — `(&self) -> bool`
--  `tool_completes_when_default_budget_is_large` function L1526-1547 — `()`
--  `slow_tool_times_out_under_short_default` function L1550-1584 — `()`
--  `agent_override_fires_before_default_would` function L1587-1625 — `()`
--  `invalid_override_surfaces_as_tool_error` function L1628-1659 — `()`
--  `small_model_limits` function L1666-1671 — `() -> ModelLimits` — 32K-context limits — forces the filter to be active (below the
--  `CategorizedStub` struct L1674-1677 — `{ name_: &'static str, category_: arawn_tool::ToolCategory }` — Tool stub used in filter tests.
--  `CategorizedStub` type L1680-1700 — `impl Tool for CategorizedStub`
--  `name` function L1681-1683 — `(&self) -> &str`
--  `description` function L1684-1686 — `(&self) -> &str`
--  `parameters_schema` function L1687-1689 — `(&self) -> serde_json::Value`
--  `category` function L1690-1692 — `(&self) -> arawn_tool::ToolCategory`
--  `execute` function L1693-1699 — `( &self, _: &dyn arawn_tool::ToolContext, _: serde_json::Value, ) -> Result<Tool...`
--  `session_past_iter_1` function L1704-1717 — `(last_user_msg: &str) -> Session` — Build a session deep enough to trip the post-iter-1 filter
--  `tool_def` function L1719-1725 — `(name: &str) -> arawn_llm::ToolDefinition`
--  `calendar_tool_visible_when_calendar_capability_present_no_keywords` function L1728-1744 — `()`
--  `calendar_tool_hidden_when_calendar_capability_absent` function L1747-1762 — `()`
--  `slack_tool_visible_when_slack_capability_present_no_keywords` function L1765-1780 — `()`
--  `slack_tool_hidden_when_slack_capability_absent` function L1783-1798 — `()`
--  `assert_tool_visible` function L1806-1820 — `(cat: arawn_tool::ToolCategory, tool_name: &'static str, user_msg: &str)`
--  `assert_tool_hidden` function L1822-1836 — `(cat: arawn_tool::ToolCategory, tool_name: &'static str, user_msg: &str)`
--  `web_visible_on_keyword` function L1840-1842 — `()`
--  `web_hidden_without_keyword` function L1844-1846 — `()`
--  `web_no_longer_triggered_by_github_keyword` function L1848-1856 — `()`
--  `plan_visible_on_plan_keyword` function L1860-1866 — `()`
--  `plan_visible_on_design_keyword` function L1868-1874 — `()`
--  `plan_hidden_without_keyword` function L1876-1882 — `()`
--  `task_visible_on_queue_keyword` function L1886-1892 — `()`
--  `task_hidden_without_keyword` function L1894-1896 — `()`
--  `memory_tools_visible_with_empty_user_message` function L1901-1903 — `()`
--  `memory_tools_visible_with_unrelated_user_message` function L1905-1911 — `()`
--  `agent_visible_on_subagent_keyword` function L1915-1921 — `()`
--  `agent_visible_on_spawn_keyword` function L1923-1925 — `()`
--  `agent_hidden_without_keyword` function L1927-1929 — `()`
--  `lens_tools_visible_with_empty_user_message` function L1934-1936 — `()`
--  `lens_tools_visible_with_unrelated_user_message` function L1938-1944 — `()`
--  `ceremony_visible_on_agenda_keyword` function L1949-1955 — `()`
--  `ceremony_visible_on_tomorrow_keyword` function L1957-1963 — `()`
--  `ceremony_visible_on_morning_keyword` function L1965-1971 — `()`
--  `ceremony_hidden_without_keyword` function L1973-1975 — `()`
--  `large_model_limits` function L1979-1984 — `() -> ModelLimits`
--  `filter_bypasses_for_large_context_model` function L1991-2006 — `()` — On a ≥100K-context model, every tool ships regardless of the filter's
--  `filter_active_for_small_context_model` function L2011-2026 — `()` — Companion: on a small-context model the same call drops the tool.
--  `t_0394_calendar_tools_survive_filter_after_iter_1_when_calendar_capability_connected` function L2050-2084 — `()` — The exact scenario that failed in ARAWN-T-0394: filter activated
--  `t_0394_calendar_tools_hidden_when_capability_absent` function L2091-2124 — `()` — Companion: same scenario, capability not connected.
+- pub `ProgressEvent` enum L29-48 — `AssistantText | ToolCallStart | ToolCallResult | Notice` — Live progress events emitted during the engine loop.
+- pub `IntegrationCapabilitiesFn` type L61 — `= std::sync::Arc<dyn Fn() -> Vec<String> + Send + Sync>` — Provider for dynamic integration capability summaries.
+- pub `ConnectedServicesFn` type L76 — `= std::sync::Arc<dyn Fn() -> Vec<String> + Send + Sync>` — Provider for the set of currently-connected integration service names.
+- pub `PromptContext` struct L80-106 — `{ prompts_dir: Option<std::path::PathBuf>, os: String, shell: String, cwd: std::...` — Cached context for building system prompts per-turn.
+- pub `QueryEngineConfig` struct L110-125 — `{ model: String, max_iterations: usize, system_prompt: String, max_tokens: Optio...` — Configuration for the query engine.
+- pub `QueryEngine` struct L143-164 — `{ llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...` — The agentic loop: prompt → LLM → tool_use → execute → feed result → loop.
+- pub `new` function L167-184 — `(llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>) -> Self`
+- pub `with_config` function L186-207 — `( llm: Arc<dyn LlmClient>, registry: Arc<ToolRegistry>, config: QueryEngineConfi...`
+- pub `with_compactor` function L209-212 — `(mut self, compactor: Compactor) -> Self`
+- pub `with_permission_checker` function L214-217 — `(mut self, checker: Arc<PermissionChecker>) -> Self`
+- pub `with_hook_runner` function L219-222 — `(mut self, runner: Arc<HookRunner>) -> Self`
+- pub `with_skill_registry` function L224-227 — `(mut self, registry: Arc<crate::skills::SkillRegistry>) -> Self`
+- pub `with_plugin_registry` function L229-232 — `(mut self, registry: Arc<crate::plugins::PluginRegistry>) -> Self`
+- pub `with_plan_state` function L234-237 — `(mut self, plan_state: Arc<PlanModeState>) -> Self`
+- pub `plan_state` function L240-242 — `(&self) -> Option<&Arc<PlanModeState>>` — Get the plan mode state (if configured).
+- pub `with_background_tasks` function L244-247 — `(mut self, manager: Arc<BackgroundTaskManager>) -> Self`
+- pub `with_progress_sender` function L250-253 — `(mut self, tx: tokio::sync::mpsc::Sender<ProgressEvent>) -> Self` — Set a channel for live progress events during the engine loop.
+- pub `with_cancel_token` function L256-259 — `(mut self, token: tokio_util::sync::CancellationToken) -> Self` — Set a cancellation token — checked at each loop iteration and before tool execution.
+- pub `fire_hook` function L278-284 — `(&self, input: &HookInput) -> Option<crate::hooks::AggregatedHookResult>` — Fire a hook event.
+- pub `run` function L287-689 — `( &mut self, session: &mut Session, ctx: &dyn arawn_tool::ToolContext, ) -> Resu...` — Run the agentic loop for a session.
+-  `DEFAULT_MAX_ITERATIONS` variable L20 — `: usize`
+-  `MAX_COMPACT_FAILURES` variable L21 — `: u32`
+-  `DEFAULT_MICROCOMPACT_KEEP_RECENT` variable L24 — `: usize` — Fallback recent-window for microcompaction when no full compactor is
+-  `DEFAULT_SYSTEM_PROMPT` variable L49 — `: &str`
+-  `QueryEngineConfig` type L127-140 — `impl Default for QueryEngineConfig`
+-  `default` function L128-139 — `() -> Self`
+-  `QueryEngine` type L166-1150 — `= QueryEngine`
+-  `is_cancelled` function L262-264 — `(&self) -> bool` — Check if cancellation has been requested.
+-  `emit_progress` function L267-271 — `(&self, event: ProgressEvent)` — Emit a progress event if a sender is configured.
+-  `build_request` function L691-807 — `(&self, session: &Session) -> ChatRequest`
+-  `stream_response_with_retry` function L827-869 — `( &self, session: &Session, _ctx: &dyn arawn_tool::ToolContext, ) -> Result<Asse...` — Retry the request-build-and-stream cycle when the stream fails mid-flight.
+-  `MAX_RETRIES` variable L832 — `: u32`
+-  `BASE_DELAY_MS` variable L833 — `: u64`
+-  `stream_response` function L871-974 — `( &self, request: ChatRequest, ) -> Result<AssembledResponse, EngineError>`
+-  `execute_tool` function L976-1149 — `( &self, ctx: &dyn arawn_tool::ToolContext, tool_use_id: &str, name: &str, argum...`
+-  `AssembledResponse` struct L1153-1160 — `{ text: String, tool_calls: Vec<AssembledToolCall>, usage: Option<arawn_llm::Usa...`
+-  `AssembledToolCall` struct L1162-1166 — `{ id: String, name: String, arguments: serde_json::Value }`
+-  `PartialToolCall` struct L1171-1175 — `{ id: String, name: String, arguments: String }` — A tool call being assembled from interleaved streaming deltas, keyed by
+-  `ToolResult` struct L1177-1180 — `{ content: String, is_error: bool }`
+-  `FILTER_BYPASS_CONTEXT_THRESHOLD` variable L1195 — `: u32` — Filter tool definitions to only contextually relevant ones for this turn.
+-  `filter_tools_for_context` function L1197-1385 — `( all_tools: &[arawn_llm::ToolDefinition], session: &Session, registry: &ToolReg...`
+-  `tests` module L1388-2267 — `-`
+-  `duplicate_call_key_is_canonical_and_order_independent` function L1401-1410 — `()`
+-  `previously_used_tools_stay_available_under_filtering` function L1413-1450 — `()`
+-  `MockLlm` struct L1453-1455 — `{ responses: Mutex<Vec<Vec<ChatChunk>>> }` — Mock LLM that returns pre-scripted responses.
+-  `MockLlm` type L1457-1495 — `= MockLlm`
+-  `new` function L1458-1462 — `(responses: Vec<Vec<ChatChunk>>) -> Self`
+-  `text` function L1465-1475 — `(text: &str) -> Vec<ChatChunk>` — Convenience: text-only response
+-  `tool_call` function L1478-1494 — `(id: &str, name: &str, args: &str) -> Vec<ChatChunk>` — Convenience: tool call then done
+-  `MockLlm` type L1498-1514 — `impl LlmClient for MockLlm`
+-  `stream` function L1499-1513 — `( &self, _request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = ...`
+-  `setup` function L1516-1521 — `() -> (Lens, Session, EngineToolContext)`
+-  `text_only_response` function L1524-1537 — `()`
+-  `single_tool_call` function L1540-1558 — `()`
+-  `tool_not_found` function L1561-1583 — `()`
+-  `max_iterations_exceeded` function L1586-1613 — `()`
+-  `multi_turn_tool_chain` function L1616-1635 — `()`
+-  `SlowTool` struct L1639-1641 — `{ sleep_ms: u64 }` — Tool that intentionally sleeps for a duration so timeout tests can
+-  `SlowTool` type L1644-1665 — `impl Tool for SlowTool`
+-  `name` function L1645-1647 — `(&self) -> &str`
+-  `description` function L1648-1650 — `(&self) -> &str`
+-  `parameters_schema` function L1651-1653 — `(&self) -> serde_json::Value`
+-  `execute` function L1654-1661 — `( &self, _ctx: &dyn arawn_tool::ToolContext, _params: serde_json::Value, ) -> Re...`
+-  `is_read_only` function L1662-1664 — `(&self) -> bool`
+-  `tool_completes_when_default_budget_is_large` function L1668-1689 — `()`
+-  `slow_tool_times_out_under_short_default` function L1692-1726 — `()`
+-  `agent_override_fires_before_default_would` function L1729-1767 — `()`
+-  `invalid_override_surfaces_as_tool_error` function L1770-1801 — `()`
+-  `small_model_limits` function L1808-1813 — `() -> ModelLimits` — 32K-context limits — forces the filter to be active (below the
+-  `CategorizedStub` struct L1816-1819 — `{ name_: &'static str, category_: arawn_tool::ToolCategory }` — Tool stub used in filter tests.
+-  `CategorizedStub` type L1822-1842 — `impl Tool for CategorizedStub`
+-  `name` function L1823-1825 — `(&self) -> &str`
+-  `description` function L1826-1828 — `(&self) -> &str`
+-  `parameters_schema` function L1829-1831 — `(&self) -> serde_json::Value`
+-  `category` function L1832-1834 — `(&self) -> arawn_tool::ToolCategory`
+-  `execute` function L1835-1841 — `( &self, _: &dyn arawn_tool::ToolContext, _: serde_json::Value, ) -> Result<Tool...`
+-  `session_past_iter_1` function L1846-1859 — `(last_user_msg: &str) -> Session` — Build a session deep enough to trip the post-iter-1 filter
+-  `tool_def` function L1861-1867 — `(name: &str) -> arawn_llm::ToolDefinition`
+-  `calendar_tool_visible_when_calendar_capability_present_no_keywords` function L1870-1886 — `()`
+-  `calendar_tool_hidden_when_calendar_capability_absent` function L1889-1904 — `()`
+-  `slack_tool_visible_when_slack_capability_present_no_keywords` function L1907-1922 — `()`
+-  `slack_tool_hidden_when_slack_capability_absent` function L1925-1940 — `()`
+-  `assert_tool_visible` function L1948-1962 — `(cat: arawn_tool::ToolCategory, tool_name: &'static str, user_msg: &str)`
+-  `assert_tool_hidden` function L1964-1978 — `(cat: arawn_tool::ToolCategory, tool_name: &'static str, user_msg: &str)`
+-  `web_visible_on_keyword` function L1982-1984 — `()`
+-  `web_hidden_without_keyword` function L1986-1988 — `()`
+-  `web_no_longer_triggered_by_github_keyword` function L1990-1998 — `()`
+-  `plan_visible_on_plan_keyword` function L2002-2008 — `()`
+-  `plan_visible_on_design_keyword` function L2010-2016 — `()`
+-  `plan_hidden_without_keyword` function L2018-2024 — `()`
+-  `task_visible_on_queue_keyword` function L2028-2034 — `()`
+-  `task_hidden_without_keyword` function L2036-2038 — `()`
+-  `memory_tools_visible_with_empty_user_message` function L2043-2045 — `()`
+-  `memory_tools_visible_with_unrelated_user_message` function L2047-2053 — `()`
+-  `agent_visible_on_subagent_keyword` function L2057-2063 — `()`
+-  `agent_visible_on_spawn_keyword` function L2065-2067 — `()`
+-  `agent_hidden_without_keyword` function L2069-2071 — `()`
+-  `lens_tools_visible_with_empty_user_message` function L2076-2078 — `()`
+-  `lens_tools_visible_with_unrelated_user_message` function L2080-2086 — `()`
+-  `ceremony_visible_on_agenda_keyword` function L2091-2097 — `()`
+-  `ceremony_visible_on_tomorrow_keyword` function L2099-2105 — `()`
+-  `ceremony_visible_on_morning_keyword` function L2107-2113 — `()`
+-  `ceremony_hidden_without_keyword` function L2115-2117 — `()`
+-  `large_model_limits` function L2121-2126 — `() -> ModelLimits`
+-  `filter_bypasses_for_large_context_model` function L2133-2148 — `()` — On a ≥100K-context model, every tool ships regardless of the filter's
+-  `filter_active_for_small_context_model` function L2153-2168 — `()` — Companion: on a small-context model the same call drops the tool.
+-  `t_0394_calendar_tools_survive_filter_after_iter_1_when_calendar_capability_connected` function L2192-2226 — `()` — The exact scenario that failed in ARAWN-T-0394: filter activated
+-  `t_0394_calendar_tools_hidden_when_capability_absent` function L2233-2266 — `()` — Companion: same scenario, capability not connected.
 
 #### crates/arawn-engine/src/system_prompt.rs
 
@@ -2917,72 +2959,73 @@
 - pub `grant_shape` function L132-134 — `(&mut self, tool_name: String, shape: crate::approval::ArgShape)` — Shape-aware grant.
 - pub `is_granted_shape` function L138-144 — `(&self, tool_name: &str, shape: &crate::approval::ArgShape) -> bool` — Shape-aware check.
 - pub `clear` function L147-149 — `(&mut self)` — Clear all session grants.
-- pub `DecisionReason` enum L156-168 — `MatchedRule | SessionGrant | ModeFallback | Prompted | NoChecker` — Why a permission decision came out the way it did.
-- pub `display` function L172-192 — `(&self) -> String` — One-line human-readable form for error messages and audit display.
-- pub `AuditEntry` struct L197-203 — `{ timestamp: std::time::SystemTime, tool_name: String, tool_input_summary: Strin...` — One row of the audit log — what was checked, when, and how it was decided.
-- pub `SharedAudit` type L213 — `= std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<AuditEntry>>>` — Shareable audit buffer — held in an Arc so callers (e.g.
-- pub `new_shared_audit` function L216-220 — `() -> SharedAudit` — Construct a fresh shared audit buffer with the standard cap.
-- pub `PermissionChecker` struct L224-234 — `{ rules: std::sync::RwLock<Vec<PermissionRule>>, mode: std::sync::RwLock<Permiss...` — The central permission checker.
-- pub `new` function L239-248 — `(rules: Vec<PermissionRule>) -> Self` — Create a new permission checker with the given rules and default mode.
-- pub `with_audit` function L253-256 — `(mut self, audit: SharedAudit) -> Self` — Wire an externally-owned audit buffer so per-message checkers can
-- pub `with_hook_runner` function L261-264 — `(mut self, runner: std::sync::Arc<crate::hooks::HookRunner>) -> Self` — Wire a hook runner.
-- pub `with_mode` function L289-295 — `(self, mode: PermissionMode) -> Self` — Set the permission mode (Default, AcceptEdits, BypassPermissions).
-- pub `with_prompter` function L298-301 — `(mut self, prompter: Box<dyn ModalPrompt>) -> Self` — Set the modal prompter for interactive permission requests.
-- pub `update_rules` function L304-307 — `(&self, rules: Vec<PermissionRule>)` — Hot-reload: replace the current rules with new ones.
-- pub `update_mode` function L310-313 — `(&self, mode: PermissionMode)` — Hot-reload: update the permission mode.
-- pub `check` function L326-335 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> P...` — Check if a tool call is permitted.
-- pub `check_explained` function L340-445 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> (...` — Same as [`check`] but also returns *why* the decision was made.
-- pub `mode` function L491-493 — `(&self) -> PermissionMode` — Get the current permission mode.
-- pub `clear_grants` function L496-498 — `(&self)` — Clear all session grants.
+- pub `DecisionReason` enum L156-172 — `MatchedRule | SessionGrant | ModeFallback | Prompted | NoChecker | AskWithoutPro...` — Why a permission decision came out the way it did.
+- pub `display` function L176-201 — `(&self) -> String` — One-line human-readable form for error messages and audit display.
+- pub `AuditEntry` struct L206-212 — `{ timestamp: std::time::SystemTime, tool_name: String, tool_input_summary: Strin...` — One row of the audit log — what was checked, when, and how it was decided.
+- pub `SharedAudit` type L222 — `= std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<AuditEntry>>>` — Shareable audit buffer — held in an Arc so callers (e.g.
+- pub `new_shared_audit` function L225-229 — `() -> SharedAudit` — Construct a fresh shared audit buffer with the standard cap.
+- pub `PermissionChecker` struct L233-243 — `{ rules: std::sync::RwLock<Vec<PermissionRule>>, mode: std::sync::RwLock<Permiss...` — The central permission checker.
+- pub `new` function L248-257 — `(rules: Vec<PermissionRule>) -> Self` — Create a new permission checker with the given rules and default mode.
+- pub `with_audit` function L262-265 — `(mut self, audit: SharedAudit) -> Self` — Wire an externally-owned audit buffer so per-message checkers can
+- pub `with_hook_runner` function L270-273 — `(mut self, runner: std::sync::Arc<crate::hooks::HookRunner>) -> Self` — Wire a hook runner.
+- pub `with_mode` function L298-304 — `(self, mode: PermissionMode) -> Self` — Set the permission mode (Default, AcceptEdits, BypassPermissions).
+- pub `with_prompter` function L307-310 — `(mut self, prompter: Box<dyn ModalPrompt>) -> Self` — Set the modal prompter for interactive permission requests.
+- pub `update_rules` function L313-316 — `(&self, rules: Vec<PermissionRule>)` — Hot-reload: replace the current rules with new ones.
+- pub `update_mode` function L319-322 — `(&self, mode: PermissionMode)` — Hot-reload: update the permission mode.
+- pub `check` function L335-344 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> P...` — Check if a tool call is permitted.
+- pub `check_explained` function L349-469 — `( &self, tool_name: &str, tool_input: &str, category: PermissionCategory, ) -> (...` — Same as [`check`] but also returns *why* the decision was made.
+- pub `mode` function L515-517 — `(&self) -> PermissionMode` — Get the current permission mode.
+- pub `clear_grants` function L520-522 — `(&self)` — Clear all session grants.
 -  `PermissionMode` type L30-62 — `= PermissionMode`
 -  `ModalOption` type L79-91 — `= ModalOption`
 -  `SessionGrants` type L126-150 — `= SessionGrants`
--  `DecisionReason` type L170-193 — `= DecisionReason`
--  `AUDIT_CAP` variable L208 — `: usize` — Cap on the audit ring buffer — newest decisions evict oldest.
--  `PermissionChecker` type L236-529 — `= PermissionChecker`
--  `record_audit` function L266-286 — `( &self, tool_name: &str, tool_input: &str, decision: PermissionDecision, reason...`
--  `prompt_user` function L448-488 — `(&self, tool_name: &str, tool_input: &str) -> PermissionDecision` — Prompt the user for permission (or deny if no prompter is configured).
--  `fire_permission_request_hook` function L502-513 — `(&self, tool_name: &str, tool_input: &str)` — Fire the `PermissionRequest` hook before a user prompt is raised.
--  `fire_permission_denied_hook` function L517-528 — `(&self, tool_name: &str, tool_input: &str, reason: &str)` — Fire the `PermissionDenied` hook when a tool call is rejected.
--  `truncate_input` function L531-539 — `(input: &str, max_len: usize) -> String`
--  `tests` module L542-1132 — `-`
--  `MockPrompter` struct L547-549 — `{ index: Option<usize> }` — Mock prompter that returns a fixed index (0=AllowOnce, 1=AllowAlways, 2/None=Deny).
--  `MockPrompter` type L551-561 — `= MockPrompter`
--  `allow_once` function L552-554 — `() -> Self`
--  `allow_always` function L555-557 — `() -> Self`
--  `deny` function L558-560 — `() -> Self`
--  `MockPrompter` type L564-568 — `impl ModalPrompt for MockPrompter`
--  `prompt` function L565-567 — `(&self, _request: ModalRequest) -> Option<usize>`
--  `allowed_by_rule` function L571-580 — `()`
--  `denied_by_rule` function L583-592 — `()`
--  `ask_without_prompter_denies` function L595-602 — `()`
--  `ask_with_allow_once` function L605-621 — `()`
--  `ask_with_allow_always_grants_session` function L624-646 — `()`
--  `ask_with_deny` function L649-658 — `()`
--  `default_mode_allows_read_only` function L661-688 — `()`
--  `default_mode_asks_for_writes` function L691-710 — `()`
--  `accept_edits_mode_allows_file_ops` function L713-739 — `()`
--  `bypass_mode_allows_everything` function L742-768 — `()`
--  `explicit_rules_override_mode` function L771-779 — `()`
--  `deny_rules_override_session_grants` function L782-796 — `()`
--  `session_grant_works_for_non_denied_tools` function L799-813 — `()`
--  `shape_aware_grant_only_allows_matching_shape` function L816-847 — `()`
--  `fail_closed_when_no_prompter` function L850-860 — `()`
--  `clear_grants_resets` function L863-875 — `()`
--  `truncate_input_short` function L878-880 — `()`
--  `truncate_input_long` function L883-887 — `()`
--  `truncate_input_multibyte_utf8_no_panic` function L890-898 — `()`
--  `update_rules_hot_reload` function L901-922 — `()`
--  `update_mode_hot_reload` function L925-947 — `()`
--  `permission_mode_serde` function L953-965 — `()`
--  `permission_mode_legacy_strings_fail` function L968-976 — `()`
--  `plan_mode_allows_read_only` function L979-1005 — `()`
--  `plan_mode_denies_writes` function L1008-1032 — `()`
--  `plan_mode_allows_plan_meta_tools` function L1035-1049 — `()`
--  `check_explained_attributes_deny_to_matching_rule` function L1056-1075 — `()`
--  `check_explained_attributes_no_match_to_mode_fallback` function L1078-1090 — `()`
--  `audit_log_records_decisions_in_order_and_caps` function L1093-1111 — `()`
--  `shared_audit_aggregates_across_checkers` function L1114-1131 — `()`
+-  `DecisionReason` type L174-202 — `= DecisionReason`
+-  `AUDIT_CAP` variable L217 — `: usize` — Cap on the audit ring buffer — newest decisions evict oldest.
+-  `PermissionChecker` type L245-553 — `= PermissionChecker`
+-  `record_audit` function L275-295 — `( &self, tool_name: &str, tool_input: &str, decision: PermissionDecision, reason...`
+-  `prompt_user` function L472-512 — `(&self, tool_name: &str, tool_input: &str) -> PermissionDecision` — Prompt the user for permission (or deny if no prompter is configured).
+-  `fire_permission_request_hook` function L526-537 — `(&self, tool_name: &str, tool_input: &str)` — Fire the `PermissionRequest` hook before a user prompt is raised.
+-  `fire_permission_denied_hook` function L541-552 — `(&self, tool_name: &str, tool_input: &str, reason: &str)` — Fire the `PermissionDenied` hook when a tool call is rejected.
+-  `truncate_input` function L555-563 — `(input: &str, max_len: usize) -> String`
+-  `tests` module L566-1177 — `-`
+-  `MockPrompter` struct L571-573 — `{ index: Option<usize> }` — Mock prompter that returns a fixed index (0=AllowOnce, 1=AllowAlways, 2/None=Deny).
+-  `MockPrompter` type L575-585 — `= MockPrompter`
+-  `allow_once` function L576-578 — `() -> Self`
+-  `allow_always` function L579-581 — `() -> Self`
+-  `deny` function L582-584 — `() -> Self`
+-  `MockPrompter` type L588-592 — `impl ModalPrompt for MockPrompter`
+-  `prompt` function L589-591 — `(&self, _request: ModalRequest) -> Option<usize>`
+-  `allowed_by_rule` function L595-604 — `()`
+-  `denied_by_rule` function L607-616 — `()`
+-  `ask_without_prompter_denies` function L619-626 — `()`
+-  `ask_with_allow_once` function L629-645 — `()`
+-  `ask_with_allow_always_grants_session` function L648-670 — `()`
+-  `ask_with_deny` function L673-682 — `()`
+-  `default_mode_allows_read_only` function L685-712 — `()`
+-  `default_mode_asks_for_writes` function L715-734 — `()`
+-  `accept_edits_mode_allows_file_ops` function L737-763 — `()`
+-  `bypass_mode_allows_everything` function L766-792 — `()`
+-  `explicit_rules_override_mode` function L795-803 — `()`
+-  `deny_rules_override_session_grants` function L806-820 — `()`
+-  `session_grant_works_for_non_denied_tools` function L823-837 — `()`
+-  `shape_aware_grant_only_allows_matching_shape` function L840-871 — `()`
+-  `fail_closed_when_no_prompter` function L874-884 — `()`
+-  `clear_grants_resets` function L887-899 — `()`
+-  `truncate_input_short` function L902-904 — `()`
+-  `truncate_input_long` function L907-911 — `()`
+-  `truncate_input_multibyte_utf8_no_panic` function L914-922 — `()`
+-  `update_rules_hot_reload` function L925-946 — `()`
+-  `update_mode_hot_reload` function L949-971 — `()`
+-  `permission_mode_serde` function L977-989 — `()`
+-  `permission_mode_legacy_strings_fail` function L992-1000 — `()`
+-  `plan_mode_allows_read_only` function L1003-1029 — `()`
+-  `plan_mode_denies_writes` function L1032-1056 — `()`
+-  `plan_mode_allows_plan_meta_tools` function L1059-1073 — `()`
+-  `check_explained_attributes_deny_to_matching_rule` function L1080-1099 — `()`
+-  `check_explained_attributes_no_match_to_mode_fallback` function L1102-1114 — `()`
+-  `check_explained_ask_without_prompter_is_diagnosable` function L1117-1135 — `()`
+-  `audit_log_records_decisions_in_order_and_caps` function L1138-1156 — `()`
+-  `shared_audit_aggregates_across_checkers` function L1159-1176 — `()`
 
 #### crates/arawn-engine/src/permissions/config.rs
 
@@ -3488,51 +3531,51 @@
 - pub `run_expect_error` function L70-87 — `( &self, user_input: impl Into<String>, ) -> crate::error::EngineError` — Run expecting an error (e.g., max iterations).
 -  `TestHarness` type L32-117 — `= TestHarness`
 -  `build_engine` function L90-116 — `(&self) -> QueryEngine` — Build a QueryEngine with all configured subsystems wired in.
--  `tests` module L120-1705 — `-`
+-  `tests` module L120-1824 — `-`
 -  `harness_text_only` function L126-135 — `()`
 -  `harness_single_tool_call` function L138-154 — `()`
 -  `harness_multi_step_tool_chain` function L157-175 — `()`
 -  `harness_tool_not_found` function L178-200 — `()`
 -  `harness_max_iterations` function L203-219 — `()`
 -  `harness_shell_tool_receives_arguments` function L222-249 — `()`
--  `harness_raw_chunks_split_arguments` function L252-295 — `()`
--  `harness_tool_arguments_passed_correctly` function L298-321 — `()`
--  `harness_permission_checker_blocks_tool` function L324-358 — `()`
--  `harness_permission_checker_allows_tool` function L361-389 — `()`
--  `harness_file_read_with_real_filesystem` function L392-416 — `()`
--  `harness_parallel_tool_calls_in_single_turn` function L419-484 — `()`
--  `harness_mixed_text_and_tool_call_in_same_turn` function L487-523 — `()`
--  `harness_stream_without_done_chunk` function L526-564 — `()`
--  `harness_empty_stream_done_only` function L567-580 — `()`
--  `harness_empty_text_deltas_assembled_correctly` function L583-602 — `()`
--  `harness_text_after_tool_start_both_captured` function L605-649 — `()`
--  `harness_malformed_json_args_falls_back_to_empty_object` function L652-682 — `()`
--  `harness_non_object_json_args_rejected` function L685-720 — `()`
--  `harness_string_json_args_rejected` function L723-754 — `()`
--  `harness_empty_tool_args_no_delta` function L757-784 — `()`
--  `harness_repeated_failure_circuit_breaker` function L787-832 — `()`
--  `harness_empty_text_response_returns_cleanly` function L835-847 — `()`
--  `harness_token_usage_accumulation` function L850-893 — `()`
--  `harness_fatal_llm_error_no_retry` function L896-918 — `()`
--  `harness_transient_error_then_success` function L921-938 — `()`
--  `harness_transient_error_exhausts_retries` function L941-963 — `()`
--  `harness_mid_stream_error_during_text` function L966-993 — `()`
--  `harness_mid_stream_error_during_tool_call` function L996-1025 — `()`
--  `harness_server_error_is_transient` function L1028-1042 — `()`
--  `harness_model_not_found_is_not_transient` function L1045-1062 — `()`
--  `harness_permission_denial_then_llm_recovery` function L1065-1120 — `()`
--  `harness_plan_mode_blocks_write_tool` function L1123-1151 — `()`
--  `harness_plan_mode_allows_read_only_tool` function L1154-1178 — `()`
--  `harness_hook_and_permission_both_wired` function L1181-1234 — `()`
--  `harness_long_tool_chain_five_steps` function L1239-1283 — `()`
--  `harness_tool_error_recovery_mid_chain` function L1286-1339 — `()`
--  `harness_parallel_reads_then_sequential_think` function L1342-1393 — `()`
--  `harness_narration_text_across_multiple_tool_turns` function L1396-1463 — `()`
--  `harness_retry_recovery_mid_conversation` function L1466-1494 — `()`
--  `harness_large_argument_reassembly_many_deltas` function L1497-1545 — `()`
--  `harness_alternating_success_and_failure_chain` function L1548-1579 — `()`
--  `harness_permission_denial_cascade_then_success` function L1582-1640 — `()`
--  `harness_plan_mode_parallel_mixed_tools` function L1643-1704 — `()`
+-  `harness_raw_chunks_split_arguments` function L252-302 — `()`
+-  `harness_tool_arguments_passed_correctly` function L305-328 — `()`
+-  `harness_permission_checker_blocks_tool` function L331-365 — `()`
+-  `harness_permission_checker_allows_tool` function L368-396 — `()`
+-  `harness_file_read_with_real_filesystem` function L399-423 — `()`
+-  `harness_parallel_tool_calls_in_single_turn` function L426-498 — `()`
+-  `harness_mixed_text_and_tool_call_in_same_turn` function L501-542 — `()`
+-  `harness_stream_without_done_chunk` function L545-585 — `()`
+-  `harness_empty_stream_done_only` function L588-602 — `()`
+-  `harness_empty_text_deltas_assembled_correctly` function L605-627 — `()`
+-  `harness_text_after_tool_start_both_captured` function L630-679 — `()`
+-  `harness_malformed_json_args_surface_stream_interrupted_error` function L682-724 — `()`
+-  `harness_non_object_json_args_rejected` function L727-767 — `()`
+-  `harness_string_json_args_rejected` function L770-806 — `()`
+-  `harness_empty_tool_args_no_delta` function L809-840 — `()`
+-  `harness_repeated_failure_circuit_breaker` function L843-888 — `()`
+-  `harness_empty_text_response_returns_cleanly` function L891-906 — `()`
+-  `harness_token_usage_accumulation` function L909-956 — `()`
+-  `harness_fatal_llm_error_no_retry` function L959-981 — `()`
+-  `harness_transient_error_then_success` function L984-1004 — `()`
+-  `harness_transient_error_exhausts_retries` function L1007-1038 — `()`
+-  `harness_mid_stream_error_during_text` function L1041-1068 — `()`
+-  `harness_mid_stream_error_during_tool_call` function L1071-1102 — `()`
+-  `harness_server_error_is_transient` function L1105-1119 — `()`
+-  `harness_model_not_found_is_not_transient` function L1122-1139 — `()`
+-  `harness_permission_denial_then_llm_recovery` function L1142-1197 — `()`
+-  `harness_plan_mode_blocks_write_tool` function L1200-1228 — `()`
+-  `harness_plan_mode_allows_read_only_tool` function L1231-1255 — `()`
+-  `harness_hook_and_permission_both_wired` function L1258-1311 — `()`
+-  `harness_long_tool_chain_five_steps` function L1316-1360 — `()`
+-  `harness_tool_error_recovery_mid_chain` function L1363-1416 — `()`
+-  `harness_parallel_reads_then_sequential_think` function L1419-1477 — `()`
+-  `harness_narration_text_across_multiple_tool_turns` function L1480-1562 — `()`
+-  `harness_retry_recovery_mid_conversation` function L1565-1596 — `()`
+-  `harness_large_argument_reassembly_many_deltas` function L1599-1657 — `()`
+-  `harness_alternating_success_and_failure_chain` function L1660-1691 — `()`
+-  `harness_permission_denial_cascade_then_success` function L1694-1752 — `()`
+-  `harness_plan_mode_parallel_mixed_tools` function L1755-1823 — `()`
 
 #### crates/arawn-engine/src/testing/mod.rs
 
@@ -3637,21 +3680,21 @@
 -  `person_matches_any_attendee` function L304-316 — `(person_title: &str, attendees: &[String]) -> bool` — Token-based fuzzy match: split the person's title into lowercase
 -  `name_tokens` function L320-326 — `(title: &str) -> Vec<String>` — Token-split the title: lowercase, split on whitespace, drop tokens
 -  `_unused_imports_silencer` function L329 — `(_e: &EntityType)` — `Person.email` field or a proper alias table.
--  `tests` module L332-550 — `-` — `Person.email` field or a proper alias table.
+-  `tests` module L332-548 — `-` — `Person.email` field or a proper alias table.
 -  `setup` function L340-355 — `() -> ( TempDir, Arc<MemoryManager>, Arc<ProjectionStore>, crate::context::Engin...` — `Person.email` field or a proper alias table.
 -  `make_direct` function L357-367 — `(mgr: &MemoryManager, name: &str) -> Uuid` — `Person.email` field or a proper alias table.
--  `insert_event` function L369-394 — `( projections: &Arc<ProjectionStore>, title: &str, days_ago: i64, attendees: &[&...` — `Person.email` field or a proper alias table.
--  `returns_helpful_message_when_no_directs_exist` function L397-403 — `()` — `Person.email` field or a proper alias table.
--  `flags_direct_with_no_recorded_meeting_as_overdue` function L406-413 — `()` — `Person.email` field or a proper alias table.
--  `omits_recent_meeting_from_overdue_list` function L416-433 — `()` — `Person.email` field or a proper alias table.
--  `flags_meeting_older_than_threshold` function L436-445 — `()` — `Person.email` field or a proper alias table.
--  `sorts_oldest_first_with_never_met_at_top` function L448-470 — `()` — `Person.email` field or a proper alias table.
--  `role_managers_only_returns_relation_to_user_reports_to_user` function L473-494 — `()` — `Person.email` field or a proper alias table.
--  `unknown_role_errors` function L497-506 — `()` — `Person.email` field or a proper alias table.
--  `overdue_days_threshold_is_respected` function L509-526 — `()` — `Person.email` field or a proper alias table.
--  `name_tokens_drops_short_tokens` function L529-533 — `()` — `Person.email` field or a proper alias table.
--  `person_matches_email_address` function L536-541 — `()` — `Person.email` field or a proper alias table.
--  `person_does_not_match_unrelated_attendee` function L544-549 — `()` — `Person.email` field or a proper alias table.
+-  `insert_event` function L369-392 — `( projections: &Arc<ProjectionStore>, title: &str, days_ago: i64, attendees: &[&...` — `Person.email` field or a proper alias table.
+-  `returns_helpful_message_when_no_directs_exist` function L395-401 — `()` — `Person.email` field or a proper alias table.
+-  `flags_direct_with_no_recorded_meeting_as_overdue` function L404-411 — `()` — `Person.email` field or a proper alias table.
+-  `omits_recent_meeting_from_overdue_list` function L414-431 — `()` — `Person.email` field or a proper alias table.
+-  `flags_meeting_older_than_threshold` function L434-443 — `()` — `Person.email` field or a proper alias table.
+-  `sorts_oldest_first_with_never_met_at_top` function L446-468 — `()` — `Person.email` field or a proper alias table.
+-  `role_managers_only_returns_relation_to_user_reports_to_user` function L471-492 — `()` — `Person.email` field or a proper alias table.
+-  `unknown_role_errors` function L495-504 — `()` — `Person.email` field or a proper alias table.
+-  `overdue_days_threshold_is_respected` function L507-524 — `()` — `Person.email` field or a proper alias table.
+-  `name_tokens_drops_short_tokens` function L527-531 — `()` — `Person.email` field or a proper alias table.
+-  `person_matches_email_address` function L534-539 — `()` — `Person.email` field or a proper alias table.
+-  `person_does_not_match_unrelated_attendee` function L542-547 — `()` — `Person.email` field or a proper alias table.
 
 #### crates/arawn-engine/src/tools/ceremony.rs
 
@@ -3976,24 +4019,24 @@
 - pub `MemorySearchTool` struct L19-22 — `{ memory: MemoryHandle, embedder: Option<Arc<dyn Embedder>> }` — Tool that searches the global memory store using composite retrieval:
 - pub `new` function L25-30 — `(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self`
 -  `MemorySearchTool` type L24-31 — `= MemorySearchTool`
--  `MemorySearchTool` type L34-265 — `impl Tool for MemorySearchTool`
+-  `MemorySearchTool` type L34-266 — `impl Tool for MemorySearchTool`
 -  `name` function L35-37 — `(&self) -> &str`
 -  `description` function L39-46 — `(&self) -> &str`
 -  `is_read_only` function L48-50 — `(&self) -> bool`
 -  `category` function L52-54 — `(&self) -> ToolCategory`
 -  `parameters_schema` function L56-85 — `(&self) -> Value`
--  `execute` function L87-264 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...`
--  `ScoredEntity` struct L267-273 — `{ entity: Entity, fts_score: f32, semantic_score: f32, confidence: f32, related:...`
--  `ScoredEntity` type L275-279 — `= ScoredEntity`
--  `composite` function L276-278 — `(&self) -> f32`
--  `tests` module L282-399 — `-`
--  `setup` function L289-300 — `() -> ( TempDir, Arc<MemoryManager>, crate::context::EngineToolContext, )`
--  `populate` function L302-325 — `(mgr: &MemoryManager)`
--  `search_finds_global_memory` function L328-338 — `()`
--  `search_with_type_filter` function L341-353 — `()`
--  `search_ignores_lens_tier` function L356-371 — `()`
--  `search_no_results` function L374-384 — `()`
--  `search_with_tags` function L387-398 — `()`
+-  `execute` function L87-265 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...`
+-  `ScoredEntity` struct L268-274 — `{ entity: Entity, fts_score: f32, semantic_score: f32, confidence: f32, related:...`
+-  `ScoredEntity` type L276-280 — `= ScoredEntity`
+-  `composite` function L277-279 — `(&self) -> f32`
+-  `tests` module L283-400 — `-`
+-  `setup` function L290-301 — `() -> ( TempDir, Arc<MemoryManager>, crate::context::EngineToolContext, )`
+-  `populate` function L303-326 — `(mgr: &MemoryManager)`
+-  `search_finds_global_memory` function L329-339 — `()`
+-  `search_with_type_filter` function L342-354 — `()`
+-  `search_ignores_lens_tier` function L357-372 — `()`
+-  `search_no_results` function L375-385 — `()`
+-  `search_with_tags` function L388-399 — `()`
 
 #### crates/arawn-engine/src/tools/memory_store.rs
 
@@ -4011,40 +4054,40 @@
 -  `category` function L175-177 — `(&self) -> ToolCategory`
 -  `parameters_schema` function L179-204 — `(&self) -> Value`
 -  `execute` function L206-357 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...`
--  `tests` module L361-656 — `-`
+-  `tests` module L361-673 — `-`
 -  `setup` function L368-379 — `() -> ( TempDir, Arc<MemoryManager>, crate::context::EngineToolContext, )`
 -  `CannedIntentLlm` struct L384-386 — `{ canned_json: String }` — Mock LLM client that returns a canned JSON intent on every call.
 -  `CannedIntentLlm` type L388-394 — `= CannedIntentLlm`
 -  `returning` function L389-393 — `(json: impl Into<String>) -> Arc<Self>`
--  `CannedIntentLlm` type L397-419 — `= CannedIntentLlm`
--  `stream` function L398-418 — `( &self, _request: arawn_llm::ChatRequest, ) -> Result< std::pin::Pin< Box< dyn ...`
--  `store_new_fact` function L422-439 — `()`
--  `store_preference_goes_global` function L442-455 — `()`
--  `store_decision_goes_global` function L458-472 — `()`
--  `store_reinforces_duplicate` function L475-496 — `()`
--  `store_with_tags` function L499-512 — `()`
--  `classifier_skipped_when_entity_type_is_not_person` function L517-535 — `()`
--  `classifier_writes_person_profile_when_relation_to_user_detected` function L538-564 — `()`
--  `classifier_short_circuits_for_between_people_phrasings` function L567-612 — `()`
--  `classifier_empty_intent_falls_through_to_normal_store` function L615-635 — `()`
--  `classifier_failure_falls_through_to_normal_store` function L638-655 — `()`
+-  `CannedIntentLlm` type L397-422 — `= CannedIntentLlm`
+-  `stream` function L398-421 — `( &self, _request: arawn_llm::ChatRequest, ) -> Result< std::pin::Pin< Box< dyn ...`
+-  `store_new_fact` function L425-442 — `()`
+-  `store_preference_goes_global` function L445-458 — `()`
+-  `store_decision_goes_global` function L461-475 — `()`
+-  `store_reinforces_duplicate` function L478-499 — `()`
+-  `store_with_tags` function L502-515 — `()`
+-  `classifier_skipped_when_entity_type_is_not_person` function L520-538 — `()`
+-  `classifier_writes_person_profile_when_relation_to_user_detected` function L541-572 — `()`
+-  `classifier_short_circuits_for_between_people_phrasings` function L575-624 — `()`
+-  `classifier_empty_intent_falls_through_to_normal_store` function L627-652 — `()`
+-  `classifier_failure_falls_through_to_normal_store` function L655-672 — `()`
 
 #### crates/arawn-engine/src/tools/mod.rs
 
 - pub `agent` module L1 — `-`
 - pub `ask_user` module L2 — `-`
-- pub `ceremony` module L3 — `-`
-- pub `daily` module L4 — `-`
-- pub `enter_plan_mode` module L5 — `-`
-- pub `exit_plan_mode` module L6 — `-`
-- pub `feed_search` module L7 — `-`
-- pub `file_edit` module L8 — `-`
-- pub `file_read` module L9 — `-`
-- pub `file_write` module L10 — `-`
-- pub `glob` module L11 — `-`
-- pub `grep` module L12 — `-`
-- pub `lens` module L13 — `-`
-- pub `cadence_check` module L14 — `-`
+- pub `cadence_check` module L3 — `-`
+- pub `ceremony` module L4 — `-`
+- pub `daily` module L5 — `-`
+- pub `enter_plan_mode` module L6 — `-`
+- pub `exit_plan_mode` module L7 — `-`
+- pub `feed_search` module L8 — `-`
+- pub `file_edit` module L9 — `-`
+- pub `file_read` module L10 — `-`
+- pub `file_write` module L11 — `-`
+- pub `glob` module L12 — `-`
+- pub `grep` module L13 — `-`
+- pub `lens` module L14 — `-`
 - pub `memory_search` module L15 — `-`
 - pub `memory_store` module L16 — `-`
 - pub `person_brief` module L17 — `-`
@@ -4076,20 +4119,20 @@
 -  `category` function L62-64 — `(&self) -> ToolCategory` — single highest-leverage delta for the daily-driver.
 -  `parameters_schema` function L66-81 — `(&self) -> Value` — single highest-leverage delta for the daily-driver.
 -  `execute` function L83-163 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — single highest-leverage delta for the daily-driver.
--  `resolve_person` function L168-186 — `(store: &MemoryStore, name: &str) -> Result<Option<Entity>, ToolError>` — Find the Person entity matching `name`.
--  `format_brief` function L189-291 — `( person: &Entity, profile: Option<&PersonProfile>, memory_hits: &[Entity], grap...` — Render the brief as markdown so it threads into chat naturally.
--  `tests` module L294-482 — `-` — single highest-leverage delta for the daily-driver.
--  `setup` function L301-312 — `() -> ( TempDir, Arc<MemoryManager>, crate::context::EngineToolContext, )` — single highest-leverage delta for the daily-driver.
--  `returns_helpful_message_when_person_unknown` function L315-326 — `()` — single highest-leverage delta for the daily-driver.
--  `returns_brief_with_profile_role_and_relation` function L329-351 — `()` — single highest-leverage delta for the daily-driver.
--  `falls_back_to_partial_match_when_no_exact_title` function L354-362 — `()` — single highest-leverage delta for the daily-driver.
--  `case_insensitive_exact_match_wins_over_partial` function L365-383 — `()` — single highest-leverage delta for the daily-driver.
--  `renders_growth_themes_and_concerns_when_present` function L386-404 — `()` — single highest-leverage delta for the daily-driver.
--  `surfaces_unstructured_profile_hint_when_no_sidecar` function L407-418 — `()` — single highest-leverage delta for the daily-driver.
--  `surfaces_related_memory_entries_mentioning_the_person` function L421-436 — `()` — single highest-leverage delta for the daily-driver.
--  `lists_graph_related_when_include_related_default_on` function L439-453 — `()` — single highest-leverage delta for the daily-driver.
--  `include_related_false_omits_graph_section` function L456-472 — `()` — single highest-leverage delta for the daily-driver.
--  `missing_name_param_errors` function L475-481 — `()` — single highest-leverage delta for the daily-driver.
+-  `resolve_person` function L168-183 — `(store: &MemoryStore, name: &str) -> Result<Option<Entity>, ToolError>` — Find the Person entity matching `name`.
+-  `format_brief` function L186-288 — `( person: &Entity, profile: Option<&PersonProfile>, memory_hits: &[Entity], grap...` — Render the brief as markdown so it threads into chat naturally.
+-  `tests` module L291-483 — `-` — single highest-leverage delta for the daily-driver.
+-  `setup` function L298-309 — `() -> ( TempDir, Arc<MemoryManager>, crate::context::EngineToolContext, )` — single highest-leverage delta for the daily-driver.
+-  `returns_helpful_message_when_person_unknown` function L312-323 — `()` — single highest-leverage delta for the daily-driver.
+-  `returns_brief_with_profile_role_and_relation` function L326-352 — `()` — single highest-leverage delta for the daily-driver.
+-  `falls_back_to_partial_match_when_no_exact_title` function L355-363 — `()` — single highest-leverage delta for the daily-driver.
+-  `case_insensitive_exact_match_wins_over_partial` function L366-384 — `()` — single highest-leverage delta for the daily-driver.
+-  `renders_growth_themes_and_concerns_when_present` function L387-402 — `()` — single highest-leverage delta for the daily-driver.
+-  `surfaces_unstructured_profile_hint_when_no_sidecar` function L405-416 — `()` — single highest-leverage delta for the daily-driver.
+-  `surfaces_related_memory_entries_mentioning_the_person` function L419-437 — `()` — single highest-leverage delta for the daily-driver.
+-  `lists_graph_related_when_include_related_default_on` function L440-454 — `()` — single highest-leverage delta for the daily-driver.
+-  `include_related_false_omits_graph_section` function L457-473 — `()` — single highest-leverage delta for the daily-driver.
+-  `missing_name_param_errors` function L476-482 — `()` — single highest-leverage delta for the daily-driver.
 
 #### crates/arawn-engine/src/tools/safe_env.rs
 
@@ -4174,49 +4217,49 @@
 
 - pub `SignalSearchTool` struct L99-103 — `{ memory: MemoryHandle, router: Option<Arc<LensMemoryRouter>>, embedder: Option<...` — and behavioral tuning) is a separate concern — search it with `memory_search`.
 - pub `new` function L106-117 — `(memory: impl Into<MemoryHandle>, embedder: Option<Arc<dyn Embedder>>) -> Self` — and behavioral tuning) is a separate concern — search it with `memory_search`.
-- pub `SignalQueryTool` struct L236-239 — `{ memory: MemoryHandle, router: Option<Arc<LensMemoryRouter>> }` — and behavioral tuning) is a separate concern — search it with `memory_search`.
-- pub `new` function L242-249 — `(memory: impl Into<MemoryHandle>) -> Self` — and behavioral tuning) is a separate concern — search it with `memory_search`.
-- pub `SignalTimelineTool` struct L404-407 — `{ memory: MemoryHandle, router: Option<Arc<LensMemoryRouter>> }` — and behavioral tuning) is a separate concern — search it with `memory_search`.
-- pub `new` function L410-417 — `(memory: impl Into<MemoryHandle>) -> Self` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+- pub `SignalQueryTool` struct L232-235 — `{ memory: MemoryHandle, router: Option<Arc<LensMemoryRouter>> }` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+- pub `new` function L238-245 — `(memory: impl Into<MemoryHandle>) -> Self` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+- pub `SignalTimelineTool` struct L400-403 — `{ memory: MemoryHandle, router: Option<Arc<LensMemoryRouter>> }` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+- pub `new` function L406-413 — `(memory: impl Into<MemoryHandle>) -> Self` — and behavioral tuning) is a separate concern — search it with `memory_search`.
 -  `resolve_manager` function L28-43 — `( handle: &MemoryHandle, explicit: Option<&str>, router: Option<&Arc<LensMemoryR...` — Resolve the manager for the active lens, or the explicit
 -  `lens_stores` function L48-70 — `( handle: &MemoryHandle, router: Option<&Arc<LensMemoryRouter>>, explicit: Optio...` — The set of `(lens, store)` a read tool should query (ARAWN-I-0060): an
 -  `entity_summary` function L72-85 — `(e: &Entity) -> Value` — and behavioral tuning) is a separate concern — search it with `memory_search`.
 -  `snippet` function L87-93 — `(s: &str, cap: usize) -> String` — and behavioral tuning) is a separate concern — search it with `memory_search`.
 -  `SignalSearchTool` type L105-118 — `= SignalSearchTool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `SignalSearchTool` type L121-230 — `impl Tool for SignalSearchTool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `SignalSearchTool` type L121-226 — `impl Tool for SignalSearchTool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
 -  `name` function L122-124 — `(&self) -> &str` — and behavioral tuning) is a separate concern — search it with `memory_search`.
 -  `description` function L126-140 — `(&self) -> &str` — and behavioral tuning) is a separate concern — search it with `memory_search`.
 -  `is_read_only` function L142-144 — `(&self) -> bool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
 -  `category` function L146-154 — `(&self) -> ToolCategory` — and behavioral tuning) is a separate concern — search it with `memory_search`.
 -  `parameters_schema` function L156-169 — `(&self) -> Value` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `execute` function L171-229 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `SignalQueryTool` type L241-250 — `= SignalQueryTool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `SignalQueryTool` type L253-398 — `impl Tool for SignalQueryTool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `name` function L254-256 — `(&self) -> &str` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `description` function L258-265 — `(&self) -> &str` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `is_read_only` function L267-269 — `(&self) -> bool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `category` function L271-279 — `(&self) -> ToolCategory` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `parameters_schema` function L281-304 — `(&self) -> Value` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `execute` function L306-397 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `SignalTimelineTool` type L409-418 — `= SignalTimelineTool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `SignalTimelineTool` type L421-521 — `impl Tool for SignalTimelineTool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `name` function L422-424 — `(&self) -> &str` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `description` function L426-432 — `(&self) -> &str` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `is_read_only` function L434-436 — `(&self) -> bool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `category` function L438-446 — `(&self) -> ToolCategory` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `parameters_schema` function L448-458 — `(&self) -> Value` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `execute` function L460-520 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `tests` module L528-727 — `-` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `setup` function L535-546 — `() -> ( TempDir, Arc<MemoryManager>, crate::context::EngineToolContext, )` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `seed` function L548-571 — `(mgr: &MemoryManager)` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `signal_search_finds_decision_by_title` function L574-591 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `signal_search_empty_kb_returns_zero` function L594-603 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `signal_query_filters_by_entity_type` function L606-623 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `signal_query_filters_by_tag_any_of` function L626-635 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `signal_query_no_filters_returns_all_active` function L638-645 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `signal_query_window_filters` function L648-659 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `signal_timeline_orders_desc_and_caps_to_window` function L662-674 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
--  `explicit_lens_arg_routes_via_router` function L677-726 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `execute` function L171-225 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `SignalQueryTool` type L237-246 — `= SignalQueryTool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `SignalQueryTool` type L249-394 — `impl Tool for SignalQueryTool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `name` function L250-252 — `(&self) -> &str` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `description` function L254-261 — `(&self) -> &str` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `is_read_only` function L263-265 — `(&self) -> bool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `category` function L267-275 — `(&self) -> ToolCategory` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `parameters_schema` function L277-300 — `(&self) -> Value` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `execute` function L302-393 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `SignalTimelineTool` type L405-414 — `= SignalTimelineTool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `SignalTimelineTool` type L417-517 — `impl Tool for SignalTimelineTool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `name` function L418-420 — `(&self) -> &str` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `description` function L422-428 — `(&self) -> &str` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `is_read_only` function L430-432 — `(&self) -> bool` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `category` function L434-442 — `(&self) -> ToolCategory` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `parameters_schema` function L444-454 — `(&self) -> Value` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `execute` function L456-516 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `tests` module L524-726 — `-` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `setup` function L531-542 — `() -> ( TempDir, Arc<MemoryManager>, crate::context::EngineToolContext, )` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `seed` function L544-567 — `(mgr: &MemoryManager)` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `signal_search_finds_decision_by_title` function L570-587 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `signal_search_empty_kb_returns_zero` function L590-599 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `signal_query_filters_by_entity_type` function L602-619 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `signal_query_filters_by_tag_any_of` function L622-631 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `signal_query_no_filters_returns_all_active` function L634-641 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `signal_query_window_filters` function L644-655 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `signal_timeline_orders_desc_and_caps_to_window` function L658-670 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
+-  `explicit_lens_arg_routes_via_router` function L673-725 — `()` — and behavioral tuning) is a separate concern — search it with `memory_search`.
 
 #### crates/arawn-engine/src/tools/skill.rs
 
@@ -4268,17 +4311,17 @@
 - pub `new` function L107-112 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
 - pub `LensRefineTool` struct L181-184 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter> }` — inverse via `arawn_steward::rollback::apply_inverse`.
 - pub `new` function L187-192 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
-- pub `LensRollbackTool` struct L261-264 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter> }` — inverse via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L267-272 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
-- pub `LensDustTool` struct L363-368 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter>, client: Arc<dyn LlmClient>, ...` — inverse via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L371-383 — `( data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>, client: Arc<dyn L...` — inverse via `arawn_steward::rollback::apply_inverse`.
-- pub `LensApplyTool` struct L578-581 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter> }` — inverse via `arawn_steward::rollback::apply_inverse`.
-- pub `new` function L584-589 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
-- pub `LensTagTool` struct L687-690 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter> }` — Direct CRUD on the lens's tag ontology.
-- pub `new` function L693-698 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
+- pub `LensRollbackTool` struct L262-265 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter> }` — inverse via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L268-273 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
+- pub `LensDustTool` struct L364-369 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter>, client: Arc<dyn LlmClient>, ...` — inverse via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L372-384 — `( data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>, client: Arc<dyn L...` — inverse via `arawn_steward::rollback::apply_inverse`.
+- pub `LensApplyTool` struct L580-583 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter> }` — inverse via `arawn_steward::rollback::apply_inverse`.
+- pub `new` function L586-591 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
+- pub `LensTagTool` struct L689-692 — `{ data_dir: PathBuf, router: Arc<LensMemoryRouter> }` — Direct CRUD on the lens's tag ontology.
+- pub `new` function L695-700 — `(data_dir: impl Into<PathBuf>, router: Arc<LensMemoryRouter>) -> Self` — inverse via `arawn_steward::rollback::apply_inverse`.
 -  `closest_tag` function L27-51 — `(needle: &str, candidates: &[String]) -> Option<String>` — Return the closest tag in `candidates` to `needle` if any candidate
 -  `edit_distance` function L55-75 — `(a: &str, b: &str) -> usize` — Levenshtein distance, classic two-row DP.
--  `open_journal` function L77-80 — `(data_dir: &PathBuf, lens: &str) -> Result<Journal, ToolError>` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `open_journal` function L77-80 — `(data_dir: &Path, lens: &str) -> Result<Journal, ToolError>` — inverse via `arawn_steward::rollback::apply_inverse`.
 -  `row_summary` function L83-95 — `(row: &arawn_steward::JournalRow) -> Value` — Lightweight summary of one journal row for tool output.
 -  `LensJournalTool` type L106-113 — `= LensJournalTool` — inverse via `arawn_steward::rollback::apply_inverse`.
 -  `LensJournalTool` type L116-175 — `impl Tool for LensJournalTool` — inverse via `arawn_steward::rollback::apply_inverse`.
@@ -4289,62 +4332,62 @@
 -  `parameters_schema` function L140-148 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
 -  `execute` function L150-174 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
 -  `LensRefineTool` type L186-193 — `= LensRefineTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensRefineTool` type L196-255 — `impl Tool for LensRefineTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensRefineTool` type L196-256 — `impl Tool for LensRefineTool` — inverse via `arawn_steward::rollback::apply_inverse`.
 -  `name` function L197-199 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `description` function L201-205 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L207-209 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `category` function L211-218 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L220-228 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L230-254 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensRollbackTool` type L266-273 — `= LensRollbackTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensRollbackTool` type L276-357 — `impl Tool for LensRollbackTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `name` function L277-279 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `description` function L281-285 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L287-289 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `category` function L291-298 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L300-309 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L311-356 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensDustTool` type L370-384 — `= LensDustTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensDustTool` type L387-572 — `impl Tool for LensDustTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `name` function L388-390 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `description` function L392-398 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L400-403 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `category` function L405-412 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L414-434 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L436-571 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensApplyTool` type L583-590 — `= LensApplyTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensApplyTool` type L593-676 — `impl Tool for LensApplyTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `name` function L594-596 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `description` function L598-603 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L605-607 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `category` function L609-616 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L618-627 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L629-675 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensTagTool` type L692-699 — `= LensTagTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `LensTagTool` type L702-833 — `impl Tool for LensTagTool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `name` function L703-705 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `description` function L707-713 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `is_read_only` function L715-717 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `category` function L719-721 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `parameters_schema` function L723-743 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `execute` function L745-832 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `tests` module L836-1192 — `-` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `setup` function L844-855 — `() -> ( TempDir, Arc<LensMemoryRouter>, crate::context::EngineToolContext, )` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `write_proposal_row` function L857-870 — `(j: &Journal) -> i64` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `write_delete_row` function L872-883 — `(j: &Journal, e: &Entity) -> i64` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `journal_lists_recent_rows` function L886-896 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `refine_returns_pending_proposals_only` function L899-920 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `rollback_reverts_delete_action_end_to_end` function L923-941 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `rollback_is_idempotent` function L944-957 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `apply_then_rollback_round_trip_for_map_proposal` function L960-1004 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `apply_refuses_reverted_row` function L1007-1027 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `lens_tag_list_add_remove_round_trip` function L1030-1092 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `lens_apply_promotes_tag_into_ontology` function L1095-1140 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `rollback_unknown_id_errors` function L1143-1148 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `closest_tag_matches_substring_user_added_suffix` function L1153-1165 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `closest_tag_matches_typo` function L1168-1174 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `closest_tag_returns_none_when_unrelated` function L1177-1181 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
--  `closest_tag_picks_shortest_distance` function L1184-1191 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L201-206 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L208-210 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L212-219 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L221-229 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L231-255 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensRollbackTool` type L267-274 — `= LensRollbackTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensRollbackTool` type L277-358 — `impl Tool for LensRollbackTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L278-280 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L282-286 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L288-290 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L292-299 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L301-310 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L312-357 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensDustTool` type L371-385 — `= LensDustTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensDustTool` type L388-574 — `impl Tool for LensDustTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L389-391 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L393-400 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L402-405 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L407-414 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L416-436 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L438-573 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensApplyTool` type L585-592 — `= LensApplyTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensApplyTool` type L595-678 — `impl Tool for LensApplyTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L596-598 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L600-605 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L607-609 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L611-618 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L620-629 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L631-677 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensTagTool` type L694-701 — `= LensTagTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `LensTagTool` type L704-836 — `impl Tool for LensTagTool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `name` function L705-707 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `description` function L709-716 — `(&self) -> &str` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `is_read_only` function L718-720 — `(&self) -> bool` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `category` function L722-724 — `(&self) -> ToolCategory` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `parameters_schema` function L726-746 — `(&self) -> Value` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `execute` function L748-835 — `( &self, _ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutp...` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `tests` module L839-1195 — `-` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `setup` function L847-858 — `() -> ( TempDir, Arc<LensMemoryRouter>, crate::context::EngineToolContext, )` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `write_proposal_row` function L860-873 — `(j: &Journal) -> i64` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `write_delete_row` function L875-886 — `(j: &Journal, e: &Entity) -> i64` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `journal_lists_recent_rows` function L889-899 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `refine_returns_pending_proposals_only` function L902-923 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_reverts_delete_action_end_to_end` function L926-944 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_is_idempotent` function L947-960 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `apply_then_rollback_round_trip_for_map_proposal` function L963-1007 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `apply_refuses_reverted_row` function L1010-1030 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `lens_tag_list_add_remove_round_trip` function L1033-1095 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `lens_apply_promotes_tag_into_ontology` function L1098-1143 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `rollback_unknown_id_errors` function L1146-1151 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `closest_tag_matches_substring_user_added_suffix` function L1156-1168 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `closest_tag_matches_typo` function L1171-1177 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `closest_tag_returns_none_when_unrelated` function L1180-1184 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
+-  `closest_tag_picks_shortest_distance` function L1187-1194 — `()` — inverse via `arawn_steward::rollback::apply_inverse`.
 
 #### crates/arawn-engine/src/tools/task_list.rs
 
@@ -4525,7 +4568,7 @@
 -  `strip_html_tags` function L200-231 — `(html: &str) -> String` — Fallback: simple HTML tag stripper (used if htmd fails).
 -  `finish` function L234-270 — `( ctx: &dyn arawn_tool::ToolContext, prompt: &str, url: &str, text: String, ) ->...` — If we have an LLM and a prompt, summarize.
 -  `summarize_with_llm` function L272-318 — `( llm: &Arc<dyn arawn_llm::LlmClient>, model: &str, prompt: &str, url: &str, con...`
--  `tests` module L321-560 — `-`
+-  `tests` module L321-563 — `-`
 -  `test_ctx` function L332-335 — `() -> EngineToolContext`
 -  `test_ctx_with_mock` function L337-343 — `(responses: Vec<MockResponse>) -> (EngineToolContext, Arc<MockLlmClient>)`
 -  `html_to_markdown_headings` function L348-352 — `()`
@@ -4544,7 +4587,7 @@
 -  `summarize_sends_correct_request_shape` function L493-508 — `()`
 -  `execute_without_llm_returns_raw_text` function L511-514 — `()`
 -  `summarize_empty_content` function L517-532 — `()`
--  `summarize_multipart_response` function L535-559 — `()`
+-  `summarize_multipart_response` function L535-562 — `()`
 
 #### crates/arawn-engine/src/tools/web_search.rs
 
@@ -4752,7 +4795,7 @@
 -  `show` module L19 — `-` — write target.
 -  `unbind` module L20 — `-` — write target.
 -  `util` module L21 — `-` — write target.
--  `tests` module L37-815 — `-` — write target.
+-  `tests` module L37-813 — `-` — write target.
 -  `setup` function L47-52 — `() -> (tempfile::TempDir, Arc<Mutex<Store>>, SessionLens)` — write target.
 -  `test_ctx` function L54-58 — `(tmp: &tempfile::TempDir) -> crate::context::EngineToolContext` — write target.
 -  `create_succeeds_with_valid_slug_description_and_ontology` function L61-82 — `()` — write target.
@@ -4760,37 +4803,37 @@
 -  `create_refuses_missing_description` function L103-115 — `()` — write target.
 -  `create_refuses_empty_ontology` function L118-134 — `()` — write target.
 -  `create_dedupes_and_normalizes_ontology` function L137-156 — `()` — write target.
--  `show_defaults_to_active` function L160-166 — `()` — write target.
--  `describe_updates_description` function L169-192 — `()` — write target.
--  `github_repo_scheme_accepts_owner_slash_name` function L197-199 — `()` — write target.
--  `github_repo_scheme_rejects_missing_slash` function L202-205 — `()` — write target.
--  `github_repo_scheme_rejects_empty_owner_or_name` function L208-211 — `()` — write target.
--  `github_org_scheme_accepts_owner` function L214-216 — `()` — write target.
--  `github_org_scheme_rejects_empty_or_with_slash` function L219-222 — `()` — write target.
--  `non_github_feed_ids_pass_through_unchanged` function L225-230 — `()` — write target.
--  `is_github_scope_binding_recognises_both_schemes` function L233-238 — `()` — write target.
--  `bind_accepts_github_repo_scheme_and_stores_it` function L241-264 — `()` — write target.
--  `parse_github_scope_handles_both_schemes` function L269-287 — `()` — write target.
--  `count_feeds` function L289-298 — `(store: &Arc<Mutex<Store>>, feed_id: &str) -> i64` — write target.
--  `repo_bind_registers_feed_record` function L301-332 — `()` — write target.
--  `repo_bind_is_idempotent_no_duplicate_feed` function L335-358 — `()` — write target.
--  `repo_bind_rejected_when_org_already_bound` function L361-402 — `()` — write target.
--  `org_bind_supersedes_existing_repo_binds` function L405-461 — `()` — write target.
--  `CapturingUnbindHook` struct L465-467 — `{ captured: Mutex<Vec<Vec<String>>> }` — write target.
--  `CapturingUnbindHook` type L468-475 — `impl UnbindHook for CapturingUnbindHook` — write target.
--  `on_unbind` function L469-474 — `(&self, removed_feed_ids: &[String])` — write target.
--  `unbind_hook_fires_with_repo_feed_id` function L478-514 — `()` — write target.
--  `unbind_hook_fires_with_all_org_child_ids` function L517-562 — `()` — write target.
--  `unbind_hook_not_fired_for_plain_feed_id` function L565-592 — `()` — write target.
--  `unbind_org_scope_sweeps_all_child_feeds` function L595-638 — `()` — write target.
--  `unbind_repo_scope_drops_feed` function L641-666 — `()` — write target.
--  `bind_rejects_malformed_github_repo_scheme` function L669-686 — `()` — write target.
--  `bind_and_unbind_round_trip` function L689-719 — `()` — write target.
--  `delete_refuses_scratch` function L722-731 — `()` — write target.
--  `delete_refuses_currently_active` function L734-749 — `()` — write target.
--  `delete_soft_marks_archived` function L752-769 — `()` — write target.
--  `show_includes_ontology` function L773-798 — `()` — write target.
--  `list_marks_active` function L801-814 — `()` — write target.
+-  `show_defaults_to_active` function L159-165 — `()` — write target.
+-  `describe_updates_description` function L168-191 — `()` — write target.
+-  `github_repo_scheme_accepts_owner_slash_name` function L196-198 — `()` — write target.
+-  `github_repo_scheme_rejects_missing_slash` function L201-204 — `()` — write target.
+-  `github_repo_scheme_rejects_empty_owner_or_name` function L207-210 — `()` — write target.
+-  `github_org_scheme_accepts_owner` function L213-215 — `()` — write target.
+-  `github_org_scheme_rejects_empty_or_with_slash` function L218-221 — `()` — write target.
+-  `non_github_feed_ids_pass_through_unchanged` function L224-229 — `()` — write target.
+-  `is_github_scope_binding_recognises_both_schemes` function L232-237 — `()` — write target.
+-  `bind_accepts_github_repo_scheme_and_stores_it` function L240-263 — `()` — write target.
+-  `parse_github_scope_handles_both_schemes` function L268-286 — `()` — write target.
+-  `count_feeds` function L288-297 — `(store: &Arc<Mutex<Store>>, feed_id: &str) -> i64` — write target.
+-  `repo_bind_registers_feed_record` function L300-331 — `()` — write target.
+-  `repo_bind_is_idempotent_no_duplicate_feed` function L334-357 — `()` — write target.
+-  `repo_bind_rejected_when_org_already_bound` function L360-401 — `()` — write target.
+-  `org_bind_supersedes_existing_repo_binds` function L404-460 — `()` — write target.
+-  `CapturingUnbindHook` struct L464-466 — `{ captured: Mutex<Vec<Vec<String>>> }` — write target.
+-  `CapturingUnbindHook` type L467-474 — `impl UnbindHook for CapturingUnbindHook` — write target.
+-  `on_unbind` function L468-473 — `(&self, removed_feed_ids: &[String])` — write target.
+-  `unbind_hook_fires_with_repo_feed_id` function L477-513 — `()` — write target.
+-  `unbind_hook_fires_with_all_org_child_ids` function L516-561 — `()` — write target.
+-  `unbind_hook_not_fired_for_plain_feed_id` function L564-591 — `()` — write target.
+-  `unbind_org_scope_sweeps_all_child_feeds` function L594-637 — `()` — write target.
+-  `unbind_repo_scope_drops_feed` function L640-665 — `()` — write target.
+-  `bind_rejects_malformed_github_repo_scheme` function L668-685 — `()` — write target.
+-  `bind_and_unbind_round_trip` function L688-718 — `()` — write target.
+-  `delete_refuses_scratch` function L721-730 — `()` — write target.
+-  `delete_refuses_currently_active` function L733-748 — `()` — write target.
+-  `delete_soft_marks_archived` function L751-768 — `()` — write target.
+-  `show_includes_ontology` function L771-796 — `()` — write target.
+-  `list_marks_active` function L799-812 — `()` — write target.
 
 #### crates/arawn-engine/src/tools/lens/propose_ontology.rs
 
@@ -4823,13 +4866,13 @@
 - pub `LensShowTool` struct L11-14 — `{ store: Arc<Mutex<Store>>, active: SessionLens }`
 - pub `new` function L17-19 — `(store: Arc<Mutex<Store>>, active: SessionLens) -> Self`
 -  `LensShowTool` type L16-20 — `= LensShowTool`
--  `LensShowTool` type L23-100 — `impl Tool for LensShowTool`
+-  `LensShowTool` type L23-99 — `impl Tool for LensShowTool`
 -  `name` function L24-26 — `(&self) -> &str`
--  `description` function L28-35 — `(&self) -> &str`
--  `is_read_only` function L37-39 — `(&self) -> bool`
--  `category` function L41-43 — `(&self) -> ToolCategory`
--  `parameters_schema` function L45-53 — `(&self) -> Value`
--  `execute` function L55-99 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...`
+-  `description` function L28-34 — `(&self) -> &str`
+-  `is_read_only` function L36-38 — `(&self) -> bool`
+-  `category` function L40-42 — `(&self) -> ToolCategory`
+-  `parameters_schema` function L44-52 — `(&self) -> Value`
+-  `execute` function L54-98 — `( &self, ctx: &dyn arawn_tool::ToolContext, params: Value, ) -> Result<ToolOutpu...`
 
 #### crates/arawn-engine/src/tools/lens/unbind.rs
 
@@ -4910,7 +4953,7 @@
 -  `relation_type_lowercased_for_parse` function L618-622 — `()` — steward (Phase 5) refines vocabulary later.
 -  `projection_id_to_uuid_is_deterministic` function L625-631 — `()` — steward (Phase 5) refines vocabulary later.
 -  `truncate_preserves_short_input` function L634-640 — `()` — steward (Phase 5) refines vocabulary later.
--  `integration` module L649-1246 — `-` — steward (Phase 5) refines vocabulary later.
+-  `integration` module L649-1252 — `-` — steward (Phase 5) refines vocabulary later.
 -  `KeyedMockLlm` struct L675-682 — `{ classify: Mutex<VecDeque<Value>>, extract: Mutex<VecDeque<Value>>, link: Mutex...` — Inspects the system prompt to detect which CoT stage is calling
 -  `KeyedMockLlm` type L684-708 — `= KeyedMockLlm` — steward (Phase 5) refines vocabulary later.
 -  `new` function L685-694 — `() -> Self` — steward (Phase 5) refines vocabulary later.
@@ -4920,29 +4963,29 @@
 -  `classify_stage` function L710-712 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
 -  `extract_stage` function L713-715 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
 -  `link_stage` function L716-718 — `(sys: &str) -> bool` — steward (Phase 5) refines vocabulary later.
--  `KeyedMockLlm` type L721-761 — `= KeyedMockLlm` — steward (Phase 5) refines vocabulary later.
--  `stream` function L722-760 — `( &self, request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = R...` — steward (Phase 5) refines vocabulary later.
--  `ws` function L765-769 — `(name: &str, desc: &str) -> Lens` — steward (Phase 5) refines vocabulary later.
--  `fixture_proj` function L771-784 — `(id: &str, body: &str, ts_offset: i64) -> GmailMessageProjection` — steward (Phase 5) refines vocabulary later.
--  `Fixture` struct L786-792 — `{ _tmp: tempfile::TempDir, store: Arc<std::sync::Mutex<Store>>, proj: Arc<Projec...` — steward (Phase 5) refines vocabulary later.
--  `setup` function L794-829 — `() -> Fixture` — steward (Phase 5) refines vocabulary later.
--  `Fixture` type L831-846 — `= Fixture` — steward (Phase 5) refines vocabulary later.
--  `kb` function L832-837 — `(&self, name: &str) -> Arc<MemoryManager>` — steward (Phase 5) refines vocabulary later.
--  `cursor` function L839-845 — `(&self, ws_name: &str, feed_type: &str) -> Option<chrono::DateTime<chrono::Utc>>` — steward (Phase 5) refines vocabulary later.
--  `runner_with` function L848-862 — `( fx: &Fixture, mock: Arc<C>, batch_size: usize, ) -> ExtractorRunner` — steward (Phase 5) refines vocabulary later.
--  `happy_path_extracts_into_lens` function L867-899 — `()` — steward (Phase 5) refines vocabulary later.
--  `out_of_scope_skips_but_advances_cursor` function L902-923 — `()` — steward (Phase 5) refines vocabulary later.
--  `link_by_name_resolves_to_existing_kb_entity` function L926-965 — `()` — steward (Phase 5) refines vocabulary later.
--  `link_to_missing_target_is_dropped_without_panic` function L968-993 — `()` — steward (Phase 5) refines vocabulary later.
--  `backfill_walks_existing_rows` function L996-1022 — `()` — steward (Phase 5) refines vocabulary later.
--  `rerun_is_idempotent_via_cursor` function L1025-1052 — `()` — steward (Phase 5) refines vocabulary later.
--  `two_lenses_each_get_the_entity` function L1055-1091 — `()` — steward (Phase 5) refines vocabulary later.
--  `ScopeGatedByPrompt` struct L1096-1098 — `{ needle: String }` — LLM mock that returns `in_scope: true` only when the user prompt
--  `ScopeGatedByPrompt` type L1101-1139 — `= ScopeGatedByPrompt` — steward (Phase 5) refines vocabulary later.
--  `stream` function L1102-1138 — `( &self, request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = R...` — steward (Phase 5) refines vocabulary later.
--  `global_memory_fact_reaches_classify_prompt` function L1142-1177 — `()` — steward (Phase 5) refines vocabulary later.
--  `classify_without_global_facts_is_out_of_scope` function L1180-1202 — `()` — steward (Phase 5) refines vocabulary later.
--  `entity_dates_inherit_source_ts_not_extraction_time` function L1205-1245 — `()` — steward (Phase 5) refines vocabulary later.
+-  `KeyedMockLlm` type L721-764 — `= KeyedMockLlm` — steward (Phase 5) refines vocabulary later.
+-  `stream` function L722-763 — `( &self, request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = R...` — steward (Phase 5) refines vocabulary later.
+-  `ws` function L768-772 — `(name: &str, desc: &str) -> Lens` — steward (Phase 5) refines vocabulary later.
+-  `fixture_proj` function L774-787 — `(id: &str, body: &str, ts_offset: i64) -> GmailMessageProjection` — steward (Phase 5) refines vocabulary later.
+-  `Fixture` struct L789-795 — `{ _tmp: tempfile::TempDir, store: Arc<std::sync::Mutex<Store>>, proj: Arc<Projec...` — steward (Phase 5) refines vocabulary later.
+-  `setup` function L797-832 — `() -> Fixture` — steward (Phase 5) refines vocabulary later.
+-  `Fixture` type L834-849 — `= Fixture` — steward (Phase 5) refines vocabulary later.
+-  `kb` function L835-840 — `(&self, name: &str) -> Arc<MemoryManager>` — steward (Phase 5) refines vocabulary later.
+-  `cursor` function L842-848 — `(&self, ws_name: &str, feed_type: &str) -> Option<chrono::DateTime<chrono::Utc>>` — steward (Phase 5) refines vocabulary later.
+-  `runner_with` function L851-865 — `( fx: &Fixture, mock: Arc<C>, batch_size: usize, ) -> ExtractorRunner` — steward (Phase 5) refines vocabulary later.
+-  `happy_path_extracts_into_lens` function L870-902 — `()` — steward (Phase 5) refines vocabulary later.
+-  `out_of_scope_skips_but_advances_cursor` function L905-926 — `()` — steward (Phase 5) refines vocabulary later.
+-  `link_by_name_resolves_to_existing_kb_entity` function L929-968 — `()` — steward (Phase 5) refines vocabulary later.
+-  `link_to_missing_target_is_dropped_without_panic` function L971-996 — `()` — steward (Phase 5) refines vocabulary later.
+-  `backfill_walks_existing_rows` function L999-1025 — `()` — steward (Phase 5) refines vocabulary later.
+-  `rerun_is_idempotent_via_cursor` function L1028-1055 — `()` — steward (Phase 5) refines vocabulary later.
+-  `two_lenses_each_get_the_entity` function L1058-1094 — `()` — steward (Phase 5) refines vocabulary later.
+-  `ScopeGatedByPrompt` struct L1099-1101 — `{ needle: String }` — LLM mock that returns `in_scope: true` only when the user prompt
+-  `ScopeGatedByPrompt` type L1104-1145 — `= ScopeGatedByPrompt` — steward (Phase 5) refines vocabulary later.
+-  `stream` function L1105-1144 — `( &self, request: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = R...` — steward (Phase 5) refines vocabulary later.
+-  `global_memory_fact_reaches_classify_prompt` function L1148-1183 — `()` — steward (Phase 5) refines vocabulary later.
+-  `classify_without_global_facts_is_out_of_scope` function L1186-1208 — `()` — steward (Phase 5) refines vocabulary later.
+-  `entity_dates_inherit_source_ts_not_extraction_time` function L1211-1251 — `()` — steward (Phase 5) refines vocabulary later.
 
 #### crates/arawn-extractor/src/error.rs
 
@@ -4966,13 +5009,13 @@
 
 #### crates/arawn-extractor/src/llm_text.rs
 
-- pub `complete_text` function L19-58 — `( client: &Arc<dyn LlmClient>, model: &str, system: &str, user: &str, ) -> Resul...` — Send a single-turn (system + user) chat request and collect every
-- pub `extract_json_block` function L63-87 — `(raw: &str) -> Option<&str>` — Many LLMs wrap JSON output in ```json fences or prose.
--  `tests` module L90-115 — `-` — before parsing JSON, so streaming buys us nothing — just collect.
--  `extracts_object_from_fenced_block` function L94-97 — `()` — before parsing JSON, so streaming buys us nothing — just collect.
--  `extracts_array_from_prose` function L100-103 — `()` — before parsing JSON, so streaming buys us nothing — just collect.
--  `handles_nested_braces` function L106-109 — `()` — before parsing JSON, so streaming buys us nothing — just collect.
--  `returns_none_when_absent` function L112-114 — `()` — before parsing JSON, so streaming buys us nothing — just collect.
+- pub `complete_text` function L19-57 — `( client: &Arc<dyn LlmClient>, model: &str, system: &str, user: &str, ) -> Resul...` — Send a single-turn (system + user) chat request and collect every
+- pub `extract_json_block` function L62-86 — `(raw: &str) -> Option<&str>` — Many LLMs wrap JSON output in ```json fences or prose.
+-  `tests` module L89-114 — `-` — before parsing JSON, so streaming buys us nothing — just collect.
+-  `extracts_object_from_fenced_block` function L93-96 — `()` — before parsing JSON, so streaming buys us nothing — just collect.
+-  `extracts_array_from_prose` function L99-102 — `()` — before parsing JSON, so streaming buys us nothing — just collect.
+-  `handles_nested_braces` function L105-108 — `()` — before parsing JSON, so streaming buys us nothing — just collect.
+-  `returns_none_when_absent` function L111-113 — `()` — before parsing JSON, so streaming buys us nothing — just collect.
 
 #### crates/arawn-extractor/src/runner.rs
 
@@ -6852,32 +6895,32 @@
 
 - pub `UatCalendarUpcomingTool` struct L42-44 — `{ data_dir: PathBuf }` — UAT impl of `calendar_upcoming`.
 - pub `new` function L47-49 — `(data_dir: PathBuf) -> Self` — runs never touch this module.
-- pub `UatCalendarCreateEventTool` struct L194-196 — `{ data_dir: PathBuf }` — `calendar_create_event` UAT impl — appends to the side-effect ledger and
-- pub `new` function L199-201 — `(data_dir: PathBuf) -> Self` — runs never touch this module.
-- pub `uat_calendar_tools` function L257-262 — `(data_dir: PathBuf) -> Vec<Box<dyn Tool>>` — Convenience constructor that returns the tool as `Arc<dyn Tool>` for
+- pub `UatCalendarCreateEventTool` struct L198-200 — `{ data_dir: PathBuf }` — `calendar_create_event` UAT impl — appends to the side-effect ledger and
+- pub `new` function L203-205 — `(data_dir: PathBuf) -> Self` — runs never touch this module.
+- pub `uat_calendar_tools` function L261-266 — `(data_dir: PathBuf) -> Vec<Box<dyn Tool>>` — Convenience constructor that returns the tool as `Arc<dyn Tool>` for
 -  `EventSummary` struct L28-37 — `{ id: Option<String>, summary: Option<String>, description: Option<String>, loca...` — Mirror of `tools::EventSummary` (private there) — wire-shape match so the
--  `UatCalendarUpcomingTool` type L46-136 — `= UatCalendarUpcomingTool` — runs never touch this module.
--  `list_window_events` function L51-135 — `( &self, now: DateTime<Utc>, lookahead_hours: i64, ) -> Result<Vec<EventSummary>...` — runs never touch this module.
--  `UatCalendarUpcomingTool` type L139-189 — `impl Tool for UatCalendarUpcomingTool` — runs never touch this module.
--  `name` function L140-142 — `(&self) -> &str` — runs never touch this module.
--  `description` function L143-149 — `(&self) -> &str` — runs never touch this module.
--  `category` function L150-152 — `(&self) -> ToolCategory` — runs never touch this module.
--  `permission_category` function L153-155 — `(&self) -> PermissionCategory` — runs never touch this module.
--  `parameters_schema` function L156-172 — `(&self) -> Value` — runs never touch this module.
--  `execute` function L174-188 — `( &self, _ctx: &dyn ToolContext, params: Value, ) -> Result<ToolOutput, ToolErro...` — runs never touch this module.
--  `UatCalendarCreateEventTool` type L198-202 — `= UatCalendarCreateEventTool` — runs never touch this module.
--  `UatCalendarCreateEventTool` type L205-253 — `impl Tool for UatCalendarCreateEventTool` — runs never touch this module.
--  `name` function L206-208 — `(&self) -> &str` — runs never touch this module.
--  `description` function L209-212 — `(&self) -> &str` — runs never touch this module.
--  `category` function L213-215 — `(&self) -> ToolCategory` — runs never touch this module.
--  `permission_category` function L216-218 — `(&self) -> PermissionCategory` — runs never touch this module.
--  `parameters_schema` function L219-237 — `(&self) -> Value` — runs never touch this module.
--  `execute` function L239-252 — `( &self, _ctx: &dyn ToolContext, params: Value, ) -> Result<ToolOutput, ToolErro...` — runs never touch this module.
--  `tests` module L265-337 — `-` — runs never touch this module.
--  `fixture_dir` function L270-313 — `() -> tempfile::TempDir` — runs never touch this module.
--  `returns_only_events_in_lookahead_window` function L316-326 — `()` — runs never touch this module.
--  `empty_when_no_events_match` function L329-336 — `()` — runs never touch this module.
--  `_ARC_PLACEHOLDER` variable L343 — `: Option<Arc<dyn Tool>>` — runs never touch this module.
+-  `UatCalendarUpcomingTool` type L46-140 — `= UatCalendarUpcomingTool` — runs never touch this module.
+-  `list_window_events` function L51-139 — `( &self, now: DateTime<Utc>, lookahead_hours: i64, ) -> Result<Vec<EventSummary>...` — runs never touch this module.
+-  `UatCalendarUpcomingTool` type L143-193 — `impl Tool for UatCalendarUpcomingTool` — runs never touch this module.
+-  `name` function L144-146 — `(&self) -> &str` — runs never touch this module.
+-  `description` function L147-153 — `(&self) -> &str` — runs never touch this module.
+-  `category` function L154-156 — `(&self) -> ToolCategory` — runs never touch this module.
+-  `permission_category` function L157-159 — `(&self) -> PermissionCategory` — runs never touch this module.
+-  `parameters_schema` function L160-176 — `(&self) -> Value` — runs never touch this module.
+-  `execute` function L178-192 — `( &self, _ctx: &dyn ToolContext, params: Value, ) -> Result<ToolOutput, ToolErro...` — runs never touch this module.
+-  `UatCalendarCreateEventTool` type L202-206 — `= UatCalendarCreateEventTool` — runs never touch this module.
+-  `UatCalendarCreateEventTool` type L209-257 — `impl Tool for UatCalendarCreateEventTool` — runs never touch this module.
+-  `name` function L210-212 — `(&self) -> &str` — runs never touch this module.
+-  `description` function L213-216 — `(&self) -> &str` — runs never touch this module.
+-  `category` function L217-219 — `(&self) -> ToolCategory` — runs never touch this module.
+-  `permission_category` function L220-222 — `(&self) -> PermissionCategory` — runs never touch this module.
+-  `parameters_schema` function L223-241 — `(&self) -> Value` — runs never touch this module.
+-  `execute` function L243-256 — `( &self, _ctx: &dyn ToolContext, params: Value, ) -> Result<ToolOutput, ToolErro...` — runs never touch this module.
+-  `tests` module L269-344 — `-` — runs never touch this module.
+-  `fixture_dir` function L274-316 — `() -> tempfile::TempDir` — runs never touch this module.
+-  `returns_only_events_in_lookahead_window` function L319-333 — `()` — runs never touch this module.
+-  `empty_when_no_events_match` function L336-343 — `()` — runs never touch this module.
+-  `_ARC_PLACEHOLDER` variable L350 — `: Option<Arc<dyn Tool>>` — runs never touch this module.
 
 ### crates/arawn-integrations/src
 
@@ -7135,9 +7178,9 @@
 
 - pub `UatDriveSearchTool` struct L45-47 — `{ data_dir: PathBuf }` — UAT impl of `drive_search`.
 - pub `new` function L50-52 — `(data_dir: PathBuf) -> Self` — whenever a scenario calls for them; the shared pattern is identical.
-- pub `uat_drive_tools` function L174-176 — `(data_dir: PathBuf) -> Vec<Box<dyn Tool>>` — whenever a scenario calls for them; the shared pattern is identical.
+- pub `uat_drive_tools` function L186-188 — `(data_dir: PathBuf) -> Vec<Box<dyn Tool>>` — whenever a scenario calls for them; the shared pattern is identical.
 -  `FileSummary` struct L22-31 — `{ id: Option<String>, name: Option<String>, mime_type: Option<String>, size: Opt...` — Mirror of `tools::FileSummary` (private there) — wire-shape match so the
--  `open_store` function L33-40 — `(data_dir: &PathBuf) -> Result<ProjectionStore, ToolError>` — whenever a scenario calls for them; the shared pattern is identical.
+-  `open_store` function L33-40 — `(data_dir: &Path) -> Result<ProjectionStore, ToolError>` — whenever a scenario calls for them; the shared pattern is identical.
 -  `UatDriveSearchTool` type L49-86 — `= UatDriveSearchTool` — whenever a scenario calls for them; the shared pattern is identical.
 -  `search` function L54-85 — `(&self, query: &str, limit: usize) -> Result<Vec<FileSummary>, ToolError>` — whenever a scenario calls for them; the shared pattern is identical.
 -  `UatDriveSearchTool` type L89-144 — `impl Tool for UatDriveSearchTool` — whenever a scenario calls for them; the shared pattern is identical.
@@ -7147,12 +7190,12 @@
 -  `permission_category` function L105-107 — `(&self) -> PermissionCategory` — whenever a scenario calls for them; the shared pattern is identical.
 -  `parameters_schema` function L108-125 — `(&self) -> Value` — whenever a scenario calls for them; the shared pattern is identical.
 -  `execute` function L127-143 — `( &self, _ctx: &dyn ToolContext, params: Value, ) -> Result<ToolOutput, ToolErro...` — whenever a scenario calls for them; the shared pattern is identical.
--  `strip_drive_query` function L150-172 — `(query: &str) -> String` — Strip Drive-query operators (`name contains 'x'`, `mimeType = 'pdf'`,
--  `tests` module L179-244 — `-` — whenever a scenario calls for them; the shared pattern is identical.
--  `fixture_dir` function L184-211 — `() -> tempfile::TempDir` — whenever a scenario calls for them; the shared pattern is identical.
--  `search_finds_by_filename_substring` function L214-222 — `()` — whenever a scenario calls for them; the shared pattern is identical.
--  `search_finds_by_body_text_content` function L225-233 — `()` — whenever a scenario calls for them; the shared pattern is identical.
--  `strip_keeps_content_drops_operators` function L236-243 — `()` — whenever a scenario calls for them; the shared pattern is identical.
+-  `strip_drive_query` function L150-184 — `(query: &str) -> String` — Strip Drive-query operators (`name contains 'x'`, `mimeType = 'pdf'`,
+-  `tests` module L191-272 — `-` — whenever a scenario calls for them; the shared pattern is identical.
+-  `fixture_dir` function L196-231 — `() -> tempfile::TempDir` — whenever a scenario calls for them; the shared pattern is identical.
+-  `search_finds_by_filename_substring` function L234-243 — `()` — whenever a scenario calls for them; the shared pattern is identical.
+-  `search_finds_by_body_text_content` function L246-255 — `()` — whenever a scenario calls for them; the shared pattern is identical.
+-  `strip_keeps_content_drops_operators` function L258-271 — `()` — whenever a scenario calls for them; the shared pattern is identical.
 
 ### crates/arawn-integrations/src/github
 
@@ -7344,7 +7387,7 @@
 - pub `uat_gmail_tools` function L356-362 — `(data_dir: PathBuf) -> Vec<Box<dyn Tool>>` — Convenience constructor returning the gmail UAT tool set as `Box<dyn Tool>`s.
 -  `MessageSummary` struct L20-28 — `{ id: String, thread_id: Option<String>, from: Option<String>, subject: Option<S...` — Wire-shape mirror of the production `MessageSummary` (private in
 -  `row_to_summary` function L30-60 — `( id: String, title: String, body: String, ts: String, metadata: Value, ) -> Mes...` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
--  `open_store` function L62-69 — `(data_dir: &PathBuf) -> Result<ProjectionStore, ToolError>` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
+-  `open_store` function L62-69 — `(data_dir: &Path) -> Result<ProjectionStore, ToolError>` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
 -  `UatGmailInboxReadTool` type L77-112 — `= UatGmailInboxReadTool` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
 -  `list_inbox` function L82-111 — `(&self, limit: usize) -> Result<Vec<MessageSummary>, ToolError>` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
 -  `UatGmailInboxReadTool` type L115-163 — `impl Tool for UatGmailInboxReadTool` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
@@ -7372,13 +7415,13 @@
 -  `permission_category` function L301-303 — `(&self) -> PermissionCategory` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
 -  `parameters_schema` function L304-318 — `(&self) -> Value` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
 -  `execute` function L320-329 — `( &self, _ctx: &dyn ToolContext, params: Value, ) -> Result<ToolOutput, ToolErro...` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
--  `log_side_effect` function L334-353 — `( data_dir: &PathBuf, tool: &str, params: &Value, ) -> Result<(), ToolError>` — Append a `{tool, params}` JSONL line to `<data_dir>/uat_side_effects.jsonl`.
+-  `log_side_effect` function L334-353 — `( data_dir: &Path, tool: &str, params: &Value, ) -> Result<(), ToolError>` — Append a `{tool, params}` JSONL line to `<data_dir>/uat_side_effects.jsonl`.
 -  `_DT_PARITY` variable L366 — `: Option<DateTime<Utc>>` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
--  `tests` module L369-434 — `-` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
--  `fixture_dir` function L373-401 — `() -> tempfile::TempDir` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
--  `inbox_list_orders_newest_first` function L404-410 — `()` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
--  `search_finds_by_subject_substring` function L413-423 — `()` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
--  `strip_drops_operator_keeps_value` function L426-433 — `()` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
+-  `tests` module L369-442 — `-` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
+-  `fixture_dir` function L373-409 — `() -> tempfile::TempDir` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
+-  `inbox_list_orders_newest_first` function L412-418 — `()` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
+-  `search_finds_by_subject_substring` function L421-431 — `()` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
+-  `strip_drops_operator_keeps_value` function L434-441 — `()` — `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
 
 ### crates/arawn-integrations/src/slack
 
@@ -7537,36 +7580,36 @@
 
 - pub `UatSlackListChannelsTool` struct L67-69 — `{ data_dir: PathBuf }` — `slack_list_channels` UAT impl — distinct channel ids appearing in the
 - pub `new` function L72-74 — `(data_dir: PathBuf) -> Self` — `slack_messages` rows, then return messages for a given channel.
-- pub `UatSlackHistoryTool` struct L144-146 — `{ data_dir: PathBuf }` — `slack_history` UAT impl — returns messages for one channel, newest first.
-- pub `new` function L149-151 — `(data_dir: PathBuf) -> Self` — `slack_messages` rows, then return messages for a given channel.
-- pub `uat_slack_tools` function L269-274 — `(data_dir: PathBuf) -> Vec<Box<dyn Tool>>` — `slack_messages` rows, then return messages for a given channel.
+- pub `UatSlackHistoryTool` struct L147-149 — `{ data_dir: PathBuf }` — `slack_history` UAT impl — returns messages for one channel, newest first.
+- pub `new` function L152-154 — `(data_dir: PathBuf) -> Self` — `slack_messages` rows, then return messages for a given channel.
+- pub `uat_slack_tools` function L274-279 — `(data_dir: PathBuf) -> Vec<Box<dyn Tool>>` — `slack_messages` rows, then return messages for a given channel.
 -  `MessageSummary` struct L18-25 — `{ ts: String, user: Option<String>, text: Option<String>, thread_ts: Option<Stri...` — `slack_messages` rows, then return messages for a given channel.
 -  `ReactionSummary` struct L28-31 — `{ name: String, count: usize }` — `slack_messages` rows, then return messages for a given channel.
 -  `ChannelSummary` struct L34-41 — `{ id: String, name: String, kind: String, member_count: Option<usize>, topic: Op...` — `slack_messages` rows, then return messages for a given channel.
--  `open_store` function L43-50 — `(data_dir: &PathBuf) -> Result<ProjectionStore, ToolError>` — `slack_messages` rows, then return messages for a given channel.
+-  `open_store` function L43-50 — `(data_dir: &Path) -> Result<ProjectionStore, ToolError>` — `slack_messages` rows, then return messages for a given channel.
 -  `kind_for` function L54-62 — `(id: &str) -> &'static str` — Channel-kind hint inferred from a Slack channel id prefix.
--  `UatSlackListChannelsTool` type L71-111 — `= UatSlackListChannelsTool` — `slack_messages` rows, then return messages for a given channel.
--  `list_channels` function L76-110 — `(&self) -> Result<Vec<ChannelSummary>, ToolError>` — `slack_messages` rows, then return messages for a given channel.
--  `UatSlackListChannelsTool` type L114-141 — `impl Tool for UatSlackListChannelsTool` — `slack_messages` rows, then return messages for a given channel.
--  `name` function L115-117 — `(&self) -> &str` — `slack_messages` rows, then return messages for a given channel.
--  `description` function L118-122 — `(&self) -> &str` — `slack_messages` rows, then return messages for a given channel.
--  `category` function L123-125 — `(&self) -> ToolCategory` — `slack_messages` rows, then return messages for a given channel.
--  `permission_category` function L126-128 — `(&self) -> PermissionCategory` — `slack_messages` rows, then return messages for a given channel.
--  `parameters_schema` function L129-131 — `(&self) -> Value` — `slack_messages` rows, then return messages for a given channel.
--  `execute` function L133-140 — `( &self, _ctx: &dyn ToolContext, _params: Value, ) -> Result<ToolOutput, ToolErr...` — `slack_messages` rows, then return messages for a given channel.
--  `UatSlackHistoryTool` type L148-214 — `= UatSlackHistoryTool` — `slack_messages` rows, then return messages for a given channel.
--  `channel_history` function L153-213 — `(&self, channel: &str, limit: usize) -> Result<Vec<MessageSummary>, ToolError>` — `slack_messages` rows, then return messages for a given channel.
--  `UatSlackHistoryTool` type L217-267 — `impl Tool for UatSlackHistoryTool` — `slack_messages` rows, then return messages for a given channel.
--  `name` function L218-220 — `(&self) -> &str` — `slack_messages` rows, then return messages for a given channel.
--  `description` function L221-224 — `(&self) -> &str` — `slack_messages` rows, then return messages for a given channel.
--  `category` function L225-227 — `(&self) -> ToolCategory` — `slack_messages` rows, then return messages for a given channel.
--  `permission_category` function L228-230 — `(&self) -> PermissionCategory` — `slack_messages` rows, then return messages for a given channel.
--  `parameters_schema` function L231-248 — `(&self) -> Value` — `slack_messages` rows, then return messages for a given channel.
--  `execute` function L250-266 — `( &self, _ctx: &dyn ToolContext, params: Value, ) -> Result<ToolOutput, ToolErro...` — `slack_messages` rows, then return messages for a given channel.
--  `tests` module L277-331 — `-` — `slack_messages` rows, then return messages for a given channel.
--  `fixture_dir` function L282-310 — `() -> tempfile::TempDir` — `slack_messages` rows, then return messages for a given channel.
--  `list_channels_returns_distinct_ids` function L313-321 — `()` — `slack_messages` rows, then return messages for a given channel.
--  `history_returns_messages_for_one_channel_newest_first` function L324-330 — `()` — `slack_messages` rows, then return messages for a given channel.
+-  `UatSlackListChannelsTool` type L71-114 — `= UatSlackListChannelsTool` — `slack_messages` rows, then return messages for a given channel.
+-  `list_channels` function L76-113 — `(&self) -> Result<Vec<ChannelSummary>, ToolError>` — `slack_messages` rows, then return messages for a given channel.
+-  `UatSlackListChannelsTool` type L117-144 — `impl Tool for UatSlackListChannelsTool` — `slack_messages` rows, then return messages for a given channel.
+-  `name` function L118-120 — `(&self) -> &str` — `slack_messages` rows, then return messages for a given channel.
+-  `description` function L121-125 — `(&self) -> &str` — `slack_messages` rows, then return messages for a given channel.
+-  `category` function L126-128 — `(&self) -> ToolCategory` — `slack_messages` rows, then return messages for a given channel.
+-  `permission_category` function L129-131 — `(&self) -> PermissionCategory` — `slack_messages` rows, then return messages for a given channel.
+-  `parameters_schema` function L132-134 — `(&self) -> Value` — `slack_messages` rows, then return messages for a given channel.
+-  `execute` function L136-143 — `( &self, _ctx: &dyn ToolContext, _params: Value, ) -> Result<ToolOutput, ToolErr...` — `slack_messages` rows, then return messages for a given channel.
+-  `UatSlackHistoryTool` type L151-219 — `= UatSlackHistoryTool` — `slack_messages` rows, then return messages for a given channel.
+-  `channel_history` function L156-218 — `( &self, channel: &str, limit: usize, ) -> Result<Vec<MessageSummary>, ToolError...` — `slack_messages` rows, then return messages for a given channel.
+-  `UatSlackHistoryTool` type L222-272 — `impl Tool for UatSlackHistoryTool` — `slack_messages` rows, then return messages for a given channel.
+-  `name` function L223-225 — `(&self) -> &str` — `slack_messages` rows, then return messages for a given channel.
+-  `description` function L226-229 — `(&self) -> &str` — `slack_messages` rows, then return messages for a given channel.
+-  `category` function L230-232 — `(&self) -> ToolCategory` — `slack_messages` rows, then return messages for a given channel.
+-  `permission_category` function L233-235 — `(&self) -> PermissionCategory` — `slack_messages` rows, then return messages for a given channel.
+-  `parameters_schema` function L236-253 — `(&self) -> Value` — `slack_messages` rows, then return messages for a given channel.
+-  `execute` function L255-271 — `( &self, _ctx: &dyn ToolContext, params: Value, ) -> Result<ToolOutput, ToolErro...` — `slack_messages` rows, then return messages for a given channel.
+-  `tests` module L282-336 — `-` — `slack_messages` rows, then return messages for a given channel.
+-  `fixture_dir` function L287-315 — `() -> tempfile::TempDir` — `slack_messages` rows, then return messages for a given channel.
+-  `list_channels_returns_distinct_ids` function L318-326 — `()` — `slack_messages` rows, then return messages for a given channel.
+-  `history_returns_messages_for_one_channel_newest_first` function L329-335 — `()` — `slack_messages` rows, then return messages for a given channel.
 
 ### crates/arawn-llm/src
 
@@ -7593,21 +7636,21 @@
 -  `API_VERSION` variable L14 — `: &str`
 -  `AnthropicClient` type L22-58 — `= AnthropicClient`
 -  `build_request_body` function L37-57 — `(&self, request: &ChatRequest) -> Value`
--  `AnthropicClient` type L61-197 — `impl LlmClient for AnthropicClient`
--  `stream` function L62-196 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
--  `build_messages` function L203-262 — `(messages: &[ChatMessage]) -> Vec<Value>` — Convert arawn messages to Anthropic format.
--  `merge_consecutive_roles` function L266-302 — `(messages: &mut Vec<Value>)` — Merge consecutive messages with the same role into a single message
--  `normalize_content` function L305-311 — `(content: &Value) -> Vec<Value>` — Normalize content to a Vec<Value> of content blocks.
--  `build_tools` function L314-325 — `(tools: &[ToolDefinition]) -> Vec<Value>` — Convert tool definitions to Anthropic format.
--  `tests` module L328-475 — `-`
--  `user_msg` function L332-339 — `(text: &str) -> ChatMessage`
--  `assistant_text` function L341-348 — `(text: &str) -> ChatMessage`
--  `assistant_with_tool` function L350-361 — `(text: &str, tool_id: &str, tool_name: &str, args: Value) -> ChatMessage`
--  `tool_result` function L363-371 — `(tool_use_id: &str, content: &str) -> ChatMessage`
--  `simple_conversation` function L374-380 — `()`
--  `tool_call_with_result` function L383-412 — `()`
--  `multi_turn_with_tools` function L415-449 — `()`
--  `consecutive_tool_results_merged` function L452-474 — `()`
+-  `AnthropicClient` type L61-216 — `impl LlmClient for AnthropicClient`
+-  `stream` function L62-215 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
+-  `build_messages` function L222-281 — `(messages: &[ChatMessage]) -> Vec<Value>` — Convert arawn messages to Anthropic format.
+-  `merge_consecutive_roles` function L285-321 — `(messages: &mut Vec<Value>)` — Merge consecutive messages with the same role into a single message
+-  `normalize_content` function L324-330 — `(content: &Value) -> Vec<Value>` — Normalize content to a Vec<Value> of content blocks.
+-  `build_tools` function L333-344 — `(tools: &[ToolDefinition]) -> Vec<Value>` — Convert tool definitions to Anthropic format.
+-  `tests` module L347-494 — `-`
+-  `user_msg` function L351-358 — `(text: &str) -> ChatMessage`
+-  `assistant_text` function L360-367 — `(text: &str) -> ChatMessage`
+-  `assistant_with_tool` function L369-380 — `(text: &str, tool_id: &str, tool_name: &str, args: Value) -> ChatMessage`
+-  `tool_result` function L382-390 — `(tool_use_id: &str, content: &str) -> ChatMessage`
+-  `simple_conversation` function L393-399 — `()`
+-  `tool_call_with_result` function L402-431 — `()`
+-  `multi_turn_with_tools` function L434-468 — `()`
+-  `consecutive_tool_results_merged` function L471-493 — `()`
 
 #### crates/arawn-llm/src/client.rs
 
@@ -7616,32 +7659,38 @@
 
 #### crates/arawn-llm/src/error.rs
 
-- pub `LlmError` enum L4-31 — `Api | Auth | ModelNotFound | RateLimited | ServerError | Stream | Config | Reque...`
-- pub `is_retryable` function L35-64 — `(&self) -> bool` — Returns true if this error is transient and the request should be retried.
-- pub `from_status` function L67-79 — `(status: u16, body: String) -> Self` — Create from an HTTP status code + body.
-- pub `user_message` function L82-134 — `(&self) -> String` — Return a user-facing error message with actionable guidance.
--  `LlmError` type L33-135 — `= LlmError`
--  `FAILED_GENERATION_TRUNCATE_BYTES` variable L140 — `: usize` — Maximum length of `failed_generation` content to include in error
--  `extract_api_message` function L153-178 — `(body: &str) -> Option<String>` — Try to extract a clean message from a JSON error body.
--  `tests` module L181-337 — `-`
--  `from_status_401_is_auth` function L185-190 — `()`
--  `from_status_403_is_auth` function L193-196 — `()`
--  `from_status_404_is_model_not_found` function L199-207 — `()`
--  `from_status_429_is_rate_limited` function L210-215 — `()`
--  `from_status_500_is_server_error` function L218-223 — `()`
--  `from_status_400_is_api_error` function L226-230 — `()`
--  `extract_message_from_json_body` function L233-237 — `()`
--  `extract_message_from_plain_text_returns_none` function L240-242 — `()`
--  `extract_message_includes_failed_generation_when_present` function L247-258 — `()`
--  `extract_message_truncates_long_failed_generation` function L261-279 — `()`
--  `extract_message_handles_empty_failed_generation` function L282-288 — `()`
--  `extract_message_without_failed_generation_preserves_old_behavior` function L291-295 — `()`
--  `api_error_failed_to_call_a_function_is_retryable` function L300-304 — `()`
--  `api_error_failed_to_parse_tool_call_arguments_is_retryable` function L307-310 — `()`
--  `api_error_invalid_model_is_not_retryable` function L313-317 — `()`
--  `api_error_failed_to_call_case_insensitive` function L320-324 — `()`
--  `config_error_user_message` function L327-330 — `()`
--  `stream_error_user_message` function L333-336 — `()`
+- pub `LlmError` enum L4-37 — `Api | Auth | ModelNotFound | RateLimited | ServerError | Stream | Config | Reque...`
+- pub `is_retryable` function L41-86 — `(&self) -> bool` — Returns true if this error is transient and the request should be retried.
+- pub `from_status` function L89-91 — `(status: u16, body: String) -> Self` — Create from an HTTP status code + body.
+- pub `from_status_with_retry_after` function L95-118 — `( status: u16, body: String, retry_after: Option<std::time::Duration>, ) -> Self` — Like [`from_status`], but threads a `Retry-After` duration (extracted
+- pub `retry_after` function L122-127 — `(&self) -> Option<std::time::Duration>` — The server-suggested retry delay, if this is a rate-limit error that
+- pub `user_message` function L130-190 — `(&self) -> String` — Return a user-facing error message with actionable guidance.
+-  `LlmError` type L39-191 — `= LlmError`
+-  `is_permanent_transport_error` function L199-219 — `(e: &reqwest::Error) -> bool` — Heuristic: is this reqwest error a *permanent* transport failure (DNS
+-  `FAILED_GENERATION_TRUNCATE_BYTES` variable L224 — `: usize` — Maximum length of `failed_generation` content to include in error
+-  `extract_api_message` function L237-262 — `(body: &str) -> Option<String>` — Try to extract a clean message from a JSON error body.
+-  `tests` module L265-451 — `-`
+-  `from_status_401_is_auth` function L269-274 — `()`
+-  `from_status_403_is_auth` function L277-280 — `()`
+-  `auth_user_message_is_provider_agnostic` function L283-292 — `()`
+-  `from_status_404_is_model_not_found` function L295-303 — `()`
+-  `from_status_429_is_rate_limited` function L306-311 — `()`
+-  `from_status_408_is_retryable_server_error` function L314-318 — `()`
+-  `rate_limited_carries_retry_after` function L321-329 — `()`
+-  `from_status_500_is_server_error` function L332-337 — `()`
+-  `from_status_400_is_api_error` function L340-344 — `()`
+-  `extract_message_from_json_body` function L347-351 — `()`
+-  `extract_message_from_plain_text_returns_none` function L354-356 — `()`
+-  `extract_message_includes_failed_generation_when_present` function L361-372 — `()`
+-  `extract_message_truncates_long_failed_generation` function L375-393 — `()`
+-  `extract_message_handles_empty_failed_generation` function L396-402 — `()`
+-  `extract_message_without_failed_generation_preserves_old_behavior` function L405-409 — `()`
+-  `api_error_failed_to_call_a_function_is_retryable` function L414-418 — `()`
+-  `api_error_failed_to_parse_tool_call_arguments_is_retryable` function L421-424 — `()`
+-  `api_error_invalid_model_is_not_retryable` function L427-431 — `()`
+-  `api_error_failed_to_call_case_insensitive` function L434-438 — `()`
+-  `config_error_user_message` function L441-444 — `()`
+-  `stream_error_user_message` function L447-450 — `()`
 
 #### crates/arawn-llm/src/hints.rs
 
@@ -7682,23 +7731,23 @@
 - pub `raw` function L49-51 — `(chunks: Vec<ChatChunk>) -> Self`
 - pub `error` function L53-55 — `(error: LlmError) -> Self`
 - pub `stream_error` function L57-62 — `(chunks_before_error: Vec<ChatChunk>, error: LlmError) -> Self`
-- pub `MockLlmClient` struct L90-94 — `{ responses: Mutex<Vec<MockResponse>>, call_count: Mutex<usize>, captured_reques...` — Mock LLM client that returns pre-scripted responses.
-- pub `new` function L97-103 — `(responses: Vec<MockResponse>) -> Self`
-- pub `call_count` function L106-108 — `(&self) -> usize` — How many times `stream()` has been called.
-- pub `captured_requests` function L111-113 — `(&self) -> Vec<ChatRequest>` — Returns a clone of all captured requests for test assertions.
--  `MockResponse` type L32-85 — `= MockResponse`
--  `into_chunks` function L64-84 — `(self) -> Vec<ChatChunk>`
--  `MockLlmClient` type L96-114 — `= MockLlmClient`
--  `MockLlmClient` type L117-155 — `impl LlmClient for MockLlmClient`
--  `stream` function L118-154 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn futures::Stream<Item = Re...`
--  `tests` module L158-354 — `-`
--  `mock_text_response` function L163-182 — `()`
--  `mock_tool_call_response` function L185-217 — `()`
--  `mock_multiple_responses_consumed_in_order` function L220-249 — `()`
--  `mock_error_returns_err_immediately` function L252-272 — `()`
--  `mock_stream_error_yields_chunks_then_err` function L275-311 — `()`
--  `mock_error_then_success_simulates_retry` function L314-339 — `()`
--  `mock_panics_when_exhausted` function L343-353 — `()`
+- pub `MockLlmClient` struct L99-103 — `{ responses: Mutex<Vec<MockResponse>>, call_count: Mutex<usize>, captured_reques...` — Mock LLM client that returns pre-scripted responses.
+- pub `new` function L106-112 — `(responses: Vec<MockResponse>) -> Self`
+- pub `call_count` function L115-117 — `(&self) -> usize` — How many times `stream()` has been called.
+- pub `captured_requests` function L120-122 — `(&self) -> Vec<ChatRequest>` — Returns a clone of all captured requests for test assertions.
+-  `MockResponse` type L32-94 — `= MockResponse`
+-  `into_chunks` function L64-93 — `(self) -> Vec<ChatChunk>`
+-  `MockLlmClient` type L105-123 — `= MockLlmClient`
+-  `MockLlmClient` type L126-164 — `impl LlmClient for MockLlmClient`
+-  `stream` function L127-163 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn futures::Stream<Item = Re...`
+-  `tests` module L167-366 — `-`
+-  `mock_text_response` function L172-191 — `()`
+-  `mock_tool_call_response` function L194-226 — `()`
+-  `mock_multiple_responses_consumed_in_order` function L229-258 — `()`
+-  `mock_error_returns_err_immediately` function L261-281 — `()`
+-  `mock_stream_error_yields_chunks_then_err` function L284-320 — `()`
+-  `mock_error_then_success_simulates_retry` function L323-351 — `()`
+-  `mock_panics_when_exhausted` function L355-365 — `()`
 
 #### crates/arawn-llm/src/openai_compat.rs
 
@@ -7714,38 +7763,46 @@
 -  `OpenAICompatibleClient` type L25-127 — `= OpenAICompatibleClient`
 -  `build_request_body` function L103-122 — `(&self, request: &ChatRequest) -> Value`
 -  `completions_url` function L124-126 — `(&self) -> String`
--  `OpenAICompatibleClient` type L130-165 — `impl LlmClient for OpenAICompatibleClient`
--  `stream` function L131-164 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
--  `SseParser` struct L169-174 — `{ inner: S, buffer: String, pending_chunks: Vec<ChatChunk>, provider: String }`
--  `new` function L177-184 — `(inner: S, provider: String) -> Self`
--  `Item` type L191 — `= Result<ChatChunk, LlmError>`
--  `poll_next` function L193-229 — `( mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>, ) -> std::task::Pol...`
--  `try_parse_buffer` function L233-279 — `(&mut self) -> Option<Result<ChatChunk, LlmError>>`
--  `parse_stream_chunk` function L282-327 — `(chunk: &StreamChunk) -> Vec<ChatChunk>`
--  `build_messages` function L331-401 — `(system_prompt: &Option<String>, messages: &[ChatMessage]) -> Vec<Value>`
--  `build_tools` function L403-417 — `(tools: &[ToolDefinition]) -> Vec<Value>`
--  `ApiErrorResponse` struct L422-424 — `{ error: Option<ApiError> }`
--  `ApiError` struct L427-431 — `{ message: String, code: Option<String> }`
--  `StreamChunk` struct L434-439 — `{ choices: Vec<StreamChoice>, usage: Option<StreamUsage> }`
--  `StreamChoice` struct L442-444 — `{ delta: StreamDelta }`
--  `StreamDelta` struct L447-450 — `{ content: Option<String>, tool_calls: Option<Vec<StreamToolCall>> }`
--  `StreamToolCall` struct L453-456 — `{ id: Option<String>, function: Option<StreamFunction> }`
--  `StreamFunction` struct L459-462 — `{ name: Option<String>, arguments: Option<String> }`
--  `StreamUsage` struct L465-468 — `{ prompt_tokens: u32, completion_tokens: u32 }`
--  `tests` module L471-685 — `-`
--  `groq_convenience_constructor` function L475-483 — `()`
--  `ollama_convenience_constructor` function L486-494 — `()`
--  `openai_convenience_constructor` function L497-504 — `()`
--  `custom_base_url` function L507-517 — `()`
--  `from_config_known_providers` function L520-527 — `()`
--  `from_config_custom_url_override` function L530-541 — `()`
--  `assistant_tool_only_message_includes_empty_content` function L544-573 — `()`
--  `assistant_message_with_text_and_tool_calls_keeps_both` function L576-595 — `()`
--  `build_messages_with_system_prompt` function L598-611 — `()`
--  `parse_text_delta` function L614-627 — `()`
--  `parse_tool_use_start` function L630-649 — `()`
--  `parse_usage` function L652-663 — `()`
--  `no_auth_header_when_no_api_key` function L666-684 — `()`
+-  `OpenAICompatibleClient` type L130-172 — `impl LlmClient for OpenAICompatibleClient`
+-  `stream` function L131-171 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
+-  `SseParser` struct L176-185 — `{ inner: S, buffer: String, pending_chunks: Vec<ChatChunk>, provider: String, fi...`
+-  `new` function L188-196 — `(inner: S, provider: String) -> Self`
+-  `Item` type L203 — `= Result<ChatChunk, LlmError>`
+-  `poll_next` function L205-241 — `( mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>, ) -> std::task::Pol...`
+-  `try_parse_buffer` function L245-304 — `(&mut self) -> Option<Result<ChatChunk, LlmError>>`
+-  `parse_stream_chunk` function L311-386 — `( chunk: &StreamChunk, finish_reason: &mut Option<crate::types::FinishReason>, )...` — Translate one parsed SSE chunk into provider-neutral `ChatChunk`s.
+-  `build_messages` function L390-460 — `(system_prompt: &Option<String>, messages: &[ChatMessage]) -> Vec<Value>`
+-  `build_tools` function L462-476 — `(tools: &[ToolDefinition]) -> Vec<Value>`
+-  `parse_retry_after` function L481-485 — `(headers: &reqwest::header::HeaderMap) -> Option<std::time::Duration>` — Parse a `Retry-After` header into a duration.
+-  `ApiErrorResponse` struct L490-492 — `{ error: Option<ApiError> }`
+-  `ApiError` struct L495-499 — `{ message: String, code: Option<String> }`
+-  `StreamChunk` struct L502-507 — `{ choices: Vec<StreamChoice>, usage: Option<StreamUsage> }`
+-  `StreamChoice` struct L510-514 — `{ delta: StreamDelta, finish_reason: Option<String> }`
+-  `StreamDelta` struct L517-520 — `{ content: Option<String>, tool_calls: Option<Vec<StreamToolCall>> }`
+-  `StreamToolCall` struct L523-533 — `{ index: Option<u32>, id: Option<String>, function: Option<StreamFunction> }`
+-  `StreamFunction` struct L536-539 — `{ name: Option<String>, arguments: Option<String> }`
+-  `StreamUsage` struct L542-545 — `{ prompt_tokens: u32, completion_tokens: u32 }`
+-  `tests` module L548-946 — `-`
+-  `groq_convenience_constructor` function L552-560 — `()`
+-  `ollama_convenience_constructor` function L563-571 — `()`
+-  `openai_convenience_constructor` function L574-581 — `()`
+-  `custom_base_url` function L584-594 — `()`
+-  `from_config_known_providers` function L597-604 — `()`
+-  `from_config_custom_url_override` function L607-618 — `()`
+-  `assistant_tool_only_message_includes_empty_content` function L621-650 — `()`
+-  `assistant_message_with_text_and_tool_calls_keeps_both` function L653-672 — `()`
+-  `build_messages_with_system_prompt` function L675-688 — `()`
+-  `parse_text_delta` function L691-705 — `()`
+-  `parse_tool_use_start` function L708-732 — `()`
+-  `parse_usage` function L735-748 — `()`
+-  `tool_delta_chunk` function L751-762 — `(tool_calls: Vec<StreamToolCall>) -> StreamChunk` — Helper to build a single-choice chunk carrying tool-call deltas.
+-  `parse_two_parallel_tool_calls_in_one_delta` function L765-800 — `()`
+-  `tool_call_index_keys_interleaved_arg_deltas` function L803-843 — `()`
+-  `missing_tool_call_id_is_synthesized_not_empty` function L846-863 — `()`
+-  `missing_index_falls_back_to_array_position` function L866-881 — `()`
+-  `finish_reason_rides_on_done` function L884-907 — `()`
+-  `finish_reason_wire_mapping` function L910-924 — `()`
+-  `no_auth_header_when_no_api_key` function L927-945 — `()`
 
 #### crates/arawn-llm/src/retry.rs
 
@@ -7754,26 +7811,27 @@
 - pub `with_config` function L32-38 — `(inner: Arc<dyn LlmClient>, max_retries: u32, base_delay_ms: u64) -> Self`
 -  `DEFAULT_MAX_RETRIES` variable L13 — `: u32`
 -  `DEFAULT_BASE_DELAY_MS` variable L14 — `: u64`
--  `RetryClient` type L23-43 — `= RetryClient`
--  `delay_for_attempt` function L40-42 — `(&self, attempt: u32) -> Duration`
--  `RetryClient` type L46-84 — `impl LlmClient for RetryClient`
--  `stream` function L47-83 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
--  `tests` module L87-266 — `-`
--  `FailThenSucceed` struct L96-99 — `{ failures_remaining: Mutex<u32>, success_response: Vec<ChatChunk> }` — A mock that fails N times then succeeds.
--  `FailThenSucceed` type L102-117 — `impl LlmClient for FailThenSucceed`
--  `stream` function L103-116 — `( &self, _request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Cha...`
--  `dummy_request` function L119-127 — `() -> ChatRequest`
--  `succeeds_on_first_try` function L130-140 — `()`
--  `retries_on_server_error_then_succeeds` function L143-162 — `()`
--  `gives_up_after_max_retries` function L165-179 — `()`
--  `does_not_retry_terminal_errors` function L182-206 — `()`
--  `AlwaysBadRequest` struct L184 — `-`
--  `AlwaysBadRequest` type L187-195 — `impl LlmClient for AlwaysBadRequest`
--  `stream` function L188-194 — `( &self, _request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Cha...`
--  `retries_rate_limit_errors` function L209-265 — `()`
--  `RateLimitThenSucceed` struct L221-223 — `{ inner: FailThenSucceed }`
--  `RateLimitThenSucceed` type L226-241 — `impl LlmClient for RateLimitThenSucceed`
--  `stream` function L227-240 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
+-  `RetryClient` type L23-49 — `= RetryClient`
+-  `delay_for_attempt` function L40-48 — `(&self, attempt: u32) -> Duration`
+-  `jitter_ms` function L53-59 — `(base: u64) -> u64` — Pseudo-random jitter in `[0, base/4]`, derived from the current time's
+-  `RetryClient` type L62-110 — `impl LlmClient for RetryClient`
+-  `stream` function L63-109 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
+-  `tests` module L113-304 — `-`
+-  `FailThenSucceed` struct L122-125 — `{ failures_remaining: Mutex<u32>, success_response: Vec<ChatChunk> }` — A mock that fails N times then succeeds.
+-  `FailThenSucceed` type L128-143 — `impl LlmClient for FailThenSucceed`
+-  `stream` function L129-142 — `( &self, _request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Cha...`
+-  `dummy_request` function L145-153 — `() -> ChatRequest`
+-  `succeeds_on_first_try` function L156-166 — `()`
+-  `retries_on_server_error_then_succeeds` function L169-191 — `()`
+-  `gives_up_after_max_retries` function L194-208 — `()`
+-  `does_not_retry_terminal_errors` function L211-235 — `()`
+-  `AlwaysBadRequest` struct L213 — `-`
+-  `AlwaysBadRequest` type L216-224 — `impl LlmClient for AlwaysBadRequest`
+-  `stream` function L217-223 — `( &self, _request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Cha...`
+-  `retries_rate_limit_errors` function L238-303 — `()`
+-  `RateLimitThenSucceed` struct L253-255 — `{ inner: FailThenSucceed }`
+-  `RateLimitThenSucceed` type L258-276 — `impl LlmClient for RateLimitThenSucceed`
+-  `stream` function L259-275 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...`
 
 #### crates/arawn-llm/src/types.rs
 
@@ -7782,8 +7840,13 @@
 - pub `ChatContent` enum L29-31 — `Text` — Message content — text or structured.
 - pub `ToolCall` struct L35-39 — `{ id: String, name: String, arguments: Value }` — A tool call within an assistant message.
 - pub `ToolDefinition` struct L43-47 — `{ name: String, description: String, parameters: Value }` — Tool definition sent with the request.
-- pub `ChatChunk` enum L51-56 — `TextDelta | ToolUseStart | ToolUseInputDelta | Done` — Streaming chunk from the LLM.
-- pub `Usage` struct L60-63 — `{ input_tokens: u32, output_tokens: u32 }` — Token usage statistics.
+- pub `FinishReason` enum L57-68 — `Stop | ToolCalls | Length | ContentFilter | Other` — Why the model stopped generating, normalized across providers.
+- pub `from_openai` function L72-80 — `(s: &str) -> Self` — Map an OpenAI-compatible `finish_reason` wire value.
+- pub `from_anthropic` function L83-90 — `(s: &str) -> Self` — Map an Anthropic `stop_reason` wire value.
+- pub `is_truncated` function L94-96 — `(&self) -> bool` — True when the model was cut off before finishing (token limit or
+- pub `ChatChunk` enum L106-123 — `TextDelta | ToolUseStart | ToolUseInputDelta | Done` — Streaming chunk from the LLM.
+- pub `Usage` struct L127-130 — `{ input_tokens: u32, output_tokens: u32 }` — Token usage statistics.
+-  `FinishReason` type L70-97 — `= FinishReason`
 
 #### crates/arawn-llm/src/warming.rs
 
@@ -7799,23 +7862,23 @@
 -  `WarmingClient` type L95-138 — `impl LlmClient for WarmingClient` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
 -  `stream` function L96-127 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
 -  `warmup` function L129-137 — `(&self, model: &str) -> Result<(), LlmError>` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `tests` module L141-339 — `-` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `ok_response` function L147-154 — `() -> MockResponse` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `user_request` function L156-169 — `(model: &str) -> ChatRequest` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `CountingClient` struct L174-177 — `{ inner: MockLlmClient, calls: AtomicUsize }` — Counts how many times `stream` was invoked on the inner client.
--  `CountingClient` type L179-190 — `= CountingClient` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `new` function L180-185 — `(responses: Vec<MockResponse>) -> Self` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `calls` function L187-189 — `(&self) -> usize` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `CountingClient` type L193-202 — `impl LlmClient for CountingClient` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `stream` function L194-201 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `warmup_probes_inner_and_caches` function L205-213 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `stream_skips_warmup_when_cache_fresh` function L216-226 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `stream_warms_lazily_when_cache_empty` function L229-239 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `stream_re_warms_after_ttl_expiry` function L242-267 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `stream_retries_once_on_cold_restart_signature` function L270-289 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `stream_does_not_retry_on_non_cold_restart_errors` function L292-309 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `warmup_failure_does_not_update_cache` function L312-324 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
--  `cold_restart_classifier` function L327-338 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `tests` module L141-341 — `-` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `ok_response` function L147-155 — `() -> MockResponse` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `user_request` function L157-170 — `(model: &str) -> ChatRequest` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `CountingClient` struct L175-178 — `{ inner: MockLlmClient, calls: AtomicUsize }` — Counts how many times `stream` was invoked on the inner client.
+-  `CountingClient` type L180-191 — `= CountingClient` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `new` function L181-186 — `(responses: Vec<MockResponse>) -> Self` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `calls` function L188-190 — `(&self) -> usize` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `CountingClient` type L194-203 — `impl LlmClient for CountingClient` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `stream` function L195-202 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `warmup_probes_inner_and_caches` function L206-214 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `stream_skips_warmup_when_cache_fresh` function L217-227 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `stream_warms_lazily_when_cache_empty` function L230-240 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `stream_re_warms_after_ttl_expiry` function L243-268 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `stream_retries_once_on_cold_restart_signature` function L271-290 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `stream_does_not_retry_on_non_cold_restart_errors` function L293-310 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `warmup_failure_does_not_update_cache` function L313-325 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
+-  `cold_restart_classifier` function L328-340 — `()` — Pool layering: raw provider → `RetryClient` → `WarmingClient`.
 
 ### crates/arawn-llm/src/gate
 
@@ -7884,11 +7947,11 @@
 -  `UsageTrackingClient` type L36-55 — `= UsageTrackingClient` — marks the gap so the operator knows the log under-counts.
 -  `UsageTrackingClient` type L58-95 — `impl LlmClient for UsageTrackingClient` — marks the gap so the operator knows the log under-counts.
 -  `stream` function L59-94 — `( &self, request: ChatRequest, ) -> Result<Pin<Box<dyn Stream<Item = Result<Chat...` — marks the gap so the operator knows the log under-counts.
--  `tests` module L98-169 — `-` — marks the gap so the operator knows the log under-counts.
+-  `tests` module L98-170 — `-` — marks the gap so the operator knows the log under-counts.
 -  `GLOBAL_INIT` variable L110 — `: Mutex<bool>` — marks the gap so the operator knows the log under-counts.
 -  `ensure_global_tracker_for_tests` function L112-120 — `(tmp_path: &std::path::Path) -> Arc<UsageTracker>` — marks the gap so the operator knows the log under-counts.
 -  `make_request` function L122-130 — `(model: &str) -> ChatRequest` — marks the gap so the operator knows the log under-counts.
--  `records_usage_from_done_chunk` function L133-168 — `()` — marks the gap so the operator knows the log under-counts.
+-  `records_usage_from_done_chunk` function L133-169 — `()` — marks the gap so the operator knows the log under-counts.
 
 ### crates/arawn-mcp/src
 
@@ -7995,13 +8058,13 @@
 
 - pub `rrf` function L25-27 — `(rank: usize) -> f32` — Reciprocal-rank-fusion weight for a 0-based rank.
 - pub `LabeledHit` struct L31-36 — `{ lens: String, entity: Entity, score: f32 }` — One fused search hit, tagged with the lens (or `"global"`) it came from.
-- pub `search_labeled_stores` function L47-100 — `( stores: &[(String, Arc<MemoryStore>)], query: &str, query_embedding: Option<&[...` — Hybrid FTS + (optional) vector search across a set of labeled stores,
+- pub `search_labeled_stores` function L47-104 — `( stores: &[(String, Arc<MemoryStore>)], query: &str, query_embedding: Option<&[...` — Hybrid FTS + (optional) vector search across a set of labeled stores,
 -  `RRF_K` variable L22 — `: f32` — RRF constant — matches `signal_search` / `feed_search`.
--  `tests` module L103-149 — `-` — embedding is passed in precomputed — this stays synchronous and unit-testable.
--  `store_with` function L107-114 — `(entities: &[(&str, &str)]) -> Arc<MemoryStore>` — embedding is passed in precomputed — this stays synchronous and unit-testable.
--  `fuses_and_labels_hits_across_stores` function L117-130 — `()` — embedding is passed in precomputed — this stays synchronous and unit-testable.
--  `respects_limit_and_orders_by_score` function L133-142 — `()` — embedding is passed in precomputed — this stays synchronous and unit-testable.
--  `empty_stores_yield_no_hits` function L145-148 — `()` — embedding is passed in precomputed — this stays synchronous and unit-testable.
+-  `tests` module L107-161 — `-` — embedding is passed in precomputed — this stays synchronous and unit-testable.
+-  `store_with` function L111-119 — `(entities: &[(&str, &str)]) -> Arc<MemoryStore>` — embedding is passed in precomputed — this stays synchronous and unit-testable.
+-  `fuses_and_labels_hits_across_stores` function L122-142 — `()` — embedding is passed in precomputed — this stays synchronous and unit-testable.
+-  `respects_limit_and_orders_by_score` function L145-154 — `()` — embedding is passed in precomputed — this stays synchronous and unit-testable.
+-  `empty_stores_yield_no_hits` function L157-160 — `()` — embedding is passed in precomputed — this stays synchronous and unit-testable.
 
 #### crates/arawn-memory/src/cypher_schema.rs
 
@@ -8066,49 +8129,49 @@
 - pub `retrieve_topical` function L170-270 — `( &self, keywords: &[String], budget_tokens: usize, ) -> Vec<crate::types::Entit...` — Retrieve entities matching keywords from both tiers.
 - pub `try_open_memory` function L274-286 — `( data_dir: &Path, ws_dir: &str, embedding_dims: Option<usize>, ) -> Option<Arc<...` — Try to open a MemoryManager, returning None on failure (graceful degradation).
 -  `MemoryManager` type L30-271 — `= MemoryManager` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `tests` module L289-385 — `-` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `tests` module L289-388 — `-` — It abstracts the two-tier scoping and routes entities to the appropriate store.
 -  `setup` function L294-299 — `() -> (TempDir, MemoryManager)` — It abstracts the two-tier scoping and routes entities to the appropriate store.
 -  `setup_with_vectors` function L301-306 — `() -> (TempDir, MemoryManager)` — It abstracts the two-tier scoping and routes entities to the appropriate store.
 -  `opens_both_stores` function L309-318 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `scope_routing` function L321-340 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `vectors_disabled_by_default` function L343-346 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `vectors_enabled_with_dims` function L349-360 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `graceful_degradation` function L363-367 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
--  `stores_are_independent` function L370-384 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `scope_routing` function L321-343 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `vectors_disabled_by_default` function L346-349 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `vectors_enabled_with_dims` function L352-363 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `graceful_degradation` function L366-370 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
+-  `stores_are_independent` function L373-387 — `()` — It abstracts the two-tier scoping and routes entities to the appropriate store.
 
 #### crates/arawn-memory/src/ontology.rs
 
 - pub `OntologyEntry` struct L23-27 — `{ tag: String, added_at: DateTime<Utc>, added_via: AddedVia }` — One ontology row.
 - pub `AddedVia` enum L30-33 — `Manual | Promotion` — with `added_via = 'promotion'`.
 - pub `as_str` function L36-41 — `(&self) -> &'static str` — with `added_via = 'promotion'`.
-- pub `from_str` function L43-49 — `(s: &str) -> Option<Self>` — with `added_via = 'promotion'`.
-- pub `TagOntologyStore` struct L57-59 — `{ conn: Arc<Mutex<Connection>> }` — Read/write surface over the `lens_tag_ontology` table.
-- pub `open` function L65-68 — `(data_dir: &Path, lens_name: &str) -> Result<Self, MemoryError>` — Open (or create) the ontology table inside the lens's
-- pub `open_at` function L74-83 — `(ws_dir: &Path) -> Result<Self, MemoryError>` — Open at an explicit lens directory (the one that contains
-- pub `add` function L87-100 — `(&self, tag: &str, via: AddedVia) -> Result<(), MemoryError>` — Add a tag.
-- pub `add_many` function L104-113 — `( &self, tags: I, via: AddedVia, ) -> Result<(), MemoryError>` — Bulk-add — every tag in the list, all using the same `via`.
-- pub `remove` function L116-123 — `(&self, tag: &str) -> Result<bool, MemoryError>` — Remove a tag.
-- pub `contains` function L125-136 — `(&self, tag: &str) -> Result<bool, MemoryError>` — with `added_via = 'promotion'`.
-- pub `list` function L139-152 — `(&self) -> Result<Vec<OntologyEntry>, MemoryError>` — Return the full ontology, sorted alphabetically by tag.
-- pub `tags` function L156-158 — `(&self) -> Result<Vec<String>, MemoryError>` — Convenience: tag strings only, in alpha order.
-- pub `count` function L160-166 — `(&self) -> Result<usize, MemoryError>` — with `added_via = 'promotion'`.
-- pub `get` function L169-185 — `(&self, tag: &str) -> Result<Option<OntologyEntry>, MemoryError>` — Fetch one entry by exact tag.
-- pub `filter` function L191-201 — `(&self, candidates: &[String]) -> Result<Vec<String>, MemoryError>` — Filter `candidates` to the subset present in the ontology.
-- pub `normalize_tag` function L206-208 — `(tag: &str) -> String` — Canonical tag form — lowercase, trimmed.
--  `AddedVia` type L35-50 — `= AddedVia` — with `added_via = 'promotion'`.
--  `TagOntologyStore` type L61-202 — `= TagOntologyStore` — with `added_via = 'promotion'`.
--  `ensure_schema` function L210-222 — `(conn: &Connection) -> Result<(), MemoryError>` — with `added_via = 'promotion'`.
--  `parse_row` function L224-244 — `(r: &rusqlite::Row<'_>) -> Result<OntologyEntry, MemoryError>` — with `added_via = 'promotion'`.
--  `tests` module L247-347 — `-` — with `added_via = 'promotion'`.
--  `setup` function L250-254 — `() -> (tempfile::TempDir, TagOntologyStore)` — with `added_via = 'promotion'`.
--  `add_and_list` function L257-266 — `()` — with `added_via = 'promotion'`.
--  `add_is_idempotent_and_preserves_initial_via` function L269-276 — `()` — with `added_via = 'promotion'`.
--  `normalize_tag_collapses_case_and_whitespace` function L279-282 — `()` — with `added_via = 'promotion'`.
--  `contains_and_remove` function L285-293 — `()` — with `added_via = 'promotion'`.
--  `filter_returns_only_known_tags_normalized` function L296-318 — `()` — with `added_via = 'promotion'`.
--  `rejects_empty_tag` function L321-325 — `()` — with `added_via = 'promotion'`.
--  `count_tracks_size` function L328-336 — `()` — with `added_via = 'promotion'`.
--  `schema_idempotent_on_reopen` function L339-346 — `()` — with `added_via = 'promotion'`.
+- pub `from_str` function L45-51 — `(s: &str) -> Option<Self>` — with `added_via = 'promotion'`.
+- pub `TagOntologyStore` struct L59-61 — `{ conn: Arc<Mutex<Connection>> }` — Read/write surface over the `lens_tag_ontology` table.
+- pub `open` function L67-70 — `(data_dir: &Path, lens_name: &str) -> Result<Self, MemoryError>` — Open (or create) the ontology table inside the lens's
+- pub `open_at` function L76-85 — `(ws_dir: &Path) -> Result<Self, MemoryError>` — Open at an explicit lens directory (the one that contains
+- pub `add` function L89-102 — `(&self, tag: &str, via: AddedVia) -> Result<(), MemoryError>` — Add a tag.
+- pub `add_many` function L106-115 — `( &self, tags: I, via: AddedVia, ) -> Result<(), MemoryError>` — Bulk-add — every tag in the list, all using the same `via`.
+- pub `remove` function L118-125 — `(&self, tag: &str) -> Result<bool, MemoryError>` — Remove a tag.
+- pub `contains` function L127-138 — `(&self, tag: &str) -> Result<bool, MemoryError>` — with `added_via = 'promotion'`.
+- pub `list` function L141-154 — `(&self) -> Result<Vec<OntologyEntry>, MemoryError>` — Return the full ontology, sorted alphabetically by tag.
+- pub `tags` function L158-160 — `(&self) -> Result<Vec<String>, MemoryError>` — Convenience: tag strings only, in alpha order.
+- pub `count` function L162-168 — `(&self) -> Result<usize, MemoryError>` — with `added_via = 'promotion'`.
+- pub `get` function L171-187 — `(&self, tag: &str) -> Result<Option<OntologyEntry>, MemoryError>` — Fetch one entry by exact tag.
+- pub `filter` function L193-203 — `(&self, candidates: &[String]) -> Result<Vec<String>, MemoryError>` — Filter `candidates` to the subset present in the ontology.
+- pub `normalize_tag` function L208-210 — `(tag: &str) -> String` — Canonical tag form — lowercase, trimmed.
+-  `AddedVia` type L35-52 — `= AddedVia` — with `added_via = 'promotion'`.
+-  `TagOntologyStore` type L63-204 — `= TagOntologyStore` — with `added_via = 'promotion'`.
+-  `ensure_schema` function L212-224 — `(conn: &Connection) -> Result<(), MemoryError>` — with `added_via = 'promotion'`.
+-  `parse_row` function L226-246 — `(r: &rusqlite::Row<'_>) -> Result<OntologyEntry, MemoryError>` — with `added_via = 'promotion'`.
+-  `tests` module L249-349 — `-` — with `added_via = 'promotion'`.
+-  `setup` function L252-256 — `() -> (tempfile::TempDir, TagOntologyStore)` — with `added_via = 'promotion'`.
+-  `add_and_list` function L259-268 — `()` — with `added_via = 'promotion'`.
+-  `add_is_idempotent_and_preserves_initial_via` function L271-278 — `()` — with `added_via = 'promotion'`.
+-  `normalize_tag_collapses_case_and_whitespace` function L281-284 — `()` — with `added_via = 'promotion'`.
+-  `contains_and_remove` function L287-295 — `()` — with `added_via = 'promotion'`.
+-  `filter_returns_only_known_tags_normalized` function L298-320 — `()` — with `added_via = 'promotion'`.
+-  `rejects_empty_tag` function L323-327 — `()` — with `added_via = 'promotion'`.
+-  `count_tracks_size` function L330-338 — `()` — with `added_via = 'promotion'`.
+-  `schema_idempotent_on_reopen` function L341-348 — `()` — with `added_via = 'promotion'`.
 
 #### crates/arawn-memory/src/person_profile.rs
 
@@ -8144,27 +8207,27 @@
 - pub `MemoryStack` struct L17-20 — `{ manager: &'a MemoryManager, lens_name: String }` — Layered memory stack.
 - pub `new` function L23-28 — `(manager: &'a MemoryManager, lens_name: &str) -> Self` — L2: On-demand — topic-triggered retrieval (separate method)
 - pub `wake_up` function L32-53 — `(&self, budget_tokens: usize) -> String` — Generate L0 + L1 memory context within the given token budget.
-- pub `l1_entity_titles` function L232-250 — `(&self) -> Vec<String>` — Get the entity titles included in L1 (for L2 deduplication).
-- pub `topical_context` function L254-281 — `( &self, keywords: &[String], l1_titles: &[String], budget_tokens: usize, ) -> O...` — L2: Topic-triggered context.
+- pub `l1_entity_titles` function L227-245 — `(&self) -> Vec<String>` — Get the entity titles included in L1 (for L2 deduplication).
+- pub `topical_context` function L249-276 — `( &self, keywords: &[String], l1_titles: &[String], budget_tokens: usize, ) -> O...` — L2: Topic-triggered context.
 -  `estimate_tokens` function L12-14 — `(text: &str) -> usize` — Estimate token count from text length (matches arawn-engine's TokenEstimator).
--  `render_l0` function L71-134 — `(&self) -> String` — L0: Identity layer — lens name + structured org slice + conventions.
--  `render_relation_bucket` function L139-153 — `( &self, label: &str, profiles: &[PersonProfile], ) -> Option<String>` — Render one relation bucket — "you manage: Sarah (Senior EM), Marcus".
--  `format_person_with_role` function L159-172 — `(&self, profile: &PersonProfile) -> String` — "Sarah Lee (Senior EM)" when the role column is set; bare title
--  `render_l1_with_names` function L176-229 — `(&self, budget_tokens: usize) -> (String, Vec<String>)` — L1: Essential story — top-ranked entities grouped by type, within budget.
--  `format_entity_brief` function L284-294 — `(entity: &Entity) -> String` — L2: On-demand — topic-triggered retrieval (separate method)
--  `tests` module L297-499 — `-` — L2: On-demand — topic-triggered retrieval (separate method)
--  `setup` function L302-307 — `() -> (TempDir, MemoryManager)` — L2: On-demand — topic-triggered retrieval (separate method)
--  `wake_up_respects_budget` function L310-328 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
--  `wake_up_empty_kb` function L331-338 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
--  `l1_ranks_stated_before_inferred` function L341-362 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
--  `tiny_budget_does_not_panic` function L365-374 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
--  `make_person` function L378-383 — `(mgr: &MemoryManager, name: &str) -> uuid::Uuid` — L2: On-demand — topic-triggered retrieval (separate method)
--  `upsert_profile` function L385-396 — `( mgr: &MemoryManager, entity_id: uuid::Uuid, rel: RelationToUser, role: Option<...` — L2: On-demand — topic-triggered retrieval (separate method)
--  `l0_groups_persons_by_relation_to_user_with_roles` function L399-426 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
--  `l0_falls_back_to_plain_people_line_for_unstructured_persons` function L429-445 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
--  `l0_mixes_structured_and_unstructured_persons` function L448-465 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
--  `l0_caps_each_bucket_at_five_entries` function L468-484 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
--  `l0_person_without_role_renders_bare_name` function L487-498 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `render_l0` function L71-133 — `(&self) -> String` — L0: Identity layer — lens name + structured org slice + conventions.
+-  `render_relation_bucket` function L138-148 — `(&self, label: &str, profiles: &[PersonProfile]) -> Option<String>` — Render one relation bucket — "you manage: Sarah (Senior EM), Marcus".
+-  `format_person_with_role` function L154-167 — `(&self, profile: &PersonProfile) -> String` — "Sarah Lee (Senior EM)" when the role column is set; bare title
+-  `render_l1_with_names` function L171-224 — `(&self, budget_tokens: usize) -> (String, Vec<String>)` — L1: Essential story — top-ranked entities grouped by type, within budget.
+-  `format_entity_brief` function L279-289 — `(entity: &Entity) -> String` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `tests` module L292-503 — `-` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `setup` function L297-302 — `() -> (TempDir, MemoryManager)` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `wake_up_respects_budget` function L305-323 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `wake_up_empty_kb` function L326-333 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `l1_ranks_stated_before_inferred` function L336-357 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `tiny_budget_does_not_panic` function L360-369 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `make_person` function L373-378 — `(mgr: &MemoryManager, name: &str) -> uuid::Uuid` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `upsert_profile` function L380-391 — `( mgr: &MemoryManager, entity_id: uuid::Uuid, rel: RelationToUser, role: Option<...` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `l0_groups_persons_by_relation_to_user_with_roles` function L394-430 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `l0_falls_back_to_plain_people_line_for_unstructured_persons` function L433-449 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `l0_mixes_structured_and_unstructured_persons` function L452-469 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `l0_caps_each_bucket_at_five_entries` function L472-488 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
+-  `l0_person_without_role_renders_bare_name` function L491-502 — `()` — L2: On-demand — topic-triggered retrieval (separate method)
 
 #### crates/arawn-memory/src/store.rs
 
@@ -8174,68 +8237,68 @@
 - pub `insert_entity` function L143-152 — `(&self, entity: &Entity) -> Result<(), MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
 - pub `get_entity` function L154-157 — `(&self, id: Uuid) -> Result<Option<Entity>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
 - pub `update_entity` function L159-167 — `(&self, entity: &Entity) -> Result<(), MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `delete_entity` function L169-211 — `(&self, id: Uuid) -> Result<bool, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `list_by_type` function L213-229 — `( &self, entity_type: EntityType, limit: usize, ) -> Result<Vec<Entity>, MemoryE...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `list_all_ranked` function L238-257 — `(&self, limit: usize) -> Result<Vec<Entity>, MemoryError>` — List all non-superseded entities ranked by confidence: stated > observed > inferred,
-- pub `count_by_type` function L259-272 — `(&self, entity_type: EntityType) -> Result<usize, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `count_all` function L274-285 — `(&self) -> Result<usize, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `search` function L293-308 — `(&self, query: &str, limit: usize) -> Result<Vec<Entity>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `search_by_type` function L310-331 — `( &self, query: &str, entity_type: EntityType, limit: usize, ) -> Result<Vec<Ent...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `add_relation` function L335-344 — `( &self, source_id: Uuid, relation_type: RelationType, target_id: Uuid, ) -> Res...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `get_relations` function L346-385 — `(&self, entity_id: Uuid) -> Result<Vec<Relation>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `get_neighbors` function L387-405 — `(&self, entity_id: Uuid) -> Result<Vec<(Uuid, RelationType)>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `delete_relation` function L407-439 — `( &self, source_id: Uuid, relation_type: RelationType, target_id: Uuid, ) -> Res...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `store_fact` function L446-462 — `(&self, entity: &Entity) -> Result<StoreFactResult, MemoryError>` — Store a fact with search-before-create deduplication.
-- pub `supersede_entity` function L505-527 — `( &self, old_id: Uuid, new_entity: &Entity, ) -> Result<StoreFactResult, MemoryE...` — Supersede an existing entity with a new one.
-- pub `init_vectors` function L533-537 — `(&self, dims: usize) -> Result<(), MemoryError>` — Initialize vector storage with the given dimensions.
-- pub `store_embedding` function L540-543 — `(&self, entity_id: Uuid, embedding: &[f32]) -> Result<(), MemoryError>` — Store an embedding for an entity.
-- pub `search_similar` function L546-553 — `( &self, query_embedding: &[f32], limit: usize, ) -> Result<Vec<vector::Similari...` — Search for entities similar to a query embedding.
-- pub `search_similar_filtered` function L556-569 — `( &self, query_embedding: &[f32], entity_ids: &[Uuid], limit: usize, ) -> Result...` — Search for entities similar to a query, filtered to a subset.
-- pub `has_embedding` function L572-575 — `(&self, entity_id: Uuid) -> Result<bool, MemoryError>` — Check if an entity has a stored embedding.
-- pub `count_embeddings` function L578-581 — `(&self) -> Result<usize, MemoryError>` — Count total stored embeddings.
-- pub `search_by_tags` function L589-606 — `( &self, tags: &[String], limit: usize, ) -> Result<Vec<Entity>, MemoryError>` — Tag search loads all non-superseded entities and filters in Rust.
-- pub `upsert_person_profile` function L619-664 — `(&self, profile: &PersonProfile) -> Result<(), MemoryError>` — Insert-or-update a person_profile row.
-- pub `get_person_profile` function L666-688 — `( &self, entity_id: Uuid, ) -> Result<Option<PersonProfile>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `delete_person_profile` function L690-700 — `(&self, entity_id: Uuid) -> Result<bool, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
-- pub `list_person_profiles_by_relation_to_user` function L705-733 — `( &self, rel: RelationToUser, ) -> Result<Vec<PersonProfile>, MemoryError>` — All profiles with the given `relation_to_user` (e.g.
--  `MemoryStore` type L35-734 — `= MemoryStore` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `delete_entity` function L169-209 — `(&self, id: Uuid) -> Result<bool, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `list_by_type` function L211-227 — `( &self, entity_type: EntityType, limit: usize, ) -> Result<Vec<Entity>, MemoryE...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `list_all_ranked` function L236-255 — `(&self, limit: usize) -> Result<Vec<Entity>, MemoryError>` — List all non-superseded entities ranked by confidence: stated > observed > inferred,
+- pub `count_by_type` function L257-270 — `(&self, entity_type: EntityType) -> Result<usize, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `count_all` function L272-283 — `(&self) -> Result<usize, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `search` function L291-306 — `(&self, query: &str, limit: usize) -> Result<Vec<Entity>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `search_by_type` function L308-329 — `( &self, query: &str, entity_type: EntityType, limit: usize, ) -> Result<Vec<Ent...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `add_relation` function L333-342 — `( &self, source_id: Uuid, relation_type: RelationType, target_id: Uuid, ) -> Res...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `get_relations` function L344-383 — `(&self, entity_id: Uuid) -> Result<Vec<Relation>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `get_neighbors` function L385-403 — `(&self, entity_id: Uuid) -> Result<Vec<(Uuid, RelationType)>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `delete_relation` function L405-437 — `( &self, source_id: Uuid, relation_type: RelationType, target_id: Uuid, ) -> Res...` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `store_fact` function L444-460 — `(&self, entity: &Entity) -> Result<StoreFactResult, MemoryError>` — Store a fact with search-before-create deduplication.
+- pub `supersede_entity` function L503-525 — `( &self, old_id: Uuid, new_entity: &Entity, ) -> Result<StoreFactResult, MemoryE...` — Supersede an existing entity with a new one.
+- pub `init_vectors` function L531-535 — `(&self, dims: usize) -> Result<(), MemoryError>` — Initialize vector storage with the given dimensions.
+- pub `store_embedding` function L538-541 — `(&self, entity_id: Uuid, embedding: &[f32]) -> Result<(), MemoryError>` — Store an embedding for an entity.
+- pub `search_similar` function L544-551 — `( &self, query_embedding: &[f32], limit: usize, ) -> Result<Vec<vector::Similari...` — Search for entities similar to a query embedding.
+- pub `search_similar_filtered` function L554-567 — `( &self, query_embedding: &[f32], entity_ids: &[Uuid], limit: usize, ) -> Result...` — Search for entities similar to a query, filtered to a subset.
+- pub `has_embedding` function L570-573 — `(&self, entity_id: Uuid) -> Result<bool, MemoryError>` — Check if an entity has a stored embedding.
+- pub `count_embeddings` function L576-579 — `(&self) -> Result<usize, MemoryError>` — Count total stored embeddings.
+- pub `search_by_tags` function L587-604 — `( &self, tags: &[String], limit: usize, ) -> Result<Vec<Entity>, MemoryError>` — Tag search loads all non-superseded entities and filters in Rust.
+- pub `upsert_person_profile` function L617-662 — `(&self, profile: &PersonProfile) -> Result<(), MemoryError>` — Insert-or-update a person_profile row.
+- pub `get_person_profile` function L664-685 — `( &self, entity_id: Uuid, ) -> Result<Option<PersonProfile>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `delete_person_profile` function L687-697 — `(&self, entity_id: Uuid) -> Result<bool, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+- pub `list_person_profiles_by_relation_to_user` function L702-726 — `( &self, rel: RelationToUser, ) -> Result<Vec<PersonProfile>, MemoryError>` — All profiles with the given `relation_to_user` (e.g.
+-  `MemoryStore` type L35-727 — `= MemoryStore` — sync via explicit Rust dual-writes inside a single sqlite transaction.
 -  `migrate` function L69-134 — `(&self) -> Result<(), MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `reinforce_entity` function L465-502 — `(&self, entity_id: Uuid) -> Result<StoreFactResult, MemoryError>` — Reinforce an existing entity (increment count, refresh timestamps).
--  `parse_person_profile_row` function L739-786 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<PersonProfile>` — Shared row → PersonProfile parser.
--  `with_tx` function L793-809 — `(conn: &GraphConnection, body: F) -> Result<(), MemoryError>` — Run `body` inside a sqlite transaction on the shared connection.
--  `cypher_entity_exists` function L811-823 — `(conn: &GraphConnection, id: &str) -> Result<bool, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `fetch_entity_by_id` function L825-838 — `(conn: &GraphConnection, id: Uuid) -> Result<Option<Entity>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `cypher_upsert_entity` function L843-879 — `(conn: &GraphConnection, entity: &Entity) -> Result<(), MemoryError>` — MERGE-style upsert: create node-with-label if absent, otherwise SET every
--  `cypher_upsert_relation` function L883-918 — `( conn: &GraphConnection, source_id: Uuid, relation_type: RelationType, target_i...` — MERGE-style edge upsert.
--  `rows_to_entities` function L921-929 — `(result: &graphqlite::CypherResult) -> Result<Vec<Entity>, MemoryError>` — Map a `MATCH … RETURN n` result set into `Vec<Entity>`.
--  `fts_upsert` function L941-967 — `(sql: &rusqlite::Connection, entity: &Entity) -> Result<(), MemoryError>` — Upsert the FTS row for an entity.
--  `fts_search` function L974-999 — `( sql: &rusqlite::Connection, query: &str, _scope: Option<()>, limit: usize, ) -...` — FTS5 text search returning ranked entity_ids.
--  `tests` module L1002-1448 — `-` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `test_store` function L1005-1007 — `() -> MemoryStore` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `insert_and_get` function L1010-1018 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `get_nonexistent` function L1021-1024 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `update_entity` function L1027-1042 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `delete_entity` function L1045-1056 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `list_by_type` function L1059-1076 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `count_by_type` function L1079-1094 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `fts5_search` function L1097-1114 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `fts5_search_by_type` function L1117-1129 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `relations_crud` function L1132-1155 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `store_fact_insert` function L1158-1166 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `store_fact_reinforce` function L1169-1185 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `store_fact_reinforce_case_insensitive` function L1188-1200 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `supersede_entity` function L1203-1230 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `tags_on_entity` function L1233-1241 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `search_by_tags` function L1244-1265 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `superseded_excluded_from_search` function L1268-1279 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `fts_row_present_after_insert_and_gone_after_delete` function L1282-1296 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `person_profile_upsert_then_get_roundtrips_all_fields` function L1301-1321 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `person_profile_upsert_updates_existing_row` function L1324-1343 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `person_profile_get_returns_none_when_absent` function L1346-1349 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `person_profile_delete_returns_false_when_missing` function L1352-1355 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `list_person_profiles_by_relation_to_user_filters_correctly` function L1358-1410 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `delete_entity_cascades_to_person_profile` function L1413-1428 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
--  `person_profile_migration_is_idempotent_on_reopen` function L1431-1447 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `reinforce_entity` function L463-500 — `(&self, entity_id: Uuid) -> Result<StoreFactResult, MemoryError>` — Reinforce an existing entity (increment count, refresh timestamps).
+-  `parse_person_profile_row` function L732-777 — `(row: &rusqlite::Row<'_>) -> rusqlite::Result<PersonProfile>` — Shared row → PersonProfile parser.
+-  `with_tx` function L784-800 — `(conn: &GraphConnection, body: F) -> Result<(), MemoryError>` — Run `body` inside a sqlite transaction on the shared connection.
+-  `cypher_entity_exists` function L802-814 — `(conn: &GraphConnection, id: &str) -> Result<bool, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `fetch_entity_by_id` function L816-829 — `(conn: &GraphConnection, id: Uuid) -> Result<Option<Entity>, MemoryError>` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `cypher_upsert_entity` function L834-870 — `(conn: &GraphConnection, entity: &Entity) -> Result<(), MemoryError>` — MERGE-style upsert: create node-with-label if absent, otherwise SET every
+-  `cypher_upsert_relation` function L874-909 — `( conn: &GraphConnection, source_id: Uuid, relation_type: RelationType, target_i...` — MERGE-style edge upsert.
+-  `rows_to_entities` function L912-920 — `(result: &graphqlite::CypherResult) -> Result<Vec<Entity>, MemoryError>` — Map a `MATCH … RETURN n` result set into `Vec<Entity>`.
+-  `fts_upsert` function L932-958 — `(sql: &rusqlite::Connection, entity: &Entity) -> Result<(), MemoryError>` — Upsert the FTS row for an entity.
+-  `fts_search` function L965-990 — `( sql: &rusqlite::Connection, query: &str, _scope: Option<()>, limit: usize, ) -...` — FTS5 text search returning ranked entity_ids.
+-  `tests` module L993-1439 — `-` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `test_store` function L996-998 — `() -> MemoryStore` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `insert_and_get` function L1001-1009 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `get_nonexistent` function L1012-1015 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `update_entity` function L1018-1033 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `delete_entity` function L1036-1047 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `list_by_type` function L1050-1067 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `count_by_type` function L1070-1085 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `fts5_search` function L1088-1105 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `fts5_search_by_type` function L1108-1120 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `relations_crud` function L1123-1146 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `store_fact_insert` function L1149-1157 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `store_fact_reinforce` function L1160-1176 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `store_fact_reinforce_case_insensitive` function L1179-1191 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `supersede_entity` function L1194-1221 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `tags_on_entity` function L1224-1232 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `search_by_tags` function L1235-1256 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `superseded_excluded_from_search` function L1259-1270 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `fts_row_present_after_insert_and_gone_after_delete` function L1273-1287 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `person_profile_upsert_then_get_roundtrips_all_fields` function L1292-1312 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `person_profile_upsert_updates_existing_row` function L1315-1334 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `person_profile_get_returns_none_when_absent` function L1337-1340 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `person_profile_delete_returns_false_when_missing` function L1343-1346 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `list_person_profiles_by_relation_to_user_filters_correctly` function L1349-1401 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `delete_entity_cascades_to_person_profile` function L1404-1419 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
+-  `person_profile_migration_is_idempotent_on_reopen` function L1422-1438 — `()` — sync via explicit Rust dual-writes inside a single sqlite transaction.
 
 #### crates/arawn-memory/src/types.rs
 
@@ -8436,14 +8499,15 @@
 
 - pub `EMBEDDABLE_FEED_TYPES` variable L24-46 — `: &[&str]` — Feed types whose body_text is worth embedding.
 - pub `EmbedPassOutcome` struct L54-58 — `{ embedded: usize, skipped_empty: usize, errors: usize }` — `crates/arawn/src/main.rs`.
-- pub `Embedder` interface L64-69 — `{ fn embed_batch() }` — Lightweight embedding interface this crate consumes.
-- pub `run_embed_pass` function L73-111 — `( store: &ProjectionStore, embedder: &dyn Embedder, batch_size: usize, max_per_p...` — Run a single embed pass over every embeddable feed type, capped at
-- pub `PendingEmbedRow` struct L185-188 — `{ projection_id: String, body_text: String }` — A row pending embedding: the `<feed_type>` row's projection id +
-- pub `pending_embedding_rows` function L193-226 — `( &self, feed_type: &str, limit: usize, ) -> Result<Vec<PendingEmbedRow>, Projec...` — Find rows in `<feed_type>` whose embed status is `pending`,
-- pub `write_embedding` function L232-284 — `( &self, feed_type: &str, projection_id: &str, vector: &[f32], ) -> Result<(), P...` — Write a freshly computed embedding for a projection row.
+- pub `EmbedFuture` type L62 — `= Pin<Box<dyn Future<Output = Result<Vec<Vec<f32>>, String>> + Send + 'a>>` — Boxed future returned by [`Embedder::embed_batch`] — a batch of texts
+- pub `Embedder` interface L68-70 — `{ fn embed_batch() }` — Lightweight embedding interface this crate consumes.
+- pub `run_embed_pass` function L74-112 — `( store: &ProjectionStore, embedder: &dyn Embedder, batch_size: usize, max_per_p...` — Run a single embed pass over every embeddable feed type, capped at
+- pub `PendingEmbedRow` struct L186-189 — `{ projection_id: String, body_text: String }` — A row pending embedding: the `<feed_type>` row's projection id +
+- pub `pending_embedding_rows` function L194-227 — `( &self, feed_type: &str, limit: usize, ) -> Result<Vec<PendingEmbedRow>, Projec...` — Find rows in `<feed_type>` whose embed status is `pending`,
+- pub `write_embedding` function L233-285 — `( &self, feed_type: &str, projection_id: &str, vector: &[f32], ) -> Result<(), P...` — Write a freshly computed embedding for a projection row.
 -  `MIN_BODY_CHARS` variable L51 — `: usize` — Minimum body length worth embedding.
--  `embed_batch` function L113-180 — `( store: &ProjectionStore, feed_type: &str, rows: &[PendingEmbedRow], embedder: ...` — `crates/arawn/src/main.rs`.
--  `ProjectionStore` type L190-285 — `= ProjectionStore` — `crates/arawn/src/main.rs`.
+-  `embed_batch` function L114-181 — `( store: &ProjectionStore, feed_type: &str, rows: &[PendingEmbedRow], embedder: ...` — `crates/arawn/src/main.rs`.
+-  `ProjectionStore` type L191-286 — `= ProjectionStore` — `crates/arawn/src/main.rs`.
 
 #### crates/arawn-projections/src/error.rs
 
@@ -8818,19 +8882,20 @@
 
 #### crates/arawn-steward/src/cursor.rs
 
-- pub `CursorStore` struct L14-16 — `{ conn: Arc<Mutex<Connection>> }` — the last pass.
-- pub `open` function L20-34 — `(data_dir: &Path, lens_name: &str) -> Result<Self, StewardError>` — Open (or create) the cursor table inside `<data_dir>/lenses/<name>/memory.db`.
-- pub `get` function L36-53 — `(&self, subroutine: &str) -> Result<Option<DateTime<Utc>>, StewardError>` — the last pass.
-- pub `advance` function L56-70 — `(&self, subroutine: &str, ts: DateTime<Utc>) -> Result<(), StewardError>` — Advance the cursor monotonically — never moves backwards.
--  `CursorStore` type L18-71 — `= CursorStore` — the last pass.
--  `tests` module L74-92 — `-` — the last pass.
--  `round_trip_and_monotonic` function L78-91 — `()` — the last pass.
+- pub `CursorFactory` type L16 — `= Arc<dyn Fn(&str) -> Result<CursorStore, StewardError> + Send + Sync>` — Opens a fresh per-lens [`CursorStore`] by name.
+- pub `CursorStore` struct L18-20 — `{ conn: Arc<Mutex<Connection>> }` — the last pass.
+- pub `open` function L24-38 — `(data_dir: &Path, lens_name: &str) -> Result<Self, StewardError>` — Open (or create) the cursor table inside `<data_dir>/lenses/<name>/memory.db`.
+- pub `get` function L40-57 — `(&self, subroutine: &str) -> Result<Option<DateTime<Utc>>, StewardError>` — the last pass.
+- pub `advance` function L60-74 — `(&self, subroutine: &str, ts: DateTime<Utc>) -> Result<(), StewardError>` — Advance the cursor monotonically — never moves backwards.
+-  `CursorStore` type L22-75 — `= CursorStore` — the last pass.
+-  `tests` module L78-96 — `-` — the last pass.
+-  `round_trip_and_monotonic` function L82-95 — `()` — the last pass.
 
 #### crates/arawn-steward/src/doorwatch.rs
 
 - pub `DoorWatchConfig` struct L33-38 — `{ focus_batch: usize, neighbors_per_lens: usize }` — either side.
 - pub `DoorWatchSubroutine` struct L49-56 — `{ client: Arc<dyn LlmClient>, model: String, config: DoorWatchConfig, cursor_fac...` — either side.
-- pub `new` function L59-74 — `( client: Arc<dyn LlmClient>, model: impl Into<String>, cursor_factory: Arc<dyn ...` — either side.
+- pub `new` function L59-74 — `( client: Arc<dyn LlmClient>, model: impl Into<String>, cursor_factory: CursorFa...` — either side.
 - pub `with_config` function L76-79 — `(mut self, config: DoorWatchConfig) -> Self` — either side.
 -  `SUBROUTINE_NAME` variable L30 — `: &str` — either side.
 -  `DoorWatchConfig` type L40-47 — `impl Default for DoorWatchConfig` — either side.
@@ -8845,49 +8910,49 @@
 -  `classify` function L214-247 — `( &self, focus: &Entity, buckets: &[(String, Vec<Entity>)], ) -> Result<Vec<Iden...` — either side.
 -  `record` function L249-301 — `( &self, focus: &Entity, m: &IdentityMatch, ctx: &SubroutineCtx, buckets: &[(Str...` — either side.
 -  `brief` function L304-311 — `(e: &Entity) -> serde_json::Value` — either side.
--  `tests` module L314-506 — `-` — either side.
--  `ScriptedMock` struct L327-329 — `{ responses: Mutex<VecDeque<Value>> }` — either side.
--  `ScriptedMock` type L330-336 — `= ScriptedMock` — either side.
--  `new` function L331-335 — `(resp: Vec<Value>) -> Self` — either side.
--  `ScriptedMock` type L338-359 — `impl LlmClient for ScriptedMock` — either side.
--  `stream` function L339-358 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — either side.
--  `setup_multi_lens` function L361-387 — `() -> ( tempfile::TempDir, Arc<Mutex<Store>>, MemoryResolver, Arc<dyn Fn(&str) -...` — either side.
--  `proposes_identity_when_match_found` function L390-425 — `()` — either side.
--  `hallucinated_target_id_is_dropped` function L428-461 — `()` — either side.
--  `no_other_lenses_means_zero_proposals` function L464-505 — `()` — either side.
+-  `tests` module L314-508 — `-` — either side.
+-  `ScriptedMock` struct L328-330 — `{ responses: Mutex<VecDeque<Value>> }` — either side.
+-  `ScriptedMock` type L331-337 — `= ScriptedMock` — either side.
+-  `new` function L332-336 — `(resp: Vec<Value>) -> Self` — either side.
+-  `ScriptedMock` type L339-363 — `impl LlmClient for ScriptedMock` — either side.
+-  `stream` function L340-362 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — either side.
+-  `setup_multi_lens` function L365-390 — `() -> ( tempfile::TempDir, Arc<Mutex<Store>>, MemoryResolver, CursorFactory, )` — either side.
+-  `proposes_identity_when_match_found` function L393-428 — `()` — either side.
+-  `hallucinated_target_id_is_dropped` function L431-464 — `()` — either side.
+-  `no_other_lenses_means_zero_proposals` function L467-507 — `()` — either side.
 
 #### crates/arawn-steward/src/dust.rs
 
 - pub `SUBROUTINE_NAME` variable L27 — `: &str` — SUMMARIZES edges.
 - pub `ClusterMode` enum L30-35 — `Tag | Provenance` — SUMMARIZES edges.
-- pub `from_str` function L38-44 — `(s: &str) -> Option<Self>` — SUMMARIZES edges.
-- pub `DustOpts` struct L48-60 — `{ cluster_by: ClusterMode, min_cluster_size: usize, idle_days: i64, limit: usize...` — SUMMARIZES edges.
-- pub `DustOutcome` struct L76-81 — `{ clusters_found: usize, proposals_written: usize, proposal_ids: Vec<i64>, limit...` — SUMMARIZES edges.
-- pub `DustEngine` struct L83-86 — `{ client: Arc<dyn LlmClient>, model: String }` — SUMMARIZES edges.
-- pub `new` function L89-94 — `(client: Arc<dyn LlmClient>, model: impl Into<String>) -> Self` — SUMMARIZES edges.
-- pub `run` function L98-141 — `( &self, kb: &Arc<MemoryManager>, journal: &Journal, opts: &DustOpts, ) -> Resul...` — Run one dust pass on `kb`, writing proposals into `journal`.
--  `ClusterMode` type L37-45 — `= ClusterMode` — SUMMARIZES edges.
--  `DustOpts` type L62-73 — `impl Default for DustOpts` — SUMMARIZES edges.
--  `default` function L63-72 — `() -> Self` — SUMMARIZES edges.
--  `DustEngine` type L88-241 — `= DustEngine` — SUMMARIZES edges.
--  `summarize_cluster` function L143-208 — `( &self, cluster_key: &str, members: &[Entity], _kb: &Arc<MemoryManager>, journa...` — SUMMARIZES edges.
--  `ask_for_summary` function L210-240 — `( &self, cluster_key: &str, members: &[&Entity], ) -> Result<ProposedSummary, St...` — SUMMARIZES edges.
--  `ProposedSummary` struct L244-250 — `{ title: String, content: String, tags: Vec<String> }` — SUMMARIZES edges.
--  `cluster_by_tag` function L252-276 — `(active: &[Entity], opts: &DustOpts) -> Vec<(String, Vec<Entity>)>` — SUMMARIZES edges.
--  `cluster_by_provenance` function L278-299 — `( active: &[Entity], kb: &Arc<MemoryManager>, _opts: &DustOpts, ) -> Result<Vec<...` — SUMMARIZES edges.
--  `tests` module L302-478 — `-` — SUMMARIZES edges.
--  `ScriptedMock` struct L316-318 — `{ responses: Mutex<VecDeque<Value>> }` — SUMMARIZES edges.
--  `ScriptedMock` type L319-325 — `= ScriptedMock` — SUMMARIZES edges.
--  `new` function L320-324 — `(v: Vec<Value>) -> Self` — SUMMARIZES edges.
--  `ScriptedMock` type L327-348 — `impl LlmClient for ScriptedMock` — SUMMARIZES edges.
--  `stream` function L328-347 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — SUMMARIZES edges.
--  `make_stale_entity` function L350-356 — `(title: &str, tag: &str, days_old: i64) -> Entity` — SUMMARIZES edges.
--  `setup` function L358-363 — `() -> (tempfile::TempDir, Arc<MemoryManager>, Journal)` — SUMMARIZES edges.
--  `tag_cluster_writes_proposal_when_all_idle` function L366-384 — `()` — SUMMARIZES edges.
--  `cluster_with_one_fresh_member_is_skipped` function L387-403 — `()` — SUMMARIZES edges.
--  `min_cluster_size_filters_out_small_clusters` function L406-422 — `()` — SUMMARIZES edges.
--  `limit_caps_proposals_per_run` function L425-446 — `()` — SUMMARIZES edges.
--  `prior_dust_summaries_are_excluded_from_new_clusters` function L449-477 — `()` — SUMMARIZES edges.
+- pub `from_str` function L40-46 — `(s: &str) -> Option<Self>` — SUMMARIZES edges.
+- pub `DustOpts` struct L50-62 — `{ cluster_by: ClusterMode, min_cluster_size: usize, idle_days: i64, limit: usize...` — SUMMARIZES edges.
+- pub `DustOutcome` struct L78-83 — `{ clusters_found: usize, proposals_written: usize, proposal_ids: Vec<i64>, limit...` — SUMMARIZES edges.
+- pub `DustEngine` struct L85-88 — `{ client: Arc<dyn LlmClient>, model: String }` — SUMMARIZES edges.
+- pub `new` function L91-96 — `(client: Arc<dyn LlmClient>, model: impl Into<String>) -> Self` — SUMMARIZES edges.
+- pub `run` function L100-143 — `( &self, kb: &Arc<MemoryManager>, journal: &Journal, opts: &DustOpts, ) -> Resul...` — Run one dust pass on `kb`, writing proposals into `journal`.
+-  `ClusterMode` type L37-47 — `= ClusterMode` — SUMMARIZES edges.
+-  `DustOpts` type L64-75 — `impl Default for DustOpts` — SUMMARIZES edges.
+-  `default` function L65-74 — `() -> Self` — SUMMARIZES edges.
+-  `DustEngine` type L90-243 — `= DustEngine` — SUMMARIZES edges.
+-  `summarize_cluster` function L145-210 — `( &self, cluster_key: &str, members: &[Entity], _kb: &Arc<MemoryManager>, journa...` — SUMMARIZES edges.
+-  `ask_for_summary` function L212-242 — `( &self, cluster_key: &str, members: &[&Entity], ) -> Result<ProposedSummary, St...` — SUMMARIZES edges.
+-  `ProposedSummary` struct L246-252 — `{ title: String, content: String, tags: Vec<String> }` — SUMMARIZES edges.
+-  `cluster_by_tag` function L254-278 — `(active: &[Entity], opts: &DustOpts) -> Vec<(String, Vec<Entity>)>` — SUMMARIZES edges.
+-  `cluster_by_provenance` function L280-301 — `( active: &[Entity], kb: &Arc<MemoryManager>, _opts: &DustOpts, ) -> Result<Vec<...` — SUMMARIZES edges.
+-  `tests` module L304-483 — `-` — SUMMARIZES edges.
+-  `ScriptedMock` struct L318-320 — `{ responses: Mutex<VecDeque<Value>> }` — SUMMARIZES edges.
+-  `ScriptedMock` type L321-327 — `= ScriptedMock` — SUMMARIZES edges.
+-  `new` function L322-326 — `(v: Vec<Value>) -> Self` — SUMMARIZES edges.
+-  `ScriptedMock` type L329-353 — `impl LlmClient for ScriptedMock` — SUMMARIZES edges.
+-  `stream` function L330-352 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — SUMMARIZES edges.
+-  `make_stale_entity` function L355-361 — `(title: &str, tag: &str, days_old: i64) -> Entity` — SUMMARIZES edges.
+-  `setup` function L363-368 — `() -> (tempfile::TempDir, Arc<MemoryManager>, Journal)` — SUMMARIZES edges.
+-  `tag_cluster_writes_proposal_when_all_idle` function L371-389 — `()` — SUMMARIZES edges.
+-  `cluster_with_one_fresh_member_is_skipped` function L392-408 — `()` — SUMMARIZES edges.
+-  `min_cluster_size_filters_out_small_clusters` function L411-427 — `()` — SUMMARIZES edges.
+-  `limit_caps_proposals_per_run` function L430-451 — `()` — SUMMARIZES edges.
+-  `prior_dust_summaries_are_excluded_from_new_clusters` function L454-482 — `()` — SUMMARIZES edges.
 
 #### crates/arawn-steward/src/error.rs
 
@@ -8961,7 +9026,7 @@
 
 - pub `MapConfig` struct L40-46 — `{ batch_size: usize, neighbors_per_focus: usize }` — Per ARAWN-A-0003 map never mutates the KB graph.
 - pub `MapSubroutine` struct L57-62 — `{ client: Arc<dyn LlmClient>, model: String, config: MapConfig, cursor_factory: ...` — Per ARAWN-A-0003 map never mutates the KB graph.
-- pub `new` function L65-76 — `( client: Arc<dyn LlmClient>, model: impl Into<String>, cursor_factory: Arc<dyn ...` — Per ARAWN-A-0003 map never mutates the KB graph.
+- pub `new` function L65-76 — `( client: Arc<dyn LlmClient>, model: impl Into<String>, cursor_factory: CursorFa...` — Per ARAWN-A-0003 map never mutates the KB graph.
 - pub `with_config` function L78-81 — `(mut self, config: MapConfig) -> Self` — Per ARAWN-A-0003 map never mutates the KB graph.
 -  `SUBROUTINE_NAME` variable L24 — `: &str` — Per ARAWN-A-0003 map never mutates the KB graph.
 -  `is_proposable` function L28-37 — `(rel: RelationType) -> bool` — Relations map is allowed to propose.
@@ -8977,23 +9042,23 @@
 -  `propose_for` function L188-213 — `( &self, focus: &Entity, neighbors: &[&Entity], _ctx: &SubroutineCtx, ) -> Resul...` — Per ARAWN-A-0003 map never mutates the KB graph.
 -  `record_proposal` function L215-271 — `( &self, focus: &Entity, prop: &ProposedEdge, ctx: &SubroutineCtx, ) -> Result<(...` — Per ARAWN-A-0003 map never mutates the KB graph.
 -  `brief` function L274-281 — `(e: &Entity) -> serde_json::Value` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `tests` module L284-426 — `-` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `ScriptedMock` struct L299-301 — `{ responses: Mutex<VecDeque<Value>> }` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `ScriptedMock` type L302-308 — `= ScriptedMock` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `new` function L303-307 — `(resp: Vec<Value>) -> Self` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `ScriptedMock` type L310-330 — `impl LlmClient for ScriptedMock` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `stream` function L311-329 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `setup` function L332-345 — `() -> ( tempfile::TempDir, Arc<MemoryManager>, Arc<Journal>, Arc<dyn Fn(&str) ->...` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `ctx` function L347-361 — `( tmp: &tempfile::TempDir, mem: &Arc<MemoryManager>, j: &Arc<Journal>, cap: usiz...` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `proposes_valid_edges_and_drops_invalid` function L364-390 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `cap_stops_after_n_proposals` function L393-412 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
--  `cursor_advances_and_skips_on_rerun` function L415-425 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `tests` module L284-429 — `-` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `ScriptedMock` struct L300-302 — `{ responses: Mutex<VecDeque<Value>> }` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `ScriptedMock` type L303-309 — `= ScriptedMock` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `new` function L304-308 — `(resp: Vec<Value>) -> Self` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `ScriptedMock` type L311-334 — `impl LlmClient for ScriptedMock` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `stream` function L312-333 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `setup` function L336-348 — `() -> ( tempfile::TempDir, Arc<MemoryManager>, Arc<Journal>, CursorFactory, )` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `ctx` function L350-364 — `( tmp: &tempfile::TempDir, mem: &Arc<MemoryManager>, j: &Arc<Journal>, cap: usiz...` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `proposes_valid_edges_and_drops_invalid` function L367-393 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `cap_stops_after_n_proposals` function L396-415 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
+-  `cursor_advances_and_skips_on_rerun` function L418-428 — `()` — Per ARAWN-A-0003 map never mutates the KB graph.
 
 #### crates/arawn-steward/src/reshelve.rs
 
 - pub `ReshelveConfig` struct L31-36 — `{ batch_size: usize, candidates_per_focus: usize }` — LLM proposes the action; Rust picks the survivor.
 - pub `ReshelveSubroutine` struct L47-54 — `{ client: Arc<dyn LlmClient>, model: String, config: ReshelveConfig, cursor_fact...` — LLM proposes the action; Rust picks the survivor.
-- pub `new` function L57-68 — `( client: Arc<dyn LlmClient>, model: impl Into<String>, cursor_factory: Arc<dyn ...` — LLM proposes the action; Rust picks the survivor.
+- pub `new` function L57-68 — `( client: Arc<dyn LlmClient>, model: impl Into<String>, cursor_factory: CursorFa...` — LLM proposes the action; Rust picks the survivor.
 - pub `with_config` function L70-73 — `(mut self, config: ReshelveConfig) -> Self` — LLM proposes the action; Rust picks the survivor.
 -  `SUBROUTINE_NAME` variable L28 — `: &str` — LLM proposes the action; Rust picks the survivor.
 -  `ReshelveConfig` type L38-45 — `impl Default for ReshelveConfig` — LLM proposes the action; Rust picks the survivor.
@@ -9010,21 +9075,21 @@
 -  `apply_merge` function L292-388 — `( &self, focus: &Entity, cand: &Entity, verdict: &PairVerdict, ctx: &SubroutineC...` — LLM proposes the action; Rust picks the survivor.
 -  `apply_delete` function L390-420 — `( &self, focus: &Entity, verdict: &PairVerdict, ctx: &SubroutineCtx, outcome: &m...` — LLM proposes the action; Rust picks the survivor.
 -  `fts_quote` function L426-428 — `(s: &str) -> String` — FTS5 phrase-quote helper.
--  `tests` module L431-683 — `-` — LLM proposes the action; Rust picks the survivor.
--  `ScriptedMock` struct L449-451 — `{ responses: Mutex<VecDeque<Value>> }` — Queue-based mock that returns scripted JSON for each call.
--  `ScriptedMock` type L453-459 — `= ScriptedMock` — LLM proposes the action; Rust picks the survivor.
--  `new` function L454-458 — `(responses: Vec<Value>) -> Self` — LLM proposes the action; Rust picks the survivor.
--  `ScriptedMock` type L462-483 — `impl LlmClient for ScriptedMock` — LLM proposes the action; Rust picks the survivor.
--  `stream` function L463-482 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — LLM proposes the action; Rust picks the survivor.
--  `Fixture` struct L485-490 — `{ tmp: tempfile::TempDir, memory: Arc<MemoryManager>, journal: Arc<Journal>, cur...` — LLM proposes the action; Rust picks the survivor.
--  `setup` function L492-505 — `() -> Fixture` — LLM proposes the action; Rust picks the survivor.
--  `ctx` function L507-520 — `(fx: &Fixture, cap: usize) -> SubroutineCtx` — LLM proposes the action; Rust picks the survivor.
--  `fact` function L522-528 — `(title: &str, content: &str, reinforce: u32) -> Entity` — LLM proposes the action; Rust picks the survivor.
--  `merge_picks_most_reinforced_survivor` function L531-573 — `()` — LLM proposes the action; Rust picks the survivor.
--  `erroneous_deletes_focus` function L576-602 — `()` — LLM proposes the action; Rust picks the survivor.
--  `none_verdict_leaves_kb_untouched_but_advances_cursor` function L605-629 — `()` — LLM proposes the action; Rust picks the survivor.
--  `second_pass_skips_already_processed_entities` function L632-654 — `()` — LLM proposes the action; Rust picks the survivor.
--  `cap_stops_after_n_applied` function L657-682 — `()` — LLM proposes the action; Rust picks the survivor.
+-  `tests` module L431-687 — `-` — LLM proposes the action; Rust picks the survivor.
+-  `ScriptedMock` struct L450-452 — `{ responses: Mutex<VecDeque<Value>> }` — Queue-based mock that returns scripted JSON for each call.
+-  `ScriptedMock` type L454-460 — `= ScriptedMock` — LLM proposes the action; Rust picks the survivor.
+-  `new` function L455-459 — `(responses: Vec<Value>) -> Self` — LLM proposes the action; Rust picks the survivor.
+-  `ScriptedMock` type L463-487 — `impl LlmClient for ScriptedMock` — LLM proposes the action; Rust picks the survivor.
+-  `stream` function L464-486 — `( &self, _req: ChatRequest, ) -> Result< Pin<Box<dyn futures::Stream<Item = Resu...` — LLM proposes the action; Rust picks the survivor.
+-  `Fixture` struct L489-494 — `{ tmp: tempfile::TempDir, memory: Arc<MemoryManager>, journal: Arc<Journal>, cur...` — LLM proposes the action; Rust picks the survivor.
+-  `setup` function L496-509 — `() -> Fixture` — LLM proposes the action; Rust picks the survivor.
+-  `ctx` function L511-524 — `(fx: &Fixture, cap: usize) -> SubroutineCtx` — LLM proposes the action; Rust picks the survivor.
+-  `fact` function L526-532 — `(title: &str, content: &str, reinforce: u32) -> Entity` — LLM proposes the action; Rust picks the survivor.
+-  `merge_picks_most_reinforced_survivor` function L535-577 — `()` — LLM proposes the action; Rust picks the survivor.
+-  `erroneous_deletes_focus` function L580-606 — `()` — LLM proposes the action; Rust picks the survivor.
+-  `none_verdict_leaves_kb_untouched_but_advances_cursor` function L609-633 — `()` — LLM proposes the action; Rust picks the survivor.
+-  `second_pass_skips_already_processed_entities` function L636-658 — `()` — LLM proposes the action; Rust picks the survivor.
+-  `cap_stops_after_n_applied` function L661-686 — `()` — LLM proposes the action; Rust picks the survivor.
 
 #### crates/arawn-steward/src/rollback.rs
 
@@ -9277,19 +9342,19 @@
 - pub `list_scratch` function L82-105 — `(&self) -> Result<Vec<SessionMeta>, StorageError>`
 - pub `delete` function L108-114 — `(&self, session_id: Uuid) -> Result<bool, StorageError>` — Delete a session record from SQLite by ID.
 - pub `update_stats` function L117-129 — `(&self, session_id: Uuid, stats: &SessionStats) -> Result<(), StorageError>` — Update session token/turn stats in SQLite.
-- pub `SessionMeta` struct L135-141 — `{ id: Uuid, lens_id: Option<Uuid>, lens_name: String, created_at: DateTime<Utc>,...` — Session metadata as stored in SQLite (no messages — those are in JSONL).
-- pub `into_session` function L145-158 — `(self) -> Session` — Convert to an arawn_core::Session (without messages — load those separately).
--  `SessionMeta` type L143-159 — `= SessionMeta`
--  `SessionRow` struct L161-170 — `{ id: String, lens_id: Option<String>, lens_name: String, created_at: String, in...`
--  `SessionRow` type L172-200 — `= SessionRow`
--  `into_meta` function L173-199 — `(self) -> Result<SessionMeta, StorageError>`
--  `tests` module L203-293 — `-`
--  `setup` function L207-209 — `() -> Database`
--  `create_and_get_session` function L212-225 — `()`
--  `create_scratch_session` function L228-238 — `()`
--  `get_nonexistent_returns_none` function L241-245 — `()`
--  `list_for_lens` function L248-270 — `()`
--  `list_scratch_sessions` function L273-291 — `()`
+- pub `SessionMeta` struct L134-140 — `{ id: Uuid, lens_id: Option<Uuid>, lens_name: String, created_at: DateTime<Utc>,...` — Session metadata as stored in SQLite (no messages — those are in JSONL).
+- pub `into_session` function L144-157 — `(self) -> Session` — Convert to an arawn_core::Session (without messages — load those separately).
+-  `SessionMeta` type L142-158 — `= SessionMeta`
+-  `SessionRow` struct L160-169 — `{ id: String, lens_id: Option<String>, lens_name: String, created_at: String, in...`
+-  `SessionRow` type L171-199 — `= SessionRow`
+-  `into_meta` function L172-198 — `(self) -> Result<SessionMeta, StorageError>`
+-  `tests` module L202-291 — `-`
+-  `setup` function L206-208 — `() -> Database`
+-  `create_and_get_session` function L211-224 — `()`
+-  `create_scratch_session` function L227-237 — `()`
+-  `get_nonexistent_returns_none` function L240-244 — `()`
+-  `list_for_lens` function L247-269 — `()`
+-  `list_scratch_sessions` function L272-290 — `()`
 
 #### crates/arawn-storage/src/store.rs
 
@@ -9427,7 +9492,7 @@
 -  `engine_run_persists_all_messages` function L70-111 — `()` — These test the full stack: MockLLM → QueryEngine → Tools → Store → JSONL/SQLite.
 -  `session_resume_continues_conversation` function L114-181 — `()` — These test the full stack: MockLLM → QueryEngine → Tools → Store → JSONL/SQLite.
 -  `tool_results_persisted_with_content` function L184-234 — `()` — These test the full stack: MockLLM → QueryEngine → Tools → Store → JSONL/SQLite.
--  `multiple_sessions_isolated` function L238-304 — `()` — These test the full stack: MockLLM → QueryEngine → Tools → Store → JSONL/SQLite.
+-  `multiple_sessions_isolated` function L237-303 — `()` — These test the full stack: MockLLM → QueryEngine → Tools → Store → JSONL/SQLite.
 
 #### crates/arawn-tests/tests/full_pipeline.rs
 
@@ -9502,16 +9567,16 @@
 -  `embed` function L50-52 — `(&self, text: &str) -> Result<Vec<f32>, arawn_embed::EmbedError>` — KB storage → retrieval → response.
 -  `dimensions` function L54-56 — `(&self) -> usize` — KB storage → retrieval → response.
 -  `setup_memory_manager` function L59-68 — `() -> (Arc<MemoryManager>, Option<Arc<dyn Embedder>>)` — KB storage → retrieval → response.
--  `memory_store_inserts_entity` function L71-103 — `()` — KB storage → retrieval → response.
--  `memory_store_preference_goes_to_global` function L106-136 — `()` — KB storage → retrieval → response.
--  `memory_store_person_goes_to_global` function L139-159 — `()` — KB storage → retrieval → response.
--  `memory_store_deduplicates_on_reinsertion` function L162-208 — `()` — KB storage → retrieval → response.
--  `memory_search_finds_stored_entity` function L211-255 — `()` — KB storage → retrieval → response.
--  `memory_search_filters_by_type` function L258-307 — `()` — KB storage → retrieval → response.
--  `memory_store_then_search_roundtrip` function L310-365 — `()` — KB storage → retrieval → response.
--  `memory_search_empty_kb_returns_no_results` function L368-393 — `()` — KB storage → retrieval → response.
--  `memory_store_with_tags` function L396-418 — `()` — KB storage → retrieval → response.
--  `memory_store_explicit_scope_override` function L421-449 — `()` — KB storage → retrieval → response.
+-  `memory_store_inserts_entity` function L71-106 — `()` — KB storage → retrieval → response.
+-  `memory_store_preference_goes_to_global` function L109-139 — `()` — KB storage → retrieval → response.
+-  `memory_store_person_goes_to_global` function L142-162 — `()` — KB storage → retrieval → response.
+-  `memory_store_deduplicates_on_reinsertion` function L165-211 — `()` — KB storage → retrieval → response.
+-  `memory_search_finds_stored_entity` function L214-258 — `()` — KB storage → retrieval → response.
+-  `memory_search_filters_by_type` function L261-310 — `()` — KB storage → retrieval → response.
+-  `memory_store_then_search_roundtrip` function L313-368 — `()` — KB storage → retrieval → response.
+-  `memory_search_empty_kb_returns_no_results` function L371-396 — `()` — KB storage → retrieval → response.
+-  `memory_store_with_tags` function L399-421 — `()` — KB storage → retrieval → response.
+-  `memory_store_explicit_scope_override` function L424-452 — `()` — KB storage → retrieval → response.
 
 #### crates/arawn-tests/tests/permissions.rs
 
@@ -10622,15 +10687,15 @@
 -  `render_chat` function L10-458 — `(app: &mut App, frame: &mut Frame, area: ratatui::layout::Rect)`
 -  `render_separator` function L460-464 — `(frame: &mut Frame, area: ratatui::layout::Rect)`
 -  `render_empty_chat_brief` function L470-489 — `(app: &App, frame: &mut Frame, area: ratatui::layout::Rect)` — I-0035 Phase 2 (T-0354): render the cached brief markdown in the
--  `render_idle_hero` function L491-554 — `( frame: &mut Frame, area: ratatui::layout::Rect, no_model: bool, )`
--  `collect_signal_sources_for_turn` function L561-583 — `( messages: &[crate::app::ChatMessage], assistant_idx: usize, ) -> Vec<String>` — ARAWN-I-0061: collect the distinct source lenses from `signal_*` tool
--  `harvest_lens_strings` function L585-605 — `(v: &serde_json::Value, out: &mut std::collections::BTreeSet<String>)`
--  `tests` module L608-705 — `-`
--  `msg` function L612-614 — `(role: ChatRole, content: &str) -> ChatMessage`
--  `chip_collects_lenses_from_signal_search_result` function L617-637 — `()`
--  `chip_empty_when_no_signal_tool_in_turn` function L640-662 — `()`
--  `chip_stops_at_previous_user_message` function L665-681 — `()`
--  `chip_ignores_error_results` function L684-704 — `()`
+-  `render_idle_hero` function L491-547 — `(frame: &mut Frame, area: ratatui::layout::Rect, no_model: bool)`
+-  `collect_signal_sources_for_turn` function L554-576 — `( messages: &[crate::app::ChatMessage], assistant_idx: usize, ) -> Vec<String>` — ARAWN-I-0061: collect the distinct source lenses from `signal_*` tool
+-  `harvest_lens_strings` function L578-598 — `(v: &serde_json::Value, out: &mut std::collections::BTreeSet<String>)`
+-  `tests` module L601-698 — `-`
+-  `msg` function L605-607 — `(role: ChatRole, content: &str) -> ChatMessage`
+-  `chip_collects_lenses_from_signal_search_result` function L610-630 — `()`
+-  `chip_empty_when_no_signal_tool_in_turn` function L633-655 — `()`
+-  `chip_stops_at_previous_user_message` function L658-674 — `()`
+-  `chip_ignores_error_results` function L677-697 — `()`
 
 #### crates/arawn-tui/src/render/dashboard.rs
 

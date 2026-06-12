@@ -4,6 +4,7 @@ pub mod config_watcher;
 pub mod doctor;
 pub mod llm_pool;
 pub mod local_service;
+pub mod lock_ext;
 pub mod plugin_cmd;
 pub mod startup;
 pub mod ws_server;

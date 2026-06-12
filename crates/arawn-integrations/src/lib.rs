@@ -37,9 +37,9 @@ pub mod uat_mock;
 pub use credential_store::CredentialStore;
 pub use error::IntegrationError;
 pub use integration::{ConnectContext, Integration, IntegrationStatus};
-pub use uat_mock::UatMockIntegration;
 pub use oauth_flow::{OAuthOutcome, run_oauth_flow};
 pub use retry_after::parse_retry_after;
+pub use uat_mock::UatMockIntegration;
 
 /// Install rustls' `ring` crypto provider as the process default. Must be
 /// called once at server startup, before any integration constructs a

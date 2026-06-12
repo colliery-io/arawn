@@ -148,11 +148,12 @@ impl Tool for MemorySearchTool {
         if let Some(ref embedder) = self.embedder {
             match embedder.embed(query).await {
                 Ok(query_embedding) => {
-                    let sim_results = store
-                        .search_similar(&query_embedding, limit * 2)
-                        .map_err(|e| {
-                            ToolError::ExecutionFailed(format!("vector search error: {e}"))
-                        })?;
+                    let sim_results =
+                        store
+                            .search_similar(&query_embedding, limit * 2)
+                            .map_err(|e| {
+                                ToolError::ExecutionFailed(format!("vector search error: {e}"))
+                            })?;
 
                     for result in &sim_results {
                         let semantic_score = 1.0 / (1.0 + result.distance);

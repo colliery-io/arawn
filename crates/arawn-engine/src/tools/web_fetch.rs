@@ -542,7 +542,10 @@ mod tests {
             ChatChunk::TextDelta {
                 text: "Part two.".into(),
             },
-            ChatChunk::Done { usage: None },
+            ChatChunk::Done {
+                usage: None,
+                finish_reason: None,
+            },
         ])]);
 
         let result = summarize_with_llm(

@@ -4,7 +4,7 @@
 //! descriptions, and schemas. Output shape matches the production
 //! `MessageSummary` (private in `tools.rs`) so the agent sees no difference.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use arawn_tool::{PermissionCategory, Tool, ToolCategory, ToolContext, ToolError, ToolOutput};
 use async_trait::async_trait;
@@ -59,7 +59,7 @@ fn row_to_summary(
     }
 }
 
-fn open_store(data_dir: &PathBuf) -> Result<ProjectionStore, ToolError> {
+fn open_store(data_dir: &Path) -> Result<ProjectionStore, ToolError> {
     let store = ProjectionStore::open(&data_dir.join("projections.db"))
         .map_err(|e| ToolError::ExecutionFailed(format!("open projections: {e}")))?;
     store
@@ -332,7 +332,7 @@ impl Tool for UatGmailSendTool {
 /// Append a `{tool, params}` JSONL line to `<data_dir>/uat_side_effects.jsonl`.
 /// The harness can read this for richer assertions in future tasks (T-G).
 pub(crate) fn log_side_effect(
-    data_dir: &PathBuf,
+    data_dir: &Path,
     tool: &str,
     params: &Value,
 ) -> Result<(), ToolError> {
@@ -376,8 +376,16 @@ mod tests {
         store.ensure_feed_type(FEED_TYPE).unwrap();
         let now = Utc::now();
         for (i, (subject, body, sender)) in [
-            ("RFC-0042 sign-off", "Alice asks for alignment on Postgres", "alice@example.com"),
-            ("Catch up next week", "Bob says Tue/Wed mornings or Thu after 2", "bob@example.com"),
+            (
+                "RFC-0042 sign-off",
+                "Alice asks for alignment on Postgres",
+                "alice@example.com",
+            ),
+            (
+                "Catch up next week",
+                "Bob says Tue/Wed mornings or Thu after 2",
+                "bob@example.com",
+            ),
             ("SAVE10 — meal kit", "Unsubscribe", "promo@meal.example"),
         ]
         .iter()

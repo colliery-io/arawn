@@ -7,7 +7,7 @@
 //! Rollback is the only one that mutates state; it dispatches per-subroutine
 //! inverse via `arawn_steward::rollback::apply_inverse`.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -74,7 +74,7 @@ fn edit_distance(a: &str, b: &str) -> usize {
     prev[b.len()]
 }
 
-fn open_journal(data_dir: &PathBuf, lens: &str) -> Result<Journal, ToolError> {
+fn open_journal(data_dir: &Path, lens: &str) -> Result<Journal, ToolError> {
     Journal::open(data_dir, lens)
         .map_err(|e| ToolError::ExecutionFailed(format!("open journal `{lens}`: {e}")))
 }

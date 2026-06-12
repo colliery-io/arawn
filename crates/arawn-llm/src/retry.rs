@@ -38,8 +38,24 @@ impl RetryClient {
     }
 
     fn delay_for_attempt(&self, attempt: u32) -> Duration {
-        Duration::from_millis(self.base_delay_ms * 2u64.pow(attempt))
+        let base = self
+            .base_delay_ms
+            .saturating_mul(2u64.saturating_pow(attempt));
+        // Add up to ~25% jitter so a fleet of clients that failed in lockstep
+        // doesn't retry in a synchronized thundering herd. Entropy comes from
+        // the wall-clock nanos to avoid pulling in a `rand` dependency.
+        Duration::from_millis(base.saturating_add(jitter_ms(base)))
     }
+}
+
+/// Pseudo-random jitter in `[0, base/4]`, derived from the current time's
+/// sub-second nanos. Good enough to de-synchronize retries; not cryptographic.
+fn jitter_ms(base: u64) -> u64 {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.subsec_nanos() as u64)
+        .unwrap_or(0);
+    nanos % (base / 4 + 1)
 }
 
 #[async_trait]
@@ -49,10 +65,15 @@ impl LlmClient for RetryClient {
         request: ChatRequest,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<ChatChunk, LlmError>> + Send>>, LlmError> {
         let mut last_error = None;
+        // Delay to use before the *next* attempt. A server `Retry-After` on a
+        // 429 takes precedence over our exponential backoff.
+        let mut next_delay: Option<Duration> = None;
 
         for attempt in 0..=self.max_retries {
             if attempt > 0 {
-                let delay = self.delay_for_attempt(attempt - 1);
+                let delay = next_delay
+                    .take()
+                    .unwrap_or_else(|| self.delay_for_attempt(attempt - 1));
                 info!(
                     attempt,
                     delay_ms = delay.as_millis() as u64,
@@ -65,6 +86,11 @@ impl LlmClient for RetryClient {
                 Ok(stream) => return Ok(stream),
                 Err(e) => {
                     if e.is_retryable() && attempt < self.max_retries {
+                        // Honor a server-provided Retry-After when present;
+                        // otherwise fall back to jittered exponential backoff.
+                        next_delay = e
+                            .retry_after()
+                            .or_else(|| Some(self.delay_for_attempt(attempt)));
                         warn!(
                             attempt,
                             max_retries = self.max_retries,
@@ -147,7 +173,10 @@ mod tests {
                 ChatChunk::TextDelta {
                     text: "recovered".into(),
                 },
-                ChatChunk::Done { usage: None },
+                ChatChunk::Done {
+                    usage: None,
+                    finish_reason: None,
+                },
             ],
         });
 
@@ -213,7 +242,10 @@ mod tests {
                 ChatChunk::TextDelta {
                     text: "after rate limit".into(),
                 },
-                ChatChunk::Done { usage: None },
+                ChatChunk::Done {
+                    usage: None,
+                    finish_reason: None,
+                },
             ],
         });
 
@@ -232,7 +264,10 @@ mod tests {
                 let mut remaining = self.inner.failures_remaining.lock().unwrap();
                 if *remaining > 0 {
                     *remaining -= 1;
-                    Err(LlmError::RateLimited("429 Too Many Requests".into()))
+                    Err(LlmError::RateLimited {
+                        message: "429 Too Many Requests".into(),
+                        retry_after: None,
+                    })
                 } else {
                     let chunks = self.inner.success_response.clone();
                     Ok(Box::pin(futures::stream::iter(chunks.into_iter().map(Ok))))
@@ -248,7 +283,10 @@ mod tests {
                         ChatChunk::TextDelta {
                             text: "after rate limit".into(),
                         },
-                        ChatChunk::Done { usage: None },
+                        ChatChunk::Done {
+                            usage: None,
+                            finish_reason: None,
+                        },
                     ],
                 },
             }),

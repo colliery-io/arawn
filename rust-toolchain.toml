@@ -1,0 +1,6 @@
+# Pin the toolchain so `cargo fmt`/clippy output is stable across machines and
+# CI — otherwise a newer rustfmt silently reformats the whole tree (see the
+# fmt churn fixed under ARAWN-I-0067). Bump deliberately + reformat in one PR.
+[toolchain]
+channel = "1.93.0"
+components = ["rustfmt", "clippy"]

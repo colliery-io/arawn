@@ -27,26 +27,49 @@ pub fn wrap_command(
     // Generate the Seatbelt profile
     let profile = generate_profile(config, http_proxy_port, socks_proxy_port, log_tag.as_deref());
 
-    // Write profile to a temporary file
+    // Write profile to a unique temporary file
     let profile_path = write_profile_to_temp(&profile)?;
 
-    // Build the wrapped command
+    // Build the wrapped command. It removes ITS OWN profile right after
+    // `sandbox-exec` returns (preserving the real exit code) so the temp file
+    // lives only for the brief window it's actually read. This is what makes
+    // concurrent invocations safe — each cleans up after itself instead of
+    // relying on a process-wide sweep that could delete another in-flight call's
+    // profile. `cleanup_temp_profiles` remains only as an age-based safety net.
     let wrapped = format!(
-        "sandbox-exec -f {} {} -c {}",
+        "sandbox-exec -f {} {} -c {}; __srt_ec=$?; rm -f {}; exit $__srt_ec",
         quote(&profile_path),
         shell,
-        quote(command)
+        quote(command),
+        quote(&profile_path),
     );
 
     Ok((wrapped, log_tag))
 }
 
-/// Write the profile to a temporary file.
+/// Monotonic per-process counter so every wrapped command gets its OWN
+/// profile file. Without this, the filename was keyed only on the PID, so two
+/// `wrap_command` calls running concurrently in the same process (e.g. parallel
+/// tests, or two agent tool calls) wrote/cleaned-up the same
+/// `srt-profile-<pid>.sb` and raced — one would overwrite or delete the file
+/// out from under the other's `sandbox-exec -f`, producing intermittent
+/// "No such file or directory" failures. (Rust-specific concurrency fix; the
+/// upstream TS impl is single-flight per process.)
+static PROFILE_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// Filename prefix shared by `write_profile_to_temp` and `cleanup_temp_profiles`.
+fn profile_prefix() -> String {
+    format!("srt-profile-{}-", std::process::id())
+}
+
+/// Write the profile to a unique temporary file.
 fn write_profile_to_temp(profile: &str) -> Result<String, SandboxError> {
     use std::io::Write;
+    use std::sync::atomic::Ordering;
 
     let temp_dir = std::env::temp_dir();
-    let filename = format!("srt-profile-{}.sb", std::process::id());
+    let seq = PROFILE_SEQ.fetch_add(1, Ordering::Relaxed);
+    let filename = format!("{}{}.sb", profile_prefix(), seq);
     let path = temp_dir.join(filename);
 
     let mut file = std::fs::File::create(&path)?;
@@ -55,14 +78,40 @@ fn write_profile_to_temp(profile: &str) -> Result<String, SandboxError> {
     Ok(path.display().to_string())
 }
 
-/// Clean up temporary profile files.
+/// Age, in seconds, below which a profile file is assumed possibly in-flight
+/// and left alone by the safety-net sweep.
+const STALE_PROFILE_SECS: u64 = 60;
+
+/// Safety-net cleanup for this process's leaked profile files — only those a
+/// crashed/killed `sandbox-exec` left behind. The happy path is self-cleaning
+/// (see `wrap_command`), so this only removes files older than
+/// `STALE_PROFILE_SECS`. The age check is what makes it safe to call
+/// concurrently with other in-flight commands: a fresh profile (seconds old)
+/// is never swept out from under a running `sandbox-exec`.
 pub fn cleanup_temp_profiles() {
     let temp_dir = std::env::temp_dir();
-    let pattern = format!("srt-profile-{}.sb", std::process::id());
-    let path = temp_dir.join(pattern);
+    let prefix = profile_prefix();
 
-    if path.exists() {
-        let _ = std::fs::remove_file(&path);
+    let Ok(entries) = std::fs::read_dir(&temp_dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if !(name.starts_with(&prefix) && name.ends_with(".sb")) {
+            continue;
+        }
+        // Only remove if comfortably older than any plausible in-flight call.
+        let stale = entry
+            .metadata()
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.elapsed().ok())
+            .map(|age| age.as_secs() >= STALE_PROFILE_SECS)
+            .unwrap_or(false);
+        if stale {
+            let _ = std::fs::remove_file(entry.path());
+        }
     }
 }
 
