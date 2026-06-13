@@ -17,4 +17,4 @@
 
 pub mod allowlist;
 
-pub use allowlist::{ArgShape, SessionAllowlist};
+pub use allowlist::{ArgShape, SessionAllowlist, target_parent_dir};

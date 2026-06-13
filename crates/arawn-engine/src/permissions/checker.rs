@@ -106,6 +106,26 @@ pub trait ModalPrompt: Send + Sync {
     async fn prompt(&self, request: ModalRequest) -> Option<usize>;
 }
 
+/// The scope a session grant covers — recorded so the audit trail shows
+/// *how broadly* an "Allow Always" was applied (T-0487).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GrantScope {
+    /// Matched an exact `(tool, shape)` grant, or the `"<tool>:*"` wildcard.
+    Exact,
+    /// Matched a directory-scoped grant covering the operation's immediate
+    /// parent directory (home-folded). Carries that directory for the audit.
+    Directory(String),
+}
+
+impl GrantScope {
+    fn describe(&self) -> String {
+        match self {
+            GrantScope::Exact => "session grant".to_string(),
+            GrantScope::Directory(dir) => format!("session grant (dir: {dir})"),
+        }
+    }
+}
+
 /// In-memory store for session-scoped permission grants.
 /// When a user selects "Allow Always", a `(tool_name, ArgShape)`
 /// entry is added here and matching calls won't be prompted again
@@ -118,9 +138,19 @@ pub trait ModalPrompt: Send + Sync {
 /// `file_write` to `/etc/`. A shape of `"<tool>:*"` acts as a
 /// wildcard — `is_granted_shape` falls back to the wildcard if no
 /// exact shape match is found.
+///
+/// T-0487 adds **directory-scoped** grants: when an "Allow Always" lands
+/// on a path-bearing call, the operation's immediate parent directory is
+/// recorded as a `(tool, dir)` entry. A later call by the same tool whose
+/// target lives directly in that directory is auto-allowed without a fresh
+/// prompt — so approving `~/x/foo.rs` covers `~/x/bar.rs`. Widening is
+/// conservative: immediate parent only (never an ancestor), and deny rules
+/// stay authoritative over every grant (enforced in `check_explained`).
 #[derive(Debug, Default)]
 pub struct SessionGrants {
     inner: crate::approval::SessionAllowlist,
+    /// Directory-scoped grants: `(tool_name, home-folded parent dir)`.
+    dir_grants: std::collections::HashSet<(String, String)>,
 }
 
 impl SessionGrants {
@@ -133,6 +163,12 @@ impl SessionGrants {
         self.inner.grant(tool_name, shape);
     }
 
+    /// Directory-scoped grant: auto-allow this tool for any target whose
+    /// immediate parent is `dir` (home-folded). Idempotent.
+    pub fn grant_dir(&mut self, tool_name: String, dir: String) {
+        self.dir_grants.insert((tool_name, dir));
+    }
+
     /// Shape-aware check. Falls back to the `"<tool>:*"` wildcard
     /// entry when no exact shape match is found.
     pub fn is_granted_shape(&self, tool_name: &str, shape: &crate::approval::ArgShape) -> bool {
@@ -143,9 +179,33 @@ impl SessionGrants {
         self.inner.is_granted(tool_name, &wildcard)
     }
 
-    /// Clear all session grants.
+    /// Resolve whether a tool call is covered by a held grant, returning the
+    /// matching [`GrantScope`] (for the audit) or `None`. Checks the exact
+    /// shape / wildcard first, then directory scope against the call's
+    /// immediate parent directory.
+    pub fn granted_scope(
+        &self,
+        tool_name: &str,
+        raw_input: &str,
+        shape: &crate::approval::ArgShape,
+    ) -> Option<GrantScope> {
+        if self.is_granted_shape(tool_name, shape) {
+            return Some(GrantScope::Exact);
+        }
+        let dir = crate::approval::target_parent_dir(raw_input)?;
+        if self
+            .dir_grants
+            .contains(&(tool_name.to_string(), dir.clone()))
+        {
+            return Some(GrantScope::Directory(dir));
+        }
+        None
+    }
+
+    /// Clear all session grants (both shape and directory scoped).
     pub fn clear(&mut self) {
         self.inner.clear();
+        self.dir_grants.clear();
     }
 }
 
@@ -157,8 +217,9 @@ pub enum DecisionReason {
     /// A specific rule matched. Carries the matched rule so callers can
     /// quote it back to the user.
     MatchedRule(PermissionRule),
-    /// A previous session grant let it through.
-    SessionGrant,
+    /// A previous session grant let it through. Carries the scope that
+    /// matched (exact shape vs. directory) so the audit shows how broad it was.
+    SessionGrant(GrantScope),
     /// No rule matched; the active mode's fallback decided.
     ModeFallback { mode: PermissionMode },
     /// User answered an interactive prompt.
@@ -186,7 +247,7 @@ impl DecisionReason {
                     r.display_spec()
                 )
             }
-            DecisionReason::SessionGrant => "session grant".to_string(),
+            DecisionReason::SessionGrant(scope) => scope.describe(),
             DecisionReason::ModeFallback { mode } => {
                 format!("mode default '{:?}'", mode).to_lowercase()
             }
@@ -377,16 +438,17 @@ impl PermissionChecker {
         }
 
         // 2. Session grants short-circuit (only checked after deny rules pass).
-        // Match either an exact (tool, shape) grant or a pre-T-0276 wildcard.
+        // Match an exact (tool, shape) grant, a pre-T-0276 wildcard, or a
+        // T-0487 directory-scoped grant covering the call's parent directory.
         let shape = crate::approval::ArgShape::for_tool(tool_name, tool_input);
-        if self
+        let granted = self
             .grants
             .lock()
             .unwrap()
-            .is_granted_shape(tool_name, &shape)
-        {
-            debug!(tool_name, shape = %shape.as_str(), "session grant hit — allowed");
-            let reason = DecisionReason::SessionGrant;
+            .granted_scope(tool_name, tool_input, &shape);
+        if let Some(scope) = granted {
+            debug!(tool_name, shape = %shape.as_str(), ?scope, "session grant hit — allowed");
+            let reason = DecisionReason::SessionGrant(scope);
             self.record_audit(tool_name, tool_input, PermissionDecision::Allowed, &reason);
             return (PermissionDecision::Allowed, reason);
         }
@@ -492,10 +554,32 @@ impl PermissionChecker {
                 match response {
                     Some(0) => PermissionDecision::Allowed,
                     Some(1) => {
-                        self.grants
-                            .lock()
-                            .unwrap()
-                            .grant_shape(tool_name.to_string(), shape);
+                        let mut grants = self.grants.lock().unwrap();
+                        let wildcard = crate::approval::ArgShape(format!("{tool_name}:*"));
+                        match crate::approval::target_parent_dir(tool_input) {
+                            // Path-bearing call whose shape is *only* the
+                            // whole-tool wildcard (a tool the shaper doesn't
+                            // recognise, e.g. `Edit`/`Write`). Recording the
+                            // wildcard would grant the tool for *every* path;
+                            // instead scope the grant to the immediate parent
+                            // directory so siblings don't re-prompt but other
+                            // directories still do. This narrows a previously
+                            // whole-tool grant — the conservative direction.
+                            Some(dir) if shape == wildcard => {
+                                debug!(tool_name, %dir, "directory-scoped grant (narrowed from wildcard)");
+                                grants.grant_dir(tool_name.to_string(), dir);
+                            }
+                            // Path-bearing call with an already-specific shape
+                            // (e.g. file_write's `file:<dir>`). Keep the shape
+                            // grant and add a directory grant for uniformity.
+                            Some(dir) => {
+                                grants.grant_shape(tool_name.to_string(), shape);
+                                grants.grant_dir(tool_name.to_string(), dir);
+                            }
+                            // Non-path call (shell, safe_env, …) — shape grant
+                            // as before.
+                            None => grants.grant_shape(tool_name.to_string(), shape),
+                        }
                         PermissionDecision::Allowed
                     }
                     _ => PermissionDecision::Denied,
@@ -867,6 +951,127 @@ mod tests {
                 .lock()
                 .unwrap()
                 .is_granted_shape("shell", &dangerous_shape)
+        );
+    }
+
+    // T-0487: directory-scoped grants. "Allow Always" on a path-bearing call
+    // covers siblings in the same directory without re-prompting, but never
+    // an ancestor and never another directory.
+
+    #[tokio::test]
+    async fn dir_grant_covers_siblings_not_other_dirs() {
+        use crate::approval::ArgShape;
+        // `Edit` isn't a shaper-recognised tool, so its shape is the bare
+        // wildcard — the path that previously over-granted the whole tool.
+        let rules = vec![PermissionRule::new(RuleKind::Ask, "Edit")];
+        let checker =
+            PermissionChecker::new(rules).with_prompter(Box::new(MockPrompter::allow_always()));
+        let a = r#"{"path":"/tmp/proj/a.rs","content":"x"}"#;
+        assert_eq!(
+            checker
+                .check("Edit", a, PermissionCategory::FileWrite)
+                .await,
+            PermissionDecision::Allowed
+        );
+
+        let grants = checker.grants.lock().unwrap();
+        // It must NOT have recorded the whole-tool wildcard.
+        assert!(
+            !grants.is_granted_shape("Edit", &ArgShape("Edit:*".into())),
+            "path-bearing grant must not widen to the whole tool"
+        );
+        // A sibling in the same dir is covered, by directory scope.
+        let b = r#"{"path":"/tmp/proj/b.rs","content":"y"}"#;
+        assert_eq!(
+            grants.granted_scope("Edit", b, &ArgShape::for_tool("Edit", b)),
+            Some(GrantScope::Directory("/tmp/proj".to_string()))
+        );
+        // A different directory is NOT covered.
+        let c = r#"{"path":"/other/c.rs","content":"z"}"#;
+        assert_eq!(
+            grants.granted_scope("Edit", c, &ArgShape::for_tool("Edit", c)),
+            None
+        );
+        // An ancestor directory is NOT covered (immediate parent only).
+        let up = r#"{"path":"/tmp/up.rs","content":"z"}"#;
+        assert_eq!(
+            grants.granted_scope("Edit", up, &ArgShape::for_tool("Edit", up)),
+            None
+        );
+    }
+
+    #[tokio::test]
+    async fn dir_grant_auto_allows_sibling_end_to_end_and_audits_scope() {
+        let rules = vec![PermissionRule::new(RuleKind::Ask, "Edit")];
+        let checker =
+            PermissionChecker::new(rules).with_prompter(Box::new(MockPrompter::allow_always()));
+        let a = r#"{"path":"/srv/x/a.rs","content":"1"}"#;
+        assert_eq!(
+            checker
+                .check("Edit", a, PermissionCategory::FileWrite)
+                .await,
+            PermissionDecision::Allowed
+        );
+        // The sibling must resolve via the *grant* (reason carries the dir
+        // scope), not via a fresh prompt (which would read "user prompt").
+        // That the reason is the directory grant proves the short-circuit.
+        let b = r#"{"path":"/srv/x/b.rs","content":"2"}"#;
+        let (decision, reason) = checker
+            .check_explained("Edit", b, PermissionCategory::FileWrite)
+            .await;
+        assert_eq!(decision, PermissionDecision::Allowed);
+        assert!(
+            reason.display().contains("dir: /srv/x"),
+            "expected directory-scoped session grant, got: {}",
+            reason.display()
+        );
+    }
+
+    #[tokio::test]
+    async fn deny_rule_overrides_directory_grant() {
+        let rules = vec![PermissionRule::new(RuleKind::Deny, "Edit")];
+        let checker = PermissionChecker::new(rules);
+        checker
+            .grants
+            .lock()
+            .unwrap()
+            .grant_dir("Edit".to_string(), "/tmp/proj".to_string());
+        // Deny is authoritative even with a covering directory grant.
+        assert_eq!(
+            checker
+                .check(
+                    "Edit",
+                    r#"{"path":"/tmp/proj/a.rs"}"#,
+                    PermissionCategory::FileWrite
+                )
+                .await,
+            PermissionDecision::Denied
+        );
+    }
+
+    #[tokio::test]
+    async fn non_path_grant_records_no_directory_scope() {
+        // shell carries no path — "Allow Always" records a shape grant only,
+        // and no directory scope leaks in.
+        let rules = vec![PermissionRule::new(RuleKind::Ask, "shell")];
+        let checker =
+            PermissionChecker::new(rules).with_prompter(Box::new(MockPrompter::allow_always()));
+        let input = r#"{"command":"ls"}"#;
+        assert_eq!(
+            checker
+                .check("shell", input, PermissionCategory::Shell)
+                .await,
+            PermissionDecision::Allowed
+        );
+        let grants = checker.grants.lock().unwrap();
+        // Granted by exact shape, not directory.
+        assert_eq!(
+            grants.granted_scope(
+                "shell",
+                input,
+                &crate::approval::ArgShape::for_tool("shell", input)
+            ),
+            Some(GrantScope::Exact)
         );
     }
 

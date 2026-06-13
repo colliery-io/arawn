@@ -67,17 +67,28 @@ fn shell_shape(v: &Value) -> String {
 }
 
 fn file_shape(v: &Value) -> String {
+    let normalised = parent_dir_of_value(v).unwrap_or_default();
+    format!("file:{normalised}")
+}
+
+/// Extract the target path from a tool call (`path` or its `file_path`
+/// alias) and return its **immediate parent directory**, home-folded to
+/// `~`. Returns `None` when the call carries no path. This is the unit a
+/// directory-scoped grant covers — see `permissions::checker::GrantScope`.
+/// The grain is deliberately the immediate parent only: never an ancestor,
+/// so a grant on `~/x/foo.rs` can't silently widen to all of `~`.
+pub fn target_parent_dir(raw_input: &str) -> Option<String> {
+    let v: Value = serde_json::from_str(raw_input).ok()?;
+    parent_dir_of_value(&v)
+}
+
+fn parent_dir_of_value(v: &Value) -> Option<String> {
     let path = v
         .get("path")
         .and_then(|v| v.as_str())
-        .or_else(|| v.get("file_path").and_then(|v| v.as_str()))
-        .unwrap_or("");
-    let parent = Path::new(path)
-        .parent()
-        .map(|p| p.display().to_string())
-        .unwrap_or_default();
-    let normalised = fold_home(&parent);
-    format!("file:{normalised}")
+        .or_else(|| v.get("file_path").and_then(|v| v.as_str()))?;
+    let parent = Path::new(path).parent()?.display().to_string();
+    Some(fold_home(&parent))
 }
 
 fn env_shape(v: &Value) -> String {
