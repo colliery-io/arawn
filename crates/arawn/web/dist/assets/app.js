@@ -58,4 +58,43 @@
       el.dataset.connection = "closed";
     }
   });
+
+  // ── Inbox triage (GUI-S2): action buttons + keyboard nav ──────────────
+  // Delegated click: any [data-action] button POSTs and swaps/removes its row.
+  document.addEventListener("click", function (e) {
+    const btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    e.preventDefault();
+    const row = btn.closest(".todo-row");
+    fetch(btn.getAttribute("data-action"), { method: "POST" })
+      .then(function (r) { return r.text(); })
+      .then(function (html) {
+        if (!row) return;
+        if (btn.dataset.remove) row.remove();
+        else row.innerHTML = html;
+      })
+      .catch(function () {});
+  });
+
+  // Keyboard: j/k move focus, x dismiss focused row, e expand rationale.
+  document.addEventListener("keydown", function (e) {
+    const rows = Array.from(document.querySelectorAll(".todo-row"));
+    if (!rows.length) return;
+    const cur = document.activeElement && document.activeElement.closest
+      ? document.activeElement.closest(".todo-row")
+      : null;
+    const idx = cur ? rows.indexOf(cur) : -1;
+    if (e.key === "j") {
+      e.preventDefault();
+      rows[idx < 0 ? 0 : Math.min(idx + 1, rows.length - 1)].focus();
+    } else if (e.key === "k") {
+      e.preventDefault();
+      rows[idx <= 0 ? 0 : idx - 1].focus();
+    } else if (e.key === "x" && cur) {
+      const b = cur.querySelector("[data-remove]");
+      if (b) b.click();
+    } else if (e.key === "e" && cur) {
+      cur.classList.toggle("expanded");
+    }
+  });
 })();

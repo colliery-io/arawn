@@ -92,3 +92,32 @@ td.err, tr.err td, .panel .err { color: #c0392b; }
 .brief-list li.done { text-decoration: line-through; color: var(--muted); }
 .diary { white-space: pre-wrap; color: var(--fg); }
 
+/* GUI-S2: inbox */
+.inbox { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.todo-row {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--fg) 12%, transparent);
+  border-radius: 0.5rem;
+  outline: none;
+}
+.todo-row:focus { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent); }
+.todo-main { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.todo-body { font-weight: 500; }
+.todo-body.done { text-decoration: line-through; color: var(--muted); }
+.tag {
+  font-size: 0.72rem; padding: 0.05rem 0.45rem; border-radius: 999px;
+  background: color-mix(in srgb, var(--fg) 10%, transparent); color: var(--muted);
+}
+.tag.due { background: color-mix(in srgb, #d98324 20%, transparent); color: #d98324; }
+/* rationale hidden until the row is focused or expanded */
+.todo-rationale { display: none; margin: 0.4rem 0 0; color: var(--muted); font-size: 0.9rem; }
+.todo-row:focus .todo-rationale, .todo-row.expanded .todo-rationale { display: block; }
+.todo-actions { margin-top: 0.5rem; display: flex; gap: 0.4rem; }
+.todo-actions button {
+  font: inherit; font-size: 0.82rem; padding: 0.2rem 0.7rem; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--fg) 18%, transparent);
+  border-radius: 0.4rem; background: transparent; color: var(--fg);
+}
+.todo-actions button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.todo-actions button.danger { color: #c0392b; border-color: color-mix(in srgb, #c0392b 40%, transparent); }
+

@@ -311,6 +311,8 @@ pub async fn run_server(
         .route("/", get(gui::shell))
         .route("/health", get(gui::health_page))
         .route("/brief", get(gui::brief_page))
+        .route("/inbox", get(gui::inbox_page))
+        .route("/inbox/{id}/{action}", post(gui::inbox_action))
         .route("/events", get(gui::events))
         .route("/assets/{*path}", get(gui::gui_asset))
         .layer(cors)

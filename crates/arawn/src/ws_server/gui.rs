@@ -32,6 +32,7 @@ use tokio_stream::wrappers::BroadcastStream;
 
 use arawn_ceremonies::{CeremonyService, ItemDto, PriorityDto, TabletDto};
 use arawn_service::{ArawnService, ServerNotice, SystemStatus};
+use arawn_storage::Todo;
 
 use super::AppState;
 
@@ -489,6 +490,110 @@ fn cap(s: &str) -> String {
     }
 }
 
+// ── GUI-S2: action-item inbox ──────────────────────────────────────────────
+
+/// `GET /inbox` — open action items as a scannable, keyboard-navigable list.
+pub(super) async fn inbox_page(State(state): State<AppState>) -> Response {
+    let todos = list_open_todos(&state);
+    axum::response::Html(inbox_markup(&todos).into_string()).into_response()
+}
+
+/// `POST /inbox/{id}/{action}` — run a triage action (done / undo / snooze /
+/// dismiss) and return the re-rendered row (empty body for dismiss, so the
+/// client removes it). Mutates via the same `TodoService` the WS RPCs use, so
+/// `TodoEvent`s still broadcast.
+pub(super) async fn inbox_action(
+    Path((id, action)): Path<(String, String)>,
+    State(state): State<AppState>,
+) -> Response {
+    let store = state.service.shared_store();
+    let Ok(guard) = store.lock() else {
+        return (StatusCode::INTERNAL_SERVER_ERROR, "store lock poisoned").into_response();
+    };
+    let svc = arawn_storage::TodoService::new(guard.database())
+        .with_events(state.service.todo_event_sender());
+    match action.as_str() {
+        "done" => to_row(svc.mark_done(&id)),
+        "undo" => to_row(svc.undo(&id)),
+        "snooze" => {
+            // No dedicated snooze RPC — snooze == push the due date out a day.
+            let patch = arawn_storage::TodoPatch {
+                due_at: Some(chrono::Utc::now() + chrono::Duration::days(1)),
+                ..Default::default()
+            };
+            to_row(svc.patch(&id, patch))
+        }
+        "dismiss" => match svc.archive(&id) {
+            Ok(()) => (StatusCode::OK, "").into_response(),
+            Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+        },
+        _ => (StatusCode::BAD_REQUEST, "unknown action").into_response(),
+    }
+}
+
+fn to_row(res: Result<Todo, arawn_storage::StorageError>) -> Response {
+    match res {
+        Ok(t) => axum::response::Html(render_row(&t).into_string()).into_response(),
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
+    }
+}
+
+fn list_open_todos(state: &AppState) -> Vec<Todo> {
+    let store = state.service.shared_store();
+    let Ok(guard) = store.lock() else {
+        return Vec::new();
+    };
+    let svc = arawn_storage::TodoService::new(guard.database());
+    let filter = arawn_storage::ListFilter {
+        open_only: Some(true),
+        ..Default::default()
+    };
+    svc.list(filter).unwrap_or_default()
+}
+
+/// Render the inbox page.
+fn inbox_markup(todos: &[Todo]) -> Markup {
+    let content = html! {
+        h2 { "Inbox" }
+        @if todos.is_empty() {
+            p class="muted" { "Inbox zero — no open action items." }
+        } @else {
+            p class="muted" { (todos.len()) " open item(s). Keys: j/k move · x dismiss · e expand." }
+            ul id="inbox-list" class="inbox" {
+                @for t in todos {
+                    li id=(format!("todo-{}", t.id)) class="todo-row" tabindex="0" { (render_row(t)) }
+                }
+            }
+        }
+    };
+    page("/inbox", content)
+}
+
+/// Render the inner content of one inbox row (also returned by `inbox_action`
+/// so the client can swap a single row in place).
+fn render_row(t: &Todo) -> Markup {
+    let done = t.done_at.is_some();
+    html! {
+        div class="todo-main" {
+            span class=(if done { "todo-body done" } else { "todo-body" }) { (t.body) }
+            @if let Some(lens) = &t.lens { span class="tag" { (lens) } }
+            @if let Some(due) = &t.due_at { span class="tag due" { "due " (due.format("%Y-%m-%d").to_string()) } }
+        }
+        @if let Some(r) = &t.rationale {
+            @if !r.is_empty() { p class="todo-rationale" { (r) } }
+        }
+        div class="todo-actions" {
+            @if done {
+                button type="button" data-action=(format!("/inbox/{}/undo", t.id)) { "Undo" }
+            } @else {
+                button type="button" data-action=(format!("/inbox/{}/done", t.id)) { "Done" }
+                button type="button" data-action=(format!("/inbox/{}/snooze", t.id)) { "Snooze 1d" }
+            }
+            button type="button" class="danger" data-action=(format!("/inbox/{}/dismiss", t.id)) data-remove="1" { "Dismiss" }
+        }
+    }
+}
+
 /// Look up `path` in the embedded bundle and return it with a content-type,
 /// or 404 if absent.
 fn serve_embedded(path: &str) -> Response {
@@ -830,5 +935,49 @@ mod tests {
         let g: serde_json::Value =
             serde_json::from_str(&notice_fragment(&notice("feed_event"))).unwrap();
         assert!(g.get("refresh").is_none());
+    }
+
+    // ── GUI-S2: inbox ─────────────────────────────────────────────────────
+
+    fn todo(id: &str, done: bool) -> Todo {
+        Todo {
+            id: id.into(),
+            body: "Review PR #42".into(),
+            rationale: Some("blocking the release".into()),
+            kind: "task".into(),
+            lens: Some("work".into()),
+            created_at: chrono::Utc::now(),
+            due_at: None,
+            done_at: if done { Some(chrono::Utc::now()) } else { None },
+            archived_at: None,
+            attrs: serde_json::json!({}),
+        }
+    }
+
+    #[test]
+    fn inbox_empty_shows_inbox_zero() {
+        let h = inbox_markup(&[]).into_string();
+        assert!(h.contains("Inbox zero"));
+        assert!(h.contains("surface active")); // /inbox nav highlighted
+    }
+
+    #[test]
+    fn inbox_renders_rows_with_actions_and_keyboard_hint() {
+        let h = inbox_markup(&[todo("t1", false)]).into_string();
+        assert!(h.contains("Review PR #42"));
+        assert!(h.contains("id=\"todo-t1\""));
+        assert!(h.contains("/inbox/t1/done"));
+        assert!(h.contains("/inbox/t1/snooze"));
+        assert!(h.contains("/inbox/t1/dismiss"));
+        assert!(h.contains("blocking the release")); // rationale present (CSS-hidden)
+        assert!(h.contains("j/k move")); // keyboard hint
+    }
+
+    #[test]
+    fn done_row_shows_undo_not_done() {
+        let h = render_row(&todo("t9", true)).into_string();
+        assert!(h.contains("/inbox/t9/undo"));
+        assert!(!h.contains("/inbox/t9/done"));
+        assert!(h.contains("todo-body done")); // struck-through styling hook
     }
 }
