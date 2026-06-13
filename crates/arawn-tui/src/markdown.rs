@@ -570,6 +570,10 @@ fn heading_style(level: u8) -> Style {
 
 /// Word-wrap text to fit within a given width. Breaks on word boundaries
 /// where possible, hard-breaks long words that exceed the width.
+///
+/// Widths are measured in terminal **display cells** (via `unicode-width`),
+/// not codepoints: a 2-cell CJK/emoji glyph counts as 2 and never splits
+/// across a wrap boundary, and a wrapped line never exceeds `width` cells.
 fn wrap_text(text: &str, width: usize) -> Vec<String> {
     if width == 0 {
         return vec![String::new()];
@@ -580,7 +584,7 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
     let mut current_len = 0;
 
     for word in text.split_whitespace() {
-        let word_len = word.chars().count();
+        let word_len = crate::width::display_width(word);
 
         if current_len == 0 {
             // First word on line
@@ -588,25 +592,7 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
                 current_line.push_str(word);
                 current_len = word_len;
             } else {
-                // Hard-break long word
-                let mut chars = word.chars();
-                while current_len < word_len {
-                    let chunk: String = chars.by_ref().take(width).collect();
-                    let chunk_len = chunk.chars().count();
-                    if chunk_len == 0 {
-                        break;
-                    }
-                    if !current_line.is_empty() {
-                        lines.push(current_line);
-                    }
-                    current_line = chunk;
-                    current_len = chunk_len;
-                    if current_len >= width {
-                        lines.push(current_line);
-                        current_line = String::new();
-                        current_len = 0;
-                    }
-                }
+                hard_break_word(word, width, &mut lines, &mut current_line, &mut current_len);
             }
         } else if current_len + 1 + word_len <= width {
             // Fits on current line with a space
@@ -615,31 +601,13 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
             current_len += 1 + word_len;
         } else {
             // Doesn't fit — start new line
-            lines.push(current_line);
+            lines.push(std::mem::take(&mut current_line));
+            current_len = 0;
             if word_len <= width {
-                current_line = word.to_string();
+                current_line.push_str(word);
                 current_len = word_len;
             } else {
-                // Hard-break long word
-                current_line = String::new();
-                current_len = 0;
-                let mut chars = word.chars();
-                let total = word_len;
-                let mut consumed = 0;
-                while consumed < total {
-                    let chunk: String = chars.by_ref().take(width).collect();
-                    let chunk_len = chunk.chars().count();
-                    if chunk_len == 0 {
-                        break;
-                    }
-                    consumed += chunk_len;
-                    if consumed < total || chunk_len == width {
-                        lines.push(chunk);
-                    } else {
-                        current_line = chunk;
-                        current_len = chunk_len;
-                    }
-                }
+                hard_break_word(word, width, &mut lines, &mut current_line, &mut current_len);
             }
         }
     }
@@ -649,6 +617,35 @@ fn wrap_text(text: &str, width: usize) -> Vec<String> {
     }
 
     lines
+}
+
+/// Hard-break a `word` too wide for `width`, chunking by display cells so a
+/// 2-cell glyph is never split. Completed chunks are pushed to `lines`; the
+/// trailing partial chunk is left in `current_line`/`current_len` for the
+/// caller to keep filling.
+fn hard_break_word(
+    word: &str,
+    width: usize,
+    lines: &mut Vec<String>,
+    current_line: &mut String,
+    current_len: &mut usize,
+) {
+    let mut chunk = String::new();
+    let mut chunk_len = 0;
+    for ch in word.chars() {
+        let cw = crate::width::char_width(ch);
+        // Flush before a glyph that would overflow, but never emit an empty
+        // chunk (a single glyph wider than `width` overflows by design — it
+        // cannot be split).
+        if chunk_len + cw > width && !chunk.is_empty() {
+            lines.push(std::mem::take(&mut chunk));
+            chunk_len = 0;
+        }
+        chunk.push(ch);
+        chunk_len += cw;
+    }
+    *current_line = chunk;
+    *current_len = chunk_len;
 }
 
 #[cfg(test)]
@@ -827,5 +824,63 @@ mod tests {
         let lines = markdown_to_lines("Hello world\n\n");
         let last = lines.last().unwrap();
         assert!(last.width() > 0, "should not end with blank line");
+    }
+
+    /// Sum the display-cell width of a wrapped line.
+    fn cells(s: &str) -> usize {
+        crate::width::display_width(s)
+    }
+
+    #[test]
+    fn wrap_text_respects_display_width_across_scripts() {
+        // (label, input, width). Every produced line must fit in `width`
+        // display cells, and no line may split a 2-cell glyph (verified by
+        // the width invariant — a split would leave a stray half-glyph that
+        // still measures the full 2 cells on the other line, but more
+        // importantly the joined text must equal the input minus the spaces
+        // we collapsed).
+        let cases = [
+            ("ascii words", "the quick brown fox jumps over", 12usize),
+            // CJK: each ideograph is 2 cells. 5 chars = 10 cells.
+            ("cjk run", "我能吞下玻璃而不伤身体", 6),
+            // Emoji: most are 2 cells.
+            ("emoji run", "😀😀😀😀😀😀", 4),
+            // Mixed ASCII + CJK in one word stream.
+            ("mixed", "hello 世界 world 你好 fox", 8),
+            // A single oversize word that must hard-break.
+            ("long ascii word", "supercalifragilistic", 5),
+            // An oversize CJK word (no spaces) that must hard-break on cells.
+            ("long cjk word", "我能吞下玻璃而不伤身体", 4),
+        ];
+
+        for (label, input, width) in cases {
+            let wrapped = wrap_text(input, width);
+            for line in &wrapped {
+                assert!(
+                    cells(line) <= width,
+                    "[{label}] line {line:?} = {} cells > width {width}",
+                    cells(line)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn wrap_text_never_splits_a_two_cell_glyph() {
+        // Width 1 cannot hold a 2-cell glyph; we accept the unavoidable
+        // single-cell overflow but must NOT drop or duplicate glyphs, and
+        // each emitted line must be exactly one whole glyph.
+        let wrapped = wrap_text("世界你好", 1);
+        assert_eq!(wrapped.len(), 4, "expected one glyph per line: {wrapped:?}");
+        let joined: String = wrapped.concat();
+        assert_eq!(joined, "世界你好");
+        for line in &wrapped {
+            assert_eq!(line.chars().count(), 1, "line {line:?} should be one glyph");
+        }
+    }
+
+    #[test]
+    fn wrap_text_zero_width_is_single_empty_line() {
+        assert_eq!(wrap_text("anything", 0), vec![String::new()]);
     }
 }

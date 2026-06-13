@@ -87,11 +87,16 @@ pub(super) fn render_autocomplete(
     let max_visible = 8.min(ac.suggestions.len());
     let dropdown_height = max_visible as u16 + 2; // +2 for border
 
-    // Position: directly above the input line
+    // Position: directly above the input line, offset by 2 to align with the
+    // text after "> ". Width is capped at 50 but must never exceed what's left
+    // of the terminal from that offset — clamping to a 20-cell *minimum* (the
+    // old behavior) overflowed terminals narrower than 22 columns.
+    let x_offset = 2u16;
+    let avail = input_area.width.saturating_sub(x_offset).max(1);
     let dropdown_area = ratatui::layout::Rect {
-        x: input_area.x + 2, // offset to align with text after "> "
+        x: input_area.x + x_offset,
         y: input_area.y.saturating_sub(dropdown_height),
-        width: input_area.width.clamp(20, 50),
+        width: avail.min(50),
         height: dropdown_height,
     };
 
@@ -119,7 +124,10 @@ pub(super) fn render_autocomplete(
                 Span::raw(prefix),
                 Span::styled(format!("/{:<12}", cmd.name), name_style),
                 Span::styled(
-                    truncate_to(&cmd.description, dropdown_area.width as usize - 18),
+                    truncate_to(
+                        &cmd.description,
+                        (dropdown_area.width as usize).saturating_sub(18),
+                    ),
                     desc_style,
                 ),
             ])
