@@ -86,3 +86,9 @@ td.err, tr.err td, .panel .err { color: #c0392b; }
 .badge.ok { background: color-mix(in srgb, #2e8b57 22%, transparent); color: #2e8b57; }
 .badge.down { background: color-mix(in srgb, #c0392b 22%, transparent); color: #c0392b; }
 
+/* GUI-S1: brief surface */
+.panel h4 { margin: 0.8rem 0 0.3rem; font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.brief-list { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.brief-list li.done { text-decoration: line-through; color: var(--muted); }
+.diary { white-space: pre-wrap; color: var(--fg); }
+

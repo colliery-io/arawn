@@ -19,13 +19,34 @@
       return;
     }
     const el = document.querySelector(frag.target);
-    if (!el) return;
-    if (frag.mode === "append") {
-      const li = document.createElement("li");
-      li.innerHTML = frag.html;
-      el.appendChild(li);
-    } else {
-      el.innerHTML = frag.html;
+    if (el) {
+      if (frag.mode === "append") {
+        const li = document.createElement("li");
+        li.innerHTML = frag.html;
+        el.appendChild(li);
+      } else {
+        el.innerHTML = frag.html;
+      }
+    }
+    // Optional "<url> <selector>" hint: if that selector exists on the current
+    // page, re-pull it from the server and swap it in place (no full reload).
+    if (frag.refresh) {
+      const sp = frag.refresh.indexOf(" ");
+      if (sp > 0) {
+        const url = frag.refresh.slice(0, sp);
+        const sel = frag.refresh.slice(sp + 1);
+        const target = document.querySelector(sel);
+        if (target) {
+          fetch(url)
+            .then((r) => r.text())
+            .then((body) => {
+              const doc = new DOMParser().parseFromString(body, "text/html");
+              const fresh = doc.querySelector(sel);
+              if (fresh) target.innerHTML = fresh.innerHTML;
+            })
+            .catch(() => {});
+        }
+      }
     }
   });
 

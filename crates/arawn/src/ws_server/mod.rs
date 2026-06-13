@@ -310,6 +310,7 @@ pub async fn run_server(
         // contract is unchanged.
         .route("/", get(gui::shell))
         .route("/health", get(gui::health_page))
+        .route("/brief", get(gui::brief_page))
         .route("/events", get(gui::events))
         .route("/assets/{*path}", get(gui::gui_asset))
         .layer(cors)

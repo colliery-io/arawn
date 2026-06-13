@@ -30,6 +30,7 @@ use maud::{DOCTYPE, Markup, html};
 use rust_embed::RustEmbed;
 use tokio_stream::wrappers::BroadcastStream;
 
+use arawn_ceremonies::{CeremonyService, ItemDto, PriorityDto, TabletDto};
 use arawn_service::{ArawnService, ServerNotice, SystemStatus};
 
 use super::AppState;
@@ -292,10 +293,13 @@ fn health_markup(s: &SystemStatus) -> Markup {
 }
 
 /// Map a `ServerNotice` to the SSE fragment payload the client applies:
-/// `{target, mode, html}`. `briefing_ready` replaces the brief-status card;
-/// everything else appends to the live notice log.
+/// `{target, mode, html[, refresh]}`. `briefing_ready` replaces the
+/// brief-status card *and* carries a `refresh` hint so an open `/brief` page
+/// re-pulls its body in place (no full reload); everything else appends to the
+/// live notice log.
 fn notice_fragment(n: &ServerNotice) -> String {
-    let (target, mode) = if n.category == "briefing_ready" {
+    let briefing = n.category == "briefing_ready";
+    let (target, mode) = if briefing {
         ("#brief-status", "replace")
     } else {
         ("#notice-log", "append")
@@ -308,7 +312,181 @@ fn notice_fragment(n: &ServerNotice) -> String {
         }
     }
     .into_string();
-    serde_json::json!({ "target": target, "mode": mode, "html": html }).to_string()
+    let mut payload = serde_json::json!({ "target": target, "mode": mode, "html": html });
+    if briefing {
+        // "<url> <selector>": the client fetches url, then swaps that selector's
+        // inner HTML into the same selector on the current page if present.
+        payload["refresh"] = serde_json::json!("/brief #brief-body");
+    }
+    payload.to_string()
+}
+
+// ── GUI-S1: brief / ceremony-tablet surface ───────────────────────────────
+
+/// One tablet plus its items/priorities/diary, ready to render.
+struct BriefSection {
+    tablet: TabletDto,
+    items: Vec<ItemDto>,
+    priorities: Vec<PriorityDto>,
+    diary: Option<String>,
+}
+
+/// `GET /brief` — the daily/weekly brief and ceremony tablets. Refreshes in
+/// place on a `briefing_ready` push (via the SSE `refresh` hint).
+pub(super) async fn brief_page(State(state): State<AppState>) -> Response {
+    let Some(cer) = state.service.ceremony_service() else {
+        return axum::response::Html(
+            page(
+                "/brief",
+                html! { section class="panel err" { h3 { "Brief unavailable" } p { "Ceremony engine not wired (workflow runner unavailable at boot)." } } },
+            )
+            .into_string(),
+        )
+        .into_response();
+    };
+    let sections = gather_brief(&cer);
+    axum::response::Html(brief_markup(&sections).into_string()).into_response()
+}
+
+/// Collect the current daily (today, falling back to yesterday for timezone
+/// boundaries) and weekly tablets. Missing tablets are simply omitted.
+fn gather_brief(cer: &CeremonyService) -> Vec<BriefSection> {
+    let now = chrono::Utc::now();
+    let today = now.format("%Y-%m-%d").to_string();
+    let yesterday = (now - chrono::Duration::days(1))
+        .format("%Y-%m-%d")
+        .to_string();
+    let week = arawn_ceremonies::RetroCeremony::iso_week(now);
+
+    let mut sections = Vec::new();
+    let daily = cer
+        .get_by_period("daily", &today)
+        .ok()
+        .flatten()
+        .or_else(|| cer.get_by_period("daily", &yesterday).ok().flatten());
+    if let Some(t) = daily {
+        sections.push(build_section(cer, t));
+    }
+    if let Some(t) = cer.get_by_period("weekly", &week).ok().flatten() {
+        sections.push(build_section(cer, t));
+    }
+    sections
+}
+
+fn build_section(cer: &CeremonyService, tablet: TabletDto) -> BriefSection {
+    let items = cer.list_items(&tablet.id, None).unwrap_or_default();
+    let priorities = cer.list_priorities(&tablet.id).unwrap_or_default();
+    let diary = cer.get_diary(&tablet.id).ok().flatten();
+    BriefSection {
+        tablet,
+        items,
+        priorities,
+        diary,
+    }
+}
+
+/// Render the brief view. Pure (takes pre-fetched sections) so it's testable
+/// without a ceremony service.
+fn brief_markup(sections: &[BriefSection]) -> Markup {
+    let content = html! {
+        h2 { "Brief" }
+        // Stable container the SSE `refresh` hint re-pulls in place.
+        div id="brief-body" {
+            @if sections.is_empty() {
+                p class="muted" { "No brief yet. The daily and weekly ceremonies compose these; once one runs, it appears here." }
+            } @else {
+                @for s in sections { (render_section(s)) }
+            }
+        }
+    };
+    page("/brief", content)
+}
+
+fn render_section(s: &BriefSection) -> Markup {
+    html! {
+        section class="panel" {
+            h3 {
+                (cap(&s.tablet.kind)) " — " (s.tablet.period_key)
+                @if s.tablet.recovered { " " span class="badge" { "recovered" } }
+            }
+            p class="muted" { "status: " (s.tablet.status) " · generated " (s.tablet.generated_at) }
+            @if !s.priorities.is_empty() {
+                h4 { "Priorities" }
+                ul class="brief-list" {
+                    @for p in &s.priorities {
+                        li {
+                            (item_text(&p.body))
+                            @if p.confirmed_at.is_some() { " " span class="badge ok" { "confirmed" } }
+                            @if p.done_at.is_some() { " " span class="badge" { "done" } }
+                        }
+                    }
+                }
+            }
+            @for (section_key, items) in group_items(&s.items) {
+                h4 { (section_label(&section_key)) }
+                ul class="brief-list" {
+                    @for it in items {
+                        li class=(if it.done_at.is_some() { "done" } else { "" }) { (item_text(&it.body)) }
+                    }
+                }
+            }
+            @if let Some(d) = &s.diary {
+                @if !d.is_empty() {
+                    h4 { "Diary" }
+                    p class="diary" { (d) }
+                }
+            }
+        }
+    }
+}
+
+/// Extract a human-readable line from an item/priority `body` JSON, trying the
+/// common text-bearing keys before falling back to the compact JSON.
+fn item_text(body: &serde_json::Value) -> String {
+    for key in ["text", "summary", "headline", "title", "body", "content"] {
+        if let Some(s) = body.get(key).and_then(|v| v.as_str())
+            && !s.is_empty()
+        {
+            return s.to_string();
+        }
+    }
+    if let Some(s) = body.as_str() {
+        return s.to_string();
+    }
+    body.to_string()
+}
+
+/// Group items by `section_key` (ordered by section then ordinal), preserving
+/// first-seen section order.
+fn group_items(items: &[ItemDto]) -> Vec<(String, Vec<&ItemDto>)> {
+    let mut sorted: Vec<&ItemDto> = items.iter().collect();
+    sorted.sort_by(|a, b| {
+        a.section_key
+            .cmp(&b.section_key)
+            .then(a.ordinal.cmp(&b.ordinal))
+    });
+    let mut out: Vec<(String, Vec<&ItemDto>)> = Vec::new();
+    for it in sorted {
+        match out.last_mut() {
+            Some((k, v)) if *k == it.section_key => v.push(it),
+            _ => out.push((it.section_key.clone(), vec![it])),
+        }
+    }
+    out
+}
+
+/// Prettify a section key like `what_happened` → `What happened`.
+fn section_label(key: &str) -> String {
+    cap(&key.replace('_', " "))
+}
+
+/// Capitalize the first character of `s`.
+fn cap(s: &str) -> String {
+    let mut chars = s.chars();
+    match chars.next() {
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+        None => String::new(),
+    }
 }
 
 /// Look up `path` in the embedded bundle and return it with a content-type,
@@ -542,5 +720,115 @@ mod tests {
         assert_eq!(status_class(Some("reconnect needed: auth")), "err");
         assert_eq!(status_class(Some("error: boom")), "err");
         assert_eq!(status_class(None), "muted");
+    }
+
+    // ── GUI-S1: brief surface ─────────────────────────────────────────────
+
+    fn sample_section() -> BriefSection {
+        BriefSection {
+            tablet: TabletDto {
+                id: "t-daily-1".into(),
+                kind: "daily".into(),
+                period_key: "2026-06-13".into(),
+                generated_at: "2026-06-13T06:00:00Z".into(),
+                status: "open".into(),
+                lenses_scanned: serde_json::json!(["work"]),
+                priorities_confirmed_at: None,
+                recovered: false,
+            },
+            items: vec![
+                ItemDto {
+                    id: "i2".into(),
+                    tablet_id: "t-daily-1".into(),
+                    section_key: "what_happened".into(),
+                    ordinal: 1,
+                    kind: "composed".into(),
+                    body: serde_json::json!({ "text": "Shipped the parser fix" }),
+                    citation_id: Some("sig-1".into()),
+                    done_at: None,
+                    created_at: "2026-06-13T06:00:00Z".into(),
+                },
+                ItemDto {
+                    id: "i1".into(),
+                    tablet_id: "t-daily-1".into(),
+                    section_key: "what_happened".into(),
+                    ordinal: 0,
+                    kind: "composed".into(),
+                    body: serde_json::json!({ "text": "Reviewed three PRs" }),
+                    citation_id: Some("sig-2".into()),
+                    done_at: Some("2026-06-13T07:00:00Z".into()),
+                    created_at: "2026-06-13T06:00:00Z".into(),
+                },
+            ],
+            priorities: vec![PriorityDto {
+                id: "p1".into(),
+                tablet_id: "t-daily-1".into(),
+                body: serde_json::json!({ "text": "Finish the GUI brief surface" }),
+                rationale: "in flight".into(),
+                citation_id: None,
+                confirmed_at: Some("2026-06-13T06:30:00Z".into()),
+                done_at: None,
+                ordinal: 0,
+                source: "confirmed".into(),
+            }],
+            diary: Some("Felt productive.".into()),
+        }
+    }
+
+    #[test]
+    fn brief_empty_shows_placeholder() {
+        let h = brief_markup(&[]).into_string();
+        assert!(h.contains("id=\"brief-body\""));
+        assert!(h.contains("No brief yet"));
+        assert!(h.contains("surface active")); // /brief nav highlighted
+    }
+
+    #[test]
+    fn brief_renders_tablet_priorities_items_diary() {
+        let h = brief_markup(&[sample_section()]).into_string();
+        assert!(h.contains("Daily — 2026-06-13"), "header missing: {h}");
+        assert!(h.contains("Finish the GUI brief surface")); // priority
+        assert!(h.contains("What happened")); // section label prettified
+        assert!(h.contains("Shipped the parser fix")); // item
+        assert!(h.contains("Felt productive.")); // diary
+        assert!(h.contains("badge ok")); // confirmed priority badge
+    }
+
+    #[test]
+    fn brief_items_grouped_and_ordered() {
+        let section = sample_section();
+        let groups = group_items(&section.items);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].0, "what_happened");
+        // Ordered by ordinal: i1 (0) before i2 (1).
+        assert_eq!(groups[0].1[0].id, "i1");
+        assert_eq!(groups[0].1[1].id, "i2");
+    }
+
+    #[test]
+    fn item_text_prefers_text_keys_then_falls_back() {
+        assert_eq!(item_text(&serde_json::json!({ "text": "hi" })), "hi");
+        assert_eq!(item_text(&serde_json::json!({ "summary": "sum" })), "sum");
+        assert_eq!(item_text(&serde_json::json!("raw string")), "raw string");
+        // No known key → compact JSON fallback (non-empty).
+        let fb = item_text(&serde_json::json!({ "x": 1 }));
+        assert!(fb.contains("\"x\""));
+    }
+
+    #[test]
+    fn section_label_prettifies() {
+        assert_eq!(section_label("what_happened"), "What happened");
+        assert_eq!(section_label("priorities"), "Priorities");
+    }
+
+    #[test]
+    fn briefing_ready_fragment_carries_refresh_hint() {
+        let v: serde_json::Value =
+            serde_json::from_str(&notice_fragment(&notice("briefing_ready"))).unwrap();
+        assert_eq!(v["refresh"], "/brief #brief-body");
+        // Generic notices carry no refresh hint.
+        let g: serde_json::Value =
+            serde_json::from_str(&notice_fragment(&notice("feed_event"))).unwrap();
+        assert!(g.get("refresh").is_none());
     }
 }
