@@ -4,14 +4,14 @@ level: initiative
 title: "Web GUI — primary review/triage surface served by the arawn binary"
 short_code: "ARAWN-I-0070"
 created_at: 2026-06-13T15:41:25.946171+00:00
-updated_at: 2026-06-13T15:41:25.946171+00:00
+updated_at: 2026-06-13T16:02:33.908651+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/decompose"
 
 
 exit_criteria_met: false
@@ -54,11 +54,21 @@ These are deliberately deferred to this initiative (per ADR A-0005) and must be 
 4. **Auth model** — see GUI-G1/G2 below; decide the credential + origin story before exposing beyond localhost.
 5. **Scope of v1 surfaces** — which review/triage surfaces ship first (likely: brief/tablet view + action-item inbox + health dashboard).
 
-## Architecture (intended direction) **[CONDITIONAL]**
+## Resolved decisions (2026-06-13) **[REQUIRED]**
 
-- The `arawn` binary serves embedded static assets and the existing WS-RPC server (`ws_server`). The browser client is another `ArawnService` consumer — same contract as the TUI.
-- Net-new review/observability capabilities are added as RPCs on `ArawnService` (protocol-first); no client-only logic.
-- Streaming + push (engine events, `ServerNotice` incl. `briefing_ready`) over the existing WS notice channel.
+Discovery questions answered by the operator:
+
+1. **Frontend stack → server-rendered hypermedia.** HTML rendered by the `arawn` binary + a tiny hypermedia library (datastar or htmx; final pick in design) driving updates over SSE/WS. Rationale: thinnest fit for "thin client rendering RPCs", minimal/no JS build pipeline, single-binary stays trivial, and it suits list/form/dashboard + streaming UX. Trade-off accepted: richer interactivity costs more than a full SPA.
+2. **Auth/exposure → localhost-first + Origin/CORS now.** v1 binds loopback and adds WS `Origin` + CORS validation (GUI-G2) so a browser works safely on localhost. Remote-auth hardening (GUI-G1) and TLS (GUI-G5) are deferred until the UI exists — they stay in the backlog, not dropped.
+3. **v1 surface scope → all four** review/triage surfaces: brief/ceremony-tablet view, action-item inbox, health/observability dashboard, and signals/memory/extraction-provenance. (Build order still sequences cheapest-first; see plan.)
+
+## Architecture (resolved direction) **[REQUIRED]**
+
+- The `arawn` binary serves **server-rendered HTML** (embedded templates/assets at build time) **and** the existing WS-RPC server (`ws_server`). The browser is another `ArawnService` consumer — same contract as the TUI.
+- **Hypermedia over the wire:** initial page loads are server-rendered HTML; live updates (streaming tokens, `briefing_ready` and other `ServerNotice`s, tablet/inbox changes) push as HTML fragments or signals over SSE/WS. No client-side state store; the server is the source of truth.
+- **Protocol-first:** any net-new review/observability capability is an `ArawnService` RPC rendered thinly; no browser-only logic. Existing structured reads (`status`/`health`, `ceremonies.*`, `todos.*`, typed errors with `llm_kind`) back the surfaces directly.
+- **Transport detail (design phase):** decide between (a) reusing the WS-RPC envelope and rendering fragments client-side from a minimal hypermedia runtime, vs. (b) a small HTTP route set for page loads + SSE/WS for push. Server-rendered-hypermedia favors (b) for first paint.
+- **Single-binary preserved:** assets embedded (`rust-embed`/`include_dir` — design pick); frontend tooling build-time only; ARM64 deployable.
 
 ## Seed backlog **[REQUIRED]**
 
