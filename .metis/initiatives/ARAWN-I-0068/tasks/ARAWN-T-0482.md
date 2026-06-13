@@ -4,14 +4,14 @@ level: task
 title: "P2-7: Extraction debuggability — confidence floor, run IDs, explain/rerun/dismiss tooling"
 short_code: "ARAWN-T-0482"
 created_at: 2026-06-12T12:02:17.697049+00:00
-updated_at: 2026-06-12T12:02:17.697049+00:00
+updated_at: 2026-06-13T12:43:11.010412+00:00
 parent: ARAWN-I-0068
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -36,6 +36,10 @@ Make extraction debuggable and idempotent: wire the unused confidence floor, sta
 ### Priority
 - [x] P2 - Medium
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 ## Acceptance Criteria **[REQUIRED]**
 
 - [ ] The confidence floor is wired into `link_by_name` — low-confidence FTS hits are rejected rather than silently accepted.
@@ -58,4 +62,12 @@ Determinism vs the model's nondeterminism — the cursor/empty-marker change is 
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-06-13 — COMPLETE (determinism core) ✅ · tooling spun out to [[ARAWN-T-0484]]
+**Shipped — the determinism/data-integrity half:**
+- **Confidence floor wired**: the unused `_floor` is now live. Added `MemoryStore::search_scored` (returns each hit's `-bm25` relevance score; ≥0 for any match) + `fts_search_scored`. `resolve_by_fts`/`scored_fts_hit` reject a top FTS hit whose score is below the floor — a typo'd name no longer links a signal to a barely-related entity. Default floor 0.0 = accept-all (historical behavior).
+- **Token filter widened**: `relevant_global_facts` ≥3 → ≥2, so meaningful short tokens ("AI"/"ML"/"QA") reach global-fact context instead of being silently dropped.
+- **Re-run idempotency / no-duplicate**: already satisfied — the chain extracts via `store_fact`, which dedups by title (T-0481 hardened it to a single-lock compound op), and EXTRACTED_FROM targets the stable `projection_id_to_uuid`. The existing `rerun_is_idempotent_via_cursor` + `out_of_scope_skips_but_advances_cursor` tests prove deterministic re-runs. So the "per-run id to avoid duplicates" concern is moot (entities reinforce, not duplicate); a per-run *annotation* is low-value and moved to T-0484.
+
+**Tests:** `high_confidence_floor_rejects_fts_link` (entity still extracted, sub-floor link dropped); existing 30 extractor tests green incl. idempotency. fmt + clippy -D warnings + memory(9)/extractor(31) green.
+
+**Spun out to [[ARAWN-T-0484]] (P3):** the three operator tools (`signal_explain`/`extract_rerun`/`signal_dismiss`) + the "extracted-empty vs skipped" per-row marker. These need a NEW `extraction_log` table (per-row classify verdict/reason + dismissed flag) that the determinism fixes didn't require — a separable sub-project, decomposed out so the data-integrity core ships clean. The corruption-prevention value of P2-7 (floor + idempotency) is delivered here; T-0484 is the quality-of-life tooling.

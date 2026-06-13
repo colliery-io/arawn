@@ -447,22 +447,32 @@ impl CotChain {
 }
 
 /// FTS-resolve a name against both KB tiers. Falls back to global tier
-/// if the lens-tier search misses.
-fn resolve_by_fts(kb: &MemoryManager, name: &str, _floor: f32) -> Option<(Uuid, Scope)> {
+/// if the lens-tier search misses. A hit whose relevance score is below
+/// `floor` is rejected rather than silently linked (ARAWN-T-0482) — this is
+/// what stops a typo'd name linking a signal to a barely-related entity. A
+/// `floor` of 0.0 accepts any FTS match (the historical behavior).
+fn resolve_by_fts(kb: &MemoryManager, name: &str, floor: f32) -> Option<(Uuid, Scope)> {
     // FTS5 quoting: wrap in double-quotes so special chars don't break parsing.
     let q = format!("\"{}\"", name.replace('"', "\"\""));
-    if let Some(hit) = first_fts_hit(&kb.lens, &q) {
+    if let Some(hit) = scored_fts_hit(&kb.lens, &q, floor) {
         return Some((hit, Scope::Lens));
     }
-    if let Some(hit) = first_fts_hit(&kb.global, &q) {
+    if let Some(hit) = scored_fts_hit(&kb.global, &q, floor) {
         return Some((hit, Scope::Global));
     }
     None
 }
 
-fn first_fts_hit(store: &Arc<MemoryStore>, query: &str) -> Option<Uuid> {
-    match store.search(query, 1) {
-        Ok(hits) => hits.into_iter().next().map(|e| e.id),
+/// Top FTS hit for `query`, but only if its relevance score clears `floor`.
+fn scored_fts_hit(store: &Arc<MemoryStore>, query: &str, floor: f32) -> Option<Uuid> {
+    match store.search_scored(query, 1) {
+        Ok(hits) => hits.into_iter().next().and_then(|(entity, score)| {
+            if score >= floor as f64 {
+                Some(entity.id)
+            } else {
+                None
+            }
+        }),
         Err(_) => None,
     }
 }
@@ -488,12 +498,14 @@ fn projection_id_to_uuid(projection_id: &str) -> Uuid {
 fn relevant_global_facts(kb: &MemoryManager, query: &str, limit: usize) -> Vec<String> {
     // FTS5's default is AND across terms and chokes on stray punctuation
     // (hyphens, colons, etc. parse as operators or syntax errors). Sanitize to
-    // alphanumeric tokens of length ≥3 and join with OR so any single overlap
-    // with a stored memory's title/content surfaces it. Bound the term count so
-    // a long row body can't blow up the FTS query.
+    // alphanumeric tokens of length ≥2 and join with OR so any single overlap
+    // with a stored memory's title/content surfaces it. The ≥2 floor (was ≥3,
+    // ARAWN-T-0482) keeps meaningful short tokens like "AI"/"ML"/"QA" that the
+    // old filter silently dropped, while still excluding single-char noise.
+    // Bound the term count so a long row body can't blow up the FTS query.
     let mut tokens: Vec<String> = query
         .split(|c: char| !c.is_alphanumeric())
-        .filter(|t| t.len() >= 3)
+        .filter(|t| t.len() >= 2)
         .map(|t| t.to_lowercase())
         .collect();
     tokens.sort();
@@ -853,8 +865,18 @@ mod integration {
         mock: Arc<C>,
         batch_size: usize,
     ) -> ExtractorRunner {
+        runner_with_floor(fx, mock, batch_size, 0.0)
+    }
+
+    fn runner_with_floor<C: arawn_llm::LlmClient + 'static>(
+        fx: &Fixture,
+        mock: Arc<C>,
+        batch_size: usize,
+        floor: f32,
+    ) -> ExtractorRunner {
         let mock: Arc<dyn arawn_llm::LlmClient> = mock;
-        let chain: Arc<dyn ExtractionChain> = Arc::new(CotChain::new(mock, "mock-model"));
+        let chain: Arc<dyn ExtractionChain> =
+            Arc::new(CotChain::new(mock, "mock-model").with_link_score_floor(floor));
         ExtractorRunner::new(
             Arc::clone(&fx.store),
             Arc::clone(&fx.proj),
@@ -964,6 +986,52 @@ mod integration {
         assert_eq!(
             stats.relations_written, 1,
             "link should have resolved via FTS to the pre-seeded entity"
+        );
+    }
+
+    #[tokio::test]
+    async fn high_confidence_floor_rejects_fts_link() {
+        // ARAWN-T-0482: the same setup as `link_by_name_resolves...`, but with
+        // a confidence floor set absurdly high. The FTS hit's score can't
+        // clear it, so the link is rejected (no relation written) even though
+        // the entity itself is still extracted.
+        let fx = setup();
+        {
+            let kb = fx.kb("pat");
+            let prior = Entity::new(EntityType::Fact, "open question: which auth library?")
+                .with_confidence(ConfidenceSource::Stated);
+            kb.lens.store_fact(&prior).unwrap();
+        }
+        fx.proj
+            .write_batch(&[fixture_proj(
+                "m1",
+                "we chose oauth2-rs to close out auth",
+                0,
+            )])
+            .unwrap();
+
+        let mock = Arc::new(
+            KeyedMockLlm::new()
+                .default_classify(serde_json::json!({"in_scope": true, "reason": "ok"}))
+                .default_extract(serde_json::json!([
+                    {"entity_type": "decision", "title": "use oauth2-rs",
+                     "content": "settles the auth question"}
+                ]))
+                .default_link(serde_json::json!([
+                    {"from": "use oauth2-rs", "rel": "supersedes",
+                     "to_name": "open question: which auth library?"}
+                ])),
+        );
+        // Floor 1e9 is unreachable by any real FTS score.
+        let runner = runner_with_floor(&fx, mock, 50, 1.0e9);
+        let stats = runner
+            .run_for_lens(&ws("pat", "pat's stuff"), "gmail_messages")
+            .await
+            .unwrap();
+        assert_eq!(stats.kept, 1, "the entity is still extracted");
+        assert_eq!(
+            stats.relations_written, 0,
+            "a sub-floor FTS hit must not produce a link"
         );
     }
 

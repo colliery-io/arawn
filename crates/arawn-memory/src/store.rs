@@ -299,6 +299,31 @@ impl MemoryStore {
         Ok(out)
     }
 
+    /// Like [`search`] but returns each hit's FTS relevance score (higher is
+    /// a better match; it's the negated bm25 value, so ≥ 0 for any match).
+    /// Backs the extractor's link-by-name confidence floor (ARAWN-T-0482) —
+    /// a weak FTS hit can be rejected rather than silently linked.
+    pub fn search_scored(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> Result<Vec<(Entity, f64)>, MemoryError> {
+        let conn = self.conn.lock().unwrap();
+        let scored = fts_search_scored(conn.sqlite_connection(), query, limit * 2)?;
+        let mut out = Vec::with_capacity(limit);
+        for (id, score) in scored {
+            if let Some(e) = fetch_entity_by_id(&conn, id)?
+                && !e.superseded
+            {
+                out.push((e, score));
+                if out.len() == limit {
+                    break;
+                }
+            }
+        }
+        Ok(out)
+    }
+
     pub fn search_by_type(
         &self,
         query: &str,
@@ -996,6 +1021,38 @@ fn fts_upsert(sql: &rusqlite::Connection, entity: &Entity) -> Result<(), MemoryE
 ///
 /// `query` is the raw FTS5 MATCH expression; callers that want literal-text
 /// matching should pre-quote (`"hello world"`).
+/// FTS search returning each hit's relevance score (ARAWN-T-0482). The score
+/// is `-bm25(...)` so higher = better and any match is ≥ 0; callers can apply
+/// a confidence floor against it. Ordered best-first.
+fn fts_search_scored(
+    sql: &rusqlite::Connection,
+    query: &str,
+    limit: usize,
+) -> Result<Vec<(Uuid, f64)>, MemoryError> {
+    let mut stmt = sql
+        .prepare(
+            "SELECT entity_id, bm25(entities_fts) AS score FROM entities_fts \
+             WHERE entities_fts MATCH ?1 ORDER BY rank LIMIT ?2",
+        )
+        .map_err(|e| MemoryError::Storage(format!("prepare fts scored: {e}")))?;
+    let rows = stmt
+        .query_map(params![query, limit as i64], |row| {
+            let id_str: String = row.get(0)?;
+            let bm25: f64 = row.get(1)?;
+            Ok((id_str, bm25))
+        })
+        .map_err(|e| MemoryError::Storage(format!("fts scored: {e}")))?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (id_str, bm25) = row.map_err(|e| MemoryError::Storage(format!("row: {e}")))?;
+        if let Ok(id) = Uuid::parse_str(&id_str) {
+            // Negate bm25 so higher = better and a confidence floor reads naturally.
+            out.push((id, -bm25));
+        }
+    }
+    Ok(out)
+}
+
 fn fts_search(
     sql: &rusqlite::Connection,
     query: &str,
