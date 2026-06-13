@@ -56,6 +56,13 @@ impl ToolRegistry {
         self.tools.read().unwrap().get(name).cloned()
     }
 
+    /// Whether a tool is already registered under `name`. Used by callers that
+    /// must not silently clobber an existing registration (e.g. MCP tools
+    /// whose names can collide across servers after normalisation).
+    pub fn contains(&self, name: &str) -> bool {
+        self.tools.read().unwrap().contains_key(name)
+    }
+
     pub fn tool_definitions(&self) -> Vec<arawn_llm::ToolDefinition> {
         let tools = self.tools.read().unwrap();
         tools
@@ -278,6 +285,18 @@ mod registry_tests {
     fn get_nonexistent_tool_returns_none() {
         let registry = ToolRegistry::new();
         assert!(registry.get("nope").is_none());
+    }
+
+    #[test]
+    fn contains_reflects_registration() {
+        // Backs the MCP collision guard: callers check `contains` before
+        // registering so a duplicate name is skipped, not silently clobbered.
+        let registry = ToolRegistry::new();
+        assert!(!registry.contains("mcp__a__query"));
+        registry.register(Box::new(DummyTool::new("mcp__a__query")));
+        assert!(registry.contains("mcp__a__query"));
+        registry.unregister("mcp__a__query");
+        assert!(!registry.contains("mcp__a__query"));
     }
 
     #[test]

@@ -77,8 +77,7 @@ impl McpManager {
 
                 for mcp_tool in &tools {
                     let adapter = McpToolAdapter::new(&config.name, mcp_tool.clone(), peer.clone());
-                    info!(name = %adapter.tool_name(), "registered MCP tool");
-                    registry.register(Box::new(adapter));
+                    register_adapter_guarded(registry, adapter);
                 }
 
                 if let Some(ref instr) = instructions {
@@ -166,10 +165,16 @@ impl McpManager {
                 Ok((service, tools, instructions)) => {
                     let peer = Arc::new(service.peer().clone());
 
+                    // Clear any stale adapters from this same server (pointing
+                    // at the dead peer) before re-registering, so they aren't
+                    // mistaken for cross-server collisions by the guard.
+                    let prefix = format!("mcp__{}__", normalize_name(&config.name));
+                    registry.unregister_by_prefix(&prefix);
+
                     for mcp_tool in &tools {
                         let adapter =
                             McpToolAdapter::new(&config.name, mcp_tool.clone(), peer.clone());
-                        registry.register(Box::new(adapter));
+                        register_adapter_guarded(registry, adapter);
                     }
 
                     info!(name = %config.name, attempt, tools = tools.len(), "MCP server reconnected");
@@ -261,6 +266,24 @@ fn normalize_name(name: &str) -> String {
             }
         })
         .collect()
+}
+
+/// Register an MCP adapter unless its arawn tool name already exists. MCP tool
+/// names can collide across servers (or after normalisation), and a plain
+/// `register` would silently let one shadow another. Logs and skips on
+/// collision instead, so the clash is visible rather than a mystery missing
+/// tool.
+fn register_adapter_guarded(registry: &Arc<ToolRegistry>, adapter: McpToolAdapter) {
+    let name = adapter.tool_name().to_string();
+    if registry.contains(&name) {
+        warn!(
+            name = %name,
+            "MCP tool name collision — skipping duplicate registration (an existing tool already owns this name)"
+        );
+    } else {
+        info!(name = %name, "registered MCP tool");
+        registry.register(Box::new(adapter));
+    }
 }
 
 /// Spawn an MCP server process, connect via stdio, initialize, and discover tools.

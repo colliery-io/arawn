@@ -105,6 +105,9 @@ impl Tool for McpToolAdapter {
                     .collect::<Vec<_>>()
                     .join("\n");
 
+                // A tool that ran but reported failure (`is_error`) is a
+                // *tool* error — surface it as Ok(ToolOutput::error) so the
+                // content (the tool's own message) flows back to the model.
                 let is_error = result.is_error.unwrap_or(false);
                 if is_error {
                     Ok(ToolOutput::error(content))
@@ -112,9 +115,17 @@ impl Tool for McpToolAdapter {
                     Ok(ToolOutput::success(content))
                 }
             }
+            // The RPC itself failed (server crashed, transport dropped, bad
+            // framing) — the tool never ran. That's distinct from a tool
+            // reporting failure: return Err so the engine routes it through the
+            // failure path (PostToolUseFailure hook, distinct logging) instead
+            // of presenting a transport outage as ordinary tool output.
             Err(e) => {
-                warn!(tool = %self.arawn_name, error = %e, "MCP tool call failed");
-                Ok(ToolOutput::error(format!("MCP tool error: {e}")))
+                warn!(tool = %self.arawn_name, error = %e, "MCP tool call transport/RPC failure");
+                Err(ToolError::ExecutionFailed(format!(
+                    "MCP transport/RPC error calling '{}': {e}",
+                    self.mcp_name
+                )))
             }
         }
     }
