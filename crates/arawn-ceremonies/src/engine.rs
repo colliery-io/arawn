@@ -7,29 +7,32 @@
 //! 1. Look up the plugin by kind.
 //! 2. Compute the period key via `plugin.period_key(now)`.
 //! 3. Short-circuit if a tablet already exists for `(kind,
-//!    period_key)` with `status != "open"`.
-//! 4. Open a single transaction for the whole run. Every row
-//!    written during the run rides this transaction; mid-run
-//!    failure rolls everything back.
-//! 5. Insert the tablet row.
-//! 6. Construct [`EngineCtx`] (sharing the transaction-bound
-//!    connection) and call `plugin.gather()`.
-//! 7. If the plugin returns a [`PatternDetector`], run it now and
-//!    write each [`DetectedPattern`] via `ctx.write_pattern_row`.
-//!    The returned ids become valid `citation_id`s for the compose
-//!    phase.
-//! 8. Acquire an `arawn_llm::gate::acquire_local` permit and call
-//!    `plugin.compose()`.
-//! 9. Iterate the returned [`NewItem`]s. Each variant routes to the
-//!    matching write path — `Composed` requires a non-empty
-//!    `citation_id` (refused with [`CeremonyError::MissingCitation`]
-//!    when empty); `User` writes without one.
-//! 10. Commit on success; rollback on any error.
+//!    period_key)` with `status != "open"` (or, for an `open` tablet,
+//!    unless `force` is set — then delete + regenerate, T-0479).
+//! 4. Construct [`EngineCtx`] and call `plugin.gather()` (read-only).
+//! 5. If the plugin returns a [`PatternDetector`], run it now and
+//!    pre-assign each [`DetectedPattern`] an id. The ids are injected
+//!    into the gather facts so they're valid `citation_id`s for the
+//!    compose phase — but the rows are NOT written yet.
+//! 6. Acquire an `arawn_llm::gate::acquire_local` permit and call
+//!    `plugin.compose()`. **No DB lock is held across this call.**
+//! 7. Open ONE SQLite transaction and, inside it, write the tablet
+//!    row, the deferred pattern rows, and every composed/user item.
+//!    `Composed` items require a non-empty `citation_id` (refused
+//!    with [`CeremonyError::MissingCitation`]); `User` items don't.
+//!    Commit on success; any error rolls back the ENTIRE dispatch —
+//!    no half-written tablet, no orphaned pattern rows (T-0479).
+//!
+//! The transaction deliberately spans only the post-compose write
+//! phase (step 7), never gather/compose, so it can't hold the
+//! `arawn.db` write lock across the multi-second LLM call — the
+//! lock-starvation regression an earlier per-item auto-commit was
+//! working around.
 //!
 //! The two-write-path citation contract from I-0043 §Design
 //! Decisions #4 is enforced via the [`NewItem`] enum variants from
 //! T-0279 plus a runtime check on `citation_id.is_empty()` inside
-//! step 9.
+//! step 7.
 
 use std::sync::{Arc, Mutex};
 
@@ -89,13 +92,23 @@ impl EngineDispatcher {
 #[async_trait]
 impl CeremonyDispatcher for EngineDispatcher {
     async fn dispatch(&self, kind: &str) -> Result<DispatchOutcome, CeremonyError> {
-        self.dispatch_for(kind, Utc::now().date_naive()).await
+        self.dispatch_with(kind, Utc::now().date_naive(), false)
+            .await
     }
 
     async fn dispatch_for(
         &self,
         kind: &str,
         target: chrono::NaiveDate,
+    ) -> Result<DispatchOutcome, CeremonyError> {
+        self.dispatch_with(kind, target, false).await
+    }
+
+    async fn dispatch_with(
+        &self,
+        kind: &str,
+        target: chrono::NaiveDate,
+        force: bool,
     ) -> Result<DispatchOutcome, CeremonyError> {
         // 1–2: plugin + period (derived from target, not from "now").
         let plugin = self.registry.get(kind).ok_or_else(|| {
@@ -115,9 +128,10 @@ impl CeremonyDispatcher for EngineDispatcher {
         // outcome (skip / generate / error) can be recorded to the
         // persisted run history (ARAWN-T-0477) at a single point below.
         let result: Result<DispatchOutcome, CeremonyError> = async {
-            // 3: idempotency — skip if tablet already exists with non-`open` status.
+            // 3: idempotency — skip if a tablet already exists for the period.
             if let Some(status) = current_tablet_status(&self.conn, kind, &period_key)? {
                 if status != TabletStatus::Open {
+                    // Reviewed / archived — never overwrite, even with force.
                     return Ok(DispatchOutcome::Skipped {
                         reason: format!(
                             "tablet for ({kind}, {period_key}) already exists with status '{}'",
@@ -125,65 +139,44 @@ impl CeremonyDispatcher for EngineDispatcher {
                         ),
                     });
                 }
-                // status == Open: caller is rerunning a tablet that was
-                // never reviewed. Conservative choice: skip so we don't
-                // overwrite in-flight content. Production may want to
-                // re-open this for explicit `force` runs — defer to a
-                // follow-up.
-                return Ok(DispatchOutcome::Skipped {
-                    reason: format!(
-                        "tablet for ({kind}, {period_key}) already open — refusing to overwrite"
-                    ),
-                });
+                // status == Open (generated but never reviewed).
+                if force {
+                    // ARAWN-T-0479: regenerate — delete the open tablet (its
+                    // items/sections cascade via ON DELETE CASCADE) and fall
+                    // through to a fresh run. A bad LLM output can thus be
+                    // redone without manual row surgery.
+                    delete_tablet(&self.conn, &format!("{kind}-{period_key}"))?;
+                } else {
+                    return Ok(DispatchOutcome::Skipped {
+                        reason: format!(
+                            "tablet for ({kind}, {period_key}) already open — refusing to \
+                             overwrite (force a regenerate to replace it)"
+                        ),
+                    });
+                }
             }
 
-            // 4: Run the pipeline with auto-commit writes. Earlier
-            // revisions wrapped the whole pipeline in BEGIN IMMEDIATE
-            // …COMMIT, which held a SQLite write lock across the LLM
-            // compose call (up to several seconds) and starved every
-            // other writer on `arawn.db` — including `create_session`
-            // via WS-RPC. UAT exposed this when boot-time back-fill
-            // composed 15 tablets in sequence and the test client's
-            // first `create_session` hit `busy_timeout` (5s) and
-            // failed.
-            //
-            // Each insert below is its own SQLite auto-commit
-            // transaction; the LLM compose call sits between writes
-            // with no lock held. On any error after the tablet row is
-            // inserted we clean up by deleting that row so the next
-            // dispatch can retry.
-            let pipeline_result = self
+            // 4: run the pipeline. Every write it makes is wrapped in one
+            // transaction (see `run_pipeline`), so a failure leaves no
+            // partial tablet and no orphaned pattern rows — no post-hoc
+            // cleanup needed.
+            let (tablet_id, item_count) = self
                 .run_pipeline(plugin.as_ref(), &period_key, now, recovered)
-                .await;
-            match pipeline_result {
-                Ok(tablet_id) => {
-                    if let Some(events) = &self.events {
-                        emit_event(
-                            events,
-                            CeremonyEvent::TabletGenerated {
-                                tablet_id: tablet_id.clone(),
-                                kind: kind.to_string(),
-                                period_key: period_key.clone(),
-                            },
-                        );
-                    }
-                    Ok(DispatchOutcome::Generated { tablet_id })
-                }
-                Err(e) => {
-                    // Best-effort cleanup so a failed compose doesn't
-                    // leave an `open`-status tablet that idempotency
-                    // would later refuse to overwrite.
-                    let tablet_id = format!("{}-{period_key}", kind);
-                    if let Err(cleanup_err) = delete_tablet(&self.conn, &tablet_id) {
-                        warn!(
-                            tablet_id,
-                            error = %cleanup_err,
-                            "failed to clean up tablet after pipeline error"
-                        );
-                    }
-                    Err(e)
-                }
+                .await?;
+            if let Some(events) = &self.events {
+                emit_event(
+                    events,
+                    CeremonyEvent::TabletGenerated {
+                        tablet_id: tablet_id.clone(),
+                        kind: kind.to_string(),
+                        period_key: period_key.clone(),
+                    },
+                );
             }
+            Ok(DispatchOutcome::Generated {
+                tablet_id,
+                item_count,
+            })
         }
         .await;
 
@@ -227,23 +220,26 @@ impl EngineDispatcher {
         }
     }
 
+    /// Run the gather → detect → compose → write pipeline. Returns the
+    /// tablet id and the number of items written.
+    ///
+    /// **Atomicity (ARAWN-T-0479):** every persisted row of a dispatch —
+    /// the tablet, its detected-pattern rows, and all its items — is written
+    /// inside ONE SQLite transaction in step 10, AFTER the slow LLM compose
+    /// returns. A failure anywhere in that phase rolls the whole thing back,
+    /// so there's no half-written tablet and no orphaned pattern rows.
+    /// Crucially the transaction does NOT span gather/compose, so it never
+    /// holds the `arawn.db` write lock across the (multi-second) LLM call —
+    /// the lock-starvation regression the per-item auto-commit was guarding
+    /// against (see the comment in `dispatch_with`).
     async fn run_pipeline(
         &self,
         plugin: &dyn Ceremony,
         period_key: &str,
         now: chrono::DateTime<Utc>,
         recovered: bool,
-    ) -> Result<String, CeremonyError> {
-        // 5: insert the tablet.
+    ) -> Result<(String, usize), CeremonyError> {
         let tablet_id = format!("{}-{period_key}", plugin.kind());
-        insert_tablet(
-            &self.conn,
-            &tablet_id,
-            plugin.kind(),
-            period_key,
-            now,
-            recovered,
-        )?;
 
         // 6: construct ctx. Pin the gather window now so gather/
         // compose see a stable [start, end) regardless of when this
@@ -256,43 +252,29 @@ impl EngineDispatcher {
             period_window,
         );
 
-        // 7: gather (deterministic).
+        // 7: gather (deterministic, read-only).
         let mut facts: GatheredFacts = plugin.gather(&ctx).await?;
 
-        // 8: pattern detector (optional). Detected patterns get
-        // written to `ceremony_patterns_detected` AND injected back
-        // into `facts.payload.patterns_detected` so the compose LLM
-        // can cite them. Without this re-injection, compose has no
-        // way to surface a freshly-detected pattern — its prompt only
-        // sees the gather payload. (I-0049 T-0316 surfaced this gap
-        // when priority_completion_ratio fired in the DB but never
-        // landed in the retro's patterns section.)
+        // 8: pattern detector (optional). Patterns are pre-assigned ids and
+        // injected into `facts.payload.patterns_detected` so the compose LLM
+        // can cite them — but the ROWS are deferred to the write transaction
+        // below, so a compose failure can't orphan them. (Re-injection was
+        // added in I-0049 T-0316 when priority_completion_ratio fired in the
+        // DB but never reached the retro's patterns section.)
+        let mut pending_patterns: Vec<(String, DetectedPattern)> = Vec::new();
         if let Some(detector) = plugin.patterns() {
             let patterns = detector.detect(&ctx).await?;
             let mut written: Vec<serde_json::Value> = Vec::with_capacity(patterns.len());
             for pattern in patterns {
-                let iso_week = pattern.iso_week.clone();
-                let pattern_key = pattern.pattern_key.clone();
-                let magnitude = pattern.magnitude;
-                let payload = pattern.payload.clone();
-                let id = ctx.write_pattern_row(pattern).await?;
-                if let Some(events) = &self.events {
-                    emit_event(
-                        events,
-                        CeremonyEvent::PatternDetected {
-                            pattern_id: id.clone(),
-                            iso_week: iso_week.clone(),
-                            pattern_key: pattern_key.clone(),
-                        },
-                    );
-                }
+                let id = Uuid::new_v4().to_string();
                 written.push(serde_json::json!({
                     "id": id,
-                    "iso_week": iso_week,
-                    "pattern_key": pattern_key,
-                    "magnitude": magnitude,
-                    "payload": payload,
+                    "iso_week": pattern.iso_week,
+                    "pattern_key": pattern.pattern_key,
+                    "magnitude": pattern.magnitude,
+                    "payload": pattern.payload,
                 }));
+                pending_patterns.push((id, pattern));
             }
             if let Some(payload_obj) = facts.payload.as_object_mut() {
                 payload_obj.insert(
@@ -303,23 +285,60 @@ impl EngineDispatcher {
         }
 
         // 9: compose, gated through the process-wide LLM resource gate.
-        let _permit = arawn_llm::gate::acquire_local()
-            .await
-            .map_err(|e| CeremonyError::Llm(format!("llm gate refused acquire: {e:?}")))?;
-        let new_items = plugin.compose(&ctx, facts).await?;
+        // No DB lock is held here.
+        let new_items = {
+            let _permit = arawn_llm::gate::acquire_local()
+                .await
+                .map_err(|e| CeremonyError::Llm(format!("llm gate refused acquire: {e:?}")))?;
+            plugin.compose(&ctx, facts).await?
+        };
 
-        // 10: dispatch each item to the right write path.
-        let mut ordinal_by_section: std::collections::HashMap<String, i32> =
-            std::collections::HashMap::new();
-        for item in new_items {
-            match item {
-                NewItem::Composed(c) => {
-                    write_composed_item(&self.conn, &c, &mut ordinal_by_section)?
+        // 10: write phase — tablet + pattern rows + items, all in ONE
+        // transaction. Any error rolls back the entire dispatch.
+        let item_count = {
+            let mut guard = self
+                .conn
+                .0
+                .lock()
+                .map_err(|_| CeremonyError::Storage("connection mutex poisoned".to_string()))?;
+            let tx = guard
+                .transaction()
+                .map_err(|e| CeremonyError::Storage(format!("begin dispatch tx: {e}")))?;
+
+            insert_tablet(&tx, &tablet_id, plugin.kind(), period_key, now, recovered)?;
+            for (id, pattern) in &pending_patterns {
+                write_pattern_row_tx(&tx, id, pattern)?;
+            }
+            let mut ordinal_by_section: std::collections::HashMap<String, i32> =
+                std::collections::HashMap::new();
+            let mut count = 0usize;
+            for item in &new_items {
+                match item {
+                    NewItem::Composed(c) => write_composed_item(&tx, c, &mut ordinal_by_section)?,
+                    NewItem::User(u) => write_user_item(&tx, u, &mut ordinal_by_section)?,
                 }
-                NewItem::User(u) => write_user_item(&self.conn, &u, &mut ordinal_by_section)?,
+                count += 1;
+            }
+            tx.commit()
+                .map_err(|e| CeremonyError::Storage(format!("commit dispatch tx: {e}")))?;
+            count
+        };
+
+        // 11: emit pattern events only after the rows are durably committed.
+        if let Some(events) = &self.events {
+            for (id, pattern) in &pending_patterns {
+                emit_event(
+                    events,
+                    CeremonyEvent::PatternDetected {
+                        pattern_id: id.clone(),
+                        iso_week: pattern.iso_week.clone(),
+                        pattern_key: pattern.pattern_key.clone(),
+                    },
+                );
             }
         }
-        Ok(tablet_id)
+
+        Ok((tablet_id, item_count))
     }
 }
 
@@ -437,39 +456,74 @@ fn current_tablet_status(
     }))
 }
 
-/// Delete a tablet row by id. Used by the dispatcher's error path
-/// to roll back a failed pipeline so the next dispatch can retry.
+/// Delete a tablet and all of its child rows. Used by the `force`
+/// regenerate path (ARAWN-T-0479) to clear an existing open tablet before a
+/// fresh dispatch.
+///
+/// The ceremony schema declares `ON DELETE CASCADE` on every child FK, but
+/// the ceremony connection doesn't enable `PRAGMA foreign_keys`, so the
+/// cascade never fires — we delete the children by hand, in one transaction,
+/// to avoid orphaning `ceremony_items` / `_sections` / `_priorities` /
+/// `_diary` rows. (`ceremony_todos_rolling` is a view since V9, not a table.)
 fn delete_tablet(conn: &ConnHandle, tablet_id: &str) -> Result<(), CeremonyError> {
-    let conn = conn
+    let mut guard = conn
         .0
         .lock()
         .map_err(|_| CeremonyError::Storage("connection mutex poisoned".to_string()))?;
-    conn.execute(
+    let tx = guard
+        .transaction()
+        .map_err(|e| CeremonyError::Storage(format!("begin delete-tablet tx: {e}")))?;
+    for sql in [
+        "DELETE FROM ceremony_items WHERE tablet_id = ?1",
+        "DELETE FROM ceremony_priorities WHERE tablet_id = ?1",
+        "DELETE FROM ceremony_diary WHERE tablet_id = ?1",
+        "DELETE FROM ceremony_sections WHERE tablet_id = ?1",
         "DELETE FROM ceremony_tablets WHERE id = ?1",
-        params![tablet_id],
-    )
-    .map_err(|e| CeremonyError::Storage(format!("delete tablet: {e}")))?;
+    ] {
+        tx.execute(sql, params![tablet_id])
+            .map_err(|e| CeremonyError::Storage(format!("delete tablet child rows: {e}")))?;
+    }
+    tx.commit()
+        .map_err(|e| CeremonyError::Storage(format!("commit delete-tablet tx: {e}")))?;
     Ok(())
 }
 
+// ARAWN-T-0477/T-0479: the tablet/pattern/item writes run inside a single
+// transaction (see `run_pipeline`), so these helpers take a borrowed
+// `&Connection` (a `&Transaction` derefs to one) rather than locking the
+// shared handle themselves. The lock is acquired once, around the whole
+// write phase, AFTER the slow LLM compose call — never across it.
 fn insert_tablet(
-    conn: &ConnHandle,
+    conn: &Connection,
     tablet_id: &str,
     kind: &str,
     period_key: &str,
     now: chrono::DateTime<Utc>,
     recovered: bool,
 ) -> Result<(), CeremonyError> {
-    let conn = conn
-        .0
-        .lock()
-        .map_err(|_| CeremonyError::Storage("connection mutex poisoned".to_string()))?;
     conn.execute(
         "INSERT INTO ceremony_tablets (id, kind, period_key, generated_at, status, lenses_scanned, recovered) \
          VALUES (?1, ?2, ?3, ?4, 'open', '[]', ?5)",
         params![tablet_id, kind, period_key, now.to_rfc3339(), recovered as i64],
     )
     .map_err(|e| CeremonyError::Storage(format!("insert tablet: {e}")))?;
+    Ok(())
+}
+
+/// Write a detected-pattern row inside the dispatch transaction. The id is
+/// pre-generated in `run_pipeline` (so the compose LLM can cite it before
+/// the row is committed).
+fn write_pattern_row_tx(
+    conn: &Connection,
+    id: &str,
+    pattern: &DetectedPattern,
+) -> Result<(), CeremonyError> {
+    conn.execute(
+        "INSERT INTO ceremony_patterns_detected (id, iso_week, pattern_key, magnitude, payload, surfaced_in_retro) \
+         VALUES (?1, ?2, ?3, ?4, ?5, 0)",
+        params![id, &pattern.iso_week, &pattern.pattern_key, pattern.magnitude, pattern.payload.to_string()],
+    )
+    .map_err(|e| CeremonyError::Storage(format!("insert pattern row: {e}")))?;
     Ok(())
 }
 
@@ -485,7 +539,7 @@ fn next_ordinal(
 }
 
 fn write_composed_item(
-    conn: &ConnHandle,
+    conn: &Connection,
     item: &ComposedItem,
     ordinal_by_section: &mut std::collections::HashMap<String, i32>,
 ) -> Result<(), CeremonyError> {
@@ -497,10 +551,6 @@ fn write_composed_item(
     }
     let _ = next_ordinal(ordinal_by_section, &item.section_key);
     let body = item.body.to_string();
-    let conn = conn
-        .0
-        .lock()
-        .map_err(|_| CeremonyError::Storage("connection mutex poisoned".to_string()))?;
     conn.execute(
         "INSERT INTO ceremony_items (id, tablet_id, section_key, ordinal, kind, body, citation_id, created_at) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
@@ -520,16 +570,12 @@ fn write_composed_item(
 }
 
 fn write_user_item(
-    conn: &ConnHandle,
+    conn: &Connection,
     item: &UserItem,
     ordinal_by_section: &mut std::collections::HashMap<String, i32>,
 ) -> Result<(), CeremonyError> {
     let _ = next_ordinal(ordinal_by_section, &item.section_key);
     let body = item.body.to_string();
-    let conn = conn
-        .0
-        .lock()
-        .map_err(|_| CeremonyError::Storage("connection mutex poisoned".to_string()))?;
     conn.execute(
         "INSERT INTO ceremony_items (id, tablet_id, section_key, ordinal, kind, body, citation_id, created_at) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL, ?7)",
@@ -693,7 +739,7 @@ mod tests {
         let disp = EngineDispatcher::new(conn.clone(), reg);
         let outcome = disp.dispatch("retro").await.unwrap();
         match outcome {
-            DispatchOutcome::Generated { tablet_id } => {
+            DispatchOutcome::Generated { tablet_id, .. } => {
                 assert_eq!(tablet_id, "retro-2026-W20");
             }
             other => panic!("expected Generated, got {other:?}"),
@@ -718,6 +764,156 @@ mod tests {
         // Rollback: no tablet, no items.
         assert_eq!(count_rows(&conn, "ceremony_tablets"), 0);
         assert_eq!(count_rows(&conn, "ceremony_items"), 0);
+    }
+
+    /// Detects exactly one pattern — used to prove pattern rows roll back
+    /// with the rest of a failed dispatch (ARAWN-T-0479).
+    struct OnePattern;
+    #[async_trait]
+    impl crate::plugin::PatternDetector for OnePattern {
+        async fn detect(
+            &self,
+            _ctx: &dyn CeremonyCtx,
+        ) -> Result<Vec<DetectedPattern>, CeremonyError> {
+            Ok(vec![DetectedPattern {
+                iso_week: "2026-W20".into(),
+                pattern_key: "test_pattern".into(),
+                magnitude: 1.0,
+                payload: json!({}),
+            }])
+        }
+    }
+
+    /// A plugin with a pattern detector + a configurable item set.
+    struct PatternPlugin {
+        items: std::sync::Mutex<Vec<NewItem>>,
+        detector: OnePattern,
+    }
+    #[async_trait]
+    impl Ceremony for PatternPlugin {
+        fn kind(&self) -> &'static str {
+            "retro"
+        }
+        fn period_key(&self, _now: chrono::DateTime<Utc>) -> String {
+            "2026-W20".into()
+        }
+        fn period_window(
+            &self,
+            _period_key: &str,
+        ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyError> {
+            let now = Utc::now();
+            Ok((now, now + chrono::Duration::days(7)))
+        }
+        fn default_schedule(&self) -> CronSchedule {
+            CronSchedule::local("0 16 * * FRI")
+        }
+        async fn gather(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError> {
+            Ok(GatheredFacts::new(json!({})))
+        }
+        async fn compose(
+            &self,
+            _ctx: &dyn CeremonyCtx,
+            _facts: GatheredFacts,
+        ) -> Result<Vec<NewItem>, CeremonyError> {
+            Ok(std::mem::take(&mut *self.items.lock().unwrap()))
+        }
+        fn patterns(&self) -> Option<&dyn crate::plugin::PatternDetector> {
+            Some(&self.detector)
+        }
+    }
+
+    #[tokio::test]
+    async fn failed_dispatch_rolls_back_pattern_rows() {
+        // ARAWN-T-0479: a mid-write failure rolls back the WHOLE dispatch,
+        // including detected-pattern rows that older code wrote before
+        // compose and then orphaned.
+        let (_tmp, conn) = open_test_db();
+        let reg = PluginRegistry::new();
+        let items = vec![
+            item_composed("retro-2026-W20", "what_happened", "sig-1"),
+            item_composed("retro-2026-W20", "what_happened", ""), // missing citation → fail
+        ];
+        reg.register(Arc::new(PatternPlugin {
+            items: std::sync::Mutex::new(items),
+            detector: OnePattern,
+        }))
+        .unwrap();
+        let disp = EngineDispatcher::new(conn.clone(), reg);
+
+        let err = disp.dispatch("retro").await.unwrap_err();
+        assert!(matches!(err, CeremonyError::MissingCitation(_)));
+        assert_eq!(count_rows(&conn, "ceremony_tablets"), 0);
+        assert_eq!(count_rows(&conn, "ceremony_items"), 0);
+        assert_eq!(
+            count_rows(&conn, "ceremony_patterns_detected"),
+            0,
+            "the pattern row must roll back with the failed dispatch"
+        );
+    }
+
+    /// Composes one user item every run (idempotent — no `mem::take`), so a
+    /// re-dispatch produces the same shape. Backs the force-regenerate test.
+    struct RepeatPlugin;
+    #[async_trait]
+    impl Ceremony for RepeatPlugin {
+        fn kind(&self) -> &'static str {
+            "retro"
+        }
+        fn period_key(&self, _now: chrono::DateTime<Utc>) -> String {
+            "2026-W20".into()
+        }
+        fn period_window(
+            &self,
+            _period_key: &str,
+        ) -> Result<(DateTime<Utc>, DateTime<Utc>), CeremonyError> {
+            let now = Utc::now();
+            Ok((now, now + chrono::Duration::days(7)))
+        }
+        fn default_schedule(&self) -> CronSchedule {
+            CronSchedule::local("0 16 * * FRI")
+        }
+        async fn gather(&self, _ctx: &dyn CeremonyCtx) -> Result<GatheredFacts, CeremonyError> {
+            Ok(GatheredFacts::new(json!({})))
+        }
+        async fn compose(
+            &self,
+            _ctx: &dyn CeremonyCtx,
+            _facts: GatheredFacts,
+        ) -> Result<Vec<NewItem>, CeremonyError> {
+            Ok(vec![item_user("retro-2026-W20", "diary")])
+        }
+    }
+
+    #[tokio::test]
+    async fn force_regenerates_open_tablet() {
+        // ARAWN-T-0479: an open (never-reviewed) tablet is skipped on a
+        // normal re-dispatch but regenerated under `force` — the old rows
+        // are deleted, not accumulated.
+        let (_tmp, conn) = open_test_db();
+        let reg = PluginRegistry::new();
+        reg.register(Arc::new(RepeatPlugin)).unwrap();
+        let disp = EngineDispatcher::new(conn.clone(), reg);
+        let today = Utc::now().date_naive();
+
+        let out = disp.dispatch_with("retro", today, false).await.unwrap();
+        assert!(matches!(
+            out,
+            DispatchOutcome::Generated { item_count: 1, .. }
+        ));
+        assert_eq!(count_rows(&conn, "ceremony_tablets"), 1);
+        assert_eq!(count_rows(&conn, "ceremony_items"), 1);
+
+        // No force → the open tablet is left alone.
+        let out = disp.dispatch_with("retro", today, false).await.unwrap();
+        assert!(matches!(out, DispatchOutcome::Skipped { .. }));
+        assert_eq!(count_rows(&conn, "ceremony_items"), 1);
+
+        // Force → regenerate. Still exactly one tablet + one item (the prior
+        // open tablet's rows were deleted first, not duplicated).
+        let out = disp.dispatch_with("retro", today, true).await.unwrap();
+        assert!(matches!(out, DispatchOutcome::Generated { .. }));
+        assert_eq!(count_rows(&conn, "ceremony_tablets"), 1);
+        assert_eq!(count_rows(&conn, "ceremony_items"), 1);
     }
 
     /// Read the latest `ceremony_run_history` row for a kind.

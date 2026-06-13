@@ -71,7 +71,7 @@ impl Tool for RetroRunTool {
         _params: Value,
     ) -> Result<ToolOutput, ToolError> {
         match self.svc.run("retro").await {
-            Ok(DispatchOutcome::Generated { tablet_id }) => Ok(ToolOutput::success(
+            Ok(DispatchOutcome::Generated { tablet_id, .. }) => Ok(ToolOutput::success(
                 json!({ "status": "generated", "tablet_id": tablet_id }).to_string(),
             )),
             Ok(DispatchOutcome::Skipped { reason }) => Ok(ToolOutput::success(
@@ -451,6 +451,7 @@ mod tests {
         async fn dispatch(&self, _kind: &str) -> Result<DispatchOutcome, CeremonyError> {
             Ok(DispatchOutcome::Generated {
                 tablet_id: "tablet-stub".into(),
+                item_count: 0,
             })
         }
     }

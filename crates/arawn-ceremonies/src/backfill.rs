@@ -201,6 +201,7 @@ mod tests {
             }
             Ok(DispatchOutcome::Generated {
                 tablet_id: format!("{kind}-{target}"),
+                item_count: 0,
             })
         }
     }

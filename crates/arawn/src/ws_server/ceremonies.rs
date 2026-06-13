@@ -155,7 +155,7 @@ pub(super) async fn dispatch(
                 .unwrap_or("retro")
                 .to_string();
             match cer.run(&kind).await {
-                Ok(arawn_ceremonies::DispatchOutcome::Generated { tablet_id }) => {
+                Ok(arawn_ceremonies::DispatchOutcome::Generated { tablet_id, .. }) => {
                     Response::success(
                         id,
                         serde_json::json!({

@@ -67,14 +67,36 @@ pub trait CeremonyDispatcher: Send + Sync {
     ) -> Result<DispatchOutcome, CeremonyError> {
         self.dispatch(kind).await
     }
+
+    /// Like [`dispatch_for`] but with a `force` flag: when `true`, an
+    /// existing *open* (never-reviewed) tablet for the period is deleted and
+    /// regenerated instead of being skipped (ARAWN-T-0479). A non-open
+    /// tablet (reviewed / archived) is still never overwritten, with or
+    /// without force.
+    ///
+    /// Default impl ignores `force` and delegates to `dispatch_for`, so stub
+    /// dispatchers keep their existing behavior.
+    async fn dispatch_with(
+        &self,
+        kind: &str,
+        target: chrono::NaiveDate,
+        _force: bool,
+    ) -> Result<DispatchOutcome, CeremonyError> {
+        self.dispatch_for(kind, target).await
+    }
 }
 
 /// What happened during a `dispatch` call. The runner logs this; the
 /// caller of `run_once` gets it back.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DispatchOutcome {
-    /// A new tablet was generated.
-    Generated { tablet_id: String },
+    /// A new tablet was generated. `item_count` is how many items were
+    /// written (ARAWN-T-0479) so the caller / `/status` can see partial vs
+    /// full success.
+    Generated {
+        tablet_id: String,
+        item_count: usize,
+    },
     /// A tablet for `(kind, period_key)` already existed and was
     /// not in `open` status; the dispatcher chose not to overwrite.
     Skipped { reason: String },
@@ -245,8 +267,11 @@ impl Task for CeremonyDispatchTask {
 
     async fn execute(&self, context: Context<Value>) -> Result<Context<Value>, TaskError> {
         match self.dispatcher.dispatch(&self.kind).await {
-            Ok(DispatchOutcome::Generated { tablet_id }) => {
-                info!(kind = %self.kind, %tablet_id, "ceremony generated");
+            Ok(DispatchOutcome::Generated {
+                tablet_id,
+                item_count,
+            }) => {
+                info!(kind = %self.kind, %tablet_id, item_count, "ceremony generated");
                 Ok(context)
             }
             Ok(DispatchOutcome::Skipped { reason }) => {
@@ -418,6 +443,7 @@ mod tests {
             already.push(kind.to_string());
             Ok(DispatchOutcome::Generated {
                 tablet_id: format!("{kind}-2026-05-15"),
+                item_count: 0,
             })
         }
     }

@@ -238,7 +238,7 @@ async fn uat_4_week_retro_with_pattern_detection() {
     // === step 1: dispatch the retro ===
     let outcome = dispatcher.dispatch("retro").await.unwrap();
     let tablet_id = match outcome {
-        DispatchOutcome::Generated { tablet_id } => tablet_id,
+        DispatchOutcome::Generated { tablet_id, .. } => tablet_id,
         other => panic!("expected Generated, got {other:?}"),
     };
     assert_eq!(tablet_id, format!("retro-{iso_now}"));
