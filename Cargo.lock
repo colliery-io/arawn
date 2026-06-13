@@ -461,6 +461,7 @@ version = "0.1.0"
 dependencies = [
  "arawn-core",
  "arawn-engine",
+ "arawn-llm",
  "arawn-memory",
  "arawn-storage",
  "async-trait",
