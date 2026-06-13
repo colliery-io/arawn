@@ -863,6 +863,17 @@ async fn main() -> Result<()> {
         registry.register(Box::new(arawn_engine::LensDescribeTool::new(
             service.shared_store(),
         )));
+        // ARAWN-T-0484: extraction operator tools (explain / rerun / dismiss),
+        // backed by the extraction_log + cursor stores on the shared store.
+        registry.register(Box::new(arawn_engine::SignalExplainTool::new(
+            service.shared_store(),
+        )));
+        registry.register(Box::new(arawn_engine::ExtractRerunTool::new(
+            service.shared_store(),
+        )));
+        registry.register(Box::new(arawn_engine::SignalDismissTool::new(
+            service.shared_store(),
+        )));
 
         // Generic todo tools (I-0049 T-0313) — always available,
         // not ceremony-gated. The agent uses these for chat-driven

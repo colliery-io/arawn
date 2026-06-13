@@ -98,6 +98,19 @@ impl<'a> ExtractorCursorStore<'a> {
         Ok(())
     }
 
+    /// Delete every cursor for a lens so the next extraction pass
+    /// re-evaluates all of its rows from the beginning (ARAWN-T-0484,
+    /// `extract_rerun`). Returns the number of cursors cleared. Re-runs are
+    /// idempotent — `store_fact` dedups entities and dismissed rows stay
+    /// skipped (their `extraction_log` flag survives).
+    pub fn clear_for_lens(&self, lens_name: &str) -> Result<usize, StorageError> {
+        let n = self.db.conn().execute(
+            "DELETE FROM extractor_cursors WHERE lens_name = ?1",
+            [lens_name],
+        )?;
+        Ok(n)
+    }
+
     /// List every cursor row across all lenses — backs the extraction
     /// block of the health surface (ARAWN-I-0068 P2-1). Ordered by
     /// (lens, feed_type) for stable rendering.
@@ -217,6 +230,25 @@ mod tests {
         store.advance("pat", "gmail_messages", t0).unwrap();
         let c = store.get("pat", "gmail_messages").unwrap().unwrap();
         assert_eq!(c.last_source_ts, Some(t1));
+    }
+
+    #[test]
+    fn clear_for_lens_removes_only_that_lens() {
+        let db = db();
+        let store = ExtractorCursorStore::new(&db);
+        let t: DateTime<Utc> = "2026-05-01T10:00:00Z".parse::<DateTime<Utc>>().unwrap();
+        store.advance("pat", "gmail_messages", t).unwrap();
+        store.advance("pat", "slack_messages", t).unwrap();
+        store.advance("other", "gmail_messages", t).unwrap();
+
+        let cleared = store.clear_for_lens("pat").unwrap();
+        assert_eq!(cleared, 2, "both of pat's cursors cleared");
+        assert!(store.list_for_lens("pat").unwrap().is_empty());
+        assert_eq!(
+            store.list_for_lens("other").unwrap().len(),
+            1,
+            "other lens untouched"
+        );
     }
 
     #[test]

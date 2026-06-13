@@ -16,7 +16,8 @@ use tracing::{debug, info, warn};
 
 use arawn_core::Lens;
 use arawn_projections::{ProjectionRow, ProjectionStore};
-use arawn_storage::{ExtractorCursorStore, Store};
+use arawn_storage::{ExtractionLogStore, ExtractionOutcome, ExtractorCursorStore, Store};
+use uuid::Uuid;
 
 use crate::chain::ExtractionChain;
 use crate::error::ExtractionError;
@@ -102,18 +103,64 @@ impl ExtractorRunner {
 
         let kb = (self.memory)(&lens.name)?;
 
+        // One provenance id per pass (ARAWN-T-0484) — stamped on every
+        // extraction_log row this pass writes.
+        let run_id = Uuid::new_v4().to_string();
+
         let mut stats = RunStats::default();
         let mut latest_processed_ts: Option<DateTime<Utc>> = cursor_ts;
         for row in &rows {
             stats.processed += 1;
+
+            // ARAWN-T-0484: a dismissed row is skipped without re-extracting,
+            // so a signal the user threw away doesn't reappear on the next
+            // pass. The cursor still advances past it.
+            let dismissed = {
+                let store = self.store.lock().unwrap();
+                ExtractionLogStore::new(store.database())
+                    .is_dismissed(&lens.name, &row.id)
+                    .unwrap_or(false)
+            };
+            if dismissed {
+                stats.skipped += 1;
+                if latest_processed_ts
+                    .map(|p| row.source_ts > p)
+                    .unwrap_or(true)
+                {
+                    latest_processed_ts = Some(row.source_ts);
+                }
+                continue;
+            }
+
             match self.chain.run(lens, row, &kb).await {
                 Ok(outcome) => {
-                    if outcome.skipped {
+                    let log_outcome = if outcome.skipped {
                         stats.skipped += 1;
+                        ExtractionOutcome::Skipped
+                    } else if outcome.entities_written.is_empty() {
+                        // In scope but produced nothing — "empty", not "skipped".
+                        stats.kept += 1;
+                        ExtractionOutcome::Empty
                     } else {
                         stats.kept += 1;
                         stats.entities_written += outcome.entities_written.len();
                         stats.relations_written += outcome.relations_written;
+                        ExtractionOutcome::Ok
+                    };
+                    // Record the decision (best-effort — a log failure must
+                    // not abort extraction).
+                    {
+                        let store = self.store.lock().unwrap();
+                        if let Err(e) = ExtractionLogStore::new(store.database()).record(
+                            &lens.name,
+                            &row.id,
+                            &run_id,
+                            log_outcome,
+                            outcome.reason.as_deref(),
+                        ) {
+                            warn!(lens = %lens.name, row_id = %row.id, error = %e,
+                                  "failed to record extraction_log row");
+                        }
                     }
                     if latest_processed_ts
                         .map(|p| row.source_ts > p)

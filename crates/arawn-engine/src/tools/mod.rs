@@ -5,6 +5,7 @@ pub mod ceremony;
 pub mod daily;
 pub mod enter_plan_mode;
 pub mod exit_plan_mode;
+pub mod extraction;
 pub mod feed_search;
 pub mod file_edit;
 pub mod file_read;
@@ -43,6 +44,7 @@ pub use daily::{
 };
 pub use enter_plan_mode::EnterPlanModeTool;
 pub use exit_plan_mode::ExitPlanModeTool;
+pub use extraction::{ExtractRerunTool, SignalDismissTool, SignalExplainTool};
 pub use feed_search::FeedSearchTool;
 pub use file_edit::FileEditTool;
 pub use file_read::FileReadTool;

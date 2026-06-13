@@ -24,6 +24,10 @@ pub struct ChainOutcome {
     pub relations_written: usize,
     /// True when classify decided this row is out of scope.
     pub skipped: bool,
+    /// The classify rationale for this row (ARAWN-T-0484) — surfaced by
+    /// `signal_explain` so an operator can see *why* a row produced
+    /// (or didn't produce) signal. `None` for chains that don't classify.
+    pub reason: Option<String>,
 }
 
 #[async_trait]
@@ -56,6 +60,7 @@ impl ExtractionChain for StubChain {
             entities_written: Vec::new(),
             relations_written: 0,
             skipped: true,
+            reason: None,
         })
     }
 }

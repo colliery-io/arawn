@@ -1,5 +1,6 @@
 pub mod database;
 pub mod error;
+pub mod extraction_log_store;
 pub mod extractor_cursor_store;
 pub mod failure_history;
 pub mod jsonl;
@@ -11,6 +12,7 @@ pub mod todos;
 
 pub use database::Database;
 pub use error::StorageError;
+pub use extraction_log_store::{ExtractionLogStore, ExtractionOutcome, ExtractionRecord};
 pub use extractor_cursor_store::{ExtractorCursor, ExtractorCursorStore};
 pub use failure_history::{CeremonyRunRecord, StewardErrorRecord};
 pub use jsonl::{JsonlMessageStore, lens_dir_name};

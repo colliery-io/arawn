@@ -4,14 +4,14 @@ level: task
 title: "Extraction operator tooling — signal_explain / extract_rerun / signal_dismiss + per-row reasoning store"
 short_code: "ARAWN-T-0484"
 created_at: 2026-06-13T12:41:44.053214+00:00
-updated_at: 2026-06-13T12:41:44.053214+00:00
+updated_at: 2026-06-13T13:23:55.791612+00:00
 parent: ARAWN-I-0068
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -39,6 +39,10 @@ Give the user three agent tools to inspect and correct extraction, backed by a p
 ### Priority
 - [x] P3 - Low (quality-of-life; the determinism core that prevents silent corruption already shipped in T-0482)
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 ## Acceptance Criteria **[REQUIRED]**
 
 - [ ] An `extraction_log` table records, per (lens, projection row): the run id, outcome (`ok` | `empty` | `skipped`), the classify reason, and a `dismissed` flag. Distinguishes "extracted empty" from "skipped" (the T-0482 acceptance bullet deferred here).
@@ -62,4 +66,22 @@ The `dismissed` flag must be consulted by the chain BEFORE re-extraction, else a
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-06-13 — COMPLETE ✅
+**Data layer (`arawn-storage`):**
+- Migration `V14__extraction_log.sql` + `ExtractionLogStore`: per `(lens, projection_id)` — `run_id`, `outcome` (`ok`|`empty`|`skipped`), `reason`, `dismissed`, `updated_at`. `record` (upsert, preserves dismissed), `get`, `is_dismissed`, `set_dismissed` (pre-emptive dismiss inserts a placeholder). This is the per-row reasoning store that distinguishes **extracted-empty vs skipped** (the bullet deferred from T-0482).
+- `ExtractorCursorStore::clear_for_lens` for `extract_rerun`.
+
+**Pipeline (`arawn-extractor`):**
+- `ChainOutcome` gained `reason: Option<String>`; `CotChain::run` carries the classify rationale onto every outcome (out-of-scope, empty, ok).
+- `ExtractorRunner::run_for_lens`: a `run_id` per pass; **skips dismissed rows before the chain runs** (so a dismissed signal never reappears); records an `extraction_log` row per processed row (outcome derived: skipped / empty / ok), best-effort.
+
+**Tools (`arawn-engine/src/tools/extraction.rs`, registered in main.rs with `service.shared_store()`):**
+- `signal_explain {lens, projection_id}` → recorded outcome + reason + run_id + dismissed.
+- `extract_rerun {lens}` → clears the lens's cursors so the next pass re-evaluates (idempotent via store_fact dedup; dismissed rows stay dismissed).
+- `signal_dismiss {lens, projection_id, undo?}` → sets the dismissed flag so the runner skips the row. (Removing an already-stored entity stays the existing `forget` tool's job; documented in the tool.)
+
+**Run-id provenance:** stamped on the `extraction_log` row (entities already dedup via `store_fact`, so a per-run id on the EXTRACTED_FROM edge would be annotation-only — the log is the better home).
+
+**Tests:** storage — `record_and_get_roundtrip`, `record_distinguishes_empty_from_skipped`, `dismiss_sticks_and_survives_re_record`, `pre_emptive_dismiss_on_unseen_row`, `clear_for_lens_removes_only_that_lens`. extractor — `extraction_log_records_outcome_and_reason`, `dismissed_row_is_skipped_without_extracting`.
+
+**Gates:** fmt + clippy -D warnings clean · storage(84) + extractor(33) + arawn-tests local_service(18)/seams(3) green; binary builds with the 3 tools registered. All acceptance criteria met.

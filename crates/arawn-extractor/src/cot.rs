@@ -74,6 +74,9 @@ impl ExtractionChain for CotChain {
 
         // ── Stage 1: classify ───────────────────────────────────────────
         let classify = self.classify(lens, row, &known_facts).await?;
+        // Carry the classify rationale onto every outcome so `signal_explain`
+        // (ARAWN-T-0484) can report why a row was / wasn't turned into signal.
+        let reason = Some(classify.reason.clone());
         if !classify.in_scope {
             debug!(
                 lens = %lens.name,
@@ -85,6 +88,7 @@ impl ExtractionChain for CotChain {
                 entities_written: Vec::new(),
                 relations_written: 0,
                 skipped: true,
+                reason,
             });
         }
 
@@ -108,15 +112,23 @@ impl ExtractionChain for CotChain {
         // ── Stage 2: extract ────────────────────────────────────────────
         let candidates = self.extract(lens, row, &ontology, &known_facts).await?;
         if candidates.is_empty() {
-            return Ok(ChainOutcome::default());
+            // In scope but produced nothing — "extracted empty", distinct
+            // from "skipped" (ARAWN-T-0484).
+            return Ok(ChainOutcome {
+                reason,
+                ..Default::default()
+            });
         }
 
         // ── Stage 3: link-by-name ───────────────────────────────────────
         let link_proposals = self.link_by_name(lens, &candidates).await?;
 
         // ── Stage 4: write ──────────────────────────────────────────────
-        self.write(row, &candidates, &link_proposals, kb, &ontology)
-            .await
+        let mut outcome = self
+            .write(row, &candidates, &link_proposals, kb, &ontology)
+            .await?;
+        outcome.reason = reason;
+        Ok(outcome)
     }
 }
 
@@ -442,6 +454,8 @@ impl CotChain {
             entities_written,
             relations_written,
             skipped: false,
+            // `run` overwrites this with the classify rationale.
+            reason: None,
         })
     }
 }
@@ -1032,6 +1046,86 @@ mod integration {
         assert_eq!(
             stats.relations_written, 0,
             "a sub-floor FTS hit must not produce a link"
+        );
+    }
+
+    #[tokio::test]
+    async fn extraction_log_records_outcome_and_reason() {
+        // ARAWN-T-0484: a normal run records the per-row outcome + classify
+        // reason so `signal_explain` can report it.
+        let fx = setup();
+        fx.proj
+            .write_batch(&[fixture_proj(
+                "m1",
+                "we chose oauth2-rs to close out auth",
+                0,
+            )])
+            .unwrap();
+        let mock = Arc::new(
+            KeyedMockLlm::new()
+                .default_classify(
+                    serde_json::json!({"in_scope": true, "reason": "relevant to auth"}),
+                )
+                .default_extract(serde_json::json!([
+                    {"entity_type": "decision", "title": "use oauth2-rs"}
+                ]))
+                .default_link(serde_json::json!([])),
+        );
+        let runner = runner_with(&fx, mock, 50);
+        runner
+            .run_for_lens(&ws("pat", "pat's stuff"), "gmail_messages")
+            .await
+            .unwrap();
+
+        let pid = arawn_projections::gmail::projection_id("feed-1", "m1");
+        let store = fx.store.lock().unwrap();
+        let rec = arawn_storage::ExtractionLogStore::new(store.database())
+            .get("pat", &pid)
+            .unwrap()
+            .unwrap();
+        assert_eq!(rec.outcome, "ok");
+        assert_eq!(rec.reason.as_deref(), Some("relevant to auth"));
+        assert!(!rec.dismissed);
+    }
+
+    #[tokio::test]
+    async fn dismissed_row_is_skipped_without_extracting() {
+        // ARAWN-T-0484: a dismissed row is skipped before the chain runs, so
+        // a thrown-away signal is never re-created.
+        let fx = setup();
+        fx.proj
+            .write_batch(&[fixture_proj(
+                "m1",
+                "we chose oauth2-rs to close out auth",
+                0,
+            )])
+            .unwrap();
+        let pid = arawn_projections::gmail::projection_id("feed-1", "m1");
+        {
+            let store = fx.store.lock().unwrap();
+            arawn_storage::ExtractionLogStore::new(store.database())
+                .set_dismissed("pat", &pid, true)
+                .unwrap();
+        }
+        let mock = Arc::new(
+            KeyedMockLlm::new()
+                .default_classify(serde_json::json!({"in_scope": true, "reason": "x"}))
+                .default_extract(serde_json::json!([
+                    {"entity_type": "decision", "title": "use oauth2-rs"}
+                ]))
+                .default_link(serde_json::json!([])),
+        );
+        let runner = runner_with(&fx, mock, 50);
+        let stats = runner
+            .run_for_lens(&ws("pat", "pat's stuff"), "gmail_messages")
+            .await
+            .unwrap();
+        assert_eq!(stats.processed, 1);
+        assert_eq!(stats.skipped, 1, "a dismissed row is skipped");
+        assert_eq!(stats.kept, 0);
+        assert_eq!(
+            stats.entities_written, 0,
+            "a dismissed row must not extract anything"
         );
     }
 
