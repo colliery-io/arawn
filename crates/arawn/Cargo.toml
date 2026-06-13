@@ -38,6 +38,11 @@ axum = { version = "0.8", features = ["ws"] }
 rust-embed = "8"
 # CORS for the web GUI's browser-facing routes (ARAWN-T-0492 / GUI-G2).
 tower-http = { version = "0.6", features = ["cors"] }
+# Server-side HTML templating for the web GUI (ARAWN-T-0493 / GUI-F2):
+# compile-checked markup, no separate template files to embed. (No `axum`
+# feature — we wrap the rendered string in `axum::response::Html` ourselves to
+# stay decoupled from maud's axum-version pin.)
+maud = "0.26"
 chrono = { workspace = true }
 chrono-tz = "0.10"
 url = "2"
@@ -52,7 +57,7 @@ tempfile = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 toml = "0.8"
-tokio-stream = "0.1"
+tokio-stream = { version = "0.1", features = ["sync"] }
 tokio-tungstenite = "0.26"
 futures-util = "0.3"
 tracing = { workspace = true }

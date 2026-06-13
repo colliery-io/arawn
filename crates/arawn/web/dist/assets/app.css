@@ -30,3 +30,24 @@ h1 { margin: 0 0 0.25rem; letter-spacing: -0.02em; }
 }
 .note { color: var(--muted); font-size: 0.9rem; }
 code { font-family: ui-monospace, SFMono-Regular, monospace; }
+
+/* GUI-F2: surfaces nav as links, live regions for SSE fragments. */
+.surfaces a.surface { text-decoration: none; }
+.surfaces a.surface:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.card {
+  margin: 1.25rem 0;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--fg) 12%, transparent);
+  border-radius: 0.6rem;
+}
+.card[data-connection="closed"] { border-color: #c0392b; }
+.log { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.log li { font-size: 0.9rem; color: var(--muted); }
+.notice .cat {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.8rem;
+  color: var(--accent);
+}
+.notice-warn .cat { color: #d98324; }
+.notice-error .cat { color: #c0392b; }
+

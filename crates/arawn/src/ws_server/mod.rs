@@ -305,9 +305,11 @@ pub async fn run_server(
     let app = Router::new()
         .route("/ws", get(ws_handler))
         .route("/api/decision", post(decision_handler))
-        // Web GUI (ARAWN-I-0070): index + embedded static assets, served from
-        // this same listener. The WS-RPC contract is unchanged.
-        .route("/", get(gui::gui_index))
+        // Web GUI (ARAWN-I-0070): server-rendered shell, SSE push bridge, and
+        // embedded static assets — served from this same listener. The WS-RPC
+        // contract is unchanged.
+        .route("/", get(gui::shell))
+        .route("/events", get(gui::events))
         .route("/assets/{*path}", get(gui::gui_asset))
         .layer(cors)
         .with_state(state);
