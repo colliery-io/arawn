@@ -4,14 +4,14 @@ level: initiative
 title: "Daily-drivable Phase 3: TUI correctness + GUI prerequisites"
 short_code: "ARAWN-I-0069"
 created_at: 2026-06-11T11:19:28.676212+00:00
-updated_at: 2026-06-11T11:19:28.676212+00:00
+updated_at: 2026-06-13T15:41:10.301513+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
