@@ -22,6 +22,7 @@ use crate::local_service::LocalService;
 
 mod ceremonies;
 mod gui;
+mod origin;
 mod todos;
 
 /// Protocol version reported by the `hello` handshake.
@@ -209,6 +210,10 @@ struct AppState {
     /// Authentication token required for WebSocket connections.
     /// If None, authentication is disabled (dev mode).
     auth_token: Option<String>,
+    /// Browser origins allowed to open a WS connection (GUI-G2). A *present*
+    /// `Origin` not in this list is rejected; a *missing* one (non-browser
+    /// clients like the TUI) is allowed.
+    allowed_origins: Arc<Vec<String>>,
 }
 
 /// Generate a random auth token for WebSocket connections.
@@ -261,8 +266,15 @@ pub fn read_token_file() -> Option<String> {
         .map(|s| s.trim().to_string())
 }
 
-/// Start the WebSocket server on the given port.
-pub async fn run_server(service: LocalService, host: &str, port: u16) -> anyhow::Result<()> {
+/// Start the WebSocket server on the given port. `allowed_origins` carries
+/// the operator-configured extra browser origins ([`server.allowed_origins`]);
+/// loopback defaults are derived from `host:port` (GUI-G2).
+pub async fn run_server(
+    service: LocalService,
+    host: &str,
+    port: u16,
+    allowed_origins: Vec<String>,
+) -> anyhow::Result<()> {
     let data_dir = service.data_dir.clone();
 
     // Generate the auth token now (the handler needs it in AppState), but
@@ -271,10 +283,24 @@ pub async fn run_server(service: LocalService, host: &str, port: u16) -> anyhow:
     // clobber the *running* server's token file and lock out its clients.
     let auth_token = generate_auth_token();
 
+    // Effective browser-origin allowlist: loopback defaults + configured extras.
+    let allowlist = origin::build_allowlist(host, port, &allowed_origins);
+    info!(origins = ?allowlist, "web GUI allowed origins");
+
     let state = AppState {
         service: Arc::new(service),
         auth_token: Some(auth_token.clone()),
+        allowed_origins: Arc::new(allowlist.clone()),
     };
+
+    // CORS for the browser-facing HTTP routes (GUI/api): reflect only the
+    // allowlisted origins, GET/POST, with preflight handled by the layer.
+    let cors_origins: Vec<axum::http::HeaderValue> =
+        allowlist.iter().filter_map(|o| o.parse().ok()).collect();
+    let cors = tower_http::cors::CorsLayer::new()
+        .allow_origin(tower_http::cors::AllowOrigin::list(cors_origins))
+        .allow_methods([axum::http::Method::GET, axum::http::Method::POST])
+        .allow_headers(tower_http::cors::Any);
 
     let app = Router::new()
         .route("/ws", get(ws_handler))
@@ -283,6 +309,7 @@ pub async fn run_server(service: LocalService, host: &str, port: u16) -> anyhow:
         // this same listener. The WS-RPC contract is unchanged.
         .route("/", get(gui::gui_index))
         .route("/assets/{*path}", get(gui::gui_asset))
+        .layer(cors)
         .with_state(state);
 
     // T-0348: honor `[server].host` from arawn.toml. Non-loopback
@@ -395,9 +422,18 @@ struct WsQueryParams {
 async fn ws_handler(
     ws: WebSocketUpgrade,
     Query(params): Query<WsQueryParams>,
+    headers: axum::http::HeaderMap,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     debug!("ws_handler: upgrade request received");
+
+    // Origin check (GUI-G2): reject a present-but-disallowed browser origin
+    // (cross-site WebSocket hijacking guard). A *missing* Origin means a
+    // non-browser client (the TUI) and is allowed through to the token check.
+    if origin::check_origin(&headers, &state.allowed_origins) == origin::OriginCheck::Denied {
+        warn!("ws_handler: rejected connection from disallowed Origin");
+        return (StatusCode::FORBIDDEN, "Origin not allowed").into_response();
+    }
 
     // Validate auth token if configured
     if let Some(ref expected_token) = state.auth_token {

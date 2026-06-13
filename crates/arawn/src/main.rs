@@ -1311,7 +1311,13 @@ async fn main() -> Result<()> {
         // to drive. The `health` RPC reports `ready: true` from here on.
         service.mark_ready();
 
-        arawn_bin::ws_server::run_server(service, &config.server.host, serve_port).await?;
+        arawn_bin::ws_server::run_server(
+            service,
+            &config.server.host,
+            serve_port,
+            config.server.allowed_origins.clone(),
+        )
+        .await?;
 
         // Graceful shutdown of workflow runner
         if let Some(ref runner) = *shared_runner.read().await {

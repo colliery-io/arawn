@@ -160,6 +160,12 @@ pub struct ServerConfig {
     pub host: String,
     #[serde(default = "default_port")]
     pub port: u16,
+    /// Extra browser origins allowed to connect (WS `Origin` + CORS), beyond
+    /// the loopback defaults derived from `host:port`. Empty by default —
+    /// localhost-first. Add an entry (e.g. `"http://192.168.1.10:3100"`) only
+    /// when serving the GUI to another device. See ARAWN-T-0492 / GUI-G2.
+    #[serde(default)]
+    pub allowed_origins: Vec<String>,
 }
 
 fn default_host() -> String {
@@ -174,6 +180,7 @@ impl Default for ServerConfig {
         Self {
             host: default_host(),
             port: default_port(),
+            allowed_origins: Vec::new(),
         }
     }
 }
