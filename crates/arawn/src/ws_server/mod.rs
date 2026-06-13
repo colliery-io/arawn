@@ -21,6 +21,7 @@ use arawn_service::ArawnService;
 use crate::local_service::LocalService;
 
 mod ceremonies;
+mod gui;
 mod todos;
 
 /// Protocol version reported by the `hello` handshake.
@@ -278,6 +279,10 @@ pub async fn run_server(service: LocalService, host: &str, port: u16) -> anyhow:
     let app = Router::new()
         .route("/ws", get(ws_handler))
         .route("/api/decision", post(decision_handler))
+        // Web GUI (ARAWN-I-0070): index + embedded static assets, served from
+        // this same listener. The WS-RPC contract is unchanged.
+        .route("/", get(gui::gui_index))
+        .route("/assets/{*path}", get(gui::gui_asset))
         .with_state(state);
 
     // T-0348: honor `[server].host` from arawn.toml. Non-loopback

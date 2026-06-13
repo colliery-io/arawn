@@ -33,6 +33,9 @@ arawn-steward = { path = "../arawn-steward" }
 arawn-ceremonies = { path = "../arawn-ceremonies" }
 rusqlite = { version = "0.37", features = ["bundled"] }
 axum = { version = "0.8", features = ["ws"] }
+# Web GUI asset embedding (ARAWN-I-0070): disk reads in debug for iteration,
+# baked into the binary in release — preserves the single-binary story.
+rust-embed = "8"
 chrono = { workspace = true }
 chrono-tz = "0.10"
 url = "2"

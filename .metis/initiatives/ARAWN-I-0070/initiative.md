@@ -4,14 +4,14 @@ level: initiative
 title: "Web GUI — primary review/triage surface served by the arawn binary"
 short_code: "ARAWN-I-0070"
 created_at: 2026-06-13T15:41:25.946171+00:00
-updated_at: 2026-06-13T16:02:33.908651+00:00
+updated_at: 2026-06-13T16:49:33.537277+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/decompose"
+  - "#phase/active"
 
 
 exit_criteria_met: false
