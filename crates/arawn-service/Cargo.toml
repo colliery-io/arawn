@@ -15,3 +15,8 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
+
+[dev-dependencies]
+# Test-only: construct LlmError values to verify ServiceError surfaces the
+# inner LLM classification (T-0489).
+arawn-llm = { workspace = true }

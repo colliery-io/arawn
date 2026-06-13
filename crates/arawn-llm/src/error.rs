@@ -85,6 +85,24 @@ impl LlmError {
         }
     }
 
+    /// Stable, machine-readable classification of this error. Surfaced
+    /// through the service layer's `ServiceError::details()` so clients (the
+    /// TUI today, a thin web client tomorrow) can distinguish a bad API key
+    /// from a missing model from a rate limit without parsing the message.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            LlmError::Api(_) => "api",
+            LlmError::Auth(_) => "auth",
+            LlmError::ModelNotFound(_) => "model_not_found",
+            LlmError::RateLimited { .. } => "rate_limited",
+            LlmError::ServerError(_) => "server_error",
+            LlmError::Stream(_) => "stream",
+            LlmError::Config(_) => "config",
+            LlmError::Request(_) => "request",
+            LlmError::Json(_) => "json",
+        }
+    }
+
     /// Create from an HTTP status code + body.
     pub fn from_status(status: u16, body: String) -> Self {
         Self::from_status_with_retry_after(status, body, None)
