@@ -1253,10 +1253,19 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                         }
                         WsEvent::Closed => {
                             warn!("server closed connection");
+                            // Drop any modal awaiting a response — its oneshot
+                            // can't be answered over a dead socket and must not
+                            // survive into a future connection.
+                            if app.clear_pending_modal() {
+                                debug!("cleared pending modal on disconnect");
+                            }
                             (false, false, true)
                         }
                         WsEvent::Error(e) => {
                             error!(error = %e, "WebSocket error");
+                            if app.clear_pending_modal() {
+                                debug!("cleared pending modal on ws error");
+                            }
                             (false, false, true)
                         }
                     }

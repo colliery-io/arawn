@@ -291,6 +291,20 @@ impl App {
         }
     }
 
+    /// Drop all pending-modal state. Called when the WS connection drops so a
+    /// modal request left unanswered at disconnect can't leak into the next
+    /// connection and desync the UI. Dropping `active_modal` drops its result
+    /// oneshot *sender* (any awaiter resolves to a clean cancelled path rather
+    /// than a stale value), and dropping `pending_modal_response` drops the
+    /// matching *receiver* so the post-close handler finds nothing to resolve.
+    /// Returns true if there was anything to clear.
+    pub fn clear_pending_modal(&mut self) -> bool {
+        let had = self.active_modal.is_some() || self.pending_modal_response.is_some();
+        self.active_modal = None;
+        self.pending_modal_response = None;
+        had
+    }
+
     fn prev_char_boundary(&self) -> usize {
         let mut pos = self.cursor_pos.saturating_sub(1);
         while pos > 0 && !self.input_buffer.is_char_boundary(pos) {
@@ -748,6 +762,32 @@ mod tests {
         assert_eq!(modal.options.len(), 2);
         assert!(modal.options[0].label.contains("second chat"));
         assert!(modal.options[1].label.contains("first chat"));
+    }
+
+    #[test]
+    fn clear_pending_modal_drops_modal_and_oneshot() {
+        let mut app = App::new();
+        // Open the branch modal (double-Esc) — this sets both `active_modal`
+        // and `pending_modal_response`, the exact state a disconnect must not
+        // carry over.
+        submit_via_input(&mut app, "first chat");
+        submit_via_input(&mut app, "second chat");
+        app.handle_action(Action::EscapeIdle);
+        app.handle_action(Action::EscapeIdle);
+        assert!(app.active_modal.is_some());
+        assert!(app.pending_modal_response.is_some());
+
+        // Disconnect cleanup.
+        let cleared = app.clear_pending_modal();
+
+        assert!(cleared, "should report it cleared outstanding state");
+        assert!(app.active_modal.is_none(), "modal must be gone");
+        assert!(
+            app.pending_modal_response.is_none(),
+            "pending oneshot must be gone so the next connection can't resolve it"
+        );
+        // Idempotent / no-op when nothing is pending.
+        assert!(!app.clear_pending_modal());
     }
 
     #[test]
