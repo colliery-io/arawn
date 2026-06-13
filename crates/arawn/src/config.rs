@@ -483,45 +483,43 @@ impl Default for ArawnConfig {
 }
 
 impl ArawnConfig {
-    /// Load config from `data_dir/arawn.toml`, merging with env var overrides and defaults.
+    /// Load config from `data_dir/arawn.toml`, merging with env var overrides
+    /// and defaults. **Fail-fast**: aborts the process on a file that exists
+    /// but can't be read/parsed — at startup, silently using the Groq defaults
+    /// is how "why is it hitting groq?" happens. For the hot-reload path (where
+    /// exiting would kill a running daemon on a typo) use [`try_load`] instead.
+    ///
+    /// [`try_load`]: ArawnConfig::try_load
     pub fn load(data_dir: &Path) -> Self {
+        match Self::try_load(data_dir) {
+            Ok(config) => config,
+            Err(e) => {
+                // NOTE: this runs before tracing is initialized (see main.rs),
+                // so the message MUST go to stderr to be visible.
+                eprintln!(
+                    "FATAL: {e}\n\
+                     Refusing to start with the built-in defaults (which use the \
+                     Groq provider). Fix the error above, or remove/rename the \
+                     file to intentionally use defaults."
+                );
+                std::process::exit(1);
+            }
+        }
+    }
+
+    /// Like [`load`](ArawnConfig::load) but returns a user-facing error
+    /// instead of exiting the process. The hot-reload path uses this so an
+    /// invalid edit surfaces as a toast and leaves the running config intact,
+    /// rather than crashing the daemon (or silently reverting to defaults).
+    pub fn try_load(data_dir: &Path) -> Result<Self, String> {
         let config_path = data_dir.join("arawn.toml");
         let mut config = if config_path.exists() {
-            match std::fs::read_to_string(&config_path) {
-                Ok(content) => match toml::from_str::<ArawnConfig>(&content) {
-                    Ok(c) => {
-                        info!(path = %config_path.display(), "loaded config");
-                        c
-                    }
-                    Err(e) => {
-                        // A config file that exists but doesn't parse is almost
-                        // never what the user wants — silently falling back to
-                        // the Groq defaults here is how "why is it hitting groq?"
-                        // happens. Abort loudly instead. NOTE: this runs before
-                        // tracing is initialized (see main.rs), so the message
-                        // MUST go to stderr to be visible.
-                        eprintln!(
-                            "FATAL: failed to parse {}: {e}\n\
-                             Refusing to start with the built-in defaults (which use the \
-                             Groq provider). Fix the TOML error above, or remove/rename the \
-                             file to intentionally use defaults.",
-                            config_path.display()
-                        );
-                        std::process::exit(1);
-                    }
-                },
-                Err(e) => {
-                    // Likewise: the file is there but we can't read it
-                    // (permissions, etc.). Don't pretend it's absent.
-                    eprintln!(
-                        "FATAL: failed to read {}: {e}\n\
-                         Refusing to start with the built-in defaults (which use the \
-                         Groq provider).",
-                        config_path.display()
-                    );
-                    std::process::exit(1);
-                }
-            }
+            let content = std::fs::read_to_string(&config_path)
+                .map_err(|e| format!("failed to read {}: {e}", config_path.display()))?;
+            let parsed = toml::from_str::<ArawnConfig>(&content)
+                .map_err(|e| format!("failed to parse {}: {e}", config_path.display()))?;
+            info!(path = %config_path.display(), "loaded config");
+            parsed
         } else {
             debug!("no arawn.toml found, using defaults");
             Self::default()
@@ -535,7 +533,7 @@ impl ArawnConfig {
         // Apply env var overrides
         config.apply_env_overrides();
 
-        config
+        Ok(config)
     }
 
     fn apply_env_overrides(&mut self) {
@@ -745,6 +743,36 @@ fn expand_tilde(path: &str) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn try_load_returns_err_on_invalid_toml_instead_of_exiting() {
+        // Regression guard (T-0489): the hot-reload path must NOT crash the
+        // daemon on a typo. try_load returns Err; the watcher keeps the old
+        // config and surfaces the message.
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("arawn.toml"), "this is = not valid = toml").unwrap();
+        let err = ArawnConfig::try_load(dir.path()).expect_err("invalid toml must error");
+        assert!(err.contains("failed to parse"), "got: {err}");
+    }
+
+    #[test]
+    fn try_load_uses_defaults_when_file_absent() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = ArawnConfig::try_load(dir.path()).expect("absent file → defaults");
+        assert!(config.llm.contains_key("default"));
+    }
+
+    #[test]
+    fn try_load_parses_valid_toml() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("arawn.toml"),
+            "[engine]\nmax_iterations = 99\n",
+        )
+        .unwrap();
+        let config = ArawnConfig::try_load(dir.path()).expect("valid toml");
+        assert_eq!(config.engine.max_iterations, 99);
+    }
 
     #[test]
     fn first_chat_tutorial_matches_default_model() {

@@ -123,7 +123,23 @@ impl ConfigWatcher {
     }
 
     async fn reload(&self) {
-        let config = ArawnConfig::load(&self.data_dir);
+        // Parse first, fail-soft: a typo in arawn.toml must NOT crash the
+        // running daemon (the old `load()` called process::exit on a parse
+        // error) nor silently apply partial changes. On error, keep the
+        // running config and surface an actionable message to the user.
+        let config = match ArawnConfig::try_load(&self.data_dir) {
+            Ok(c) => c,
+            Err(e) => {
+                warn!(error = %e, "config hot-reload rejected — keeping previous config");
+                if let Some(ref n) = self.notify {
+                    n(
+                        true,
+                        format!("config reload failed (keeping previous): {e}"),
+                    );
+                }
+                return;
+            }
+        };
 
         // Reload permissions
         let new_rules =

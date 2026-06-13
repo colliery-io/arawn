@@ -88,5 +88,13 @@ arawn-service = { path = "crates/arawn-service" }
 arawn-storage = { path = "crates/arawn-storage" }
 arawn-tool = { path = "crates/arawn-tool" }
 
+# We carry a *vendored, patched* copy of `sandbox-runtime` under
+# `vendor/sandbox-runtime/` rather than depending on the published crate.
+# It tracks upstream (see `vendor/sandbox-runtime/Cargo.toml.orig` for the
+# pristine manifest and `vendor/sandbox-runtime/upstream-sync.yml` for the
+# sync workflow) with local patches applied. This `[patch.crates-io]` entry
+# redirects every transitive `sandbox-runtime` dependency to that copy. To
+# refresh: re-sync from upstream, re-apply the local patches, and update
+# `Cargo.toml.orig`.
 [patch.crates-io]
 sandbox-runtime = { path = "vendor/sandbox-runtime" }
