@@ -70,13 +70,89 @@ impl Store {
             self.ensure_scratch_lens()?;
             return Ok(());
         }
-        let store = LensStore::new(&self.db);
-        store.create(ws)?;
-
-        // Create lens directory under lenses/<name>/
+        // ARAWN-T-0480: create the directory FIRST, then insert the row.
+        // The old order (insert row, then mkdir) left an orphaned lens row
+        // with no directory when mkdir failed. Mkdir-first means a mkdir
+        // failure aborts before any row is written; an empty leftover dir
+        // (if the insert then fails, e.g. duplicate name) is harmless and
+        // reused on retry.
         let ws_dir = self.data_dir.join("lenses").join(&ws.name);
         std::fs::create_dir_all(&ws_dir)?;
 
+        let store = LensStore::new(&self.db);
+        store.create(ws)?;
+
+        Ok(())
+    }
+
+    /// Promote a session into `new_lens_id` (ARAWN-T-0480, closes T-0012).
+    ///
+    /// Atomically re-points the session's SQLite row at the new lens AND
+    /// moves its JSONL file from the old lens directory to the new one. The
+    /// two live in different stores (SQLite vs the filesystem), so this is a
+    /// compensating-action saga: the row is updated first, then the file is
+    /// moved; if the move fails, the row update is rolled back so we never
+    /// strand a session pointing at a lens whose messages never arrived.
+    ///
+    /// Synchronous (a JSONL rename is a fast metadata op) so callers holding
+    /// the store behind a `std::sync::Mutex` can run it under a brief lock
+    /// without parking the executor across an `.await`.
+    ///
+    /// No-op when the session is already in the target lens. Errors if the
+    /// session or target lens doesn't exist.
+    pub fn promote_session(&self, session_id: Uuid, new_lens_id: Uuid) -> Result<(), StorageError> {
+        let session = SessionStore::new(&self.db)
+            .get(session_id)?
+            .ok_or_else(|| StorageError::NotFound(format!("session {session_id}")))?;
+
+        // Resolve the current (from) directory: "scratch" or the lens slug.
+        let from_dir = match session.lens_id {
+            Some(id) => {
+                let l = LensStore::new(&self.db)
+                    .get(id)?
+                    .ok_or_else(|| StorageError::NotFound(format!("lens {id}")))?;
+                lens_dir_name(&l.name, l.id)
+            }
+            None => "scratch".to_string(),
+        };
+
+        let new_lens = LensStore::new(&self.db)
+            .get(new_lens_id)?
+            .ok_or_else(|| StorageError::NotFound(format!("lens {new_lens_id}")))?;
+        let to_dir = lens_dir_name(&new_lens.name, new_lens.id);
+
+        if from_dir == to_dir {
+            return Ok(());
+        }
+
+        // Remember the prior binding so we can compensate if the move fails.
+        let old_lens_id = session.lens_id;
+        let old_lens_name = session.lens_name.clone();
+
+        // 1. SQLite first.
+        SessionStore::new(&self.db).set_lens(session_id, Some(new_lens.id), &new_lens.name)?;
+
+        // 2. Move the JSONL file. On any failure, undo the SQLite change so
+        //    we don't strand a row pointing at a lens whose file never
+        //    arrived. A session with no messages yet has no file — that's a
+        //    clean no-op move.
+        let from = self.messages.path_for(session_id, &from_dir);
+        let to = self.messages.path_for(session_id, &to_dir);
+        if from.exists() {
+            let move_result = (|| -> std::io::Result<()> {
+                if let Some(parent) = to.parent() {
+                    std::fs::create_dir_all(parent)?;
+                }
+                std::fs::rename(&from, &to)
+            })();
+            if let Err(move_err) = move_result {
+                let _ =
+                    SessionStore::new(&self.db).set_lens(session_id, old_lens_id, &old_lens_name);
+                return Err(move_err.into());
+            }
+        }
+
+        info!(%session_id, from = %from_dir, to = %to_dir, "session promoted");
         Ok(())
     }
 
@@ -302,6 +378,124 @@ mod tests {
         let list = store.list_lenses().unwrap();
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].name, "test");
+    }
+
+    #[test]
+    fn create_lens_mkdir_failure_leaves_no_orphan_row() {
+        // ARAWN-T-0480: mkdir-first means a directory-creation failure aborts
+        // before any lens row is written.
+        let (tmp, store) = setup();
+        // Block the lens dir by planting a FILE where the dir must go.
+        std::fs::write(tmp.path().join("lenses").join("blocked"), b"x").unwrap();
+
+        let ws = Lens::new("blocked", "/tmp/blocked");
+        assert!(
+            store.create_lens(&ws).is_err(),
+            "mkdir over an existing file should fail"
+        );
+        assert!(
+            !store
+                .list_lenses()
+                .unwrap()
+                .iter()
+                .any(|w| w.name == "blocked"),
+            "a failed mkdir must not leave an orphaned lens row"
+        );
+    }
+
+    #[tokio::test]
+    async fn promote_session_moves_sqlite_and_jsonl() {
+        // ARAWN-T-0480 / closes T-0012: scratch → named lens promotion moves
+        // the SQLite binding AND the JSONL file together.
+        let (tmp, store) = setup();
+        let session = Session::scratch();
+        store.create_session(&session).unwrap();
+        store
+            .append_message(
+                session.id,
+                "scratch",
+                &Message::User {
+                    content: "hi".into(),
+                },
+            )
+            .await
+            .unwrap();
+
+        let ws = Lens::new("project", "/tmp/project");
+        store.create_lens(&ws).unwrap();
+        let to_dir = lens_dir_name(&ws.name, ws.id);
+
+        store.promote_session(session.id, ws.id).unwrap();
+
+        // SQLite row re-pointed.
+        let meta = store.get_session_meta(session.id).unwrap().unwrap();
+        assert_eq!(meta.lens_id, Some(ws.id));
+
+        // JSONL moved: gone from scratch, present (and readable) in the lens.
+        let scratch_path = tmp
+            .path()
+            .join("lenses/scratch")
+            .join(session.id.to_string())
+            .join("messages.jsonl");
+        assert!(!scratch_path.exists(), "old scratch file should be gone");
+        let msgs = store.load_messages(session.id, &to_dir).await.unwrap();
+        assert_eq!(msgs.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn promote_session_rolls_back_sqlite_on_move_failure() {
+        // ARAWN-T-0480: if the file move fails, the SQLite binding is rolled
+        // back so the session isn't stranded pointing at a lens whose
+        // messages never arrived.
+        let (tmp, store) = setup();
+        let session = Session::scratch();
+        store.create_session(&session).unwrap();
+        store
+            .append_message(
+                session.id,
+                "scratch",
+                &Message::User {
+                    content: "hi".into(),
+                },
+            )
+            .await
+            .unwrap();
+
+        let ws = Lens::new("project", "/tmp/project");
+        store.create_lens(&ws).unwrap();
+
+        // Inject a move failure: the destination session dir
+        // (lenses/project/<id>) can't be created because a FILE already
+        // occupies that path.
+        std::fs::write(
+            tmp.path()
+                .join("lenses/project")
+                .join(session.id.to_string()),
+            b"not a dir",
+        )
+        .unwrap();
+
+        assert!(
+            store.promote_session(session.id, ws.id).is_err(),
+            "promotion should fail when the destination is blocked"
+        );
+
+        // SQLite rolled back to scratch.
+        let meta = store.get_session_meta(session.id).unwrap().unwrap();
+        assert!(
+            meta.lens_id.is_none(),
+            "a failed promotion must roll back the SQLite binding"
+        );
+        // Original messages still in scratch.
+        let scratch_path = tmp
+            .path()
+            .join("lenses/scratch")
+            .join(session.id.to_string())
+            .join("messages.jsonl");
+        assert!(
+            scratch_path.exists(),
+            "the original messages must survive a failed promotion"
+        );
     }
 
     #[tokio::test]

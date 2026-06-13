@@ -4,14 +4,14 @@ level: task
 title: "Unified Store + session promotion (SQLite update + file move)"
 short_code: "ARAWN-T-0012"
 created_at: 2026-03-31T22:49:35.692482+00:00
-updated_at: 2026-03-31T22:49:35.692482+00:00
+updated_at: 2026-06-13T12:14:57.432097+00:00
 parent: ARAWN-I-0002
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -63,6 +63,10 @@ Compose SQLite stores and JSONL message store into a unified `Store` struct that
 - **Current Problems**: {What's difficult/slow/buggy now}
 - **Benefits of Fixing**: {What improves after refactoring}
 - **Risk Assessment**: {Risks of not addressing this}
+
+## Acceptance Criteria
+
+## Acceptance Criteria
 
 ## Acceptance Criteria
 
@@ -139,4 +143,5 @@ Compose SQLite stores and JSONL message store into a unified `Store` struct that
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-06-13 — CLOSED by [[ARAWN-T-0480]] ✅
+The unified `Store` (composing `Database` + `LensStore` + `SessionStore` + `JsonlMessageStore`, with `open`/`create_session`/scratch) has existed since the I-0002 work. The one missing piece — **atomic session promotion** — landed in [[ARAWN-T-0480]] (I-0068 P2-4): `Store::promote_session(session_id, new_lens_id)` re-points the SQLite binding and moves the JSONL file as a compensating-action saga (rolls the row back if the move fails), plus `create_lens` is now mkdir-first (no orphan rows) and a `/lens promote` RPC + TUI command drive it. Full promotion flow + failure-injection tests included there. Closing as superseded/completed.

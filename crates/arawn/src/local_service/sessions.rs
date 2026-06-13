@@ -71,6 +71,30 @@ impl LocalService {
         })
     }
 
+    /// Promote a session into `lens_id` — moves its SQLite binding + JSONL
+    /// file atomically (ARAWN-T-0480, closes T-0012). The store call is
+    /// synchronous, so it runs under a brief lock with no `.await` held.
+    /// Returns the updated session metadata.
+    pub(super) async fn promote_session_inner(
+        &self,
+        session_id: Uuid,
+        lens_id: Uuid,
+    ) -> Result<SessionInfo, ServiceError> {
+        let meta = {
+            let store = self.store.lock().recover();
+            store.promote_session(session_id, lens_id)?;
+            store
+                .get_session_meta(session_id)?
+                .ok_or_else(|| ServiceError::NotFound(format!("session {session_id}")))?
+        };
+        info!(session_id = %session_id, %lens_id, "session promoted via service");
+        Ok(SessionInfo {
+            id: meta.id,
+            lens_id: meta.lens_id,
+            created_at: meta.created_at,
+        })
+    }
+
     pub(super) async fn load_session_inner(&self, id: Uuid) -> Result<SessionDetail, ServiceError> {
         // Get metadata from SQLite (sync, hold lock briefly)
         let (meta, ws_dir) = {

@@ -91,7 +91,7 @@ impl CommandRegistry {
         // Lens/session management
         self.commands.push(CommandInfo {
             name: "lens".into(),
-            description: "Manage lenses (create, list)".into(),
+            description: "Manage lenses (create, list, promote)".into(),
             kind: CommandKind::BuiltIn,
         });
         self.commands.push(CommandInfo {
@@ -335,6 +335,9 @@ pub enum CommandResult {
     ForgetEntity(String),
     /// Create a new lens.
     LensCreate(String),
+    /// Promote the current session into a named lens (ARAWN-T-0480),
+    /// creating the lens if it doesn't exist. Argument is the lens name.
+    LensPromote(String),
     /// List all lenses.
     LensList,
     /// Create a new session in the current lens.
@@ -690,8 +693,18 @@ pub fn execute_command(cmd: &ParsedCommand, registry: &CommandRegistry) -> Comma
                             }
                         }
                         Some("list") => CommandResult::LensList,
+                        Some("promote") => {
+                            let name = parts.get(1).unwrap_or(&"").trim();
+                            if name.is_empty() {
+                                CommandResult::SystemMessage(
+                                    "Usage: /lens promote <lens-name>\n\nMoves the current session into the named lens (creating it if needed).".into(),
+                                )
+                            } else {
+                                CommandResult::LensPromote(name.to_string())
+                            }
+                        }
                         _ => CommandResult::SystemMessage(
-                            "Usage: /lens <create|list> [name]\n\n  create <name>  Create a new lens (a standing, memory-aware extractor)\n  list           List all lenses\n\nLenses aren't switched into — chat reads signals across every lens, and memories are global.".into()
+                            "Usage: /lens <create|list|promote> [name]\n\n  create <name>   Create a new lens (a standing, memory-aware extractor)\n  list            List all lenses\n  promote <name>  Move the current session into the named lens (creating it if needed)\n\nLenses aren't switched into — chat reads signals across every lens, and memories are global.".into()
                         ),
                     }
                 }

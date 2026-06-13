@@ -47,6 +47,15 @@ pub trait ArawnService: Send + Sync {
     /// Load a session with its full message history.
     async fn load_session(&self, id: Uuid) -> Result<SessionDetail, ServiceError>;
 
+    /// Promote a session into a named lens (ARAWN-T-0480, closes T-0012) —
+    /// atomically re-points its SQLite binding and moves its JSONL file.
+    /// Backs the TUI's `/lens promote`. Returns the updated session info.
+    async fn promote_session(
+        &self,
+        session_id: Uuid,
+        lens_id: Uuid,
+    ) -> Result<SessionInfo, ServiceError>;
+
     /// Truncate a session back to a specific user-message index, dropping
     /// everything after (inclusive of the Nth user message and all the
     /// assistant / tool-call / tool-result messages that followed it).

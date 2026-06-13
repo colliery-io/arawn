@@ -113,6 +113,27 @@ impl<'a> SessionStore<'a> {
         Ok(rows > 0)
     }
 
+    /// Re-point a session at a different lens (ARAWN-T-0480). Used by
+    /// `Store::promote_session` to move a scratch session into a named lens
+    /// (and to compensate — undo — if the JSONL file move then fails). Pass
+    /// `None` to return a session to scratch.
+    pub fn set_lens(
+        &self,
+        session_id: Uuid,
+        lens_id: Option<Uuid>,
+        lens_name: &str,
+    ) -> Result<(), StorageError> {
+        self.db.conn().execute(
+            "UPDATE sessions SET lens_id = ?1, lens_name = ?2 WHERE id = ?3",
+            (
+                lens_id.map(|i| i.to_string()),
+                lens_name,
+                session_id.to_string(),
+            ),
+        )?;
+        Ok(())
+    }
+
     /// Update session token/turn stats in SQLite.
     pub fn update_stats(&self, session_id: Uuid, stats: &SessionStats) -> Result<(), StorageError> {
         self.db.conn().execute(

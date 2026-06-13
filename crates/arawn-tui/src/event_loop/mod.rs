@@ -528,6 +528,81 @@ pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::err
                                 }
                                 app.dirty = true;
                             }
+                            crate::command::CommandResult::LensPromote(name) => {
+                                // ARAWN-T-0480: move the current session into
+                                // the named lens (creating it if needed).
+                                let session_id = app.current_session.as_ref().map(|s| s.id);
+                                match session_id {
+                                    None => {
+                                        app.messages.push(ChatMessage::new(
+                                            ChatRole::System,
+                                            "No active session to promote.".to_string(),
+                                        ));
+                                    }
+                                    Some(sid) => {
+                                        // Resolve the target lens by name, creating it if absent.
+                                        let mut lens_id = client
+                                            .list_lenses()
+                                            .await
+                                            .ok()
+                                            .and_then(|ls| {
+                                                ls.iter().find(|w| w.name == name).map(|w| w.id)
+                                            });
+                                        if lens_id.is_none() {
+                                            let params = serde_json::json!({"name": name});
+                                            let _ = client
+                                                .request_response("create_lens", params)
+                                                .await;
+                                            if let Ok(ls) = client.list_lenses().await {
+                                                app.lenses = ls;
+                                                lens_id = app
+                                                    .lenses
+                                                    .iter()
+                                                    .find(|w| w.name == name)
+                                                    .map(|w| w.id);
+                                            }
+                                        }
+                                        match lens_id {
+                                            Some(lid) => match client.promote_session(sid, lid).await
+                                            {
+                                                Ok(_info) => {
+                                                    if let Ok(ls) = client.list_lenses().await {
+                                                        app.lenses = ls;
+                                                    }
+                                                    if let Some(ws) = app
+                                                        .lenses
+                                                        .iter()
+                                                        .find(|w| w.id == lid)
+                                                        .cloned()
+                                                    {
+                                                        app.current_lens = Some(ws.clone());
+                                                        if let Ok(sessions) =
+                                                            client.list_sessions(Some(ws.id)).await
+                                                        {
+                                                            app.sessions = sessions;
+                                                        }
+                                                    }
+                                                    app.messages.push(ChatMessage::new(
+                                                        ChatRole::System,
+                                                        format!(
+                                                            "Promoted the current session into lens '{name}'."
+                                                        ),
+                                                    ));
+                                                }
+                                                Err(e) => app.messages.push(ChatMessage::new(
+                                                    ChatRole::System,
+                                                    format!("Failed to promote session: {e}"),
+                                                )),
+                                            },
+                                            None => app.messages.push(ChatMessage::new(
+                                                ChatRole::System,
+                                                format!("Could not resolve or create lens '{name}'."),
+                                            )),
+                                        }
+                                    }
+                                }
+                                app.dirty = true;
+                            }
                             crate::command::CommandResult::SessionNew => {
                                 let ws_id = app.current_lens.as_ref().map(|ws| ws.id);
                                 if let Ok(session) = client.create_session(ws_id).await {

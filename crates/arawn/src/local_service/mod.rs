@@ -721,6 +721,13 @@ impl ArawnService for LocalService {
     ) -> Result<arawn_service::PermissionsStatus, ServiceError> {
         self.get_permissions_status_inner().await
     }
+    async fn promote_session(
+        &self,
+        session_id: Uuid,
+        lens_id: Uuid,
+    ) -> Result<arawn_service::SessionInfo, ServiceError> {
+        self.promote_session_inner(session_id, lens_id).await
+    }
     async fn health(&self) -> Result<arawn_service::HealthStatus, ServiceError> {
         self.health_inner().await
     }

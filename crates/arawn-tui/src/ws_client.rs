@@ -434,6 +434,23 @@ impl WsClient {
         Ok(result.clone())
     }
 
+    /// Promote a session into a named lens (ARAWN-T-0480). Returns the
+    /// updated session info. Backs `/lens promote`.
+    pub async fn promote_session(
+        &mut self,
+        session_id: uuid::Uuid,
+        lens_id: uuid::Uuid,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error>> {
+        let resp = self
+            .request_response(
+                "promote_session",
+                json!({"session_id": session_id.to_string(), "lens_id": lens_id.to_string()}),
+            )
+            .await?;
+        let result = resp.get("result").ok_or("no result")?;
+        Ok(result.clone())
+    }
+
     /// Rewind a session back to before the Nth user message. Returns the
     /// full truncated session detail (same shape as `load_session`). Used
     /// by the "branch from a prior prompt" flow.

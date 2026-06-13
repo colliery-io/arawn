@@ -34,6 +34,7 @@ const RPC_METHODS: &[&str] = &[
     "list_sessions",
     "create_session",
     "load_session",
+    "promote_session",
     "truncate_session_at_user_message",
     "send_message",
     "cancel",
@@ -672,6 +673,36 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     warn!(id, "send failed, client gone");
                     break;
                 }
+            }
+
+            "promote_session" => {
+                let session_id = request
+                    .params
+                    .get("session_id")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| uuid::Uuid::parse_str(s).ok());
+                let lens_id = request
+                    .params
+                    .get("lens_id")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| uuid::Uuid::parse_str(s).ok());
+                debug!(id, session_id = ?session_id, lens_id = ?lens_id, "promote_session");
+                let resp = match (session_id, lens_id) {
+                    (Some(sid), Some(lid)) => match service.promote_session(sid, lid).await {
+                        Ok(info) => Response::success(id, serde_json::to_value(&info).unwrap()),
+                        Err(e) => Response::from_service_error(id, &e),
+                    },
+                    _ => Response::error(
+                        id,
+                        "invalid_params",
+                        "promote_session requires session_id and lens_id".into(),
+                    ),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
             }
 
             "truncate_session_at_user_message" => {

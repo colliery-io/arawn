@@ -226,6 +226,7 @@ impl App {
                             | CommandResult::MemorySummary
                             | CommandResult::ForgetEntity(_)
                             | CommandResult::LensCreate(_)
+                            | CommandResult::LensPromote(_)
                             | CommandResult::LensList
                             | CommandResult::SessionNew
                             | CommandResult::SessionList

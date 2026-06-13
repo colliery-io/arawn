@@ -158,6 +158,35 @@ async fn status_embedding_pending_surfaces_when_projections_wired() {
 }
 
 #[tokio::test]
+async fn promote_session_via_service_moves_binding_and_messages() {
+    // ARAWN-T-0480 (closes T-0012): promoting a scratch session into a lens
+    // moves its SQLite binding AND its JSONL messages, end to end.
+    let (tmp, service) = setup_service(vec![MockResponse::text("reply")]);
+
+    let session = service.create_session(None).await.unwrap();
+    // Produce a message so there's a JSONL file to move.
+    let mut stream = service.send_message(session.id, "hi".into()).await.unwrap();
+    while stream.next().await.is_some() {}
+
+    let lens = service
+        .create_lens("project".into(), tmp.path().join("lenses/project"))
+        .await
+        .unwrap();
+
+    let info = service.promote_session(session.id, lens.id).await.unwrap();
+    assert_eq!(info.lens_id, Some(lens.id));
+
+    // Reload: bound to the lens, with messages intact.
+    let detail = service.load_session(session.id).await.unwrap();
+    assert_eq!(detail.lens_id, Some(lens.id));
+    assert!(
+        detail.messages.len() >= 2,
+        "messages must survive promotion, got {}",
+        detail.messages.len()
+    );
+}
+
+#[tokio::test]
 async fn list_lenses_returns_scratch() {
     let (_tmp, service) = setup_service(vec![]);
     let lenses = service.list_lenses().await.unwrap();
