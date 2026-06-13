@@ -13,7 +13,7 @@ use crate::background::{
 };
 use crate::compactor::Compactor;
 use crate::error::EngineError;
-use crate::query_engine::{QueryEngine, QueryEngineConfig};
+use crate::query_engine::{DEFAULT_MAX_NO_PROGRESS_ITERATIONS, QueryEngine, QueryEngineConfig};
 use arawn_tool::ToolError;
 use arawn_tool::{Tool, ToolCategory, ToolOutput, ToolRegistry};
 
@@ -216,6 +216,7 @@ impl Tool for AgentTool {
         let config = QueryEngineConfig {
             model: model.clone(),
             max_iterations: max_turns,
+            max_no_progress_iterations: DEFAULT_MAX_NO_PROGRESS_ITERATIONS,
             system_prompt: definition.system_prompt.clone(),
             max_tokens: Some(4096),
             model_limits: ctx.model_limits().clone(),

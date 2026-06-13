@@ -565,6 +565,7 @@ impl LocalService {
             QueryEngineConfig {
                 model: engine_model,
                 max_iterations: self.config.max_iterations,
+                max_no_progress_iterations: self.config.max_no_progress_iterations,
                 system_prompt: self.config.system_prompt.clone(),
                 max_tokens: self.config.max_tokens,
                 model_limits: self.config.model_limits.clone(),

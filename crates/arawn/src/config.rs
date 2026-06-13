@@ -66,6 +66,11 @@ pub struct EngineConfig {
     pub llm: String,
     #[serde(default = "default_max_iterations")]
     pub max_iterations: usize,
+    /// No-progress breaker (ARAWN-T-0475): end a turn after this many
+    /// consecutive iterations whose tool calls all errored. 0 disables it
+    /// (the `max_iterations` cap is the ultimate backstop).
+    #[serde(default = "default_max_no_progress_iterations")]
+    pub max_no_progress_iterations: usize,
     #[serde(default = "default_max_result_size")]
     pub max_result_size: usize,
     /// Default wall-clock timeout for individual tool calls, in seconds.
@@ -82,6 +87,9 @@ fn default_engine_llm() -> String {
 fn default_max_iterations() -> usize {
     20
 }
+fn default_max_no_progress_iterations() -> usize {
+    5
+}
 fn default_max_result_size() -> usize {
     50_000
 }
@@ -91,6 +99,7 @@ impl Default for EngineConfig {
         Self {
             llm: default_engine_llm(),
             max_iterations: default_max_iterations(),
+            max_no_progress_iterations: default_max_no_progress_iterations(),
             max_result_size: default_max_result_size(),
             tool_timeout_secs: None,
         }

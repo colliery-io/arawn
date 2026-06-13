@@ -18,6 +18,16 @@ use crate::tool_timeout;
 use arawn_tool::ToolRegistry;
 
 const DEFAULT_MAX_ITERATIONS: usize = 200;
+
+/// Default no-progress breaker threshold (ARAWN-T-0475): bail after this many
+/// consecutive iterations whose tool calls ALL errored. Conservative — a
+/// healthy turn resets the streak on the first successful tool result, so a
+/// model would have to fail this many rounds in a row to trip it. Set to 5
+/// (not 2–3): legitimate recovery routinely does a few consecutive failures
+/// then pivots — e.g. a model tries a denied tool three times before
+/// switching to one that works — and the breaker must not cut that off. Still
+/// ~40× tighter than the `max_iterations` backstop.
+pub(crate) const DEFAULT_MAX_NO_PROGRESS_ITERATIONS: usize = 5;
 const MAX_COMPACT_FAILURES: u32 = 3;
 /// Fallback recent-window for microcompaction when no full compactor is
 /// configured to borrow `keep_recent` from.
@@ -110,6 +120,12 @@ pub struct PromptContext {
 pub struct QueryEngineConfig {
     pub model: String,
     pub max_iterations: usize,
+    /// No-progress breaker (ARAWN-T-0475): end the turn after this many
+    /// consecutive iterations in which every emitted tool call errored — a
+    /// model stuck re-issuing failing/invalid calls (and narrating between
+    /// them) instead of converging. 0 disables the breaker (the
+    /// `max_iterations` cap remains the ultimate backstop).
+    pub max_no_progress_iterations: usize,
     /// Fallback system prompt if prompt_context is None.
     pub system_prompt: String,
     pub max_tokens: Option<u32>,
@@ -129,6 +145,7 @@ impl Default for QueryEngineConfig {
         Self {
             model: String::new(),
             max_iterations: DEFAULT_MAX_ITERATIONS,
+            max_no_progress_iterations: DEFAULT_MAX_NO_PROGRESS_ITERATIONS,
             system_prompt: DEFAULT_SYSTEM_PROMPT.to_string(),
             max_tokens: None,
             model_limits: ModelLimits::default(),
@@ -157,6 +174,11 @@ pub struct QueryEngine {
     /// Track recent failed tool calls (tool_name + args hash → failure count).
     /// Used to detect and short-circuit repeated identical failing calls.
     failed_call_counts: std::collections::HashMap<String, u32>,
+    /// Consecutive iterations whose tool calls ALL errored (ARAWN-T-0475).
+    /// Reset to 0 on any successful tool result; trips the no-progress breaker
+    /// at `config.max_no_progress_iterations`. The engine is rebuilt per
+    /// message, so this is naturally scoped to one turn-loop.
+    no_progress_streak: usize,
     /// Optional channel for live progress events (tool starts/results during the loop).
     progress_tx: Option<tokio::sync::mpsc::Sender<ProgressEvent>>,
     /// Optional cancellation token — checked at each iteration and before each tool execution.
@@ -178,6 +200,7 @@ impl QueryEngine {
             background_tasks: None,
             compact_failures: 0,
             failed_call_counts: std::collections::HashMap::new(),
+            no_progress_streak: 0,
             progress_tx: None,
             cancel_token: None,
         }
@@ -201,6 +224,7 @@ impl QueryEngine {
             background_tasks: None,
             compact_failures: 0,
             failed_call_counts: std::collections::HashMap::new(),
+            no_progress_streak: 0,
             progress_tx: None,
             cancel_token: None,
         }
@@ -641,6 +665,7 @@ impl QueryEngine {
             }
 
             // Append results in original order
+            let mut any_tool_success = false;
             for (i, tc) in response.tool_calls.iter().enumerate() {
                 let tool_result = results[i].take().unwrap();
 
@@ -669,6 +694,7 @@ impl QueryEngine {
                 } else {
                     // Success clears the failure count for this call
                     self.failed_call_counts.remove(&call_key);
+                    any_tool_success = true;
                 }
 
                 self.emit_progress(ProgressEvent::ToolCallResult {
@@ -682,6 +708,63 @@ impl QueryEngine {
                     content: limited.content,
                     is_error: limited.is_error,
                 });
+            }
+
+            // ARAWN-T-0475 no-progress breaker. If every tool call this
+            // iteration errored, the turn made no forward progress. A model
+            // that keeps re-issuing failing/invalid calls (and narrating
+            // between them — the gemma "grep" loop) would otherwise burn the
+            // whole `max_iterations` budget and hand back garbage. Count
+            // consecutive all-errored iterations; once the streak crosses the
+            // threshold, end the turn with a surfaced reason instead.
+            //
+            // This is distinct from `failed_call_counts`, which only catches
+            // repeated *identical* failing calls — this catches a
+            // varied-but-fruitless loop. A response with no tool calls has
+            // already returned above as the final answer, so this only
+            // engages when the loop would otherwise iterate again.
+            if any_tool_success {
+                self.no_progress_streak = 0;
+            } else {
+                self.no_progress_streak += 1;
+                if self.config.max_no_progress_iterations > 0
+                    && self.no_progress_streak >= self.config.max_no_progress_iterations
+                {
+                    let notice = format!(
+                        "Stopping: the model made {} consecutive rounds of tool calls that all \
+                         failed without making progress, so the turn isn't converging on a usable \
+                         answer. Try rephrasing, or check that the right tools/credentials are \
+                         available.",
+                        self.no_progress_streak
+                    );
+                    warn!(
+                        streak = self.no_progress_streak,
+                        threshold = self.config.max_no_progress_iterations,
+                        "no-progress breaker tripped — ending turn"
+                    );
+                    self.emit_progress(ProgressEvent::Notice {
+                        message: notice.clone(),
+                    });
+                    // Hand back the model's last text (if any) plus the reason,
+                    // recorded as the final assistant message — never silent
+                    // iteration-cap garbage.
+                    let final_text = if response.text.trim().is_empty() {
+                        notice.clone()
+                    } else {
+                        format!("{}\n\n_[{}]_", response.text, notice)
+                    };
+                    session.add_message(Message::Assistant {
+                        content: final_text.clone(),
+                        tool_uses: vec![],
+                    });
+                    if let Some(ref runner) = self.hook_runner {
+                        let hook_input = HookInput::Stop {
+                            stop_reason: "no_progress".into(),
+                        };
+                        let _ = runner.run(&hook_input).await;
+                    }
+                    return Ok(final_text);
+                }
             }
 
             // Loop — send updated history back to LLM
@@ -1610,6 +1693,74 @@ mod tests {
             Err(EngineError::MaxIterations { iterations: 3, .. }) => {} // expected
             other => panic!("expected MaxIterations(3), got {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn no_progress_breaker_trips_on_all_errored_iterations() {
+        // ARAWN-T-0475: a model that keeps issuing tool calls that all error
+        // (here, calls to an unregistered tool — the same shape as the gemma
+        // "grep" narration loop) must be cut off by the no-progress breaker,
+        // with a surfaced reason, well before the max_iterations cap — not
+        // run to exhaustion and hand back garbage.
+        let (_ws, mut session, ctx) = setup();
+        session.add_message(Message::User {
+            content: "do the thing".into(),
+        });
+
+        // Every round: a call to a tool that doesn't exist → error result →
+        // no forward progress. Plenty of rounds so the breaker (not the cap)
+        // is what stops it.
+        let responses: Vec<Vec<ChatChunk>> = (0..20)
+            .map(|i| MockLlm::tool_call(&format!("c{i}"), "nonexistent_tool", "{}"))
+            .collect();
+        let llm = Arc::new(MockLlm::new(responses));
+        let registry = Arc::new(ToolRegistry::new());
+        let config = QueryEngineConfig {
+            max_iterations: 50,
+            max_no_progress_iterations: 2,
+            system_prompt: "test".into(),
+            ..Default::default()
+        };
+        let mut engine = QueryEngine::with_config(llm, registry, config);
+
+        let result = engine.run(&mut session, &ctx).await.unwrap();
+        assert!(
+            result.contains("consecutive rounds of tool calls that all failed"),
+            "the breaker's reason should be surfaced, got: {result}"
+        );
+        // It bailed at the breaker (streak 2), nowhere near the 50-iteration cap.
+        assert!(
+            session.messages().len() < 10,
+            "should stop at the breaker, not run to the cap; got {} messages",
+            session.messages().len()
+        );
+    }
+
+    #[tokio::test]
+    async fn no_progress_breaker_does_not_fire_when_a_tool_succeeds() {
+        // ARAWN-T-0475: a successful tool result resets the streak, so an
+        // ordinary think→answer turn completes cleanly (no false positive).
+        let (_ws, mut session, ctx) = setup();
+        session.add_message(Message::User {
+            content: "reflect then answer".into(),
+        });
+
+        let llm = Arc::new(MockLlm::new(vec![
+            MockLlm::tool_call("c1", "think", r#"{"thought":"ok"}"#),
+            MockLlm::text("Here's the answer."),
+        ]));
+        let registry = Arc::new(ToolRegistry::new());
+        registry.register(Box::new(ThinkTool));
+        let config = QueryEngineConfig {
+            max_iterations: 50,
+            max_no_progress_iterations: 2,
+            system_prompt: "test".into(),
+            ..Default::default()
+        };
+        let mut engine = QueryEngine::with_config(llm, registry, config);
+
+        let result = engine.run(&mut session, &ctx).await.unwrap();
+        assert_eq!(result, "Here's the answer.");
     }
 
     #[tokio::test]

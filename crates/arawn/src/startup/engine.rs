@@ -14,6 +14,7 @@ pub fn build_engine_config(
         // promote this to per-call resolution.
         model: arawn_llm::ModelHint::Heavy.as_hint(),
         max_iterations: config.engine.max_iterations,
+        max_no_progress_iterations: config.engine.max_no_progress_iterations,
         system_prompt: String::new(),
         max_tokens: Some(engine_llm.max_tokens),
         model_limits: arawn_engine::ModelLimits::new(
