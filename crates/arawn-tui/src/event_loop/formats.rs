@@ -182,9 +182,13 @@ pub(super) fn format_system_status(status: &arawn_service::SystemStatus) -> Stri
         .pending
         .map(|n| n.to_string())
         .unwrap_or_else(|| "n/a".to_string());
+    let errored_suffix = match status.embedding.errored {
+        Some(n) if n > 0 => format!(" · ⚠ {n} stuck"),
+        _ => String::new(),
+    };
     let _ = writeln!(
         out,
-        "Embedding: model {} · {pending} pending",
+        "Embedding: model {} · {pending} pending{errored_suffix}",
         mark(status.embedding.embedder_loaded),
     );
 
@@ -406,6 +410,7 @@ mod tests {
             embedding: EmbeddingStatus {
                 embedder_loaded: true,
                 pending: Some(5),
+                errored: Some(0),
             },
             extraction: ExtractionStatus {
                 available: true,
@@ -468,6 +473,7 @@ mod tests {
         s.embedding = EmbeddingStatus {
             embedder_loaded: false,
             pending: None,
+            errored: None,
         };
         s.extraction = ExtractionStatus {
             available: false,

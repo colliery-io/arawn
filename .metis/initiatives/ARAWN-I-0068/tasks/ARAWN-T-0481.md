@@ -4,14 +4,14 @@ level: task
 title: "P2-5/P2-6: Embedding hash validation + stuck-pass handling; memory-store concurrency races"
 short_code: "ARAWN-T-0481"
 created_at: 2026-06-12T12:02:16.285501+00:00
-updated_at: 2026-06-12T12:02:16.285501+00:00
+updated_at: 2026-06-13T12:32:16.463346+00:00
 parent: ARAWN-I-0068
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -38,6 +38,10 @@ Fix silent data corruption in the embedding lifecycle and the memory store: stal
 ### Priority
 - [x] P2 - Medium (both HIGH findings; corrupt quietly)
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 ## Acceptance Criteria **[REQUIRED]**
 
 - [ ] `write_embedding()` compares-and-sets on `body_hash`: a mismatch leaves the row `pending` (re-embeds later) rather than committing a stale vector.
@@ -61,4 +65,14 @@ Small, surgical, high-value. Main risk is the embedding state machine's other tr
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-06-13 — COMPLETE ✅
+**P2-5 embedding (`arawn-projections`):**
+- **Hash compare-and-set**: `PendingEmbedRow` carries `body_hash` (captured at fetch); `write_embedding(.., expected_hash)` reads the row's current `body_hash` under the held conn lock and bails (leaving it `pending`) if it changed — no stale vector committed. The whole method holds the lock, so read + writes are atomic against a concurrent `embedding_invalidate`.
+- **Backoff**: new `retry_count` column on `<feed_type>_embeddings` (schema CREATE + idempotent ALTER for existing tables). `embed_batch` bumps it on every failure path; `pending_embedding_rows` excludes `retry_count >= MAX_EMBED_RETRIES` (=5), so a permanently-failing batch parks itself instead of blocking the queue head / growing the backlog. A body change resets `retry_count` (in `embedding_invalidate`).
+- **Counts surfaced** (T-0476): `pending_embedding_count` excludes parked rows; new `errored_embedding_count`. `EmbeddingStatus` gained `errored: Option<u64>`; status.rs populates it; TUI renders "⚠ N stuck".
+
+**P2-6 memory (`arawn-memory`) — finding refined:** the store is **graphqlite Cypher**, not SQLite, and `reinforce_entity` already held the conn `Mutex` across its read+write — so it was *already* atomic against concurrent reinforce (the ticket's "single SQL UPDATE" doesn't apply; Cypher has no arithmetic SET, and the lock is what guarantees atomicity). The REAL race was `store_fact`: `search_by_type`/`reinforce_entity`/`insert_entity` each took the lock independently, so a concurrent delete/insert could slip between the search and the write. **Fix:** `store_fact` now takes the conn lock ONCE and runs dedupe-or-insert via new `search_by_type_locked`/`reinforce_entity_locked`/`insert_entity_locked` free helpers under that single lock; the public methods delegate to the same helpers.
+
+**Tests:** `write_embedding_rejects_stale_body_hash`, `parked_rows_drop_out_of_pending_and_count_as_errored` (projections); existing `store_fact_insert/reinforce/reinforce_case_insensitive` exercise the new compound-lock path.
+
+**Gates:** fmt + clippy -D warnings clean · projections(59) + memory(85) + hybrid_search(4) + tui format(2) + arawn-tests status(2) green. All acceptance criteria met (P2-6 reframed: reinforce was already lock-atomic; store_fact compound-lock is the real fix).

@@ -75,13 +75,29 @@ pub fn ensure_feed_type_tables(conn: &Connection, feed_type: &str) -> Result<(),
             projection_id TEXT PRIMARY KEY,
             body_hash TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending'
-                CHECK (status IN ('pending', 'embedded', 'skipped'))
+                CHECK (status IN ('pending', 'embedded', 'skipped')),
+            retry_count INTEGER NOT NULL DEFAULT 0
         );
         CREATE INDEX IF NOT EXISTS idx_{feed_type}_emb_status
             ON {feed_type}_embeddings(status);"
     );
     conn.execute_batch(&embed_sql)
         .map_err(|e| ProjectionError::Schema(format!("create {feed_type}_embeddings: {e}")))?;
+
+    // ARAWN-T-0481: `retry_count` backs the embed-pass backoff. Tables
+    // created before this column existed get it via an idempotent ALTER —
+    // SQLite errors on a duplicate column, which we treat as "already there".
+    let add_retry = format!(
+        "ALTER TABLE {feed_type}_embeddings ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0"
+    );
+    if let Err(e) = conn.execute(&add_retry, []) {
+        let msg = e.to_string();
+        if !msg.contains("duplicate column name") {
+            return Err(ProjectionError::Schema(format!(
+                "add retry_count to {feed_type}_embeddings: {e}"
+            )));
+        }
+    }
 
     let vec_sql = format!(
         "CREATE VIRTUAL TABLE IF NOT EXISTS {feed_type}_vec USING vec0(

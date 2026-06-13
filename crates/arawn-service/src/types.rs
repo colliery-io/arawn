@@ -517,9 +517,12 @@ pub struct EmbeddingStatus {
     /// FTS-only (degraded, not broken).
     pub embedder_loaded: bool,
     /// Projection rows awaiting an embedding across all feed types. `None`
-    /// when the projection store isn't wired. (An explicit `errored` count
-    /// lands with T-0481, which adds the error status.)
+    /// when the projection store isn't wired.
     pub pending: Option<u64>,
+    /// Rows parked after repeatedly failing to embed (ARAWN-T-0481) — a
+    /// stuck backlog. `None` when the projection store isn't wired.
+    #[serde(default)]
+    pub errored: Option<u64>,
 }
 
 /// Extraction-pipeline health: per-(lens, feed_type) cursor positions.

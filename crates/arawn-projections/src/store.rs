@@ -160,13 +160,32 @@ impl ProjectionStore {
             .collect())
     }
 
-    /// Total rows still awaiting an embedding across every feed type, for
-    /// the health surface (ARAWN-I-0068 P2-1). Discovers the per-feed-type
-    /// `<feed_type>_embeddings` tables via `sqlite_master` and sums the
-    /// rows whose status is `pending`. Returns 0 when no embedding tables
-    /// exist yet. (An explicit `errored` status — and its own count — lands
-    /// with T-0481.)
+    /// Rows still awaiting an embedding (status `pending`, not yet parked)
+    /// across every feed type, for the health surface (ARAWN-I-0068 P2-1).
+    /// Parked rows — those that exhausted [`crate::embed::MAX_EMBED_RETRIES`]
+    /// — are excluded here and reported by [`Self::errored_embedding_count`]
+    /// instead.
     pub fn pending_embedding_count(&self) -> Result<u64, ProjectionError> {
+        self.count_embeddings_where(&format!(
+            "status = 'pending' AND retry_count < {}",
+            crate::embed::MAX_EMBED_RETRIES
+        ))
+    }
+
+    /// Rows parked after repeatedly failing to embed (ARAWN-T-0481) —
+    /// `status = 'pending'` but `retry_count` has hit the cap. Surfaced via
+    /// `/status` so a stuck embed backlog is visible.
+    pub fn errored_embedding_count(&self) -> Result<u64, ProjectionError> {
+        self.count_embeddings_where(&format!(
+            "status = 'pending' AND retry_count >= {}",
+            crate::embed::MAX_EMBED_RETRIES
+        ))
+    }
+
+    /// Sum a COUNT over every `<feed_type>_embeddings` table for rows
+    /// matching `where_clause`. The clause is built from in-crate constants
+    /// (never user input). Returns 0 when no embedding tables exist yet.
+    fn count_embeddings_where(&self, where_clause: &str) -> Result<u64, ProjectionError> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn
             .prepare(
@@ -187,11 +206,11 @@ impl ProjectionStore {
             // identifiers so they can't be bound as query parameters.
             let cnt: i64 = conn
                 .query_row(
-                    &format!("SELECT COUNT(*) FROM \"{table}\" WHERE status = 'pending'"),
+                    &format!("SELECT COUNT(*) FROM \"{table}\" WHERE {where_clause}"),
                     [],
                     |r| r.get(0),
                 )
-                .map_err(|e| ProjectionError::Storage(format!("count pending {table}: {e}")))?;
+                .map_err(|e| ProjectionError::Storage(format!("count {table}: {e}")))?;
             total += cnt.max(0) as u64;
         }
         Ok(total)
@@ -508,11 +527,14 @@ fn embedding_invalidate(
     projection_id: &str,
     body_hash: &str,
 ) -> Result<(), ProjectionError> {
+    // ARAWN-T-0481: a body change resets `retry_count` so a row that
+    // previously parked (its old text kept failing the embedder) gets a
+    // fresh set of attempts against the new text.
     let meta_sql = format!(
-        "INSERT INTO {feed_type}_embeddings (projection_id, body_hash, status) \
-         VALUES (?1, ?2, 'pending') \
+        "INSERT INTO {feed_type}_embeddings (projection_id, body_hash, status, retry_count) \
+         VALUES (?1, ?2, 'pending', 0) \
          ON CONFLICT(projection_id) DO UPDATE SET body_hash = excluded.body_hash, \
-             status = 'pending'"
+             status = 'pending', retry_count = 0"
     );
     tx.execute(&meta_sql, params![projection_id, body_hash])
         .map_err(|e| ProjectionError::Storage(format!("embed meta: {e}")))?;
@@ -628,6 +650,71 @@ mod fts_escape_tests {
         seed(&store, "m1", "one", "body one");
         seed(&store, "m2", "two", "body two");
         assert_eq!(store.pending_embedding_count().unwrap(), 2);
+    }
+
+    #[test]
+    fn write_embedding_rejects_stale_body_hash() {
+        // ARAWN-T-0481: a vector computed for text that has since changed must
+        // NOT be committed — the row stays pending and re-embeds later.
+        let store = open_store();
+        let body = "this is a sufficiently long body for embedding";
+        seed(&store, "m1", "title", body);
+        let vector = vec![0.1f32; crate::schema::EMBEDDING_DIMS];
+
+        // Wrong hash → no-op, row stays pending.
+        store
+            .write_embedding("slack_messages", "m1", &vector, "STALEHASH")
+            .unwrap();
+        assert_eq!(
+            store.pending_embedding_count().unwrap(),
+            1,
+            "a stale-hash write must leave the row pending"
+        );
+
+        // Correct hash → the row embeds.
+        let correct = body_hash(body);
+        store
+            .write_embedding("slack_messages", "m1", &vector, &correct)
+            .unwrap();
+        assert_eq!(
+            store.pending_embedding_count().unwrap(),
+            0,
+            "a matching-hash write embeds the row"
+        );
+    }
+
+    #[test]
+    fn parked_rows_drop_out_of_pending_and_count_as_errored() {
+        // ARAWN-T-0481: a row whose batch keeps failing parks after the retry
+        // cap — it leaves the pending fetch (so it stops blocking the queue)
+        // and is reported as errored instead.
+        let store = open_store();
+        seed(&store, "m1", "t", "a long enough body for embedding work");
+        assert_eq!(store.pending_embedding_count().unwrap(), 1);
+
+        for _ in 0..crate::embed::MAX_EMBED_RETRIES {
+            store
+                .bump_embedding_retries("slack_messages", &["m1"])
+                .unwrap();
+        }
+
+        assert_eq!(
+            store.pending_embedding_count().unwrap(),
+            0,
+            "a parked row is no longer counted pending"
+        );
+        assert_eq!(
+            store.errored_embedding_count().unwrap(),
+            1,
+            "a parked row is counted errored"
+        );
+        assert!(
+            store
+                .pending_embedding_rows("slack_messages", 10)
+                .unwrap()
+                .is_empty(),
+            "a parked row is excluded from the pending fetch"
+        );
     }
 
     #[test]

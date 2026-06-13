@@ -138,15 +138,20 @@ impl LocalService {
             .as_ref()
             .map(|m| m.embedder().is_some())
             .unwrap_or(false);
-        let pending = self
-            .projections
-            .read()
-            .recover()
-            .as_ref()
-            .and_then(|p| p.pending_embedding_count().ok());
+        let (pending, errored) = {
+            let guard = self.projections.read().recover();
+            match guard.as_ref() {
+                Some(p) => (
+                    p.pending_embedding_count().ok(),
+                    p.errored_embedding_count().ok(),
+                ),
+                None => (None, None),
+            }
+        };
         EmbeddingStatus {
             embedder_loaded,
             pending,
+            errored,
         }
     }
 

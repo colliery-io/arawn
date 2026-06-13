@@ -142,13 +142,7 @@ impl MemoryStore {
 
     pub fn insert_entity(&self, entity: &Entity) -> Result<(), MemoryError> {
         let conn = self.conn.lock().unwrap();
-        with_tx(&conn, |conn| {
-            cypher_upsert_entity(conn, entity)?;
-            fts_upsert(conn.sqlite_connection(), entity)?;
-            Ok(())
-        })?;
-        debug!(id = %entity.id, title = %entity.title, "entity inserted");
-        Ok(())
+        insert_entity_locked(&conn, entity)
     }
 
     pub fn get_entity(&self, id: Uuid) -> Result<Option<Entity>, MemoryError> {
@@ -312,20 +306,7 @@ impl MemoryStore {
         limit: usize,
     ) -> Result<Vec<Entity>, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let ids = fts_search(conn.sqlite_connection(), query, None, limit * 4)?;
-        let mut out = Vec::with_capacity(limit);
-        for id in ids {
-            if let Some(e) = fetch_entity_by_id(&conn, id)?
-                && !e.superseded
-                && e.entity_type == entity_type
-            {
-                out.push(e);
-                if out.len() == limit {
-                    break;
-                }
-            }
-        }
-        Ok(out)
+        search_by_type_locked(&conn, query, entity_type, limit)
     }
 
     // === Relations ===
@@ -442,61 +423,37 @@ impl MemoryStore {
     /// Searches for existing entities of the same type via FTS5; an exact
     /// (case-insensitive) title match reinforces the existing entity.
     pub fn store_fact(&self, entity: &Entity) -> Result<StoreFactResult, MemoryError> {
+        // ARAWN-T-0481 (P2-6): hold the connection lock across the entire
+        // dedupe-or-insert. Previously `search_by_type`, `reinforce_entity`
+        // and `insert_entity` each acquired and released the lock
+        // independently, so a concurrent delete could slip between the search
+        // and a reinforce (losing the fact), or a concurrent insert of the
+        // same title could land between two searches (a duplicate). One lock
+        // around the whole compound op closes that window.
+        let conn = self.conn.lock().unwrap();
+
         // Quote the title for FTS5 to prevent special character interpretation.
         let fts_query = format!("\"{}\"", entity.title.replace('"', "\"\""));
-        let candidates = self.search_by_type(&fts_query, entity.entity_type, 5)?;
+        let candidates = search_by_type_locked(&conn, &fts_query, entity.entity_type, 5)?;
 
         let title_lower = entity.title.to_lowercase();
         for candidate in &candidates {
             if candidate.title.to_lowercase() == title_lower {
-                return self.reinforce_entity(candidate.id);
+                return reinforce_entity_locked(&conn, candidate.id);
             }
         }
 
-        self.insert_entity(entity)?;
+        insert_entity_locked(&conn, entity)?;
         Ok(StoreFactResult::Inserted {
             entity_id: entity.id,
         })
     }
 
     /// Reinforce an existing entity (increment count, refresh timestamps).
+    #[allow(dead_code)]
     fn reinforce_entity(&self, entity_id: Uuid) -> Result<StoreFactResult, MemoryError> {
         let conn = self.conn.lock().unwrap();
-        let now = Utc::now().to_rfc3339();
-        let id_str = entity_id.to_string();
-
-        // Read the current count via Cypher, increment in Rust, write back.
-        // graphqlite's Cypher doesn't support arithmetic SET against a property
-        // reference, so we round-trip the value.
-        let row = conn
-            .cypher_builder("MATCH (n {id: $id}) RETURN n.reinforcement_count AS cnt")
-            .param("id", id_str.clone())
-            .run()
-            .map_err(|e| MemoryError::Storage(format!("cypher read count: {e}")))?;
-        let current: i64 = if row.is_empty() {
-            return Err(MemoryError::Storage(format!(
-                "reinforce: entity {entity_id} not found"
-            )));
-        } else {
-            row[0].get("cnt").unwrap_or(0)
-        };
-        let new_count = (current + 1).max(0) as u32;
-
-        conn.cypher_builder(
-            "MATCH (n {id: $id}) \
-             SET n.reinforcement_count = $cnt, n.updated_at = $now, n.accessed_at = $now",
-        )
-        .param("id", id_str)
-        .param("cnt", new_count as i64)
-        .param("now", now)
-        .run()
-        .map_err(|e| MemoryError::Storage(format!("cypher reinforce: {e}")))?;
-
-        debug!(id = %entity_id, count = new_count, "entity reinforced");
-        Ok(StoreFactResult::Reinforced {
-            entity_id,
-            new_count,
-        })
+        reinforce_entity_locked(&conn, entity_id)
     }
 
     /// Supersede an existing entity with a new one.
@@ -777,6 +734,83 @@ fn parse_person_profile_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<PersonP
 }
 
 // === Cypher helpers ===
+
+/// Search-by-type over an already-held connection (ARAWN-T-0481). Factored
+/// out of the public `search_by_type` so `store_fact` can run it under the
+/// same lock as the subsequent reinforce/insert.
+fn search_by_type_locked(
+    conn: &GraphConnection,
+    query: &str,
+    entity_type: EntityType,
+    limit: usize,
+) -> Result<Vec<Entity>, MemoryError> {
+    let ids = fts_search(conn.sqlite_connection(), query, None, limit * 4)?;
+    let mut out = Vec::with_capacity(limit);
+    for id in ids {
+        if let Some(e) = fetch_entity_by_id(conn, id)?
+            && !e.superseded
+            && e.entity_type == entity_type
+        {
+            out.push(e);
+            if out.len() == limit {
+                break;
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// Insert an entity over an already-held connection (ARAWN-T-0481).
+fn insert_entity_locked(conn: &GraphConnection, entity: &Entity) -> Result<(), MemoryError> {
+    with_tx(conn, |conn| {
+        cypher_upsert_entity(conn, entity)?;
+        fts_upsert(conn.sqlite_connection(), entity)?;
+        Ok(())
+    })?;
+    debug!(id = %entity.id, title = %entity.title, "entity inserted");
+    Ok(())
+}
+
+/// Reinforce an entity over an already-held connection (ARAWN-T-0481). The
+/// read + write run under the caller's single lock, so concurrent
+/// reinforcements can't interleave and undercount. (graphqlite's Cypher has
+/// no arithmetic SET against a property reference, so the count is
+/// round-tripped rather than incremented in SQL — the lock is what makes it
+/// atomic.)
+fn reinforce_entity_locked(
+    conn: &GraphConnection,
+    entity_id: Uuid,
+) -> Result<StoreFactResult, MemoryError> {
+    let now = Utc::now().to_rfc3339();
+    let id_str = entity_id.to_string();
+    let row = conn
+        .cypher_builder("MATCH (n {id: $id}) RETURN n.reinforcement_count AS cnt")
+        .param("id", id_str.clone())
+        .run()
+        .map_err(|e| MemoryError::Storage(format!("cypher read count: {e}")))?;
+    let current: i64 = if row.is_empty() {
+        return Err(MemoryError::Storage(format!(
+            "reinforce: entity {entity_id} not found"
+        )));
+    } else {
+        row[0].get("cnt").unwrap_or(0)
+    };
+    let new_count = (current + 1).max(0) as u32;
+    conn.cypher_builder(
+        "MATCH (n {id: $id}) \
+         SET n.reinforcement_count = $cnt, n.updated_at = $now, n.accessed_at = $now",
+    )
+    .param("id", id_str)
+    .param("cnt", new_count as i64)
+    .param("now", now)
+    .run()
+    .map_err(|e| MemoryError::Storage(format!("cypher reinforce: {e}")))?;
+    debug!(id = %entity_id, count = new_count, "entity reinforced");
+    Ok(StoreFactResult::Reinforced {
+        entity_id,
+        new_count,
+    })
+}
 
 /// Run `body` inside a sqlite transaction on the shared connection. Cypher
 /// queries issued via the same `GraphConnection` are part of the same sqlite
