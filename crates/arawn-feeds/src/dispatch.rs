@@ -176,6 +176,29 @@ async fn run_feed_inner(
                     warn!(feed_id = %record.id, error = %persist_err,
                           "failed to persist failure-status meta.json");
                 });
+
+            // ARAWN-T-0478: an auth failure (token expired/revoked/scope
+            // lost) can't make progress until the user reconnects — leaving
+            // the feed enabled means cloacina re-fires it on schedule for
+            // days, burning API quota. Auto-pause it so subsequent fires
+            // no-op (`skipped-disabled`); the persisted "reconnect needed"
+            // status above tells the user why. A transient error
+            // (network/provider/rate-limit) is left enabled to retry.
+            if matches!(e, FeedError::Auth(_)) {
+                let conn = runtime.conn.lock().await;
+                let store = FeedStore::new(&conn);
+                match store.set_enabled(feed_id, false) {
+                    Ok(()) => warn!(
+                        feed_id = %record.id,
+                        "feed auto-paused: auth expired, reconnect needed"
+                    ),
+                    Err(pause_err) => warn!(
+                        feed_id = %record.id, error = %pause_err,
+                        "failed to auto-pause feed after auth failure"
+                    ),
+                }
+            }
+
             error!(feed_id = %record.id, error = %e, "feed run failed");
             return Err(e);
         }
@@ -305,7 +328,13 @@ fn persist_meta_failure(
     let prior = MetaStore::read(feed_dir)?;
     let mut meta = prior.unwrap_or_else(|| FeedMeta::new(template, params.clone(), cursor.clone()));
     meta.last_run_at = Some(Utc::now().to_rfc3339());
-    meta.last_status = Some(format!("error: {err}"));
+    // An auth failure is user-actionable (reconnect), not a transient blip —
+    // surface it as such so `/status` and `/feeds` read "reconnect needed"
+    // rather than a generic error (ARAWN-T-0478).
+    meta.last_status = Some(match err {
+        FeedError::Auth(_) => format!("reconnect needed: {err}"),
+        _ => format!("error: {err}"),
+    });
     meta.run_count += 1;
     MetaStore::write(feed_dir, &meta)
 }
@@ -395,6 +424,136 @@ mod tests {
             .fts_search("filesystem_signals", "gamma", 10)
             .unwrap();
         assert_eq!(hits.len(), 1);
+    }
+
+    /// A template whose `run` always fails with a configurable error —
+    /// used to exercise the auth-pause path (ARAWN-T-0478).
+    struct FailingTemplate {
+        name: &'static str,
+        make_error: fn() -> FeedError,
+    }
+    #[async_trait]
+    impl crate::template::FeedTemplate for FailingTemplate {
+        fn name(&self) -> &'static str {
+            self.name
+        }
+        fn validate(&self, _params: &TemplateParams) -> Result<(), FeedError> {
+            Ok(())
+        }
+        fn defaults(&self, _params: &TemplateParams) -> crate::types::FeedDefaults {
+            crate::types::FeedDefaults {
+                cadence: "*/15 * * * *".into(),
+                initial_cursor: Value::Null,
+            }
+        }
+        fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
+            Vec::new()
+        }
+        async fn run(
+            &self,
+            _ctx: &TemplateCtx,
+            _params: &TemplateParams,
+            _feed_dir: &std::path::Path,
+            _cursor: &Value,
+        ) -> Result<crate::template::RunOutcome, FeedError> {
+            Err((self.make_error)())
+        }
+    }
+
+    fn runtime_with_failing_template(
+        tmp_root: &std::path::Path,
+        conn: Connection,
+        template_name: &'static str,
+        make_error: fn() -> FeedError,
+    ) -> FeedRuntimeContext {
+        let mut reg = FeedTemplateRegistry::new();
+        reg.register(Arc::new(FailingTemplate {
+            name: template_name,
+            make_error,
+        }));
+        FeedRuntimeContext {
+            conn: Arc::new(Mutex::new(conn)),
+            layout: Arc::new(DataLayout::new(tmp_root)),
+            registry: Arc::new(reg),
+            clients: Arc::new(NoopClients),
+            projections: None,
+            extractor: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn auth_failure_auto_pauses_feed_with_reconnect_status() {
+        // ARAWN-T-0478: a token-expired/revoked failure auto-pauses the feed
+        // (so cloacina stops re-firing and burning quota) and records a
+        // user-visible "reconnect needed" reason.
+        let tmp = tempdir().unwrap();
+        let conn = open_test_db();
+        {
+            let store = FeedStore::new(&conn);
+            store
+                .insert(&new_record(
+                    "auth-feed",
+                    "mock/auth",
+                    TemplateParams::new(json!({})),
+                    "*/15 * * * *",
+                ))
+                .unwrap();
+        }
+        let runtime = runtime_with_failing_template(tmp.path(), conn, "mock/auth", || {
+            FeedError::Auth("token revoked".into())
+        });
+
+        let err = run_feed("auth-feed", &runtime).await.unwrap_err();
+        assert!(matches!(err, FeedError::Auth(_)));
+
+        // Feed is now paused.
+        {
+            let conn = runtime.conn.lock().await;
+            let store = FeedStore::new(&conn);
+            let rec = store.get("auth-feed").unwrap().unwrap();
+            assert!(!rec.enabled, "auth failure should auto-pause the feed");
+        }
+        // …and the reason is surfaced in meta.
+        let feed_dir = runtime.layout.feed_dir("mock/auth", "auth-feed").unwrap();
+        let meta = MetaStore::read(&feed_dir).unwrap().unwrap();
+        assert!(
+            meta.last_status
+                .as_deref()
+                .unwrap_or_default()
+                .starts_with("reconnect needed:"),
+            "got {:?}",
+            meta.last_status
+        );
+    }
+
+    #[tokio::test]
+    async fn transient_failure_leaves_feed_enabled() {
+        // ARAWN-T-0478: a transient provider error is NOT a reconnect — the
+        // feed stays enabled so cloacina can retry.
+        let tmp = tempdir().unwrap();
+        let conn = open_test_db();
+        {
+            let store = FeedStore::new(&conn);
+            store
+                .insert(&new_record(
+                    "flaky-feed",
+                    "mock/flaky",
+                    TemplateParams::new(json!({})),
+                    "*/15 * * * *",
+                ))
+                .unwrap();
+        }
+        let runtime = runtime_with_failing_template(tmp.path(), conn, "mock/flaky", || {
+            FeedError::Provider("502 upstream".into())
+        });
+
+        let err = run_feed("flaky-feed", &runtime).await.unwrap_err();
+        assert!(matches!(err, FeedError::Provider(_)));
+
+        let conn = runtime.conn.lock().await;
+        let store = FeedStore::new(&conn);
+        let rec = store.get("flaky-feed").unwrap().unwrap();
+        assert!(rec.enabled, "a transient error must NOT pause the feed");
     }
 
     #[tokio::test]

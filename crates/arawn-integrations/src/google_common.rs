@@ -21,7 +21,7 @@ use hyper_rustls::HttpsConnectorBuilder;
 use hyper_util::client::legacy::{Client as HyperClient, connect::HttpConnector};
 use hyper_util::rt::TokioExecutor;
 use tokio::sync::Mutex as AsyncMutex;
-use tracing::{debug, warn};
+use tracing::debug;
 
 use crate::error::IntegrationError;
 
@@ -134,12 +134,20 @@ impl GetToken for ArawnGetToken {
                     inner.oauth.refresh(&refresh).await.map_err(|e| {
                         Box::<dyn std::error::Error + Send + Sync>::from(e.to_string())
                     })?;
+                // ARAWN-T-0478: if the freshly-refreshed token can't be
+                // persisted, fail loudly rather than swallowing a warning and
+                // continuing with an in-memory token that's lost on restart
+                // (which then reloads the stale token and fails confusingly).
+                // Surfacing the error flags the integration as degraded; the
+                // in-memory `guard` is left untouched so the next call retries
+                // the refresh.
                 if let Err(e) = inner.token_store.save_token(&new_token) {
-                    warn!(
-                        service = %inner.token_store.service_name,
-                        error = %e,
-                        "failed to persist refreshed token"
-                    );
+                    return Err(Box::<dyn std::error::Error + Send + Sync>::from(format!(
+                        "refreshed {svc} access token but failed to persist it ({e}); \
+                         not continuing with an unpersisted token — check disk/permissions \
+                         for the {svc} token store, then reconnect via /connect {svc}",
+                        svc = inner.token_store.service_name,
+                    )));
                 }
                 *guard = new_token;
             }

@@ -4,14 +4,14 @@ level: task
 title: "P2-2: Feed auth lifecycle — auto-pause on AuthExpired, reconnect-needed state, token-persist hardening"
 short_code: "ARAWN-T-0478"
 created_at: 2026-06-12T12:02:12.117714+00:00
-updated_at: 2026-06-12T12:02:12.117714+00:00
+updated_at: 2026-06-13T01:46:17.324871+00:00
 parent: ARAWN-I-0068
 blocked_by: []
 archived: false
 
 tags:
   - "#task"
-  - "#phase/todo"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
@@ -36,6 +36,10 @@ Make feeds survive auth failure gracefully: auto-pause a feed on `AuthExpired` w
 ### Priority
 - [x] P1 - High (CRITICAL finding; "feeds run unattended for weeks" depends on it)
 
+## Acceptance Criteria
+
+## Acceptance Criteria
+
 ## Acceptance Criteria **[REQUIRED]**
 
 - [ ] An `AuthExpired`/revoked-token failure auto-pauses the feed (clears `enabled` / sets a paused state) with a persisted, user-visible "reconnect needed" reason — no indefinite retry spam.
@@ -58,4 +62,17 @@ Don't pause on transient auth blips — only on genuine `AuthExpired`/revocation
 
 ## Status Updates **[REQUIRED]**
 
-*To be added during implementation*
+### 2026-06-12 — COMPLETE ✅
+**Finding refined:** `FeedError::Auth` already IS the genuine reconnect signal (token expired/revoked/scope lost — per its doc); transient failures are `Provider`/`RateLimited`/`Network`. `arawn-auth/oauth2.rs::refresh` already maps HTTP 400/401 → `AuthError::AuthExpired`. cloacina's retry is a message-keyword heuristic (`is_transient_error`: timeout/connection/network/…) — auth messages lack those, so they already aren't retried. The decisive fix is the auto-pause.
+
+**Changes:**
+- `arawn-feeds/dispatch.rs`: on a template `Err`, if `FeedError::Auth(_)` → `FeedStore::set_enabled(feed_id, false)` (auto-pause, so subsequent cron fires no-op `skipped-disabled` instead of burning quota). `persist_meta_failure` writes `last_status = "reconnect needed: …"` for auth vs `"error: …"` for transient. Transient errors leave the feed enabled to retry.
+- `arawn-integrations/google_common.rs`: a refreshed token that fails to persist now RETURNS an error (surfaced/degraded) instead of a swallowed `warn!` + continuing with an in-memory token lost on restart. In-memory guard left untouched so the next call retries the refresh. (Removed now-unused `warn` import.)
+
+**Surfaced via `/status` (T-0476):** no new code — `FeedStatusRow` already carries `enabled` + `last_status`, so a paused feed shows `enabled=false` + `"reconnect needed: …"`.
+
+**Tests (`arawn-feeds/dispatch.rs`):**
+- `auth_failure_auto_pauses_feed_with_reconnect_status`: injected `FeedError::Auth` → row `enabled=false` + meta `last_status` starts "reconnect needed:".
+- `transient_failure_leaves_feed_enabled`: injected `FeedError::Provider` → stays `enabled=true`. (Added a `FailingTemplate` fixture.)
+
+**Gates:** `cargo fmt --all --check` clean · `cargo clippy --workspace -- -D warnings` clean · `arawn-feeds` (140) + `arawn-integrations` (83) lib tests green. All acceptance criteria met.
