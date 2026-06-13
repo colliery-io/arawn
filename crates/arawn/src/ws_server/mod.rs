@@ -309,6 +309,7 @@ pub async fn run_server(
         // embedded static assets — served from this same listener. The WS-RPC
         // contract is unchanged.
         .route("/", get(gui::shell))
+        .route("/health", get(gui::health_page))
         .route("/events", get(gui::events))
         .route("/assets/{*path}", get(gui::gui_asset))
         .layer(cors)

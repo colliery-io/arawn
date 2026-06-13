@@ -51,3 +51,38 @@ code { font-family: ui-monospace, SFMono-Regular, monospace; }
 .notice-warn .cat { color: #d98324; }
 .notice-error .cat { color: #c0392b; }
 
+/* GUI-S3: health dashboard */
+.surfaces a.surface.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.banner {
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, #d98324 18%, transparent);
+  font-size: 0.9rem;
+}
+.panels { display: grid; gap: 1rem; }
+.panel {
+  padding: 0.9rem 1.1rem;
+  border: 1px solid color-mix(in srgb, var(--fg) 12%, transparent);
+  border-radius: 0.6rem;
+}
+.panel.err { border-color: #c0392b; }
+.panel h3 { margin: 0 0 0.6rem; font-size: 1rem; }
+.panel table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+.panel th, .panel td { text-align: left; padding: 0.25rem 0.5rem; border-bottom: 1px solid color-mix(in srgb, var(--fg) 8%, transparent); }
+.panel th { color: var(--muted); font-weight: 600; }
+.muted { color: var(--muted); font-size: 0.9rem; }
+td.ok, .ok { color: #2e8b57; }
+td.err, tr.err td, .panel .err { color: #c0392b; }
+.badge {
+  font-size: 0.72rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.badge.ok { background: color-mix(in srgb, #2e8b57 22%, transparent); color: #2e8b57; }
+.badge.down { background: color-mix(in srgb, #c0392b 22%, transparent); color: #c0392b; }
+
