@@ -12,12 +12,13 @@
 //! for code trees — hence the default excludes for `.git`, `target`,
 //! `node_modules`, etc.
 //!
-//! ## Task split
+//! ## History
 //!
-//! - **T-A (this file)** lands the param/cursor types, registration
-//!   metadata, and synchronous `validate()`. [`FilesystemFeedTemplate::run`]
-//!   is `unimplemented!()`.
-//! - **T-B (ARAWN-T-0418)** fills `run()` with the scan-and-diff core.
+//! - **T-A** landed the param/cursor types, registration metadata, and the
+//!   synchronous `validate()`.
+//! - **T-B (ARAWN-T-0418)** filled [`FilesystemFeedTemplate::run`] with the
+//!   scan-and-diff core. The template is fully implemented and registered —
+//!   it is not a stub.
 
 use std::collections::BTreeMap;
 use std::io::Write;

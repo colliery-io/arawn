@@ -172,6 +172,28 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn read_nested_relative_path_resolves_against_lens_root() {
+        // Regression guard for the filesystem-watch-roundtrip UAT: an
+        // agent-supplied *relative* path like `transcripts/foo.md` must
+        // resolve under the lens root, not require an absolute path.
+        let dir = TempDir::new().unwrap();
+        let nested = dir.path().join("transcripts");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(nested.join("foo.md"), "# notes\nbody\n").unwrap();
+
+        let tool = FileReadTool;
+        let ctx = test_ctx_with_dir(dir.path());
+        let result = tool
+            .execute(&ctx, json!({"path": "transcripts/foo.md"}))
+            .await
+            .unwrap();
+
+        assert!(!result.is_error, "got: {}", result.content);
+        assert!(result.content.contains("# notes"));
+        assert!(result.content.contains("body"));
+    }
+
+    #[tokio::test]
     async fn read_with_offset_and_limit() {
         let dir = TempDir::new().unwrap();
         let file_path = dir.path().join("lines.txt");
