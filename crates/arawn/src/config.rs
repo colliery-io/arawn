@@ -23,6 +23,12 @@ pub struct LlmConfig {
     pub context_window: u32,
     #[serde(default = "default_max_tokens")]
     pub max_tokens: u32,
+    /// Override the model-warmup TTL (seconds) for this profile. When unset,
+    /// the TTL is chosen per-provider (short for cold-capable providers like
+    /// Ollama, effectively-off for hosted providers like Groq/OpenAI). Set
+    /// this only to override that default for a specific profile.
+    #[serde(default)]
+    pub warmup_ttl_secs: Option<u64>,
 }
 
 fn default_api_key_env() -> String {
@@ -45,6 +51,7 @@ impl Default for LlmConfig {
             base_url: None,
             context_window: default_context_window(),
             max_tokens: default_max_tokens(),
+            warmup_ttl_secs: None,
         }
     }
 }

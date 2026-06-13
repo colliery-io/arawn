@@ -20,11 +20,45 @@ use crate::client::LlmClient;
 use crate::error::LlmError;
 use crate::types::{ChatChunk, ChatRequest};
 
-/// Default TTL chosen for Ollama Cloud, which unloads idle models aggressively.
-/// Local Ollama or Groq could safely use a much higher TTL, but a single
-/// conservative default avoids per-provider config until we have evidence
-/// it matters.
+/// Default TTL for providers that unload idle models — chosen for Ollama
+/// Cloud, which evicts aggressively. This is the re-warm cadence: after a
+/// successful warmup we trust it for this long before probing again.
 pub const DEFAULT_WARMUP_TTL: Duration = Duration::from_secs(4 * 60);
+
+/// TTL used for hosted providers that never go cold (Groq, OpenAI,
+/// Anthropic, …). Effectively "warm once, never re-warm": a year is far
+/// longer than any session, so after the first lazy warmup these providers
+/// stop paying for needless re-probes. Not literally infinite so the
+/// `elapsed() < ttl` comparison stays cheap and overflow-free.
+pub const NEVER_COLD_WARMUP_TTL: Duration = Duration::from_secs(60 * 60 * 24 * 365);
+
+/// Pick a warmup TTL for a provider. Providers known to unload idle models
+/// get the short [`DEFAULT_WARMUP_TTL`]; hosted providers that stay warm get
+/// [`NEVER_COLD_WARMUP_TTL`]. Unknown providers default to the conservative
+/// short TTL — re-warming an always-warm provider wastes a probe, but
+/// *failing* to re-warm a cold one breaks the next request, so we err toward
+/// re-warming. Matching is case-insensitive and substring-based so
+/// `ollama-cloud`, `ollama-local`, etc. all resolve to the cold path.
+pub fn warmup_ttl_for_provider(provider: &str) -> Duration {
+    let p = provider.to_lowercase();
+    // Hosted, always-warm providers — re-warming buys nothing.
+    const NEVER_COLD: &[&str] = &["groq", "openai", "anthropic", "together", "fireworks"];
+    if NEVER_COLD.iter().any(|n| p.contains(n)) {
+        NEVER_COLD_WARMUP_TTL
+    } else {
+        // ollama (cloud or local) and anything unrecognised → short TTL.
+        DEFAULT_WARMUP_TTL
+    }
+}
+
+/// Providers that can serve a request straight from a cold/unloaded state,
+/// where a connection-refused or "model loading" signal means "try warming
+/// and retry" rather than "permanently broken". Hosted providers never go
+/// cold, so we don't widen cold-start detection for them.
+fn provider_can_go_cold(provider: &str) -> bool {
+    let p = provider.to_lowercase();
+    p.contains("ollama") || p.contains("local") || p.contains("llamacpp") || p.contains("lmstudio")
+}
 
 /// Wraps any [`LlmClient`] with TTL-based warmup caching and a one-shot
 /// retry-after-warmup on cold-restart-shaped errors.
@@ -41,7 +75,9 @@ pub struct WarmingClient {
 
 impl WarmingClient {
     pub fn new(inner: Arc<dyn LlmClient>, provider: impl Into<String>) -> Self {
-        Self::with_ttl(inner, provider, DEFAULT_WARMUP_TTL)
+        let provider = provider.into();
+        let ttl = warmup_ttl_for_provider(&provider);
+        Self::with_ttl(inner, provider, ttl)
     }
 
     pub fn with_ttl(inner: Arc<dyn LlmClient>, provider: impl Into<String>, ttl: Duration) -> Self {
@@ -84,11 +120,35 @@ impl WarmingClient {
     }
 }
 
-/// Errors that look like the provider unloaded the model and the next request
-/// will need a fresh warmup. Conservative initial set: HTTP 503 from the
-/// upstream API.
-fn looks_like_cold_restart(err: &LlmError) -> bool {
-    matches!(err, LlmError::ServerError(msg) if msg.contains("HTTP 503"))
+/// Errors that look like the provider unloaded the model (or hasn't loaded
+/// it yet) and the next request needs a fresh warmup.
+///
+/// Universal signals (any provider): HTTP 503, and messages that explicitly
+/// say the model is loading/unloaded. Cold-capable providers (Ollama, local
+/// servers) additionally treat connection-refused as cold-start — the local
+/// daemon may be mid-restart and a warmup probe will spin it back up. Hosted
+/// providers don't get the connection-refused widening: a refused connection
+/// there is a real outage, not a cold model, and re-warming just wastes a
+/// round-trip before surfacing the error.
+fn looks_like_cold_restart(provider: &str, err: &LlmError) -> bool {
+    match err {
+        LlmError::ServerError(msg) => msg.contains("HTTP 503") || mentions_model_loading(msg),
+        LlmError::Api(msg) => mentions_model_loading(msg),
+        LlmError::Request(e) if provider_can_go_cold(provider) => {
+            // Local daemon down/restarting — a connect error is recoverable
+            // by warming. Timeouts are handled by the retry layer, not here.
+            e.is_connect()
+        }
+        _ => false,
+    }
+}
+
+/// Whether an error message names a model-loading / not-loaded condition.
+/// Case-insensitive; covers Ollama's "model is loading", vLLM/TGI "loading",
+/// and "model not loaded" style messages.
+fn mentions_model_loading(msg: &str) -> bool {
+    let m = msg.to_lowercase();
+    m.contains("loading") || m.contains("not loaded") || m.contains("warming up")
 }
 
 #[async_trait]
@@ -111,7 +171,7 @@ impl LlmClient for WarmingClient {
         let model = request.model.clone();
         match self.inner.stream(request.clone()).await {
             Ok(stream) => Ok(stream),
-            Err(e) if looks_like_cold_restart(&e) => {
+            Err(e) if looks_like_cold_restart(&self.provider, &e) => {
                 info!(
                     provider = %self.provider,
                     model = %model,
@@ -326,16 +386,109 @@ mod tests {
 
     #[test]
     fn cold_restart_classifier() {
-        assert!(looks_like_cold_restart(&LlmError::ServerError(
-            "HTTP 503: loading".into()
-        )));
-        assert!(!looks_like_cold_restart(&LlmError::ServerError(
-            "HTTP 500: internal".into()
-        )));
-        assert!(!looks_like_cold_restart(&LlmError::Auth("HTTP 401".into())));
-        assert!(!looks_like_cold_restart(&LlmError::RateLimited {
-            message: "HTTP 429".into(),
-            retry_after: None,
-        }));
+        // 503 is cold-start for any provider.
+        assert!(looks_like_cold_restart(
+            "groq",
+            &LlmError::ServerError("HTTP 503: loading".into())
+        ));
+        // A plain 500 / auth / rate-limit is not cold-start.
+        assert!(!looks_like_cold_restart(
+            "groq",
+            &LlmError::ServerError("HTTP 500: internal".into())
+        ));
+        assert!(!looks_like_cold_restart(
+            "groq",
+            &LlmError::Auth("HTTP 401".into())
+        ));
+        assert!(!looks_like_cold_restart(
+            "groq",
+            &LlmError::RateLimited {
+                message: "HTTP 429".into(),
+                retry_after: None,
+            }
+        ));
+    }
+
+    #[test]
+    fn cold_restart_recognizes_model_loading_messages() {
+        // "model loading" style messages count as cold-start for any provider.
+        assert!(looks_like_cold_restart(
+            "ollama",
+            &LlmError::ServerError("HTTP 500: model is loading".into())
+        ));
+        assert!(looks_like_cold_restart(
+            "groq",
+            &LlmError::Api("the model is warming up, retry shortly".into())
+        ));
+        assert!(looks_like_cold_restart(
+            "ollama",
+            &LlmError::ServerError("model not loaded yet".into())
+        ));
+    }
+
+    #[test]
+    fn cold_restart_connection_refused_only_for_cold_providers() {
+        // Build a reqwest connect error by hitting a closed local port.
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let connect_err = rt.block_on(async {
+            reqwest::Client::new()
+                .get("http://127.0.0.1:1/") // port 1 — refused
+                .timeout(Duration::from_secs(2))
+                .send()
+                .await
+                .expect_err("connection should fail")
+        });
+        assert!(connect_err.is_connect(), "expected a connect-class error");
+
+        // A cold-capable provider treats connect-refused as cold-start…
+        assert!(looks_like_cold_restart(
+            "ollama",
+            &LlmError::Request(connect_err)
+        ));
+
+        // …but a hosted provider does not (need a fresh error — reqwest::Error
+        // isn't Clone). Re-derive it.
+        let connect_err2 = rt.block_on(async {
+            reqwest::Client::new()
+                .get("http://127.0.0.1:1/")
+                .timeout(Duration::from_secs(2))
+                .send()
+                .await
+                .expect_err("connection should fail")
+        });
+        assert!(!looks_like_cold_restart(
+            "groq",
+            &LlmError::Request(connect_err2)
+        ));
+    }
+
+    #[test]
+    fn ttl_is_short_for_cold_providers_and_long_for_hosted() {
+        // Cold-capable providers re-warm on the short cadence.
+        assert_eq!(warmup_ttl_for_provider("ollama"), DEFAULT_WARMUP_TTL);
+        assert_eq!(warmup_ttl_for_provider("ollama-cloud"), DEFAULT_WARMUP_TTL);
+        // Hosted providers effectively never re-warm.
+        assert_eq!(warmup_ttl_for_provider("groq"), NEVER_COLD_WARMUP_TTL);
+        assert_eq!(warmup_ttl_for_provider("openai"), NEVER_COLD_WARMUP_TTL);
+        assert_eq!(warmup_ttl_for_provider("anthropic"), NEVER_COLD_WARMUP_TTL);
+        // Unknown providers err toward the conservative short TTL.
+        assert_eq!(warmup_ttl_for_provider("mystery"), DEFAULT_WARMUP_TTL);
+    }
+
+    #[tokio::test]
+    async fn hosted_provider_does_not_rewarm_within_session() {
+        // With a hosted provider TTL, an explicit warmup followed by a stream
+        // must NOT trigger a second warmup — proving the long TTL is applied
+        // through `new()` (not the test-only `with_ttl`).
+        let inner = Arc::new(CountingClient::new(vec![ok_response(), ok_response()]));
+        let counter = inner.clone();
+        let client = WarmingClient::new(inner, "groq");
+        client.warmup("model-a").await.unwrap();
+        let _stream = client.stream(user_request("model-a")).await.unwrap();
+        assert_eq!(
+            counter.calls(),
+            2,
+            "hosted provider should warm once, then never re-warm"
+        );
     }
 }

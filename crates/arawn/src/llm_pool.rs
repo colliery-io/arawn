@@ -63,10 +63,17 @@ impl LlmClientPool {
                 with_retry,
                 llm_config.provider.clone(),
             ));
-            let warmed: Arc<dyn LlmClient> = Arc::new(arawn_llm::WarmingClient::new(
-                tracked,
-                llm_config.provider.clone(),
-            ));
+            // Warmup TTL: an explicit per-profile override wins; otherwise the
+            // WarmingClient picks a TTL from the provider (short for
+            // cold-capable providers, effectively-off for hosted ones).
+            let warmed: Arc<dyn LlmClient> = Arc::new(match llm_config.warmup_ttl_secs {
+                Some(secs) => arawn_llm::WarmingClient::with_ttl(
+                    tracked,
+                    llm_config.provider.clone(),
+                    std::time::Duration::from_secs(secs),
+                ),
+                None => arawn_llm::WarmingClient::new(tracked, llm_config.provider.clone()),
+            });
             clients.insert(name.clone(), warmed);
             configs.insert(name.clone(), llm_config.clone());
         }

@@ -20,4 +20,6 @@ pub use retry::RetryClient;
 pub use types::{
     ChatChunk, ChatContent, ChatMessage, ChatRequest, FinishReason, ToolCall, ToolDefinition, Usage,
 };
-pub use warming::{DEFAULT_WARMUP_TTL, WarmingClient};
+pub use warming::{
+    DEFAULT_WARMUP_TTL, NEVER_COLD_WARMUP_TTL, WarmingClient, warmup_ttl_for_provider,
+};
