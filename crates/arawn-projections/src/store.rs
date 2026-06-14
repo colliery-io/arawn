@@ -293,15 +293,28 @@ impl ProjectionStore {
             "SELECT projection_id FROM {feed_type}_fts \
              WHERE {feed_type}_fts MATCH ?1 ORDER BY rank LIMIT ?2"
         );
-        let mut stmt = conn
-            .prepare(&sql)
-            .map_err(|e| ProjectionError::Storage(format!("prepare fts: {e}")))?;
-        let rows = stmt
-            .query_map(params![escaped, limit as i64], |r| r.get::<_, String>(0))
-            .map_err(|e| ProjectionError::Storage(format!("fts: {e}")))?;
-        let mut ids = Vec::new();
-        for r in rows {
-            ids.push(r.map_err(|e| ProjectionError::Storage(e.to_string()))?);
+        let run = |match_expr: &str| -> Result<Vec<String>, ProjectionError> {
+            let mut stmt = conn
+                .prepare(&sql)
+                .map_err(|e| ProjectionError::Storage(format!("prepare fts: {e}")))?;
+            let rows = stmt
+                .query_map(params![match_expr, limit as i64], |r| r.get::<_, String>(0))
+                .map_err(|e| ProjectionError::Storage(format!("fts: {e}")))?;
+            let mut ids = Vec::new();
+            for r in rows {
+                ids.push(r.map_err(|e| ProjectionError::Storage(e.to_string()))?);
+            }
+            Ok(ids)
+        };
+        // Primary query is AND (all tokens) — precise. Recall fallback
+        // (ARAWN-T-0500): a multi-token query that ANDs to *nothing* retries
+        // as OR (any token), ranked by FTS rank. Without this, a realistic
+        // natural-language query like "Project Falcon meeting notes" returns 0
+        // whenever a single token ("meeting") is absent, even though the row
+        // plainly matches the rest.
+        let ids = run(&escaped)?;
+        if ids.is_empty() && query.split_whitespace().count() > 1 {
+            return run(&escape_fts5_or(query));
         }
         Ok(ids)
     }
@@ -379,14 +392,26 @@ enum WriteAction {
 /// internal operator parsing), and escape any embedded `"` by
 /// doubling per FTS5 quoting rules.
 ///
-/// Implicit AND between tokens is preserved (it's the FTS5
-/// default), so multi-word queries behave the same as before
-/// for content that has no special characters.
+/// Tokens are AND-joined (the FTS5 default), so this is the precise
+/// query. For recall, [`ProjectionStore::fts_search`] falls back to the
+/// OR form ([`escape_fts5_or`]) when the AND query returns nothing
+/// (ARAWN-T-0500).
 ///
 /// Returns an empty string for empty / whitespace-only input;
 /// callers should treat that as "no query, no results" rather
 /// than passing to FTS5 (an empty MATCH is a syntax error).
 pub fn escape_fts5(query: &str) -> String {
+    escape_fts5_joined(query, " ")
+}
+
+/// Like [`escape_fts5`] but OR-joins the quoted tokens, so a row matching
+/// *any* term surfaces (ranked by FTS rank). The recall fallback used by
+/// [`ProjectionStore::fts_search`] when the precise AND query finds nothing.
+pub fn escape_fts5_or(query: &str) -> String {
+    escape_fts5_joined(query, " OR ")
+}
+
+fn escape_fts5_joined(query: &str, sep: &str) -> String {
     query
         .split_whitespace()
         .map(|tok| {
@@ -394,7 +419,7 @@ pub fn escape_fts5(query: &str) -> String {
             format!("\"{escaped}\"")
         })
         .collect::<Vec<_>>()
-        .join(" ")
+        .join(sep)
 }
 
 fn body_hash(body_text: &str) -> String {
@@ -565,6 +590,18 @@ mod fts_escape_tests {
     fn escape_quotes_each_token() {
         assert_eq!(escape_fts5("foo"), r#""foo""#);
         assert_eq!(escape_fts5("foo bar"), r#""foo" "bar""#);
+    }
+
+    #[test]
+    fn escape_or_joins_tokens_with_or() {
+        // ARAWN-T-0500 recall fallback form.
+        assert_eq!(escape_fts5_or(""), "");
+        assert_eq!(escape_fts5_or("solo"), r#""solo""#);
+        assert_eq!(escape_fts5_or("foo bar"), r#""foo" OR "bar""#);
+        assert_eq!(
+            escape_fts5_or("RFC-0042 sign-off"),
+            r#""RFC-0042" OR "sign-off""#
+        );
     }
 
     #[test]
@@ -751,6 +788,42 @@ mod fts_escape_tests {
             .fts_search("slack_messages", "RFC-0042 Alice", 10)
             .expect("search");
         // m1 contains both tokens; m2 contains neither.
+        assert_eq!(hits, vec!["m1".to_string()]);
+    }
+
+    #[test]
+    fn verbose_query_falls_back_to_or_for_recall() {
+        // ARAWN-T-0500: a realistic multi-word query where one token is absent
+        // must still surface the matching row (recall), via the OR fallback.
+        let store = open_store();
+        seed(
+            &store,
+            "m1",
+            "Falcon standup",
+            "decision: migrate the ledger to Postgres 16. Codename Operation Bluefin.",
+        );
+        seed(&store, "m2", "Unrelated thread", "lunch plans");
+        // "meeting"/"notes" are absent from m1, so strict AND → 0; OR surfaces m1.
+        let hits = store
+            .fts_search("slack_messages", "Falcon meeting notes migration", 10)
+            .expect("search");
+        assert_eq!(
+            hits,
+            vec!["m1".to_string()],
+            "OR fallback must surface the partial match"
+        );
+    }
+
+    #[test]
+    fn or_fallback_does_not_fire_when_and_matches() {
+        // When the precise AND query already matches, keep it — don't broaden
+        // to OR (which would also pull in m2's lone "Falcon").
+        let store = open_store();
+        seed(&store, "m1", "Falcon migration", "Postgres 16 cutover");
+        seed(&store, "m2", "Falcon lunch", "tacos");
+        let hits = store
+            .fts_search("slack_messages", "Falcon migration", 10)
+            .expect("search");
         assert_eq!(hits, vec!["m1".to_string()]);
     }
 
