@@ -4,14 +4,14 @@ level: initiative
 title: "Mocked integrations in UAT — validate the live-agent tool path, not just the corpus fallback"
 short_code: "ARAWN-I-0062"
 created_at: 2026-05-28T22:01:44.832147+00:00
-updated_at: 2026-05-28T22:01:44.832147+00:00
+updated_at: 2026-06-14T15:53:01.774896+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/completed"
 
 
 exit_criteria_met: false

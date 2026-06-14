@@ -1,22 +1,22 @@
 ---
-id: land-the-lens-reframe-in-the-ux
+id: correct-the-memory-signal-lens
 level: initiative
 title: "Correct the memory / signal / lens model in code and UX"
 short_code: "ARAWN-I-0061"
 created_at: 2026-05-27T19:02:19.758458+00:00
-updated_at: 2026-05-27T19:02:19.758458+00:00
+updated_at: 2026-06-14T15:53:01.664503+00:00
 parent: ARAWN-V-0001
 blocked_by: []
 archived: false
 
 tags:
   - "#initiative"
-  - "#phase/discovery"
+  - "#phase/completed"
 
 
 exit_criteria_met: false
 estimated_complexity: M
-initiative_id: land-the-lens-reframe-in-the-ux
+initiative_id: correct-the-memory-signal-lens
 ---
 
 # Correct the memory / signal / lens model in code and UX
