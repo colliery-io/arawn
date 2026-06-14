@@ -114,6 +114,28 @@ impl<'a> ExtractionLogStore<'a> {
             .map_err(Into::into)
     }
 
+    /// Most recently updated extraction records, newest first. Backs the GUI
+    /// extraction-provenance surface (ARAWN-T-0499).
+    pub fn list_recent(&self, limit: usize) -> Result<Vec<ExtractionRecord>, StorageError> {
+        let conn = self.db.conn();
+        let mut stmt = conn.prepare(
+            "SELECT lens_name, projection_id, run_id, outcome, reason, dismissed, updated_at \
+             FROM extraction_log ORDER BY updated_at DESC LIMIT ?1",
+        )?;
+        let rows = stmt.query_map([limit as i64], |row| {
+            Ok(ExtractionRecord {
+                lens_name: row.get(0)?,
+                projection_id: row.get(1)?,
+                run_id: row.get(2)?,
+                outcome: row.get(3)?,
+                reason: row.get(4)?,
+                dismissed: row.get::<_, i64>(5)? != 0,
+                updated_at: row.get(6)?,
+            })
+        })?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
     /// Whether a row has been dismissed (so the extractor should skip it).
     pub fn is_dismissed(&self, lens_name: &str, projection_id: &str) -> Result<bool, StorageError> {
         let flag: Option<i64> = self
@@ -174,6 +196,39 @@ mod tests {
         assert_eq!(r.reason.as_deref(), Some("off topic"));
         assert!(!r.dismissed);
         assert_eq!(r.run_id, "run-1");
+    }
+
+    #[test]
+    fn list_recent_returns_newest_first_capped() {
+        let db = db();
+        let s = ExtractionLogStore::new(&db);
+        // Distinct (lens, projection) rows (the PK) with increasing timestamps.
+        for (i, proj) in ["m1", "m2", "m3"].iter().enumerate() {
+            s.record(
+                "pat",
+                proj,
+                &format!("run-{i}"),
+                ExtractionOutcome::Ok,
+                None,
+            )
+            .unwrap();
+            // Nudge updated_at ordering deterministically.
+            db.conn()
+                .execute(
+                    "UPDATE extraction_log SET updated_at = ?1 WHERE projection_id = ?2",
+                    rusqlite::params![format!("2026-06-1{}T00:00:00Z", i + 1), proj],
+                )
+                .unwrap();
+        }
+        let rows = s.list_recent(2).unwrap();
+        assert_eq!(rows.len(), 2, "limit respected");
+        assert_eq!(rows[0].projection_id, "m3", "newest first");
+        assert_eq!(rows[1].projection_id, "m2");
+        // Full read returns all three, still newest-first.
+        let all = s.list_recent(10).unwrap();
+        assert_eq!(all.len(), 3);
+        assert_eq!(all[0].projection_id, "m3");
+        assert_eq!(all[2].projection_id, "m1");
     }
 
     #[test]

@@ -11,14 +11,14 @@ use uuid::Uuid;
 pub use error::ServiceError;
 pub use types::{
     CeremoniesStatus, CeremonyRunStatus, CommandInfo, EmbeddingStatus, EngineEvent,
-    ExtractionCursor, ExtractionStatus, FeedDiscoverDto, FeedDiscoverRow, FeedParamKindDto,
-    FeedParamSpecDto, FeedRegisterSpec, FeedRemoveDto, FeedSchemaDto, FeedStatusRow,
-    FeedSummaryDto, FeedTemplateInfo, FeedsStatus, ForgetCandidate, ForgetResult, HealthStatus,
-    IntegrationStatus, InventoryItem, LensInfo, LlmClientStatus, LlmStatus, MemoryStoreResult,
-    MemoryStoreSummary, MemorySummary, MemoryTypeCount, ModalPromptOption, OAuthFlowStarted,
-    PermissionAuditEntry, PermissionModeInfo, PermissionsStatus, SYSTEM_STATUS_VERSION,
-    ServerCapabilities, ServerNotice, SessionDetail, SessionInfo, StewardErrorStatus,
-    StewardStatus, SystemStatus, WorkflowInfo,
+    ExtractionCursor, ExtractionLogEntry, ExtractionStatus, FeedDiscoverDto, FeedDiscoverRow,
+    FeedParamKindDto, FeedParamSpecDto, FeedRegisterSpec, FeedRemoveDto, FeedSchemaDto,
+    FeedStatusRow, FeedSummaryDto, FeedTemplateInfo, FeedsStatus, ForgetCandidate, ForgetResult,
+    HealthStatus, IntegrationStatus, InventoryItem, LensInfo, LlmClientStatus, LlmStatus,
+    MemorySearchResult, MemoryStoreResult, MemoryStoreSummary, MemorySummary, MemoryTypeCount,
+    ModalPromptOption, OAuthFlowStarted, PermissionAuditEntry, PermissionModeInfo,
+    PermissionsStatus, SYSTEM_STATUS_VERSION, ServerCapabilities, ServerNotice, SessionDetail,
+    SessionInfo, SignalDto, StewardErrorStatus, StewardStatus, SystemStatus, WorkflowInfo,
 };
 
 /// The service contract between any UI client and the Arawn backend.
@@ -115,6 +115,24 @@ pub trait ArawnService: Send + Sync {
 
     /// Forget/delete an entity from the knowledge base.
     async fn forget_entity(&self, query: &str) -> Result<ForgetResult, ServiceError>;
+
+    /// Read-only free-text search of the global knowledge base (T-0499).
+    /// Distinct from `forget_entity`, which searches to delete.
+    async fn memory_search(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> Result<Vec<MemorySearchResult>, ServiceError>;
+
+    // --- Inspection (GUI surfaces, ARAWN-I-0070) ---
+
+    /// Recent extracted signals across every lens KB, newest/most-confident
+    /// first, each labeled with its source lens (T-0498).
+    async fn list_signals(&self, limit: usize) -> Result<Vec<SignalDto>, ServiceError>;
+
+    /// Recent extraction-log rows (per-(lens, projection) run outcomes),
+    /// newest first — extraction provenance (T-0499).
+    async fn extraction_log(&self, limit: usize) -> Result<Vec<ExtractionLogEntry>, ServiceError>;
 
     // --- Permissions ---
 

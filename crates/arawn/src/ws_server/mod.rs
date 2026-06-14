@@ -47,6 +47,9 @@ const RPC_METHODS: &[&str] = &[
     "store_memory",
     "get_memory_summary",
     "delete_memory",
+    "memory_search",
+    "list_signals",
+    "extraction_log",
     "get_permission_mode",
     "set_permission_mode",
     "get_capabilities",
@@ -1070,6 +1073,65 @@ async fn handle_connection(socket: WebSocket, service: Arc<LocalService>) {
                     .unwrap_or("");
                 let resp = match service.forget_entity(query).await {
                     Ok(result) => Response::success(id, serde_json::to_value(&result).unwrap()),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "memory_search" => {
+                debug!(id, "memory_search");
+                let query = request
+                    .params
+                    .get("query")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let limit = request
+                    .params
+                    .get("limit")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(50) as usize;
+                let resp = match service.memory_search(query, limit).await {
+                    Ok(hits) => Response::success(id, serde_json::to_value(&hits).unwrap()),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "list_signals" => {
+                debug!(id, "list_signals");
+                let limit = request
+                    .params
+                    .get("limit")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(50) as usize;
+                let resp = match service.list_signals(limit).await {
+                    Ok(sigs) => Response::success(id, serde_json::to_value(&sigs).unwrap()),
+                    Err(e) => Response::from_service_error(id, &e),
+                };
+                let _ = sender
+                    .send(WsMessage::Text(
+                        serde_json::to_string(&resp).unwrap().into(),
+                    ))
+                    .await;
+            }
+
+            "extraction_log" => {
+                debug!(id, "extraction_log");
+                let limit = request
+                    .params
+                    .get("limit")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(50) as usize;
+                let resp = match service.extraction_log(limit).await {
+                    Ok(rows) => Response::success(id, serde_json::to_value(&rows).unwrap()),
                     Err(e) => Response::from_service_error(id, &e),
                 };
                 let _ = sender

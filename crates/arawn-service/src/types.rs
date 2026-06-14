@@ -141,6 +141,48 @@ pub struct MemoryTypeCount {
     pub count: u64,
 }
 
+/// One extracted signal (a lens-tier KB entity), labeled with its source lens.
+/// Backs the GUI signals-across-lenses surface (ARAWN-T-0498).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignalDto {
+    pub id: String,
+    pub lens: String,
+    #[serde(rename = "type")]
+    pub entity_type: String,
+    pub title: String,
+    pub summary: Option<String>,
+    pub tags: Vec<String>,
+    /// Confidence source: "stated" | "observed" | "inferred".
+    pub confidence: String,
+    pub updated_at: String,
+}
+
+/// One memory-search hit (global KB), read-only — distinct from the
+/// delete-oriented `forget_entity` search (ARAWN-T-0499).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemorySearchResult {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub entity_type: String,
+    pub title: String,
+    pub summary: Option<String>,
+    pub updated_at: String,
+}
+
+/// One extraction-log row — per-(lens, projection) run outcome, newest first.
+/// Backs the GUI provenance surface (ARAWN-T-0499).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExtractionLogEntry {
+    pub lens: String,
+    pub projection_id: String,
+    pub run_id: String,
+    /// "ok" | "empty" | "skipped".
+    pub outcome: String,
+    pub reason: Option<String>,
+    pub dismissed: bool,
+    pub updated_at: String,
+}
+
 /// Result of forgetting an entity.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "status")]

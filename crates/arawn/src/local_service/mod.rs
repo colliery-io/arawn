@@ -637,6 +637,7 @@ use async_trait::async_trait;
 
 mod commands;
 mod feeds;
+mod inspect;
 mod integrations;
 mod lenses;
 mod memory;
@@ -704,6 +705,25 @@ impl ArawnService for LocalService {
     }
     async fn forget_entity(&self, query: &str) -> Result<ForgetResult, ServiceError> {
         self.forget_entity_inner(query).await
+    }
+    async fn memory_search(
+        &self,
+        query: &str,
+        limit: usize,
+    ) -> Result<Vec<arawn_service::MemorySearchResult>, ServiceError> {
+        self.memory_search_inner(query, limit).await
+    }
+    async fn list_signals(
+        &self,
+        limit: usize,
+    ) -> Result<Vec<arawn_service::SignalDto>, ServiceError> {
+        self.list_signals_inner(limit).await
+    }
+    async fn extraction_log(
+        &self,
+        limit: usize,
+    ) -> Result<Vec<arawn_service::ExtractionLogEntry>, ServiceError> {
+        self.extraction_log_inner(limit).await
     }
     async fn get_permission_mode(&self) -> Result<PermissionModeInfo, ServiceError> {
         self.get_permission_mode_inner().await

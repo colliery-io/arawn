@@ -21,7 +21,7 @@
 
 use std::convert::Infallible;
 
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::{StatusCode, header};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
@@ -31,7 +31,10 @@ use rust_embed::RustEmbed;
 use tokio_stream::wrappers::BroadcastStream;
 
 use arawn_ceremonies::{CeremonyService, ItemDto, PriorityDto, TabletDto};
-use arawn_service::{ArawnService, ExtractionCursor, MemorySummary, ServerNotice, SystemStatus};
+use arawn_service::{
+    ArawnService, ExtractionCursor, ExtractionLogEntry, MemorySummary, ServerNotice, SignalDto,
+    SystemStatus,
+};
 use arawn_storage::Todo;
 
 use super::AppState;
@@ -596,12 +599,19 @@ fn render_row(t: &Todo) -> Markup {
 
 // ── GUI-S4: signals / memory / extraction-provenance ──────────────────────
 
-/// `GET /signals` — deeper inspection: memory summary, extraction provenance
-/// (cursors), and signals. Renders what the protocol exposes today; the
-/// missing reads are named with their filed follow-up tasks rather than
-/// faked client-side (T-0498 signals read, T-0499 extraction-log + memory
-/// search).
-pub(super) async fn signals_page(State(state): State<AppState>) -> Response {
+/// Query string for `/signals` — `?q=` runs a memory search (T-0499).
+#[derive(serde::Deserialize)]
+pub(super) struct SignalsQuery {
+    q: Option<String>,
+}
+
+/// `GET /signals` — deeper inspection: a live signals-across-lenses list
+/// (T-0498), memory summary + free-text search (T-0499), and extraction
+/// provenance (cursors + run log, T-0499).
+pub(super) async fn signals_page(
+    State(state): State<AppState>,
+    Query(params): Query<SignalsQuery>,
+) -> Response {
     let memory = state.service.memory_summary().await.ok();
     let cursors = state
         .service
@@ -610,22 +620,65 @@ pub(super) async fn signals_page(State(state): State<AppState>) -> Response {
         .ok()
         .map(|s| s.extraction.cursors)
         .unwrap_or_default();
-    axum::response::Html(signals_markup(memory.as_ref(), &cursors).into_string()).into_response()
+    let signals = state.service.list_signals(50).await.unwrap_or_default();
+    let log = state.service.extraction_log(50).await.unwrap_or_default();
+    let search = match params.q.as_deref().map(str::trim) {
+        Some(q) if !q.is_empty() => {
+            let hits = state.service.memory_search(q, 20).await.unwrap_or_default();
+            Some((q.to_string(), hits))
+        }
+        _ => None,
+    };
+    axum::response::Html(
+        signals_markup(memory.as_ref(), &cursors, &signals, &log, search.as_ref()).into_string(),
+    )
+    .into_response()
 }
 
-fn signals_markup(memory: Option<&MemorySummary>, cursors: &[ExtractionCursor]) -> Markup {
+#[allow(clippy::type_complexity)]
+fn signals_markup(
+    memory: Option<&MemorySummary>,
+    cursors: &[ExtractionCursor],
+    signals: &[SignalDto],
+    log: &[ExtractionLogEntry],
+    search: Option<&(String, Vec<arawn_service::MemorySearchResult>)>,
+) -> Markup {
     let content = html! {
         h2 { "Signals · Memory · Provenance" }
         div class="panels" {
-            // Memory — available via memory_summary().
+            // Signals across lenses (T-0498).
+            section class="panel" {
+                h3 { "Signals across lenses" }
+                @if signals.is_empty() {
+                    p class="muted" { "No signals extracted yet." }
+                } @else {
+                    table {
+                        thead { tr { th { "lens" } th { "type" } th { "signal" } th { "updated" } } }
+                        tbody {
+                            @for s in signals {
+                                tr {
+                                    td { span class="tag" { (s.lens) } }
+                                    td { (s.entity_type) }
+                                    td {
+                                        (s.title)
+                                        @if let Some(sum) = &s.summary { @if !sum.is_empty() {
+                                            br; span class="muted" { (clip(sum, 140)) }
+                                        } }
+                                    }
+                                    td { (date_of(&s.updated_at)) }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            // Memory: summary + free-text search (T-0499).
             section class="panel" {
                 h3 { "Memory" }
                 @match memory {
                     Some(m) => {
                         p class="muted" { "Total entities: " (m.global.total) }
-                        @if m.global.by_type.is_empty() {
-                            p class="muted" { "No entities yet." }
-                        } @else {
+                        @if !m.global.by_type.is_empty() {
                             table {
                                 thead { tr { th { "type" } th { "count" } } }
                                 tbody { @for t in &m.global.by_type { tr { td { (t.entity_type) } td { (t.count) } } } }
@@ -634,11 +687,28 @@ fn signals_markup(memory: Option<&MemorySummary>, cursors: &[ExtractionCursor]) 
                     }
                     None => p class="muted" { "Memory summary unavailable." }
                 }
-                p class="muted gap" { "Free-text memory search needs a read RPC — filed as T-0499." }
+                form class="mem-search" method="get" action="/signals" {
+                    input type="search" name="q" placeholder="Search memory…"
+                        value=(search.map(|(q, _)| q.as_str()).unwrap_or(""));
+                    button type="submit" { "Search" }
+                }
+                @if let Some((q, hits)) = search {
+                    h4 { "Results for \"" (q) "\"" }
+                    @if hits.is_empty() {
+                        p class="muted" { "No matches." }
+                    } @else {
+                        ul class="brief-list" {
+                            @for h in hits {
+                                li { strong { (h.title) } " " span class="tag" { (h.entity_type) } }
+                            }
+                        }
+                    }
+                }
             }
-            // Extraction provenance — cursors available via status(); run log not yet.
+            // Extraction provenance: cursors + run log (T-0499).
             section class="panel" {
                 h3 { "Extraction provenance" }
+                h4 { "Cursors" }
                 @if cursors.is_empty() {
                     p class="muted" { "No extraction cursors yet." }
                 } @else {
@@ -647,16 +717,56 @@ fn signals_markup(memory: Option<&MemorySummary>, cursors: &[ExtractionCursor]) 
                         tbody { @for c in cursors { tr { td { (c.lens) } td { (c.feed_type) } td { (c.cursor_ts.as_deref().unwrap_or("—")) } } } }
                     }
                 }
-                p class="muted gap" { "Per-run extraction log (signal explain / rerun history, T-0484) needs a read RPC — filed as T-0499." }
-            }
-            // Signals — no read RPC yet.
-            section class="panel" {
-                h3 { "Signals across lenses" }
-                p class="muted gap" { "No signals read RPC yet — filed as T-0498. Signals are extracted into projections; this panel lights up once the read RPC lands." }
+                h4 { "Recent runs" }
+                @if log.is_empty() {
+                    p class="muted" { "No extraction runs logged yet." }
+                } @else {
+                    table {
+                        thead { tr { th { "lens" } th { "projection" } th { "outcome" } th { "when" } } }
+                        tbody {
+                            @for r in log {
+                                tr {
+                                    td { (r.lens) }
+                                    td { (clip(&r.projection_id, 28)) }
+                                    td class=(extraction_outcome_class(&r.outcome)) {
+                                        (r.outcome)
+                                        @if let Some(reason) = &r.reason { @if !reason.is_empty() { " — " (clip(reason, 60)) } }
+                                    }
+                                    td { (date_of(&r.updated_at)) }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     };
     page("/signals", content)
+}
+
+/// Clip a string to `max` chars with an ellipsis.
+fn clip(s: &str, max: usize) -> String {
+    if s.chars().count() <= max {
+        s.to_string()
+    } else {
+        let mut out: String = s.chars().take(max).collect();
+        out.push('…');
+        out
+    }
+}
+
+/// Date portion of an RFC3339 timestamp (first 10 chars), or the whole string.
+fn date_of(ts: &str) -> &str {
+    if ts.len() >= 10 { &ts[..10] } else { ts }
+}
+
+/// CSS class for an extraction outcome: `ok` greens, `skipped` mutes, `empty`/other plain.
+fn extraction_outcome_class(outcome: &str) -> &'static str {
+    match outcome {
+        "ok" => "ok",
+        "skipped" => "muted",
+        _ => "",
+    }
 }
 
 /// Look up `path` in the embedded bundle and return it with a content-type,
@@ -1048,10 +1158,13 @@ mod tests {
 
     // ── GUI-S4: signals / memory / provenance ─────────────────────────────
 
-    #[test]
-    fn signals_renders_memory_cursors_and_names_gaps() {
-        use arawn_service::{ExtractionCursor, MemoryStoreSummary, MemorySummary, MemoryTypeCount};
-        let mem = MemorySummary {
+    use arawn_service::{
+        ExtractionCursor, ExtractionLogEntry, MemorySearchResult, MemoryStoreSummary,
+        MemorySummary, MemoryTypeCount, SignalDto,
+    };
+
+    fn sample_mem() -> MemorySummary {
+        MemorySummary {
             global: MemoryStoreSummary {
                 total: 5,
                 by_type: vec![MemoryTypeCount {
@@ -1059,30 +1172,98 @@ mod tests {
                     count: 3,
                 }],
             },
-        };
+        }
+    }
+
+    fn sample_signal() -> SignalDto {
+        SignalDto {
+            id: "sig-1".into(),
+            lens: "work".into(),
+            entity_type: "decision".into(),
+            title: "Adopt server-rendered hypermedia".into(),
+            summary: Some("Chosen for the GUI".into()),
+            tags: vec!["gui".into()],
+            confidence: "stated".into(),
+            updated_at: "2026-06-14T09:00:00Z".into(),
+        }
+    }
+
+    fn sample_log() -> ExtractionLogEntry {
+        ExtractionLogEntry {
+            lens: "work".into(),
+            projection_id: "gmail:feed-1:m1".into(),
+            run_id: "run-9".into(),
+            outcome: "ok".into(),
+            reason: None,
+            dismissed: false,
+            updated_at: "2026-06-14T08:00:00Z".into(),
+        }
+    }
+
+    #[test]
+    fn signals_renders_live_signals_memory_and_run_log() {
+        let mem = sample_mem();
         let cursors = vec![ExtractionCursor {
             lens: "work".into(),
             feed_type: "gmail".into(),
             cursor_ts: Some("2026-06-13T00:00:00Z".into()),
         }];
-        let h = signals_markup(Some(&mem), &cursors).into_string();
-        // Available data rendered.
+        let signals = vec![sample_signal()];
+        let log = vec![sample_log()];
+        let h = signals_markup(Some(&mem), &cursors, &signals, &log, None).into_string();
+        // Signals across lenses — real rows now, not a placeholder.
+        assert!(h.contains("Adopt server-rendered hypermedia"));
+        assert!(h.contains("decision"));
+        // Memory summary + search form.
         assert!(h.contains("Total entities: 5"));
-        assert!(h.contains("person"));
-        assert!(h.contains("Extraction provenance"));
+        assert!(h.contains("name=\"q\"")); // search box
+        // Provenance: cursors + run log.
         assert!(h.contains("gmail"));
-        // Gaps named with their filed follow-up tasks (not faked).
-        assert!(h.contains("T-0498")); // signals read
-        assert!(h.contains("T-0499")); // extraction-log + memory search
-        assert!(h.contains("surface active")); // /signals nav highlighted
+        assert!(h.contains("Recent runs"));
+        assert!(h.contains("gmail:feed-1:m1"));
+        // No leftover "filed as T-04xx" gap notes — the features exist now.
+        assert!(!h.contains("filed as T-0498"));
+        assert!(!h.contains("filed as T-0499"));
+        assert!(h.contains("surface active"));
     }
 
     #[test]
-    fn signals_degrades_when_data_unavailable() {
-        let h = signals_markup(None, &[]).into_string();
+    fn signals_renders_memory_search_results() {
+        let mem = sample_mem();
+        let hits = vec![MemorySearchResult {
+            id: "e1".into(),
+            entity_type: "fact".into(),
+            title: "Dylan prefers inline tests".into(),
+            summary: None,
+            updated_at: "2026-06-14T00:00:00Z".into(),
+        }];
+        let search = ("inline tests".to_string(), hits);
+        let h = signals_markup(Some(&mem), &[], &[], &[], Some(&search)).into_string();
+        // maud HTML-escapes quotes; assert on the stable text, not the quoting.
+        assert!(h.contains("Results for"));
+        assert!(h.contains("inline tests"));
+        assert!(h.contains("Dylan prefers inline tests"));
+    }
+
+    #[test]
+    fn signals_degrades_when_everything_empty() {
+        let h = signals_markup(None, &[], &[], &[], None).into_string();
+        assert!(h.contains("No signals extracted yet"));
         assert!(h.contains("Memory summary unavailable"));
         assert!(h.contains("No extraction cursors yet"));
-        // Still names the gaps — never blanks.
-        assert!(h.contains("T-0498"));
+        assert!(h.contains("No extraction runs logged yet"));
+        // Never blanks; nav still active.
+        assert!(h.contains("surface active"));
+    }
+
+    #[test]
+    fn clip_and_date_helpers() {
+        assert_eq!(clip("short", 10), "short");
+        assert_eq!(clip("abcdef", 3), "abc…");
+        assert_eq!(date_of("2026-06-14T09:00:00Z"), "2026-06-14");
+        assert_eq!(date_of("short"), "short");
+        assert_eq!(extraction_outcome_class("ok"), "ok");
+        assert_eq!(extraction_outcome_class("skipped"), "muted");
+        assert_eq!(extraction_outcome_class("empty"), "");
     }
 }
