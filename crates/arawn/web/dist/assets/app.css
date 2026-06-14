@@ -121,3 +121,10 @@ td.err, tr.err td, .panel .err { color: #c0392b; }
 .todo-actions button:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .todo-actions button.danger { color: #c0392b; border-color: color-mix(in srgb, #c0392b 40%, transparent); }
 
+/* GUI-S4: provenance gap notes (features awaiting a read RPC) */
+.gap {
+  font-size: 0.82rem; font-style: italic;
+  border-left: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  padding-left: 0.6rem; margin-top: 0.6rem;
+}
+

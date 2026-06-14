@@ -31,7 +31,7 @@ use rust_embed::RustEmbed;
 use tokio_stream::wrappers::BroadcastStream;
 
 use arawn_ceremonies::{CeremonyService, ItemDto, PriorityDto, TabletDto};
-use arawn_service::{ArawnService, ServerNotice, SystemStatus};
+use arawn_service::{ArawnService, ExtractionCursor, MemorySummary, ServerNotice, SystemStatus};
 use arawn_storage::Todo;
 
 use super::AppState;
@@ -594,6 +594,71 @@ fn render_row(t: &Todo) -> Markup {
     }
 }
 
+// ── GUI-S4: signals / memory / extraction-provenance ──────────────────────
+
+/// `GET /signals` — deeper inspection: memory summary, extraction provenance
+/// (cursors), and signals. Renders what the protocol exposes today; the
+/// missing reads are named with their filed follow-up tasks rather than
+/// faked client-side (T-0498 signals read, T-0499 extraction-log + memory
+/// search).
+pub(super) async fn signals_page(State(state): State<AppState>) -> Response {
+    let memory = state.service.memory_summary().await.ok();
+    let cursors = state
+        .service
+        .status()
+        .await
+        .ok()
+        .map(|s| s.extraction.cursors)
+        .unwrap_or_default();
+    axum::response::Html(signals_markup(memory.as_ref(), &cursors).into_string()).into_response()
+}
+
+fn signals_markup(memory: Option<&MemorySummary>, cursors: &[ExtractionCursor]) -> Markup {
+    let content = html! {
+        h2 { "Signals · Memory · Provenance" }
+        div class="panels" {
+            // Memory — available via memory_summary().
+            section class="panel" {
+                h3 { "Memory" }
+                @match memory {
+                    Some(m) => {
+                        p class="muted" { "Total entities: " (m.global.total) }
+                        @if m.global.by_type.is_empty() {
+                            p class="muted" { "No entities yet." }
+                        } @else {
+                            table {
+                                thead { tr { th { "type" } th { "count" } } }
+                                tbody { @for t in &m.global.by_type { tr { td { (t.entity_type) } td { (t.count) } } } }
+                            }
+                        }
+                    }
+                    None => p class="muted" { "Memory summary unavailable." }
+                }
+                p class="muted gap" { "Free-text memory search needs a read RPC — filed as T-0499." }
+            }
+            // Extraction provenance — cursors available via status(); run log not yet.
+            section class="panel" {
+                h3 { "Extraction provenance" }
+                @if cursors.is_empty() {
+                    p class="muted" { "No extraction cursors yet." }
+                } @else {
+                    table {
+                        thead { tr { th { "lens" } th { "feed type" } th { "cursor" } } }
+                        tbody { @for c in cursors { tr { td { (c.lens) } td { (c.feed_type) } td { (c.cursor_ts.as_deref().unwrap_or("—")) } } } }
+                    }
+                }
+                p class="muted gap" { "Per-run extraction log (signal explain / rerun history, T-0484) needs a read RPC — filed as T-0499." }
+            }
+            // Signals — no read RPC yet.
+            section class="panel" {
+                h3 { "Signals across lenses" }
+                p class="muted gap" { "No signals read RPC yet — filed as T-0498. Signals are extracted into projections; this panel lights up once the read RPC lands." }
+            }
+        }
+    };
+    page("/signals", content)
+}
+
 /// Look up `path` in the embedded bundle and return it with a content-type,
 /// or 404 if absent.
 fn serve_embedded(path: &str) -> Response {
@@ -979,5 +1044,45 @@ mod tests {
         assert!(h.contains("/inbox/t9/undo"));
         assert!(!h.contains("/inbox/t9/done"));
         assert!(h.contains("todo-body done")); // struck-through styling hook
+    }
+
+    // ── GUI-S4: signals / memory / provenance ─────────────────────────────
+
+    #[test]
+    fn signals_renders_memory_cursors_and_names_gaps() {
+        use arawn_service::{ExtractionCursor, MemoryStoreSummary, MemorySummary, MemoryTypeCount};
+        let mem = MemorySummary {
+            global: MemoryStoreSummary {
+                total: 5,
+                by_type: vec![MemoryTypeCount {
+                    entity_type: "person".into(),
+                    count: 3,
+                }],
+            },
+        };
+        let cursors = vec![ExtractionCursor {
+            lens: "work".into(),
+            feed_type: "gmail".into(),
+            cursor_ts: Some("2026-06-13T00:00:00Z".into()),
+        }];
+        let h = signals_markup(Some(&mem), &cursors).into_string();
+        // Available data rendered.
+        assert!(h.contains("Total entities: 5"));
+        assert!(h.contains("person"));
+        assert!(h.contains("Extraction provenance"));
+        assert!(h.contains("gmail"));
+        // Gaps named with their filed follow-up tasks (not faked).
+        assert!(h.contains("T-0498")); // signals read
+        assert!(h.contains("T-0499")); // extraction-log + memory search
+        assert!(h.contains("surface active")); // /signals nav highlighted
+    }
+
+    #[test]
+    fn signals_degrades_when_data_unavailable() {
+        let h = signals_markup(None, &[]).into_string();
+        assert!(h.contains("Memory summary unavailable"));
+        assert!(h.contains("No extraction cursors yet"));
+        // Still names the gaps — never blanks.
+        assert!(h.contains("T-0498"));
     }
 }
