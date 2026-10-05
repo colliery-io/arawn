@@ -29,6 +29,51 @@ arawn "draft a one-line commit message for the diff in this repo"
 
 Sends the prompt to a `serve`-running server and streams the response. Useful for shell scripts.
 
+## `arawn init`
+
+Write a starter `arawn.toml` with one LLM profile into the data directory.
+
+| Flag | Default | Description |
+|---|---|---|
+| `--provider <name>` | `groq` | LLM provider: `groq`, `openai`, `anthropic`, `ollama`, or a different OpenAI-compatible provider. |
+| `--model <name>` | built-in default | Model name. |
+| `--api-key-env <VAR>` | per provider | The env var that holds the API key, for example `GROQ_API_KEY`. |
+| `--force` | off | Replace an existing `arawn.toml`. |
+
+## `arawn setup`
+
+Set up the integrations: Google (Gmail, Calendar, Drive), Slack, Atlassian (Jira, Confluence) and GitHub. For each provider, `arawn setup` shows the console steps, the scopes to add and the redirect URL. Then it asks for the credentials and writes the `[integrations.<provider>]` table into `arawn.toml`.
+
+```sh
+arawn setup              # Walk through all providers
+arawn setup slack        # Set up one provider
+```
+
+If `arawn.toml` does not exist, `arawn setup` writes a starter config first, as `arawn init` does. Comments and other tables in `arawn.toml` stay as they are. The file is written with mode `0600`, because it can hold client secrets.
+
+For scripts, give the provider and the credentials as flags. Then `arawn setup` asks no questions.
+
+| Flag | Description |
+|---|---|
+| `<provider>` | `google`, `slack`, `atlassian` or `github`. `gmail`, `calendar`, `drive`, `jira` and `confluence` are also accepted. |
+| `--client-id <id>` | OAuth client ID. |
+| `--client-secret <secret>` | OAuth client secret. To keep the secret out of your shell history, give `--client-id` without `--client-secret` and set `ARAWN_SETUP_CLIENT_SECRET`. |
+| `--secret-from-env` | Do not write the secret into `arawn.toml`. arawn reads it from `ARAWN_<PROVIDER>_CLIENT_SECRET` when the server starts. |
+| `--app-id <id>` | GitHub App ID. |
+| `--app-slug <slug>` | GitHub App slug. |
+| `--private-key-path <path>` | GitHub App private key (`.pem`). `arawn setup` makes sure that the key can sign a token before it writes the config. |
+| `--llm-provider <name>` | LLM provider for the starter config, when `arawn.toml` does not exist. Default `groq`. |
+
+```sh
+arawn setup google --client-id ID.apps.googleusercontent.com --client-secret GOCSPX-…
+arawn setup atlassian --client-id ID --secret-from-env
+arawn setup github --app-id 42 --app-slug my-arawn --private-key-path ~/keys/arawn.pem
+```
+
+An env var such as `ARAWN_GMAIL_CLIENT_ID`, or a per-service table such as `[integrations.gmail]`, comes before the table that `arawn setup` writes. If one of them hides the new client, `arawn setup` shows a warning that names it. See [Integrations config](./integrations-config.md#the-lookup-precedence).
+
+After `arawn setup`, restart `arawn serve` and connect each service with `/connect <service>` in the TUI.
+
 ## `arawn serve`
 
 Start the WebSocket server.

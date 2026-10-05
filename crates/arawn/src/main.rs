@@ -89,6 +89,38 @@ async fn main() -> Result<()> {
             #[arg(long)]
             force: bool,
         },
+        /// Set up integrations (Google, Slack, Atlassian, GitHub) step by step
+        #[command(after_help = "Examples:\n  \
+            arawn setup                       Walk through every provider\n  \
+            arawn setup slack                 Set up one provider\n  \
+            arawn setup google --client-id ID --client-secret SECRET\n  \
+            arawn setup atlassian --client-id ID --secret-from-env\n  \
+            arawn setup github --app-id 42 --app-slug my-app --private-key-path ~/app.pem")]
+        Setup {
+            /// Provider to set up: google, slack, atlassian or github. Omit it to walk through all.
+            provider: Option<String>,
+            /// OAuth client ID (no prompts)
+            #[arg(long)]
+            client_id: Option<String>,
+            /// OAuth client secret (no prompts). With --client-id and no --client-secret, ARAWN_SETUP_CLIENT_SECRET is used.
+            #[arg(long)]
+            client_secret: Option<String>,
+            /// Keep the client secret out of arawn.toml; arawn reads it from ARAWN_<PROVIDER>_CLIENT_SECRET
+            #[arg(long)]
+            secret_from_env: bool,
+            /// GitHub App ID (no prompts)
+            #[arg(long)]
+            app_id: Option<String>,
+            /// GitHub App slug (no prompts)
+            #[arg(long)]
+            app_slug: Option<String>,
+            /// Path to the GitHub App private key .pem (no prompts)
+            #[arg(long)]
+            private_key_path: Option<String>,
+            /// LLM provider for the starter config when arawn.toml does not exist
+            #[arg(long, default_value = "groq")]
+            llm_provider: String,
+        },
         /// Start the WebSocket server
         Serve {
             /// Server port
@@ -158,6 +190,63 @@ async fn main() -> Result<()> {
             Ok(()) => std::process::exit(0),
             Err(e) => {
                 eprintln!("Error: {e}");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    // Handle setup subcommand immediately (exits process). ARAWN-T-0501.
+    if let Some(Command::Setup {
+        provider,
+        client_id,
+        client_secret,
+        secret_from_env,
+        app_id,
+        app_slug,
+        private_key_path,
+        llm_provider,
+    }) = &cli.command
+    {
+        use std::io::IsTerminal;
+        let base = cli
+            .data_dir
+            .as_deref()
+            .map(String::from)
+            .or_else(arawn_bin::startup::dirs_path)
+            .unwrap_or_else(|| ".arawn".into());
+        let data_dir = std::path::PathBuf::from(base);
+        // The env fallback applies only in flags mode (a --client-id and no
+        // --secret-from-env), so an exported variable never turns the
+        // interactive flow into flags mode.
+        let client_secret = client_secret.clone().or_else(|| {
+            (client_id.is_some() && !*secret_from_env)
+                .then(|| std::env::var("ARAWN_SETUP_CLIENT_SECRET").ok())
+                .flatten()
+                .filter(|s| !s.is_empty())
+        });
+        let opts = arawn_bin::startup::setup::SetupOptions {
+            target: provider.clone(),
+            client_id: client_id.clone(),
+            client_secret,
+            secret_from_env: *secret_from_env,
+            app_id: app_id.clone(),
+            app_slug: app_slug.clone(),
+            private_key_path: private_key_path.clone(),
+            llm_provider: llm_provider.clone(),
+        };
+        let interactive = std::io::stdin().is_terminal();
+        let mut prompter = arawn_bin::startup::setup::TerminalPrompter;
+        let mut stdout = std::io::stdout();
+        match arawn_bin::startup::setup::run_setup(
+            &data_dir,
+            opts,
+            &mut prompter,
+            &mut stdout,
+            interactive,
+        ) {
+            Ok(()) => std::process::exit(0),
+            Err(e) => {
+                eprintln!("Error: {e:#}");
                 std::process::exit(1);
             }
         }

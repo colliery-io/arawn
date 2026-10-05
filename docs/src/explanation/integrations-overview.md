@@ -56,6 +56,8 @@ After `/connect` completes, the access + refresh tokens get stored encrypted und
 
 ## Start here
 
+The fastest path is `arawn setup`. It shows each provider's console steps and scopes, asks for the credentials, and writes `arawn.toml` for you. See [`arawn setup`](../reference/cli.md#arawn-setup). The pages below give the full detail.
+
 1. **Concept:** [OAuth primer](./oauth-primer.md) — read first if you're new to OAuth.
 2. **Reference:** [Integrations config](../reference/integrations-config.md) — exact env var names and TOML keys; [Integrations reference](../reference/integrations.md) — per-provider tools and scopes.
 3. **Walkthroughs:** [Google](../how-to/connect-google.md), [Slack](../how-to/connect-slack.md), [Atlassian](../how-to/connect-atlassian.md), [GitHub](../how-to/connect-github.md).

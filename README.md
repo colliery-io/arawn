@@ -31,6 +31,10 @@ export GROQ_API_KEY=gsk_…
 Type a message in the TUI and arawn will respond using the configured model.
 The agent has tools for shell, file editing, web search, and more.
 
+To connect Gmail, Calendar, Drive, Slack, Jira, Confluence or GitHub, run
+`arawn setup`. It walks through each provider's console, then writes the
+credentials into `arawn.toml`.
+
 For Ollama Cloud (`OLLAMA_API_KEY` instead, model like `gemma4:31b-cloud`,
 provider `https://ollama.com/v1`) and the full troubleshooting walkthrough,
 see **[docs/src/tutorials/first-chat.md](docs/src/tutorials/first-chat.md)**.
@@ -51,6 +55,9 @@ see **[docs/src/tutorials/first-chat.md](docs/src/tutorials/first-chat.md)**.
 
 ```
 arawn                       # one-shot prompt (uses running server)
+arawn init                  # write a starter config (LLM only)
+arawn setup                 # set up integrations: Google, Slack, Atlassian, GitHub
+arawn doctor                # check the install
 arawn serve                 # start the WebSocket server
 arawn tui                   # launch the TUI client
 arawn plugin <subcommand>   # plugin management

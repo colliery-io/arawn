@@ -10,6 +10,7 @@ pub mod helpers;
 pub mod hooks;
 pub mod init;
 pub mod integrations;
+pub mod setup;
 
 pub use cli::run_cli_via_server;
 pub use engine::build_engine_config;

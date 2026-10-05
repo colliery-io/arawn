@@ -6,7 +6,7 @@
 //! config exists (`LlmConfig::default().model`), so the scaffold can never
 //! drift from the built-in default.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Result, bail};
 
@@ -72,8 +72,10 @@ fn render_config(opts: &InitOptions) -> Result<(String, String)> {
     Ok((rendered, api_key_env))
 }
 
-/// Write `arawn.toml` into `data_dir`, then print next steps.
-pub fn run_init(data_dir: &Path, opts: InitOptions) -> Result<()> {
+/// Write `arawn.toml` into `data_dir` without printing. Returns the
+/// path and the env var that must hold the API key. Used by `arawn
+/// setup` when no config exists yet.
+pub fn write_init(data_dir: &Path, opts: &InitOptions) -> Result<(PathBuf, String)> {
     let config_path = data_dir.join("arawn.toml");
     if config_path.exists() && !opts.force {
         bail!(
@@ -82,10 +84,16 @@ pub fn run_init(data_dir: &Path, opts: InitOptions) -> Result<()> {
         );
     }
 
-    let (rendered, api_key_env) = render_config(&opts)?;
+    let (rendered, api_key_env) = render_config(opts)?;
 
     std::fs::create_dir_all(data_dir)?;
     std::fs::write(&config_path, &rendered)?;
+    Ok((config_path, api_key_env))
+}
+
+/// Write `arawn.toml` into `data_dir`, then print next steps.
+pub fn run_init(data_dir: &Path, opts: InitOptions) -> Result<()> {
+    let (config_path, api_key_env) = write_init(data_dir, &opts)?;
 
     println!("Wrote {}", config_path.display());
     println!();
