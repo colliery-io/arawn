@@ -3,6 +3,7 @@
 
 pub mod ceremonies;
 pub mod cli;
+pub mod connect;
 pub mod engine;
 pub mod feeds;
 pub mod feeds_helpers;
@@ -16,7 +17,7 @@ pub use cli::run_cli_via_server;
 pub use engine::build_engine_config;
 pub use feeds_helpers::{expand_github_org, register_one_feed};
 pub use helpers::{
-    build_llm_client, connect_mcp_servers, dirs_path, register_default_tools,
-    register_workflow_tools,
+    build_llm_client, connect_mcp_servers, dirs_path, read_server_token, register_default_tools,
+    register_workflow_tools, resolve_data_dir,
 };
 pub use hooks::load_and_build_hook_runner;

@@ -608,6 +608,14 @@ impl ArawnConfig {
         expand_tilde(&self.storage.data_dir)
     }
 
+    /// Apply the `--data-dir` flag: a non-empty value replaces
+    /// `[storage].data_dir` (ARAWN-T-0509).
+    pub fn override_data_dir(&mut self, flag: Option<&str>) {
+        if let Some(dir) = flag.filter(|d| !d.is_empty()) {
+            self.storage.data_dir = dir.to_string();
+        }
+    }
+
     /// Resolve the prompts directory.
     pub fn prompts_dir(&self) -> PathBuf {
         self.data_dir().join("prompts")
@@ -798,6 +806,21 @@ mod tests {
             "first-chat.md doesn't mention the default model '{default_model}' — \
              update the tutorial when changing the default"
         );
+    }
+
+    #[test]
+    fn data_dir_flag_overrides_storage_data_dir() {
+        // ARAWN-T-0509: config read from --data-dir must also store there.
+        let mut cfg: ArawnConfig = toml::from_str("").unwrap();
+        assert!(cfg.data_dir().ends_with(".arawn"));
+        cfg.override_data_dir(Some("/tmp/work-arawn"));
+        assert_eq!(cfg.data_dir(), PathBuf::from("/tmp/work-arawn"));
+        // No flag, or an empty one, keeps the configured value.
+        let mut cfg: ArawnConfig =
+            toml::from_str("[storage]\ndata_dir = \"/srv/arawn\"\n").unwrap();
+        cfg.override_data_dir(None);
+        cfg.override_data_dir(Some(""));
+        assert_eq!(cfg.data_dir(), PathBuf::from("/srv/arawn"));
     }
 
     #[test]

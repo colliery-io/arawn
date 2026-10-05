@@ -410,7 +410,7 @@ mod tests {
         // Google: configured via the shared block, not yet connected.
         match outcome(&checks, "integration:google_calendar") {
             CheckOutcome::Skip { reason } => {
-                assert!(reason.contains("/connect google_calendar"), "{reason}")
+                assert!(reason.contains("arawn connect google_calendar"), "{reason}")
             }
             o => panic!("expected skip, got {o:?}"),
         }

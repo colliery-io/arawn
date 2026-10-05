@@ -423,12 +423,19 @@ fn print_next_steps(
     }
     writeln!(out, "  {n}. Restart the server: arawn serve")?;
     n += 1;
-    writeln!(out, "  {n}. In the TUI (arawn tui), connect each service:")?;
-    for a in applied {
-        for name in a.target.connect_names() {
-            writeln!(out, "       /connect {name}")?;
-        }
-    }
+    let names: Vec<&str> = applied
+        .iter()
+        .flat_map(|a| a.target.connect_names())
+        .collect();
+    writeln!(
+        out,
+        "  {n}. In a second terminal, connect: arawn connect {}",
+        names.join(" ")
+    )?;
+    writeln!(
+        out,
+        "     (Or later, every set-up service at once: arawn connect --all)"
+    )?;
     n += 1;
     writeln!(out, "  {n}. Run arawn doctor to check the setup.")?;
     Ok(())
@@ -608,8 +615,10 @@ mod tests {
         let text = String::from_utf8(out).unwrap();
         assert_eq!(text.matches("Next steps:").count(), 1, "{text}");
         assert!(text.contains("export GROQ_API_KEY=<your-api-key>"));
-        assert!(text.contains("/connect gmail"));
-        assert!(text.contains("/connect google_calendar"));
+        assert!(
+            text.contains("arawn connect gmail google_calendar google_drive"),
+            "{text}"
+        );
     }
 
     #[test]
@@ -707,8 +716,11 @@ mod tests {
         // The guide printed the crate's scopes.
         assert!(text.contains("https://www.googleapis.com/auth/gmail.readonly"));
         assert!(text.contains("offline_access"));
-        assert!(text.contains("/connect atlassian"));
-        assert!(!text.contains("/connect slack"));
+        assert!(
+            text.contains("arawn connect gmail google_calendar google_drive atlassian\n"),
+            "{text}"
+        );
+        assert!(!text.contains(" slack"), "{text}");
     }
 
     #[test]

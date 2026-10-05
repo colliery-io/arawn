@@ -107,8 +107,7 @@ impl LocalService {
                         } else {
                             "loaded by the server, not connected".into()
                         },
-                        hint: (!connected)
-                            .then(|| format!("connect it: /connect {} in the TUI", r.service)),
+                        hint: (!connected).then(|| format!("run: arawn connect {}", r.service)),
                     })
                 }
                 (

@@ -72,7 +72,39 @@ arawn setup github --app-id 42 --app-slug my-arawn --private-key-path ~/keys/ara
 
 An env var such as `ARAWN_GMAIL_CLIENT_ID`, or a per-service table such as `[integrations.gmail]`, comes before the table that `arawn setup` writes. If one of them hides the new client, `arawn setup` shows a warning that names it. See [Integrations config](./integrations-config.md#the-lookup-precedence).
 
-After `arawn setup`, restart `arawn serve` and connect each service with `/connect <service>` in the TUI.
+After `arawn setup`, restart `arawn serve`. Then connect each service with `arawn connect`.
+
+## `arawn connect`
+
+Connect integrations. For each service, `arawn connect` asks the running server to start the OAuth flow, opens the provider's consent page in your browser, and waits until the server reports success or failure. The server must be running (`arawn serve`).
+
+```sh
+arawn connect gmail          # One service
+arawn connect google         # Gmail, Calendar and Drive
+arawn connect --all          # Every set-up service that is not connected yet
+```
+
+| Argument or flag | Default | Description |
+|---|---|---|
+| `<service>...` | — | `gmail`, `google_calendar`, `google_drive`, `slack`, `atlassian` or `github`. `google` means the three Google services. `jira` and `confluence` mean `atlassian`. |
+| `--all` | off | Connect every set-up service that is not connected yet. |
+| `--url <ws-url>` | `ws://127.0.0.1:3100/ws` | WebSocket URL of the running server. |
+| `--no-browser` | off | Show the consent URL, but do not open a browser. Use this on a machine with no browser, and open the URL on a different machine. |
+| `--timeout <seconds>` | `300` | Time to wait for each approval. |
+
+A service that is already connected is skipped. If the server did not load a service, `arawn connect` tells you why and gives the fix, for example a client secret that is not exported, or a server that needs a restart. The exit code is non-zero if a service did not connect.
+
+## `arawn disconnect`
+
+Disconnect one integration and delete its stored token. `google` means the three Google services.
+
+```sh
+arawn disconnect slack
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--url <ws-url>` | `ws://127.0.0.1:3100/ws` | WebSocket URL of the running server. |
 
 ## `arawn serve`
 
@@ -128,10 +160,10 @@ Doctor shows one `integration:<service>` line for each integration, with the fix
 |---|---|---|
 | PASS | Connected. | — |
 | SKIP | Not configured. | `run: arawn setup <provider>` |
-| SKIP | Configured, but not connected. | `/connect <service>` |
+| SKIP | Configured, but not connected. | `run: arawn connect <service>` |
 | FAIL | A client ID is in `arawn.toml`, but no client secret is set. | Export the named `ARAWN_*_CLIENT_SECRET`, or run `arawn setup <provider>`. |
 | FAIL | The GitHub App is incomplete, or its key file cannot be read. | `run: arawn setup github` |
-| FAIL | The stored token cannot be read. | `/disconnect <service>`, then `/connect <service>` |
+| FAIL | The stored token cannot be read. | `run: arawn disconnect <service>, then arawn connect <service>` |
 
 The same states are in the `status` RPC, the TUI `/status` output and the web health page. There, a state of `restart needed` means that the integration is in `arawn.toml`, but the running server did not load it. Restart `arawn serve`.
 

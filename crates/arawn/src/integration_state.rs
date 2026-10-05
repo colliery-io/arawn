@@ -112,12 +112,10 @@ impl IntegrationReport {
                 "export {env_var} in the shell that runs the server, or run: arawn setup {target}"
             )),
             IntegrationState::Incomplete { .. } => Some(format!("run: arawn setup {target}")),
-            IntegrationState::Configured { .. } => {
-                Some(format!("connect it: /connect {svc} in the TUI"))
-            }
+            IntegrationState::Configured { .. } => Some(format!("run: arawn connect {svc}")),
             IntegrationState::Connected { .. } => None,
             IntegrationState::TokenError { .. } => Some(format!(
-                "reconnect: /disconnect {svc}, then /connect {svc} in the TUI"
+                "run: arawn disconnect {svc}, then arawn connect {svc}"
             )),
         }
     }
@@ -319,7 +317,7 @@ mod tests {
         assert_eq!(r["google_calendar"].state.code(), "configured");
         assert_eq!(
             r["google_calendar"].hint().unwrap(),
-            "connect it: /connect google_calendar in the TUI"
+            "run: arawn connect google_calendar"
         );
         assert!(
             r["google_drive"]
@@ -365,7 +363,7 @@ mod tests {
         assert_eq!(r["slack"].state.code(), "token_error");
         assert_eq!(
             r["slack"].hint().unwrap(),
-            "reconnect: /disconnect slack, then /connect slack in the TUI"
+            "run: arawn disconnect slack, then arawn connect slack"
         );
     }
 

@@ -84,11 +84,20 @@ fn rect_contains(rect: Rect, col: u16, row: u16) -> bool {
     col >= rect.x && col < rect.x + rect.width && row >= rect.y && row < rect.y + rect.height
 }
 
-/// Run the TUI connected to the given WebSocket server URL.
-pub async fn run_tui(url: &str, model_name: &str) -> Result<(), Box<dyn std::error::Error>> {
+/// Run the TUI connected to the given WebSocket server URL. `token` is the
+/// server's auth token, read from the resolved data directory by the
+/// caller; `None` falls back to `ARAWN_DATA_DIR` / `~/.arawn`.
+pub async fn run_tui(
+    url: &str,
+    model_name: &str,
+    token: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error>> {
     // Connect to server
     info!(url, "connecting to Arawn server");
-    let mut client = WsClient::connect(url).await?;
+    let mut client = match token {
+        Some(t) => WsClient::connect_with_token(url, Some(t)).await?,
+        None => WsClient::connect(url).await?,
+    };
     info!("connected");
 
     // Load initial state

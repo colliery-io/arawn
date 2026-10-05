@@ -121,6 +121,36 @@ async fn main() -> Result<()> {
             #[arg(long, default_value = "groq")]
             llm_provider: String,
         },
+        /// Connect integrations: open the provider's consent page and wait for approval
+        #[command(after_help = "Examples:\n  \
+            arawn connect gmail               Connect one service\n  \
+            arawn connect google              Gmail, Calendar and Drive\n  \
+            arawn connect --all               Every set-up service that is not connected\n\n\
+            The server must be running (arawn serve).")]
+        Connect {
+            /// Services to connect: gmail, google_calendar, google_drive, slack, atlassian, github, or google / jira / confluence
+            services: Vec<String>,
+            /// Connect every set-up service that is not connected yet
+            #[arg(long)]
+            all: bool,
+            /// WebSocket URL of the running server
+            #[arg(long, default_value = "ws://127.0.0.1:3100/ws")]
+            url: String,
+            /// Print the consent URL; do not open a browser
+            #[arg(long)]
+            no_browser: bool,
+            /// Seconds to wait for each approval
+            #[arg(long, default_value_t = 300)]
+            timeout: u64,
+        },
+        /// Disconnect an integration and delete its stored token
+        Disconnect {
+            /// Service to disconnect (google means Gmail, Calendar and Drive)
+            service: String,
+            /// WebSocket URL of the running server
+            #[arg(long, default_value = "ws://127.0.0.1:3100/ws")]
+            url: String,
+        },
         /// Start the WebSocket server
         Serve {
             /// Server port
@@ -273,6 +303,64 @@ async fn main() -> Result<()> {
     // Handle doctor subcommand immediately (exits process).
     // Doctor must run before the heavy startup path so a broken config
     // does not panic on the way to actually reporting "config broken".
+    // Handle connect / disconnect (ARAWN-T-0503). Talks to the running
+    // server, then exits.
+    if let Some(cmd @ (Command::Connect { .. } | Command::Disconnect { .. })) = &cli.command {
+        use arawn_bin::startup::connect;
+        let base = cli
+            .data_dir
+            .as_deref()
+            .map(String::from)
+            .or_else(arawn_bin::startup::dirs_path)
+            .unwrap_or_else(|| ".arawn".into());
+        // arawn.toml is read from `config_dir`; the server keeps its token
+        // and token store in the resolved data dir, the same way `serve`
+        // resolves it.
+        let config_dir = std::path::PathBuf::from(base);
+        let data_dir = arawn_bin::startup::resolve_data_dir(&config_dir, cli.data_dir.as_deref());
+        let mut stdout = std::io::stdout();
+        let result = match cmd {
+            Command::Connect {
+                services,
+                all,
+                url,
+                no_browser,
+                timeout,
+            } => match connect::WsTransport::connect(url, &data_dir).await {
+                Ok(mut t) => {
+                    let opts = connect::ConnectOptions {
+                        services: services.clone(),
+                        all: *all,
+                        timeout: std::time::Duration::from_secs(*timeout),
+                        feed_grace: connect::FEED_NOTICE_GRACE,
+                    };
+                    let no_browser = *no_browser;
+                    let open = move |u: &str| !no_browser && connect::open_in_browser(u);
+                    let dirs = connect::Dirs {
+                        config: &config_dir,
+                        data: &data_dir,
+                    };
+                    connect::run_connect(&mut t, dirs, &opts, &open, &mut stdout).await
+                }
+                Err(e) => Err(e),
+            },
+            Command::Disconnect { service, url } => {
+                match connect::WsTransport::connect(url, &data_dir).await {
+                    Ok(mut t) => connect::run_disconnect(&mut t, service, &mut stdout).await,
+                    Err(e) => Err(e),
+                }
+            }
+            _ => unreachable!(),
+        };
+        match result {
+            Ok(()) => std::process::exit(0),
+            Err(e) => {
+                eprintln!("Error: {e:#}");
+                std::process::exit(1);
+            }
+        }
+    }
+
     if let Some(Command::Doctor { json }) = &cli.command {
         let base = cli
             .data_dir
@@ -342,10 +430,16 @@ async fn main() -> Result<()> {
     let prompt_parts = cli.prompt;
 
     // Resolve data directory: --data-dir flag > ARAWN_DATA_DIR env > ~/.arawn
+    let data_dir_flag = cli.data_dir.clone();
     let bootstrap_dir = cli
         .data_dir
         .unwrap_or_else(|| arawn_bin::startup::dirs_path().unwrap_or_else(|| ".arawn".into()));
-    let config = arawn_bin::ArawnConfig::load(std::path::Path::new(&bootstrap_dir));
+    let mut config = arawn_bin::ArawnConfig::load(std::path::Path::new(&bootstrap_dir));
+    // --data-dir (or ARAWN_DATA_DIR, which clap folds into the same flag)
+    // wins over [storage].data_dir, as documented. Without this the
+    // config came from --data-dir but the store, logs and tokens went to
+    // ~/.arawn (ARAWN-T-0509).
+    config.override_data_dir(data_dir_flag.as_deref());
     let data_dir = config.data_dir().to_string_lossy().to_string();
 
     // Initialize logging — file-based for serve/tui, stderr-only for CLI
@@ -1426,7 +1520,10 @@ async fn main() -> Result<()> {
             std::process::exit(1);
         }
         info!("launching TUI, connecting to {}", tui_url);
-        arawn_tui::run_tui(&tui_url, &config.engine_llm().model)
+        // The token lives in the resolved data dir; WsClient alone only
+        // looks in ARAWN_DATA_DIR / ~/.arawn (ARAWN-T-0509).
+        let token = arawn_bin::startup::read_server_token(std::path::Path::new(&data_dir));
+        arawn_tui::run_tui(&tui_url, &config.engine_llm().model, token.as_deref())
             .await
             .map_err(|e| anyhow::anyhow!("{e}"))?;
         return Ok(());
@@ -1459,7 +1556,9 @@ async fn main() -> Result<()> {
     // CLI prompt mode: connect to the running server via WebSocket.
     // The server handles the engine, tools, persistence — we just send/receive.
     let server_url = format!("ws://127.0.0.1:{}/ws", config.server.port);
-    arawn_bin::startup::run_cli_via_server(&server_url, &user_input, session_id).await
+    let token = arawn_bin::startup::read_server_token(std::path::Path::new(&data_dir));
+    arawn_bin::startup::run_cli_via_server(&server_url, &user_input, session_id, token.as_deref())
+        .await
 }
 
 /// Quick TCP reachability check for the TUI's target server, run *before*
