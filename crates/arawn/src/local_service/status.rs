@@ -6,13 +6,15 @@
 //! render. The aggregation reads live `LocalService` state and never holds a
 //! subsystem lock across an `.await`.
 
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::sync::atomic::Ordering;
 
 use crate::lock_ext::Recover;
 use arawn_service::{
     CeremoniesStatus, CeremonyRunStatus, EmbeddingStatus, ExtractionCursor, ExtractionStatus,
-    FeedStatusRow, FeedsStatus, HealthStatus, LlmClientStatus, LlmStatus, SYSTEM_STATUS_VERSION,
-    ServiceError, StewardErrorStatus, StewardStatus, SystemStatus,
+    FeedStatusRow, FeedsStatus, HealthStatus, IntegrationHealth, LlmClientStatus, LlmStatus,
+    SYSTEM_STATUS_VERSION, ServiceError, StewardErrorStatus, StewardStatus, SystemStatus,
 };
 
 use super::LocalService;
@@ -45,7 +47,89 @@ impl LocalService {
             extraction: self.extraction_status(),
             llm: self.llm_status(),
             steward: self.steward_status(),
+            integrations: self.integrations_status().await,
         })
+    }
+
+    /// Per-integration setup state (ARAWN-T-0502). `arawn.toml` + env +
+    /// token store say what is configured; the live registry says what
+    /// this server actually loaded. Configured in the file but not loaded
+    /// means the server needs a restart.
+    async fn integrations_status(&self) -> Vec<IntegrationHealth> {
+        use crate::integration_state::{IntegrationState, inspect};
+        // `try_load`, never `load`: `load` exits the process on a parse
+        // error, and a typo in arawn.toml must not kill a running server
+        // when someone opens /status.
+        let cfg = match crate::ArawnConfig::try_load(&self.data_dir) {
+            Ok(c) => c,
+            Err(e) => {
+                return vec![IntegrationHealth {
+                    name: "arawn.toml".into(),
+                    state: "config_error".into(),
+                    detail: e,
+                    hint: Some("fix arawn.toml, then run: arawn doctor".into()),
+                }];
+            }
+        };
+        let reports = match inspect(&cfg.integrations, &self.data_dir) {
+            Ok(r) => r,
+            Err(e) => {
+                return vec![IntegrationHealth {
+                    name: "token_store".into(),
+                    state: "token_error".into(),
+                    detail: e,
+                    hint: None,
+                }];
+            }
+        };
+        // Snapshot the registry before awaiting: never hold the lock
+        // across `.await`.
+        let registry: HashMap<String, Arc<dyn arawn_integrations::Integration>> = self
+            .integration_registry
+            .read()
+            .recover()
+            .iter()
+            .map(|(k, v)| (k.clone(), Arc::clone(v)))
+            .collect();
+
+        let mut out = Vec::with_capacity(reports.len());
+        for r in reports {
+            let row = match (registry.get(r.service), &r.state) {
+                // A broken token stays broken whatever the registry says.
+                (_, IntegrationState::TokenError { .. }) => None,
+                (Some(live), _) => {
+                    let connected = live.is_connected().await;
+                    Some(IntegrationHealth {
+                        name: r.service.into(),
+                        state: if connected { "connected" } else { "configured" }.into(),
+                        detail: if connected {
+                            "connected".into()
+                        } else {
+                            "loaded by the server, not connected".into()
+                        },
+                        hint: (!connected)
+                            .then(|| format!("connect it: /connect {} in the TUI", r.service)),
+                    })
+                }
+                (
+                    None,
+                    IntegrationState::Configured { .. } | IntegrationState::Connected { .. },
+                ) => Some(IntegrationHealth {
+                    name: r.service.into(),
+                    state: "restart_needed".into(),
+                    detail: "set up in arawn.toml, but the running server did not load it".into(),
+                    hint: Some("restart arawn serve".into()),
+                }),
+                (None, _) => None,
+            };
+            out.push(row.unwrap_or_else(|| IntegrationHealth {
+                name: r.service.into(),
+                state: r.state.code().into(),
+                detail: r.describe(),
+                hint: r.hint(),
+            }));
+        }
+        out
     }
 
     async fn feeds_status(&self) -> FeedsStatus {

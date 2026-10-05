@@ -122,6 +122,19 @@ Run diagnostic checks against the local install. Validates config, integration c
 
 Exit code is non-zero if any check fails.
 
+Doctor shows one `integration:<service>` line for each integration, with the fix:
+
+| Result | Meaning | Fix shown |
+|---|---|---|
+| PASS | Connected. | — |
+| SKIP | Not configured. | `run: arawn setup <provider>` |
+| SKIP | Configured, but not connected. | `/connect <service>` |
+| FAIL | A client ID is in `arawn.toml`, but no client secret is set. | Export the named `ARAWN_*_CLIENT_SECRET`, or run `arawn setup <provider>`. |
+| FAIL | The GitHub App is incomplete, or its key file cannot be read. | `run: arawn setup github` |
+| FAIL | The stored token cannot be read. | `/disconnect <service>`, then `/connect <service>` |
+
+The same states are in the `status` RPC, the TUI `/status` output and the web health page. There, a state of `restart needed` means that the integration is in `arawn.toml`, but the running server did not load it. Restart `arawn serve`.
+
 ## `arawn usage`
 
 Show token usage rollups recorded by the local LLM tracker.

@@ -324,6 +324,8 @@ pub fn wire_integrations(
         );
     }
 
+    log_integration_summary(config, data_dir);
+
     IntegrationsForFeeds {
         atlassian: atlassian_integration_for_feeds,
         calendar: calendar_integration_for_feeds,
@@ -331,6 +333,39 @@ pub fn wire_integrations(
         github: github_integration_for_feeds,
         gmail: gmail_integration_for_feeds,
         slack: slack_integration_for_feeds,
+    }
+}
+
+/// Say at startup which integrations are not set up and which are set up
+/// but broken, each with its fix (ARAWN-T-0502). Before this, a missing
+/// integration was a debug line only.
+fn log_integration_summary(config: &ArawnConfig, data_dir: &str) {
+    use crate::integration_state::{IntegrationState, inspect};
+    let reports = match inspect(&config.integrations, std::path::Path::new(data_dir)) {
+        Ok(r) => r,
+        Err(e) => {
+            warn!(error = %e, "cannot check integration state");
+            return;
+        }
+    };
+    let not_set_up: Vec<&str> = reports
+        .iter()
+        .filter(|r| r.state == IntegrationState::NotConfigured)
+        .map(|r| r.service)
+        .collect();
+    if !not_set_up.is_empty() {
+        info!(
+            "Integrations not set up: {}. Run `arawn setup` to add them.",
+            not_set_up.join(", ")
+        );
+    }
+    for r in reports.iter().filter(|r| r.state.is_broken()) {
+        warn!(
+            service = r.service,
+            "{}. Fix: {}",
+            r.describe(),
+            r.hint().unwrap_or_default()
+        );
     }
 }
 

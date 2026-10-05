@@ -525,6 +525,7 @@ dependencies = [
  "arawn-embed",
  "arawn-engine",
  "arawn-extractor",
+ "arawn-integrations",
  "arawn-llm",
  "arawn-memory",
  "arawn-projections",

@@ -78,6 +78,11 @@ impl OAuthProvider {
         }
     }
 
+    /// The env var that holds this provider's own client secret.
+    pub fn secret_env_var(self) -> String {
+        format!("ARAWN_{}_CLIENT_SECRET", self.env_infix())
+    }
+
     /// Whether this provider falls back to the shared Google client.
     pub fn uses_shared_google(self) -> bool {
         matches!(

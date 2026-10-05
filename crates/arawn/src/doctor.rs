@@ -152,7 +152,7 @@ pub async fn run(data_dir: &Path) -> DoctorReport {
     match parsed_config {
         Some(cfg) => {
             checks.extend(check_llm_reachable(&cfg).await);
-            checks.push(check_integrations(data_dir, &cfg));
+            checks.extend(check_integrations(data_dir, &cfg));
         }
         None => {
             checks.push(CheckResult::skip(
@@ -298,70 +298,29 @@ async fn check_llm_reachable(config: &crate::ArawnConfig) -> Vec<CheckResult> {
     out
 }
 
-fn check_integrations(data_dir: &Path, config: &crate::ArawnConfig) -> CheckResult {
-    // OAuth token store. If no integrations are configured we skip.
-    let any_configured = !configured_services(config).is_empty();
-    if !any_configured {
-        return CheckResult::skip("integrations", "no [integrations.*] configured");
-    }
-    match arawn_auth::TokenStore::open(data_dir) {
-        Ok(store) => {
-            // Count token files in the store's tokens dir. Failure here
-            // (unreadable dir, decrypt failure on a known integration
-            // token) is the signal worth surfacing.
-            let tokens_dir = store.tokens_dir();
-            let count = match std::fs::read_dir(tokens_dir) {
-                Ok(entries) => entries
-                    .flatten()
-                    .filter(|e: &std::fs::DirEntry| {
-                        e.file_name().to_string_lossy().ends_with(".token")
-                    })
-                    .count(),
-                Err(_) => 0,
-            };
-            // For each configured integration that claims to be set up,
-            // verify the token round-trips through decrypt.
-            let mut failures: Vec<String> = Vec::new();
-            for service in configured_services(config) {
-                match store.load(&service) {
-                    Ok(Some(_)) => {}
-                    Ok(None) => {
-                        // Configured but no token saved — counts as a
-                        // soft notice, not a fail.
-                    }
-                    Err(e) => failures.push(format!("{service}: {e}")),
-                }
-            }
-            if failures.is_empty() {
-                CheckResult::pass(format!("integrations ({count} token file(s))"))
-            } else {
-                CheckResult::fail(
-                    "integrations",
-                    format!("decrypt failures: {}", failures.join("; ")),
-                )
-            }
-        }
-        Err(e) => CheckResult::fail(
-            "integrations",
-            format!("could not open token store at {}: {e}", data_dir.display()),
-        ),
+/// One check per integration (ARAWN-T-0502), named `integration:<service>`.
+/// Connected → PASS. Not configured or not yet connected → SKIP with the
+/// fix. Set up but unusable (missing secret, incomplete GitHub App,
+/// unreadable token) → FAIL with the fix.
+fn check_integrations(data_dir: &Path, config: &crate::ArawnConfig) -> Vec<CheckResult> {
+    match crate::integration_state::inspect(&config.integrations, data_dir) {
+        Ok(reports) => reports.iter().map(integration_check).collect(),
+        Err(e) => vec![CheckResult::fail("integrations", e)],
     }
 }
 
-/// Token-store names of every integration that startup would register.
-/// Uses the same resolver as startup (ARAWN-T-0504), so env vars and the
-/// shared `[integrations.google]` block count, and names match the store.
-fn configured_services(config: &crate::ArawnConfig) -> Vec<String> {
-    let resolver = crate::oauth_clients::OAuthClientResolver::new(&config.integrations);
-    let mut out: Vec<String> = resolver
-        .resolve_all()
-        .iter()
-        .map(|c| c.provider.service_name().to_string())
-        .collect();
-    if resolver.resolve_github().is_some() {
-        out.push(arawn_integrations::github::SERVICE_NAME.to_string());
+fn integration_check(r: &crate::integration_state::IntegrationReport) -> CheckResult {
+    use crate::integration_state::IntegrationState;
+    let name = format!("integration:{}", r.service);
+    let detail = match r.hint() {
+        Some(h) => format!("{} — {h}", r.describe()),
+        None => r.describe(),
+    };
+    match &r.state {
+        IntegrationState::Connected { .. } => CheckResult::pass(name),
+        s if s.is_broken() => CheckResult::fail(name, detail),
+        _ => CheckResult::skip(name, detail),
     }
-    out
 }
 
 /// Construct a real LLM client from an [`LlmConfig`]. Mirrors the
@@ -409,22 +368,71 @@ mod tests {
         assert!(!report.any_failed() || report.checks.iter().any(|c| c.name.starts_with("llm-")));
     }
 
+    fn outcome<'a>(checks: &'a [CheckResult], name: &str) -> &'a CheckOutcome {
+        &checks
+            .iter()
+            .find(|c| c.name == name)
+            .unwrap_or_else(|| panic!("no check named {name}"))
+            .outcome
+    }
+
     #[test]
-    fn configured_services_counts_shared_google_block_with_store_names() {
+    fn one_check_per_integration_with_store_names_and_fix_hints() {
         // Regression (ARAWN-T-0504): doctor used to ignore
         // [integrations.google] and used hyphenated names that never
-        // matched the token store ("google-calendar").
+        // matched the token store ("google-calendar"). ARAWN-T-0502: one
+        // line per integration, each naming its fix.
+        let tmp = TempDir::new().unwrap();
         let cfg: crate::ArawnConfig = toml::from_str(
             r#"
             [integrations.google]
             client_id = "gid"
             client_secret = "gsec"
+
+            [integrations.atlassian]
+            client_id = "aid"
             "#,
         )
         .unwrap();
-        let mut services = configured_services(&cfg);
-        services.sort();
-        assert_eq!(services, ["gmail", "google_calendar", "google_drive"]);
+        let checks = check_integrations(tmp.path(), &cfg);
+        let names: Vec<_> = checks.iter().map(|c| c.name.as_str()).collect();
+        assert_eq!(
+            names,
+            [
+                "integration:gmail",
+                "integration:google_calendar",
+                "integration:google_drive",
+                "integration:atlassian",
+                "integration:slack",
+                "integration:github",
+            ]
+        );
+        // Google: configured via the shared block, not yet connected.
+        match outcome(&checks, "integration:google_calendar") {
+            CheckOutcome::Skip { reason } => {
+                assert!(reason.contains("/connect google_calendar"), "{reason}")
+            }
+            o => panic!("expected skip, got {o:?}"),
+        }
+        // Atlassian: id but no secret → FAIL naming the env var. (Skipped
+        // when a developer has the env var exported.)
+        if std::env::var("ARAWN_ATLASSIAN_CLIENT_SECRET").is_err() {
+            match outcome(&checks, "integration:atlassian") {
+                CheckOutcome::Fail { reason } => {
+                    assert!(reason.contains("ARAWN_ATLASSIAN_CLIENT_SECRET"), "{reason}")
+                }
+                o => panic!("expected fail, got {o:?}"),
+            }
+        }
+        // Slack: nothing → SKIP pointing at arawn setup.
+        if std::env::var("ARAWN_SLACK_CLIENT_ID").is_err() {
+            match outcome(&checks, "integration:slack") {
+                CheckOutcome::Skip { reason } => {
+                    assert!(reason.contains("arawn setup slack"), "{reason}")
+                }
+                o => panic!("expected skip, got {o:?}"),
+            }
+        }
     }
 
     #[tokio::test]
@@ -467,12 +475,17 @@ mod tests {
     async fn integrations_skipped_when_none_configured() {
         let tmp = TempDir::new().unwrap();
         let report = run(tmp.path()).await;
-        let c = report
+        // Nothing configured is not a failure: every integration line is
+        // a SKIP that names its fix (ARAWN-T-0502).
+        let lines: Vec<_> = report
             .checks
             .iter()
-            .find(|c| c.name == "integrations")
-            .unwrap();
-        assert!(matches!(c.outcome, CheckOutcome::Skip { .. }), "got {c:?}");
+            .filter(|c| c.name.starts_with("integration"))
+            .collect();
+        assert!(!lines.is_empty());
+        for c in lines {
+            assert!(matches!(c.outcome, CheckOutcome::Skip { .. }), "got {c:?}");
+        }
     }
 
     #[tokio::test]

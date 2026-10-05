@@ -112,6 +112,59 @@ async fn health_not_ready_until_marked() {
     assert!(h.blocking.is_empty(), "no blocking reasons once ready");
 }
 
+/// ARAWN-T-0502: the status RPC reports each integration's state with the
+/// fix, combining arawn.toml with what the running server loaded.
+#[tokio::test]
+async fn status_reports_integration_states_against_the_live_registry() {
+    let (tmp, service) = setup_service(vec![]);
+    // Slack is set up in the file, but this server never registered it.
+    std::fs::write(
+        tmp.path().join("arawn.toml"),
+        "[integrations.slack]\nclient_id = \"sid\"\nclient_secret = \"ssec\"\n",
+    )
+    .unwrap();
+
+    let s = service.status().await.unwrap();
+    let row = |name: &str| {
+        s.integrations
+            .iter()
+            .find(|i| i.name == name)
+            .unwrap_or_else(|| panic!("no row for {name}: {:?}", s.integrations))
+            .clone()
+    };
+    assert_eq!(s.integrations.len(), 6, "{:?}", s.integrations);
+    if std::env::var("ARAWN_GMAIL_CLIENT_ID").is_err()
+        && std::env::var("ARAWN_GOOGLE_CLIENT_ID").is_err()
+    {
+        let gmail = row("gmail");
+        assert_eq!(gmail.state, "not_configured");
+        assert_eq!(gmail.hint.as_deref(), Some("run: arawn setup google"));
+    }
+    let slack = row("slack");
+    assert_eq!(slack.state, "restart_needed", "{slack:?}");
+    assert_eq!(slack.hint.as_deref(), Some("restart arawn serve"));
+
+    // Once the server has it loaded, the live registry decides.
+    service.register_integration(Arc::new(arawn_integrations::UatMockIntegration::new(
+        "slack",
+    )));
+    let s = service.status().await.unwrap();
+    let slack = s.integrations.iter().find(|i| i.name == "slack").unwrap();
+    assert_eq!(slack.state, "connected", "{slack:?}");
+    assert!(slack.hint.is_none());
+}
+
+/// Regression (ARAWN-T-0502 review): a broken arawn.toml must not exit the
+/// process when status is read; it becomes one error row.
+#[tokio::test]
+async fn status_survives_an_invalid_config_file() {
+    let (tmp, service) = setup_service(vec![]);
+    std::fs::write(tmp.path().join("arawn.toml"), "this is = not = toml\n").unwrap();
+    let s = service.status().await.unwrap();
+    assert_eq!(s.integrations.len(), 1, "{:?}", s.integrations);
+    assert_eq!(s.integrations[0].state, "config_error");
+}
+
 #[tokio::test]
 async fn status_reports_subsystems_absent_by_default() {
     let (_tmp, service) = setup_service(vec![]);
