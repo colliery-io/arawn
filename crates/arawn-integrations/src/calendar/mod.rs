@@ -15,7 +15,7 @@ pub mod uat_tools;
 
 pub use client::{CalendarHub, client_from_token_store};
 pub use integration::{
-    CALENDAR_OAUTH_SCOPE, GoogleCalendarIntegration, GoogleCalendarProviderConfig,
+    CALENDAR_OAUTH_SCOPE, GoogleCalendarIntegration, GoogleCalendarProviderConfig, SERVICE_NAME,
 };
 pub use tools::{CalendarCreateEventTool, CalendarFindConflictsTool, CalendarUpcomingTool};
 pub use uat_tools::{UatCalendarUpcomingTool, uat_calendar_tools};

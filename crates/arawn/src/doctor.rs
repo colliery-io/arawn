@@ -348,23 +348,18 @@ fn check_integrations(data_dir: &Path, config: &crate::ArawnConfig) -> CheckResu
     }
 }
 
+/// Token-store names of every integration that startup would register.
+/// Uses the same resolver as startup (ARAWN-T-0504), so env vars and the
+/// shared `[integrations.google]` block count, and names match the store.
 fn configured_services(config: &crate::ArawnConfig) -> Vec<String> {
-    let mut out = Vec::new();
-    let i = &config.integrations;
-    if !i.gmail.client_id.is_empty() {
-        out.push("gmail".into());
-    }
-    if !i.calendar.client_id.is_empty() {
-        out.push("google-calendar".into());
-    }
-    if !i.drive.client_id.is_empty() {
-        out.push("google-drive".into());
-    }
-    if !i.atlassian.client_id.is_empty() {
-        out.push("atlassian".into());
-    }
-    if !i.slack.client_id.is_empty() {
-        out.push("slack".into());
+    let resolver = crate::oauth_clients::OAuthClientResolver::new(&config.integrations);
+    let mut out: Vec<String> = resolver
+        .resolve_all()
+        .iter()
+        .map(|c| c.provider.service_name().to_string())
+        .collect();
+    if resolver.resolve_github().is_some() {
+        out.push(arawn_integrations::github::SERVICE_NAME.to_string());
     }
     out
 }
@@ -412,6 +407,24 @@ mod tests {
         assert!(matches!(cfg_check.outcome, CheckOutcome::Skip { .. }));
         // Missing config alone doesn't mark the report failed.
         assert!(!report.any_failed() || report.checks.iter().any(|c| c.name.starts_with("llm-")));
+    }
+
+    #[test]
+    fn configured_services_counts_shared_google_block_with_store_names() {
+        // Regression (ARAWN-T-0504): doctor used to ignore
+        // [integrations.google] and used hyphenated names that never
+        // matched the token store ("google-calendar").
+        let cfg: crate::ArawnConfig = toml::from_str(
+            r#"
+            [integrations.google]
+            client_id = "gid"
+            client_secret = "gsec"
+            "#,
+        )
+        .unwrap();
+        let mut services = configured_services(&cfg);
+        services.sort();
+        assert_eq!(services, ["gmail", "google_calendar", "google_drive"]);
     }
 
     #[tokio::test]

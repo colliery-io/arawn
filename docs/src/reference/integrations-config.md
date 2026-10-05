@@ -2,21 +2,22 @@
 
 *Reference. How arawn resolves OAuth credentials per integration — env vars, `[integrations.<svc>]` blocks, and the shared `[integrations.google]` fallback.*
 
-Source: `crates/arawn/src/main.rs::resolve` (around line 1043) plus per-integration registration sites.
+Source: `crates/arawn/src/oauth_clients.rs` (`OAuthClientResolver`). Server startup, `arawn doctor` and `arawn setup` all use this resolver.
 
 ## The lookup precedence
 
-For each Google/Slack/Atlassian integration, arawn resolves the OAuth `client_id` and `client_secret` **independently** by walking this chain:
+For each Google, Slack and Atlassian integration, arawn tries these tiers in sequence. The first tier that gives **both** a `client_id` and a `client_secret` supplies the client:
 
-1. The service-specific env var (e.g. `ARAWN_GMAIL_CLIENT_ID`).
-2. The service-specific TOML block (e.g. `[integrations.gmail] client_id`).
-3. *(Google services only)* The shared env var (`ARAWN_GOOGLE_CLIENT_ID`).
-4. *(Google services only)* The shared TOML block (`[integrations.google] client_id`).
-5. Integration is skipped (no tools register, the server boots without it).
+1. **Service tier.** The service env vars (for example `ARAWN_GMAIL_CLIENT_ID`), then the service TOML block (for example `[integrations.gmail]`).
+2. **Shared Google tier** (Gmail, Calendar and Drive only). The `ARAWN_GOOGLE_*` env vars, then the `[integrations.google]` block.
+3. **Bundled tier.** A shared client that is compiled into the arawn binary. This build has no bundled clients.
+4. If no tier is complete, arawn skips the integration. No tools register, and the server starts without it.
 
-The first non-empty value wins. An **empty string counts as unset** — the `.filter(|s| !s.is_empty())` step lets a blank TOML field fall through to the next source rather than masking it.
+In a tier, each field is found separately: the env var first, then the TOML value. Thus you can put `client_id` in an env var and `client_secret` in `arawn.toml`.
 
-`client_id` and `client_secret` walk the chain *separately*. You can put `client_id` in an env var and `client_secret` in `arawn.toml` and the integration will assemble both correctly.
+A tier does not borrow fields from a different tier. If `[integrations.gmail]` has a `client_id` but no `client_secret`, arawn does not use the shared Google secret with it. It uses the full shared Google client.
+
+An **empty string counts as unset**. A blank TOML field does not hide the next source.
 
 ## Per-service catalog
 

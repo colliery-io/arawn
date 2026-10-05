@@ -19,7 +19,7 @@ mod tools;
 pub mod uat_tools;
 
 pub use client::{SlackContext, build_slack_client};
-pub use integration::{SLACK_OAUTH_SCOPES, SlackIntegration, SlackProviderConfig};
+pub use integration::{SERVICE_NAME, SLACK_OAUTH_SCOPES, SlackIntegration, SlackProviderConfig};
 pub use tools::{
     SlackHistoryTool, SlackListChannelsTool, SlackOpenDmTool, SlackPostTool, SlackReactTool,
     SlackUsersListTool,

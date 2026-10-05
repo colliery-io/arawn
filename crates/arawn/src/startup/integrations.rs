@@ -9,6 +9,7 @@ use std::sync::RwLock;
 
 use tracing::{debug, info, warn};
 
+use crate::oauth_clients::{OAuthClientResolver, OAuthProvider};
 use crate::{ArawnConfig, LocalService};
 
 /// Handles to the integrations that the continual-feeds setup needs.
@@ -32,42 +33,25 @@ pub fn wire_integrations(
     registry: &Arc<arawn_engine::ToolRegistry>,
     github_for_bind_hook: &Arc<RwLock<Option<Arc<arawn_integrations::github::GithubIntegration>>>>,
 ) -> IntegrationsForFeeds {
-    // Resolve OAuth credentials with precedence:
-    //   env var → arawn.toml `[integrations.<service>]` → empty (skip).
-    // This lets users persist creds in config without exporting env
-    // vars on every shell, while keeping env-var override for ad-hoc
-    // testing (different OAuth client per run, etc.).
-    let resolve = |env_id: &str,
-                   env_secret: &str,
-                   cfg: &crate::config::IntegrationCredentials|
-     -> Option<(String, String)> {
-        let id = std::env::var(env_id)
-            .ok()
-            .filter(|s| !s.is_empty())
-            .or_else(|| Some(cfg.client_id.clone()).filter(|s| !s.is_empty()))?;
-        let secret = std::env::var(env_secret)
-            .ok()
-            .filter(|s| !s.is_empty())
-            .or_else(|| Some(cfg.client_secret.clone()).filter(|s| !s.is_empty()))?;
-        Some((id, secret))
+    // One resolver answers "which OAuth client, from where" for every
+    // provider — shared with `arawn doctor` and `arawn setup` so they
+    // cannot disagree (ARAWN-T-0504). Order: env → [integrations.<svc>]
+    // → shared Google (Gmail/Calendar/Drive) → bundled → skip.
+    let resolver = OAuthClientResolver::new(&config.integrations);
+    // Bundled public clients carry no secret (PKCE); integrations still
+    // take a String, so pass empty until PKCE lands (ARAWN-T-0505).
+    let resolve = |p: OAuthProvider| -> Option<(String, String)> {
+        resolver.resolve(p).map(|c| {
+            debug!(service = p.service_name(), tier = ?c.tier,
+                client_id_from = %c.client_id_origin, "OAuth client resolved");
+            (c.client_id, c.client_secret.unwrap_or_default())
+        })
     };
 
     // Register Gmail integration if creds are present (env or config).
     // Skipped silently otherwise — users without Gmail credentials still
     // get a working server. See docs/src/integrations/gmail.md.
-    let gmail_creds = resolve(
-        "ARAWN_GMAIL_CLIENT_ID",
-        "ARAWN_GMAIL_CLIENT_SECRET",
-        &config.integrations.gmail,
-    )
-    .or_else(|| {
-        // Fall back to the shared Google credentials.
-        resolve(
-            "ARAWN_GOOGLE_CLIENT_ID",
-            "ARAWN_GOOGLE_CLIENT_SECRET",
-            &config.integrations.google,
-        )
-    });
+    let gmail_creds = resolve(OAuthProvider::Gmail);
     let gmail_integration_for_feeds: Option<Arc<arawn_integrations::gmail::GmailIntegration>>;
     if let Some((client_id, client_secret)) = gmail_creds {
         let gmail = Arc::new(arawn_integrations::gmail::GmailIntegration::new(
@@ -105,18 +89,7 @@ pub fn wire_integrations(
 
     // Register Google Calendar. Service-specific creds first; falls back
     // to the shared Google credentials so one OAuth project covers both.
-    let gcal_creds = resolve(
-        "ARAWN_GCAL_CLIENT_ID",
-        "ARAWN_GCAL_CLIENT_SECRET",
-        &config.integrations.calendar,
-    )
-    .or_else(|| {
-        resolve(
-            "ARAWN_GOOGLE_CLIENT_ID",
-            "ARAWN_GOOGLE_CLIENT_SECRET",
-            &config.integrations.google,
-        )
-    });
+    let gcal_creds = resolve(OAuthProvider::Calendar);
     let calendar_integration_for_feeds: Option<
         Arc<arawn_integrations::calendar::GoogleCalendarIntegration>,
     >;
@@ -153,18 +126,7 @@ pub fn wire_integrations(
 
     // Register Google Drive. Same fallback chain as Calendar — service-specific
     // creds first, then the shared Google credentials.
-    let drive_creds = resolve(
-        "ARAWN_GDRIVE_CLIENT_ID",
-        "ARAWN_GDRIVE_CLIENT_SECRET",
-        &config.integrations.drive,
-    )
-    .or_else(|| {
-        resolve(
-            "ARAWN_GOOGLE_CLIENT_ID",
-            "ARAWN_GOOGLE_CLIENT_SECRET",
-            &config.integrations.google,
-        )
-    });
+    let drive_creds = resolve(OAuthProvider::Drive);
     let drive_integration_for_feeds: Option<
         Arc<arawn_integrations::drive::GoogleDriveIntegration>,
     >;
@@ -213,11 +175,7 @@ pub fn wire_integrations(
     let atlassian_integration_for_feeds: Option<
         Arc<arawn_integrations::atlassian::AtlassianIntegration>,
     >;
-    if let Some((client_id, client_secret)) = resolve(
-        "ARAWN_ATLASSIAN_CLIENT_ID",
-        "ARAWN_ATLASSIAN_CLIENT_SECRET",
-        &config.integrations.atlassian,
-    ) {
+    if let Some((client_id, client_secret)) = resolve(OAuthProvider::Atlassian) {
         let atlassian = Arc::new(arawn_integrations::atlassian::AtlassianIntegration::new(
             std::path::PathBuf::from(&data_dir),
             client_id,
@@ -288,37 +246,22 @@ pub fn wire_integrations(
     // mint short-lived access tokens via the cached App config.
     let github_integration_for_feeds: Option<Arc<arawn_integrations::github::GithubIntegration>>;
     let resolve_github = || -> Option<arawn_integrations::github::GithubAppConfig> {
-        let cfg = &config.integrations.github;
-        let app_id = std::env::var("ARAWN_GITHUB_APP_ID")
-            .ok()
-            .filter(|s| !s.is_empty())
-            .or_else(|| Some(cfg.app_id.clone()).filter(|s| !s.is_empty()))?;
-        let app_slug = std::env::var("ARAWN_GITHUB_APP_SLUG")
-            .ok()
-            .filter(|s| !s.is_empty())
-            .or_else(|| Some(cfg.app_slug.clone()).filter(|s| !s.is_empty()))?;
-        let private_key_pem = std::env::var("ARAWN_GITHUB_PRIVATE_KEY_PEM")
-            .ok()
-            .filter(|s| !s.is_empty())
-            .or_else(|| {
-                let path = std::env::var("ARAWN_GITHUB_PRIVATE_KEY_PATH")
-                    .ok()
-                    .filter(|s| !s.is_empty())
-                    .or_else(|| Some(cfg.private_key_path.clone()).filter(|s| !s.is_empty()))?;
-                match std::fs::read_to_string(&path) {
-                    Ok(pem) => Some(pem),
-                    Err(e) => {
-                        warn!(path = %path, error = %e,
-                            "GitHub App private key path unreadable; skipping integration");
-                        None
-                    }
+        let app = resolver.resolve_github()?;
+        match app.load_private_key() {
+            Ok(private_key_pem) => Some(arawn_integrations::github::GithubAppConfig {
+                app_id: app.app_id,
+                app_slug: app.app_slug,
+                private_key_pem,
+            }),
+            Err(e) => {
+                // Only a Path source can fail to load; never log PEM bodies.
+                if let crate::oauth_clients::GithubKeySource::Path { path, .. } = &app.key {
+                    warn!(path = %path, error = %e,
+                        "GitHub App private key path unreadable; skipping integration");
                 }
-            })?;
-        Some(arawn_integrations::github::GithubAppConfig {
-            app_id,
-            app_slug,
-            private_key_pem,
-        })
+                None
+            }
+        }
     };
     if let Some(app_cfg) = resolve_github() {
         let github = Arc::new(arawn_integrations::github::GithubIntegration::new(
@@ -344,11 +287,7 @@ pub fn wire_integrations(
     }
     // Register Slack. No sharing with Google — different OAuth ecosystem.
     let slack_integration_for_feeds: Option<Arc<arawn_integrations::slack::SlackIntegration>>;
-    if let Some((client_id, client_secret)) = resolve(
-        "ARAWN_SLACK_CLIENT_ID",
-        "ARAWN_SLACK_CLIENT_SECRET",
-        &config.integrations.slack,
-    ) {
+    if let Some((client_id, client_secret)) = resolve(OAuthProvider::Slack) {
         let slack = Arc::new(arawn_integrations::slack::SlackIntegration::new(
             std::path::PathBuf::from(&data_dir),
             client_id,
