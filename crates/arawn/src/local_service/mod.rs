@@ -827,13 +827,23 @@ impl ArawnService for LocalService {
 /// has no auto-feed; users must `/watch` explicitly."
 ///
 /// Returns `(template_name, feed_id)`.
+/// The default feed is a singleton per template: create it only when no
+/// feed (under any id) already uses that template. `existing` is
+/// `(id, template)` pairs.
+pub(super) fn should_auto_create(existing: &[(String, String)], template: &str) -> bool {
+    !existing.iter().any(|(_, t)| t == template)
+}
+
 pub(super) fn default_feed_for_service(service: &str) -> Option<(&'static str, &'static str)> {
     match service {
-        "slack" => Some(("slack/my-mentions", "me")),
-        "gmail" => Some(("gmail/inbox-archive", "me")),
-        "google_calendar" => Some(("calendar/upcoming-archive", "primary")),
-        "google_drive" => Some(("drive/recent", "me")),
-        "atlassian" => Some(("jira/assignee-tracker", "me")),
+        // Ids must differ per service: `feeds.id` is the PRIMARY KEY. They
+        // were all "me" once, so only the first connected service got
+        // its feed (ARAWN-T-0510).
+        "slack" => Some(("slack/my-mentions", "slack-mentions")),
+        "gmail" => Some(("gmail/inbox-archive", "gmail-inbox")),
+        "google_calendar" => Some(("calendar/upcoming-archive", "calendar-upcoming")),
+        "google_drive" => Some(("drive/recent", "drive-recent")),
+        "atlassian" => Some(("jira/assignee-tracker", "jira-assigned")),
         _ => None,
     }
 }
@@ -954,24 +964,52 @@ mod feed_default_tests {
         // against typos.
         assert_eq!(
             default_feed_for_service("slack"),
-            Some(("slack/my-mentions", "me"))
+            Some(("slack/my-mentions", "slack-mentions"))
         );
         assert_eq!(
             default_feed_for_service("gmail"),
-            Some(("gmail/inbox-archive", "me"))
+            Some(("gmail/inbox-archive", "gmail-inbox"))
         );
         assert_eq!(
             default_feed_for_service("google_calendar"),
-            Some(("calendar/upcoming-archive", "primary"))
+            Some(("calendar/upcoming-archive", "calendar-upcoming"))
         );
         assert_eq!(
             default_feed_for_service("google_drive"),
-            Some(("drive/recent", "me"))
+            Some(("drive/recent", "drive-recent"))
         );
         assert_eq!(
             default_feed_for_service("atlassian"),
-            Some(("jira/assignee-tracker", "me"))
+            Some(("jira/assignee-tracker", "jira-assigned"))
         );
+    }
+
+    #[test]
+    fn default_feed_ids_are_distinct_across_services() {
+        // ARAWN-T-0510: feeds.id is the primary key; a shared id meant
+        // only the first connected service got its feed.
+        let ids: Vec<&str> = [
+            "slack",
+            "gmail",
+            "google_calendar",
+            "google_drive",
+            "atlassian",
+        ]
+        .iter()
+        .map(|s| default_feed_for_service(s).unwrap().1)
+        .collect();
+        let unique: std::collections::HashSet<_> = ids.iter().collect();
+        assert_eq!(unique.len(), ids.len(), "{ids:?}");
+    }
+
+    #[test]
+    fn auto_create_is_singleton_by_template() {
+        use super::should_auto_create;
+        let existing = [("me".to_string(), "slack/my-mentions".to_string())];
+        // An older install already has the Slack feed under "me": skip.
+        assert!(!should_auto_create(&existing, "slack/my-mentions"));
+        // Gmail has no feed yet: create it.
+        assert!(should_auto_create(&existing, "gmail/inbox-archive"));
     }
 
     #[test]
