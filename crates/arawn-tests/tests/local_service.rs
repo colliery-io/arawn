@@ -154,6 +154,75 @@ async fn status_reports_integration_states_against_the_live_registry() {
     assert!(slack.hint.is_none());
 }
 
+/// ARAWN-T-0506: declared lenses are created with tags and bindings, a
+/// second reconcile is a no-op, and feeds wait while no runtime is wired.
+#[tokio::test]
+async fn declared_lenses_reconcile_and_are_idempotent() {
+    let (tmp, service) = setup_service(vec![]);
+    let cfg: arawn_bin::ArawnConfig = toml::from_str(
+        r#"
+        [[lenses]]
+        name = "work"
+        description = "My job"
+        tags = ["Hiring", "architecture"]
+        feeds = ["gmail-inbox"]
+
+        [[feeds]]
+        id = "gmail-inbox"
+        template = "gmail/inbox-archive"
+        "#,
+    )
+    .unwrap();
+    service.set_declared(cfg.lenses, cfg.feeds);
+
+    let first = service.reconcile_declared().await;
+    assert!(first.problems.is_empty(), "{:?}", first.problems);
+    assert!(
+        first
+            .done
+            .iter()
+            .any(|s| s.contains("created lens `work` with 2 tag(s)")),
+        "{:?}",
+        first.done
+    );
+    assert!(
+        first
+            .done
+            .iter()
+            .any(|s| s.contains("bound feed `gmail-inbox` to lens `work`"))
+    );
+    assert!(
+        first
+            .waiting
+            .iter()
+            .any(|s| s.contains("feed `gmail-inbox` waits")),
+        "{:?}",
+        first.waiting
+    );
+
+    // The lens is real: in the store, with its tags.
+    let store = Store::open(tmp.path()).unwrap();
+    let lens = store
+        .find_lens_by_name("work")
+        .unwrap()
+        .expect("lens created");
+    assert_eq!(lens.description, "My job");
+    assert_eq!(lens.bindings, ["gmail-inbox"]);
+    let tags = arawn_memory::TagOntologyStore::open(tmp.path(), "work")
+        .unwrap()
+        .tags()
+        .unwrap();
+    assert_eq!(tags, ["architecture", "hiring"]);
+
+    let second = service.reconcile_declared().await;
+    assert!(
+        second.done.is_empty(),
+        "second run changed things: {:?}",
+        second.done
+    );
+    assert!(second.problems.is_empty());
+}
+
 /// Regression (ARAWN-T-0502 review): a broken arawn.toml must not exit the
 /// process when status is read; it becomes one error row.
 #[tokio::test]

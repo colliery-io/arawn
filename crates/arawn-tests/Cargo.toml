@@ -22,6 +22,7 @@ arawn-projections = { path = "../arawn-projections" }
 arawn-extractor = { path = "../arawn-extractor" }
 arawn-steward = { path = "../arawn-steward" }
 arawn-integrations = { path = "../arawn-integrations" }
+toml = "0.8"
 axum = { version = "0.8", features = ["ws"] }
 futures-util = "0.3"
 tokio-tungstenite = "0.26"

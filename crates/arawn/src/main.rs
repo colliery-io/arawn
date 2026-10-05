@@ -1488,6 +1488,26 @@ async fn main() -> Result<()> {
         }))
         .spawn();
 
+        // ARAWN-T-0506: lenses and feeds declared in arawn.toml. Runs after
+        // the feed runtime and integrations are wired; feeds for services
+        // that are not connected yet wait for `arawn connect`.
+        // In the background: creating a feed can call the provider, and a
+        // slow provider must not hold the server in not-ready.
+        service.set_declared(config.lenses.clone(), config.feeds.clone());
+        let reconcile = service.reconcile_ctx();
+        tokio::spawn(async move {
+            let report = reconcile.reconcile().await;
+            if !report.done.is_empty() || !report.waiting.is_empty() || !report.problems.is_empty()
+            {
+                info!(
+                    done = report.done.len(),
+                    waiting = report.waiting.len(),
+                    problems = report.problems.len(),
+                    "arawn.toml lenses and feeds reconciled"
+                );
+            }
+        });
+
         // ARAWN-I-0068 P2-1: all post-startup wiring (feeds, ceremonies,
         // memory, projections, extractor, watchers) is now in place — flip
         // the readiness gate so connecting clients know the server is safe

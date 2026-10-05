@@ -21,6 +21,8 @@ Source: `crates/arawn/src/config.rs`; MCP in `crates/arawn-mcp/src/config.rs`; p
 [ceremonies.<kind>] # per-ceremony overrides
 [permissions]     # allow/deny/ask rules + mode
 [[mcp.servers]]   # MCP server entries
+[[lenses]]        # lenses that must exist (declarative)
+[[feeds]]         # feeds that must exist (declarative)
 ```
 
 ## `[llm.<name>]`
@@ -190,3 +192,64 @@ args = ["mcp-server-sqlite", "--db", "test.db"]
 ```
 
 See [MCP reference](./mcp.md).
+
+## `[[lenses]]` and `[[feeds]]`
+
+Declare the lenses and feeds that must exist. With them, `arawn.toml` holds your full setup: if you copy the file to a new data directory and connect the services again, you get the same lenses and feeds.
+
+arawn makes the store agree with these tables when `arawn serve` starts, and again each time a service connects. The changes are additive:
+
+- arawn creates a missing lens with its tags, adds missing tags, adds missing feed bindings, and updates the description.
+- arawn creates a missing feed. If the feed's service is not connected, the feed waits. arawn creates it when you run `arawn connect <service>`.
+- arawn never deletes a lens, a tag, a binding or a feed. Tags and feeds that you add in the TUI stay.
+- If a feed exists with a different template or different params, arawn keeps the running feed and reports the difference. To apply the declared version, remove the feed (`/feeds rm <id>`), then restart `arawn serve`.
+
+`arawn doctor` shows the result on the `declared-lenses-feeds` line: PASS when all is applied, SKIP when changes wait for a restart or a connect, FAIL when a declaration cannot be applied.
+
+A change to these tables takes effect when `arawn serve` starts again.
+
+### `[[lenses]]`
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `name` | string | — | Lens name. Use lowercase letters, digits, `-` and `_`. `scratch` is reserved. |
+| `display_name` | string | `name` | Label to show. |
+| `description` | string | — | What the lens tracks. The extractor uses it. |
+| `tags` | array of string | — | Tag ontology. Required to create the lens. |
+| `feeds` | array of string | `[]` | IDs of feeds to bind to the lens. |
+
+### `[[feeds]]`
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `id` | string | — | Feed ID. Must be unique. |
+| `template` | string | — | Feed template, for example `gmail/inbox-archive`. See [feed templates](./feed-templates.md). |
+| `params` | inline table | `{}` | Template parameters. |
+| `cadence` | string | template default | Cron expression. |
+
+```toml
+[[lenses]]
+name = "work"
+description = "My job: hiring, architecture decisions, vendors"
+tags = ["hiring", "architecture", "vendors", "incidents"]
+feeds = ["gmail-inbox", "slack-mentions", "jira-assigned"]
+
+[[feeds]]
+id = "gmail-inbox"
+template = "gmail/inbox-archive"
+
+[[feeds]]
+id = "slack-mentions"
+template = "slack/my-mentions"
+
+[[feeds]]
+id = "jira-assigned"
+template = "jira/assignee-tracker"
+
+[[feeds]]
+id = "notes"
+template = "filesystem/folder"
+params = { root = "/Users/me/notes" }
+```
+
+Use the default feed IDs (`gmail-inbox`, `slack-mentions`, `calendar-upcoming`, `drive-recent`, `jira-assigned`) for the default feeds. Then the feed that `arawn connect` makes and the declared feed are the same feed.

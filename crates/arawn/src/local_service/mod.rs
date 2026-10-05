@@ -78,6 +78,11 @@ pub struct LocalService {
     /// runner, no DB, etc.) — `/watch` and `/feeds` then return a
     /// clear "feeds runtime unavailable" error.
     feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>>,
+    /// Lenses and feeds declared in arawn.toml (ARAWN-T-0506). Reconciled
+    /// at startup and after each successful connect.
+    declared: Arc<std::sync::RwLock<declared::Declared>>,
+    /// Serializes reconciles (startup + concurrent connects).
+    reconcile_lock: Arc<tokio::sync::Mutex<()>>,
     /// Shared active-lens shim. Memory tools read this to route
     /// memory_store / memory_search to the right KB. Set on session
     /// resume from the persisted Session.lens_name so the
@@ -143,6 +148,8 @@ impl LocalService {
             notice_tx: tokio::sync::broadcast::channel(64).0,
             integration_registry: Arc::new(std::sync::RwLock::new(HashMap::new())),
             feed_runtime: Arc::new(std::sync::RwLock::new(None)),
+            declared: Arc::new(std::sync::RwLock::new(declared::Declared::default())),
+            reconcile_lock: Arc::new(tokio::sync::Mutex::new(())),
             active_lens: None,
             ceremony_service: Arc::new(std::sync::RwLock::new(None)),
             todo_event_tx: arawn_storage::todo_event_channel().0,
@@ -230,6 +237,34 @@ impl LocalService {
     /// `arawn_feeds::start` returns.
     pub fn set_feed_runtime(&self, runtime: Arc<arawn_feeds::FeedRuntime>) {
         *self.feed_runtime.write().recover() = Some(runtime);
+    }
+
+    /// Set the `[[lenses]]` / `[[feeds]]` declared in arawn.toml
+    /// (ARAWN-T-0506). Call [`Self::reconcile_declared`] to apply them.
+    pub fn set_declared(
+        &self,
+        lenses: Vec<crate::config::LensDecl>,
+        feeds: Vec<crate::config::FeedDecl>,
+    ) {
+        *self.declared.write().recover() = declared::Declared { lenses, feeds };
+    }
+
+    /// Everything a reconcile needs, as clones a spawned task can own.
+    pub fn reconcile_ctx(&self) -> declared::ReconcileCtx {
+        declared::ReconcileCtx {
+            store: Arc::clone(&self.store),
+            data_dir: self.data_dir.clone(),
+            feed_runtime: Arc::clone(&self.feed_runtime),
+            registry: Arc::clone(&self.integration_registry),
+            declared: Arc::clone(&self.declared),
+            lock: Arc::clone(&self.reconcile_lock),
+        }
+    }
+
+    /// Make lenses, tags, bindings and feeds match arawn.toml. Additive:
+    /// never deletes. Feeds whose integration is not connected wait.
+    pub async fn reconcile_declared(&self) -> declared::ReconcileReport {
+        self.reconcile_ctx().reconcile().await
     }
 
     fn feed_runtime_or_err(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError> {
@@ -636,6 +671,7 @@ pub(super) fn infer_entity_type(text: &str) -> (arawn_memory::EntityType, String
 use async_trait::async_trait;
 
 mod commands;
+pub mod declared;
 mod feeds;
 mod inspect;
 mod integrations;

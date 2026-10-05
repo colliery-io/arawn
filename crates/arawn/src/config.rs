@@ -373,6 +373,50 @@ pub struct ArawnConfig {
     /// (14-day cap, daily + weekly only).
     #[serde(default)]
     pub backfill: BackfillConfig,
+    /// Declared lenses (`[[lenses]]`, ARAWN-T-0506). Reconciled at
+    /// startup and after each connect: missing ones are created, nothing
+    /// is deleted.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub lenses: Vec<LensDecl>,
+    /// Declared feeds (`[[feeds]]`, ARAWN-T-0506). A feed whose
+    /// integration is not connected yet waits until it is.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub feeds: Vec<FeedDecl>,
+}
+
+/// One `[[lenses]]` entry: a lens that should exist, with its starting
+/// tag ontology and the feeds bound to it.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct LensDecl {
+    /// Slug: lowercase letters, digits, `-` and `_`.
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    /// What the lens tracks. Shapes extraction.
+    pub description: String,
+    /// Tag ontology. Required (non-empty) to create the lens (ADR-0004).
+    /// Tags listed here are added if missing; tags added later at
+    /// runtime are kept.
+    #[serde(default)]
+    pub tags: Vec<String>,
+    /// Feed ids bound to this lens.
+    #[serde(default)]
+    pub feeds: Vec<String>,
+}
+
+/// One `[[feeds]]` entry: a feed that should exist.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct FeedDecl {
+    /// Unique feed id, e.g. `gmail-inbox`.
+    pub id: String,
+    /// Feed template, e.g. `gmail/inbox-archive`.
+    pub template: String,
+    /// Template parameters. See the feed templates reference.
+    #[serde(default, skip_serializing_if = "toml::Table::is_empty")]
+    pub params: toml::Table,
+    /// Cron cadence. Absent = the template's default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cadence: Option<String>,
 }
 
 /// `[backfill]` table — boot-time ceremony recovery knobs.
@@ -485,6 +529,8 @@ impl Default for ArawnConfig {
             routing: RoutingConfig::default(),
             ceremonies: HashMap::new(),
             backfill: BackfillConfig::default(),
+            lenses: Vec::new(),
+            feeds: Vec::new(),
         }
     }
 }

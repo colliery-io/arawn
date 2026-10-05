@@ -153,6 +153,9 @@ pub async fn run(data_dir: &Path) -> DoctorReport {
         Some(cfg) => {
             checks.extend(check_llm_reachable(&cfg).await);
             checks.extend(check_integrations(data_dir, &cfg));
+            if let Some(c) = check_declared(data_dir, &cfg) {
+                checks.push(c);
+            }
         }
         None => {
             checks.push(CheckResult::skip(
@@ -307,6 +310,99 @@ fn check_integrations(data_dir: &Path, config: &crate::ArawnConfig) -> Vec<Check
         Ok(reports) => reports.iter().map(integration_check).collect(),
         Err(e) => vec![CheckResult::fail("integrations", e)],
     }
+}
+
+/// Drift between `[[lenses]]` / `[[feeds]]` in arawn.toml and the store
+/// (ARAWN-T-0506). Uses the server's own reconcile plan, read-only.
+/// `None` when nothing is declared.
+fn check_declared(data_dir: &Path, config: &crate::ArawnConfig) -> Option<CheckResult> {
+    use crate::local_service::declared::{
+        Declared, Existing, Step, existing_lenses, feed_map, plan,
+    };
+    let declared = Declared {
+        lenses: config.lenses.clone(),
+        feeds: config.feeds.clone(),
+    };
+    if declared.is_empty() {
+        return None;
+    }
+    let name = "declared-lenses-feeds";
+    if !data_dir.join("arawn.db").exists() {
+        return Some(CheckResult::skip(
+            name,
+            "not applied yet — start arawn serve to create the declared lenses and feeds",
+        ));
+    }
+    let store = match arawn_storage::Store::open(data_dir) {
+        Ok(s) => s,
+        Err(e) => {
+            return Some(CheckResult::fail(
+                name,
+                format!("cannot open the store: {e}"),
+            ));
+        }
+    };
+    let feeds = arawn_feeds::FeedStore::new(store.database().conn())
+        .list_all()
+        .ok()
+        .map(feed_map);
+    let existing = Existing {
+        lenses: existing_lenses(&store, data_dir, &declared),
+        feeds,
+    };
+    let connected: std::collections::HashSet<String> =
+        crate::integration_state::inspect(&config.integrations, data_dir)
+            .map(|rs| {
+                rs.into_iter()
+                    .filter(|r| {
+                        matches!(
+                            r.state,
+                            crate::integration_state::IntegrationState::Connected { .. }
+                        )
+                    })
+                    .map(|r| r.service.to_string())
+                    .collect()
+            })
+            .unwrap_or_default();
+
+    let steps = plan(&declared, &existing, &connected);
+    let problems: Vec<String> = steps
+        .iter()
+        .filter_map(|s| match s {
+            Step::Problem(p) => Some(p.clone()),
+            _ => None,
+        })
+        .collect();
+    let waiting: Vec<String> = steps
+        .iter()
+        .filter_map(|s| match s {
+            Step::Waiting { feed, reason } => Some(format!("{feed}: {reason}")),
+            _ => None,
+        })
+        .collect();
+    let pending = steps.len() - problems.len() - waiting.len();
+
+    if !problems.is_empty() {
+        return Some(CheckResult::fail(name, problems.join("; ")));
+    }
+    let mut notes = Vec::new();
+    if pending > 0 {
+        notes.push(format!(
+            "{pending} change(s) not applied yet — restart arawn serve"
+        ));
+    }
+    if !waiting.is_empty() {
+        notes.push(format!("waiting: {}", waiting.join("; ")));
+    }
+    Some(if notes.is_empty() {
+        CheckResult::pass(format!(
+            "{name} ({} lens(es), {} feed(s))",
+            declared.lenses.len(),
+            declared.feeds.len()
+        ))
+    } else {
+        CheckResult::skip(name, notes.join(" — "))
+    })
 }
 
 fn integration_check(r: &crate::integration_state::IntegrationReport) -> CheckResult {
