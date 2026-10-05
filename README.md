@@ -58,6 +58,7 @@ see **[docs/src/tutorials/first-chat.md](docs/src/tutorials/first-chat.md)**.
 ```
 arawn                       # one-shot prompt (uses running server)
 arawn init                  # write a starter config (LLM only)
+arawn init --profile work   # ... plus a work lens and the standard work feeds
 arawn setup                 # set up integrations: Google, Slack, Atlassian, GitHub
 arawn connect --all         # approve each set-up integration in the browser
 arawn doctor                # check the install

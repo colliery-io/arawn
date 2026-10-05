@@ -542,6 +542,29 @@ pub fn run_setup(
         }
     }
 
+    // The full walk offers the work profile once, if no lens is declared
+    // yet (ARAWN-T-0507). Enter means no.
+    if target.is_none() && load_config(&path)?.lenses.is_empty() {
+        writeln!(out)?;
+        if p.confirm(
+            "Add the work profile? (a `work` lens bound to mail, calendar, Slack, Jira and \
+             GitHub feeds; each feed starts when its service connects)",
+            false,
+        )? {
+            let (lenses, feeds) = super::profile::profile("work")?;
+            let mut doc = edit::load_doc(&path)?;
+            let added = super::profile::apply(&mut doc, &lenses, &feeds)?;
+            edit::write_config(&path, &doc)?;
+            writeln!(
+                out,
+                "Added the work profile: {} lens(es), {} feed(s). Edit the lens description \
+                 and tags in arawn.toml to match your work.",
+                added.added_lenses.len(),
+                added.added_feeds.len()
+            )?;
+        }
+    }
+
     print_next_steps(out, &applied, llm_key_env.as_deref())
 }
 
@@ -706,9 +729,13 @@ mod tests {
             "n",
             // GitHub: no
             "n",
+            // Work profile: yes
+            "y",
         ]);
         run_setup(dir.path(), opts(), &mut p, &mut out, true).unwrap();
         let cfg = config(dir.path());
+        assert_eq!(cfg.lenses[0].name, "work");
+        assert_eq!(cfg.feeds.len(), 6);
         assert_eq!(cfg.integrations.google.client_secret, "GOCSPX-s");
         assert_eq!(cfg.integrations.atlassian.client_id, "atl-id");
         assert_eq!(cfg.integrations.slack.client_id, "");

@@ -88,6 +88,9 @@ async fn main() -> Result<()> {
             /// Overwrite an existing arawn.toml
             #[arg(long)]
             force: bool,
+            /// Add a ready-made set of lenses and feeds: work. With an existing arawn.toml, only adds them.
+            #[arg(long)]
+            profile: Option<String>,
         },
         /// Set up integrations (Google, Slack, Atlassian, GitHub) step by step
         #[command(after_help = "Examples:\n  \
@@ -201,6 +204,7 @@ async fn main() -> Result<()> {
         model,
         api_key_env,
         force,
+        profile,
     }) = &cli.command
     {
         let base = cli
@@ -216,7 +220,7 @@ async fn main() -> Result<()> {
             api_key_env: api_key_env.clone(),
             force: *force,
         };
-        match arawn_bin::startup::init::run_init(&data_dir, opts) {
+        match arawn_bin::startup::init::run_init_with_profile(&data_dir, opts, profile.as_deref()) {
             Ok(()) => std::process::exit(0),
             Err(e) => {
                 eprintln!("Error: {e}");

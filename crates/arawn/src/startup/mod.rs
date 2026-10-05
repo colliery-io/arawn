@@ -11,6 +11,7 @@ pub mod helpers;
 pub mod hooks;
 pub mod init;
 pub mod integrations;
+pub mod profile;
 pub mod setup;
 
 pub use cli::run_cli_via_server;
