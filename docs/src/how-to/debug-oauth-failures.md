@@ -80,9 +80,13 @@ Then `/disconnect atlassian` and `/connect atlassian` to issue a fresh token wit
 **Fix.**
 
 ```
-/disconnect <svc>
-/connect <svc>
+arawn disconnect <svc>
+arawn connect <svc>
 ```
+
+**Google, about 7 days after you connected:** your Google app has the publishing status Testing. In Testing, Google ends refresh tokens for the Gmail, Calendar and Drive scopes after 7 days. Set the status to In production, then reconnect. See [Connect Google, step 3](./connect-google.md#3-configure-the-oauth-consent-screen).
+
+**Atlassian, after about 90 days of no use:** Atlassian refresh tokens expire after 90 days of inactivity. Each refresh gives a new token and starts the 90 days again ([Atlassian: OAuth 2.0 (3LO) apps](https://developer.atlassian.com/cloud/jira/platform/oauth-2-3lo-apps/)). Reconnect.
 
 If this keeps happening, your provider may be invalidating tokens early — check the provider's app/integration status (especially for Atlassian, which can deactivate untested apps). For Atlassian specifically, make sure your scope set includes `offline_access` — without it no refresh token is issued at all and the access token dies in ~1 hour.
 

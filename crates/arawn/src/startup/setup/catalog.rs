@@ -140,8 +140,10 @@ pub fn guide(target: SetupTarget) -> Guide {
                      scopes below. If a scope is not in the list, paste it into \
                      \"Manually add scopes\"."
                         .into(),
-                    "Go to Google Auth Platform > Audience > Test users. Add the Google \
-                     account that you will connect."
+                    "Go to Google Auth Platform > Audience. Click Publish app, so that the \
+                     status is In production. Do not submit the app for verification. \
+                     (In Testing, Google ends the tokens after 7 days and you must \
+                     reconnect every week.)"
                         .into(),
                     "Go to APIs & Services > Credentials > Create Credentials > OAuth client \
                      ID. Set the application type to Desktop app. Copy the client ID and the \
