@@ -1,4 +1,4 @@
-//! External-service integrations (Gmail, Calendar, Slack, ...).
+//! External-service integrations (Gmail, Calendar, Slack, Linear, ...).
 //!
 //! Provides three things to the rest of arawn:
 //!
@@ -29,6 +29,7 @@ pub mod github;
 pub mod gmail;
 pub mod google_common;
 pub mod integration;
+pub mod linear;
 pub mod oauth_flow;
 pub mod retry_after;
 pub mod slack;

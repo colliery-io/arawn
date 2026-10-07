@@ -501,6 +501,7 @@ mod tests {
                 "integration:atlassian",
                 "integration:slack",
                 "integration:github",
+                "integration:linear",
             ]
         );
         // Google: configured via the shared block, not yet connected.
@@ -529,6 +530,32 @@ mod tests {
                 o => panic!("expected skip, got {o:?}"),
             }
         }
+    }
+
+    #[test]
+    fn linear_check_follows_the_saved_api_key() {
+        let tmp = TempDir::new().unwrap();
+        let cfg: crate::ArawnConfig = toml::from_str("").unwrap();
+        match outcome(&check_integrations(tmp.path(), &cfg), "integration:linear") {
+            CheckOutcome::Skip { reason } => {
+                assert!(reason.starts_with("not configured"), "{reason}");
+                assert!(reason.contains("run: arawn setup linear"), "{reason}");
+            }
+            o => panic!("expected skip, got {o:?}"),
+        }
+
+        arawn_integrations::linear::LinearIntegration::new(tmp.path().to_path_buf())
+            .save_credentials(&arawn_integrations::linear::LinearCredentials {
+                api_key: "lin_api_k".into(),
+                viewer_id: "u1".into(),
+                viewer_name: "Ada".into(),
+                organization: "Acme".into(),
+            })
+            .unwrap();
+        assert!(matches!(
+            outcome(&check_integrations(tmp.path(), &cfg), "integration:linear"),
+            CheckOutcome::Pass
+        ));
     }
 
     #[tokio::test]

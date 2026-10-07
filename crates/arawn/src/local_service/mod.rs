@@ -927,7 +927,9 @@ pub(super) fn feed_summary_to_dto(s: arawn_feeds::FeedSummary) -> arawn_service:
 /// (b) the server-wide notice broadcast for progress messages.
 pub(super) struct OAuthFlowCtx {
     service: String,
-    url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<url::Url>>>,
+    /// The auth URL, or the error when `connect()` fails before it
+    /// publishes one (Linear: no browser flow).
+    url_tx: tokio::sync::Mutex<Option<tokio::sync::oneshot::Sender<Result<url::Url, String>>>>,
     notice_tx: tokio::sync::broadcast::Sender<arawn_service::ServerNotice>,
 }
 
@@ -942,7 +944,7 @@ impl arawn_integrations::ConnectContext for OAuthFlowCtx {
         // only publish once per flow).
         let mut guard = self.url_tx.lock().await;
         if let Some(tx) = guard.take() {
-            let _ = tx.send(url.clone());
+            let _ = tx.send(Ok(url.clone()));
         }
     }
 

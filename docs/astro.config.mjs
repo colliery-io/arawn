@@ -54,6 +54,7 @@ export default defineConfig({
 						page('how-to/connect-slack', 'Connect Slack'),
 						page('how-to/connect-atlassian', 'Connect Atlassian (Jira + Confluence)'),
 						page('how-to/connect-github', 'Connect GitHub'),
+						page('how-to/connect-linear', 'Connect Linear'),
 						page('how-to/create-a-feed', 'Create a feed'),
 						page('how-to/bind-a-lens-to-a-feed', 'Bind a lens to a feed'),
 						page('how-to/curate-a-lens', 'Curate a lens'),

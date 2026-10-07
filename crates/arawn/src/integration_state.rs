@@ -95,12 +95,13 @@ impl IntegrationReport {
         }
     }
 
-    /// GitHub is configured by an App ID; the others by an OAuth client.
+    /// GitHub is configured by an App ID, Linear by an API key; the
+    /// others by an OAuth client.
     fn credential_noun(&self) -> &'static str {
-        if self.setup_target == "github" {
-            "app ID"
-        } else {
-            "client"
+        match self.setup_target {
+            "github" => "app ID",
+            "linear" => "API key",
+            _ => "client",
         }
     }
 
@@ -116,6 +117,10 @@ impl IntegrationReport {
             IntegrationState::Incomplete { .. } => Some(format!("run: arawn setup {target}")),
             IntegrationState::Configured { .. } => Some(format!("run: arawn connect {svc}")),
             IntegrationState::Connected { .. } => None,
+            // An API key has no browser flow: setup replaces it.
+            IntegrationState::TokenError { .. } if target == "linear" => {
+                Some(format!("run: arawn setup {target}"))
+            }
             IntegrationState::TokenError { .. } => Some(format!(
                 "run: arawn disconnect {svc}, then arawn connect {svc}"
             )),
@@ -250,6 +255,21 @@ pub fn inspect_with(
         setup_target: "github",
         state: github_state,
     });
+
+    // Linear needs no client: the API key that `arawn setup linear`
+    // saved is the whole setup (COLLIERY-I-0532).
+    let linear = arawn_integrations::linear::SERVICE_NAME;
+    out.push(IntegrationReport {
+        service: linear,
+        setup_target: linear,
+        state: match tokens(CredentialSource::CredentialStore, linear) {
+            Ok(true) => IntegrationState::Connected {
+                origin: "arawn setup linear".into(),
+            },
+            Ok(false) => IntegrationState::NotConfigured,
+            Err(error) => IntegrationState::TokenError { error },
+        },
+    });
     out
 }
 
@@ -349,7 +369,7 @@ mod tests {
     #[test]
     fn empty_config_reports_every_integration_not_configured_with_setup_hint() {
         let r = run(&IntegrationsConfig::default(), &[], &[], &[]);
-        assert_eq!(r.len(), 6);
+        assert_eq!(r.len(), 7);
         assert!(
             r.values()
                 .all(|x| x.state == IntegrationState::NotConfigured)
@@ -357,6 +377,7 @@ mod tests {
         assert_eq!(r["gmail"].hint().unwrap(), "run: arawn setup google");
         assert_eq!(r["slack"].hint().unwrap(), "run: arawn setup slack");
         assert_eq!(r["github"].hint().unwrap(), "run: arawn setup github");
+        assert_eq!(r["linear"].hint().unwrap(), "run: arawn setup linear");
     }
 
     #[test]
@@ -529,5 +550,20 @@ mod tests {
         std::fs::create_dir_all(&svc).unwrap();
         std::fs::write(svc.join("github.bin"), b"garbage").unwrap();
         assert_eq!(github_state(&cfg, dir.path()).code(), "token_error");
+    }
+
+    #[test]
+    fn linear_follows_its_credential_store_entry() {
+        let r = run(&IntegrationsConfig::default(), &[], &["linear"], &[]);
+        assert_eq!(r["linear"].state.code(), "connected");
+        assert_eq!(
+            r["linear"].describe(),
+            "connected (API key from arawn setup linear)"
+        );
+        assert!(r["linear"].hint().is_none());
+
+        let r = run(&IntegrationsConfig::default(), &[], &[], &["linear"]);
+        assert_eq!(r["linear"].state.code(), "token_error");
+        assert_eq!(r["linear"].hint().unwrap(), "run: arawn setup linear");
     }
 }

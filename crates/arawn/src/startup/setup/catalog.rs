@@ -1,4 +1,4 @@
-//! Provider guides for `arawn setup` (ARAWN-T-0501).
+//! Provider guides for `arawn setup` (ARAWN-T-0501, Linear COLLIERY-I-0532).
 //!
 //! Each guide is the short form of the matching how-to page under
 //! `docs/src/content/docs/how-to/connect-*.md`. Scope strings and redirect ports come
@@ -8,30 +8,35 @@
 use crate::oauth_clients::OAuthProvider;
 
 /// What `arawn setup` can configure. Google is one target: one OAuth
-/// client covers Gmail, Calendar and Drive.
+/// client covers Gmail, Calendar and Drive. Linear takes a personal API
+/// key, saved in the credential store, not in `arawn.toml`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SetupTarget {
     Google,
     Slack,
     Atlassian,
     Github,
+    Linear,
 }
 
 impl SetupTarget {
-    pub const ALL: [SetupTarget; 4] = [
+    pub const ALL: [SetupTarget; 5] = [
         SetupTarget::Google,
         SetupTarget::Slack,
         SetupTarget::Atlassian,
         SetupTarget::Github,
+        SetupTarget::Linear,
     ];
 
-    /// The CLI argument and the `[integrations.<key>]` table name.
+    /// The CLI argument and the `[integrations.<key>]` table name (Linear
+    /// has no table).
     pub fn key(self) -> &'static str {
         match self {
             SetupTarget::Google => "google",
             SetupTarget::Slack => "slack",
             SetupTarget::Atlassian => "atlassian",
             SetupTarget::Github => "github",
+            SetupTarget::Linear => "linear",
         }
     }
 
@@ -41,6 +46,7 @@ impl SetupTarget {
             SetupTarget::Slack => "Slack",
             SetupTarget::Atlassian => "Atlassian (Jira, Confluence)",
             SetupTarget::Github => "GitHub",
+            SetupTarget::Linear => "Linear",
         }
     }
 
@@ -59,7 +65,7 @@ impl SetupTarget {
     }
 
     /// The OAuth integrations this target enables. Empty for GitHub,
-    /// which uses the App model.
+    /// which uses the App model, and for Linear (an API key).
     pub fn covers(self) -> &'static [OAuthProvider] {
         match self {
             SetupTarget::Google => &[
@@ -69,18 +75,18 @@ impl SetupTarget {
             ],
             SetupTarget::Slack => &[OAuthProvider::Slack],
             SetupTarget::Atlassian => &[OAuthProvider::Atlassian],
-            SetupTarget::Github => &[],
+            SetupTarget::Github | SetupTarget::Linear => &[],
         }
     }
 
     /// The env var that holds the client secret when the user keeps it
-    /// out of `arawn.toml`. `None` for GitHub.
+    /// out of `arawn.toml`. `None` for GitHub and Linear.
     pub fn secret_env_var(self) -> Option<&'static str> {
         match self {
             SetupTarget::Google => Some("ARAWN_GOOGLE_CLIENT_SECRET"),
             SetupTarget::Slack => Some("ARAWN_SLACK_CLIENT_SECRET"),
             SetupTarget::Atlassian => Some("ARAWN_ATLASSIAN_CLIENT_SECRET"),
-            SetupTarget::Github => None,
+            SetupTarget::Github | SetupTarget::Linear => None,
         }
     }
 
@@ -88,6 +94,7 @@ impl SetupTarget {
     pub fn connect_names(self) -> Vec<&'static str> {
         match self {
             SetupTarget::Github => vec![arawn_integrations::github::SERVICE_NAME],
+            SetupTarget::Linear => vec![arawn_integrations::linear::SERVICE_NAME],
             t => t.covers().iter().map(|p| p.service_name()).collect(),
         }
     }
@@ -239,6 +246,25 @@ pub fn guide(target: SetupTarget) -> Guide {
             }],
             doc: "docs/src/content/docs/how-to/connect-github.md",
         },
+        SetupTarget::Linear => Guide {
+            console_url: "https://linear.app/settings/account/security",
+            steps: vec![
+                "In Linear, go to Settings > Account > Security & access.".into(),
+                "Under Personal API keys, create a key. Name it arawn. Give it full access, \
+                 or at least the permissions below, and access to the teams arawn may see. \
+                 (Admins decide whether members may create keys.)"
+                    .into(),
+                "Copy the key. It starts with lin_api_.".into(),
+            ],
+            scope_groups: vec![ScopeGroup {
+                label: "Permissions",
+                items: strings(&[
+                    "Read (the feed and the read tools)",
+                    "Write (the agent comments on and updates issues)",
+                ]),
+            }],
+            doc: "docs/src/content/docs/how-to/connect-linear.md",
+        },
     }
 }
 
@@ -253,7 +279,7 @@ mod tests {
         }
         assert_eq!(SetupTarget::from_key("Gmail"), Some(SetupTarget::Google));
         assert_eq!(SetupTarget::from_key("jira"), Some(SetupTarget::Atlassian));
-        assert_eq!(SetupTarget::from_key("linear"), None);
+        assert_eq!(SetupTarget::from_key("notion"), None);
     }
 
     #[test]

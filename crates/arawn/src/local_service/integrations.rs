@@ -57,7 +57,7 @@ impl LocalService {
         // return synchronously with the URL, we use a oneshot to bridge:
         // the spawned task publishes the URL to the oneshot the moment the
         // integration calls publish_auth_url, then continues the flow.
-        let (url_tx, url_rx) = tokio::sync::oneshot::channel::<url::Url>();
+        let (url_tx, url_rx) = tokio::sync::oneshot::channel::<Result<url::Url, String>>();
         let notice_tx = self.notice_tx.clone();
         let service_name = service.to_string();
         let integration_for_task = Arc::clone(&integration);
@@ -71,6 +71,13 @@ impl LocalService {
                 notice_tx: notice_tx.clone(),
             };
             let result = integration_for_task.connect(&ctx).await;
+            // Failed before any URL: give the caller the reason now
+            // instead of a "no auth URL" timeout.
+            if let Err(e) = &result
+                && let Some(tx) = ctx.url_tx.lock().await.take()
+            {
+                let _ = tx.send(Err(e.user_message()));
+            }
             let succeeded = result.is_ok();
             let notice = match &result {
                 Ok(()) => arawn_service::ServerNotice {
@@ -178,7 +185,8 @@ impl LocalService {
         // a 5s ceiling protects the RPC from hanging if an integration is
         // poorly behaved.
         let url = match tokio::time::timeout(std::time::Duration::from_secs(5), url_rx).await {
-            Ok(Ok(u)) => u,
+            Ok(Ok(Ok(u))) => u,
+            Ok(Ok(Err(reason))) => return Err(ServiceError::InvalidOperation(reason)),
             Ok(Err(_)) => {
                 return Err(ServiceError::InvalidOperation(format!(
                     "integration '{service}' did not publish an auth URL"

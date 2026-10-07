@@ -132,7 +132,10 @@ async fn status_reports_integration_states_against_the_live_registry() {
             .unwrap_or_else(|| panic!("no row for {name}: {:?}", s.integrations))
             .clone()
     };
-    assert_eq!(s.integrations.len(), 6, "{:?}", s.integrations);
+    assert_eq!(s.integrations.len(), 7, "{:?}", s.integrations);
+    let linear = row("linear");
+    assert_eq!(linear.state, "not_configured");
+    assert_eq!(linear.hint.as_deref(), Some("run: arawn setup linear"));
     if std::env::var("ARAWN_GMAIL_CLIENT_ID").is_err()
         && std::env::var("ARAWN_GOOGLE_CLIENT_ID").is_err()
     {
@@ -152,6 +155,21 @@ async fn status_reports_integration_states_against_the_live_registry() {
     let slack = s.integrations.iter().find(|i| i.name == "slack").unwrap();
     assert_eq!(slack.state, "connected", "{slack:?}");
     assert!(slack.hint.is_none());
+}
+
+/// COLLIERY-I-0532: Linear has no browser flow. `/connect linear` (the
+/// `start_oauth_flow` RPC) fails at once with the setup hint, instead of
+/// waiting 5s for an auth URL that never comes.
+#[tokio::test]
+async fn connect_linear_gives_the_setup_hint_at_once() {
+    let (tmp, service) = setup_service(vec![]);
+    service.register_integration(Arc::new(
+        arawn_integrations::linear::LinearIntegration::new(tmp.path().to_path_buf()),
+    ));
+    let started = std::time::Instant::now();
+    let err = service.start_oauth_flow("linear").await.unwrap_err();
+    assert!(err.to_string().contains("arawn setup linear"), "{err}");
+    assert!(started.elapsed() < std::time::Duration::from_secs(4));
 }
 
 /// ARAWN-T-0506: declared lenses are created with tags and bindings, a

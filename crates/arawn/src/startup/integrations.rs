@@ -24,8 +24,9 @@ pub struct IntegrationsForFeeds {
     pub slack: Option<Arc<arawn_integrations::slack::SlackIntegration>>,
 }
 
-/// Register Gmail, Calendar, Drive, Atlassian, GitHub, and Slack integrations.
-/// Each provider is skipped silently if credentials are not configured.
+/// Register Gmail, Calendar, Drive, Atlassian, GitHub, Slack and Linear
+/// integrations. Each OAuth / App provider is skipped silently if
+/// credentials are not configured; Linear is always registered.
 pub fn wire_integrations(
     config: &ArawnConfig,
     data_dir: &str,
@@ -323,6 +324,16 @@ pub fn wire_integrations(
              to enable. See docs/src/integrations/slack.md."
         );
     }
+
+    // Register Linear (COLLIERY-I-0532). Always: it needs no client, and
+    // it is connected once `arawn setup linear` has saved an API key. The
+    // key is read on each call, so a key saved while the server runs
+    // works without a restart.
+    let linear = Arc::new(arawn_integrations::linear::LinearIntegration::new(
+        std::path::PathBuf::from(&data_dir),
+    ));
+    service.register_integration(Arc::clone(&linear) as Arc<dyn arawn_integrations::Integration>);
+    info!("Linear integration registered");
 
     log_integration_summary(config, data_dir);
 
