@@ -16,9 +16,12 @@
 
 mod client;
 mod integration;
+pub mod models;
 pub mod queries;
 
 pub use client::{
     GraphqlReply, HttpTransport, LINEAR_API_URL, LinearClient, LinearTransport, Viewer,
+    my_issues_filter,
 };
 pub use integration::{LinearCredentials, LinearIntegration, SERVICE_NAME};
+pub use models::{Issue, IssuePage};

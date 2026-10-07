@@ -22,6 +22,8 @@ pub struct IntegrationsForFeeds {
     pub github: Option<Arc<arawn_integrations::github::GithubIntegration>>,
     pub gmail: Option<Arc<arawn_integrations::gmail::GmailIntegration>>,
     pub slack: Option<Arc<arawn_integrations::slack::SlackIntegration>>,
+    /// Always present: Linear needs no client registration.
+    pub linear: Arc<arawn_integrations::linear::LinearIntegration>,
 }
 
 /// Register Gmail, Calendar, Drive, Atlassian, GitHub, Slack and Linear
@@ -344,6 +346,7 @@ pub fn wire_integrations(
         github: github_integration_for_feeds,
         gmail: gmail_integration_for_feeds,
         slack: slack_integration_for_feeds,
+        linear,
     }
 }
 

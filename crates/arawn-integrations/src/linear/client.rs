@@ -22,6 +22,7 @@ use serde_json::{Value, json};
 
 use crate::error::IntegrationError;
 
+use super::models::{Issue, IssuePage};
 use super::queries;
 
 /// The one Linear API endpoint.
@@ -149,6 +150,81 @@ impl LinearClient {
         let d: Data = self.execute(queries::VIEWER, json!({})).await?;
         Ok(d.viewer)
     }
+
+    /// One page of the issues assigned to or created by the key's user,
+    /// updated after `since`. Gives the user's id with the page.
+    pub async fn my_issues_page(
+        &self,
+        since: Option<&str>,
+        after: Option<&str>,
+    ) -> Result<(String, IssuePage), IntegrationError> {
+        self.issues_page(my_issues_filter(since), after).await
+    }
+
+    /// One page of [`queries::MY_ISSUES`] with any `IssueFilter`, most
+    /// recently updated first. Gives the key's user id with the page.
+    pub async fn issues_page(
+        &self,
+        filter: Value,
+        after: Option<&str>,
+    ) -> Result<(String, IssuePage), IntegrationError> {
+        #[derive(Deserialize)]
+        struct ViewerId {
+            id: String,
+        }
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct PageInfo {
+            has_next_page: bool,
+            #[serde(default)]
+            end_cursor: Option<String>,
+        }
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Conn {
+            nodes: Vec<Issue>,
+            page_info: PageInfo,
+        }
+        #[derive(Deserialize)]
+        struct Data {
+            viewer: ViewerId,
+            issues: Conn,
+        }
+        let d: Data = self
+            .execute(
+                &format!("{} {}", queries::MY_ISSUES, queries::ISSUE_FIELDS),
+                json!({ "filter": filter, "after": after }),
+            )
+            .await?;
+        let next = d
+            .issues
+            .page_info
+            .has_next_page
+            .then_some(d.issues.page_info.end_cursor)
+            .flatten();
+        Ok((
+            d.viewer.id,
+            IssuePage {
+                issues: d.issues.nodes,
+                next,
+            },
+        ))
+    }
+}
+
+/// The `IssueFilter` for "assigned to me or created by me", updated
+/// after `since` (RFC3339) when given.
+pub fn my_issues_filter(since: Option<&str>) -> Value {
+    let mut f = json!({
+        "or": [
+            { "assignee": { "isMe": { "eq": true } } },
+            { "creator": { "isMe": { "eq": true } } },
+        ]
+    });
+    if let Some(s) = since {
+        f["updatedAt"] = json!({ "gt": s });
+    }
+    f
 }
 
 /// Map a reply to `data` or to an [`IntegrationError`]. `now_ms` is the
@@ -340,6 +416,68 @@ pub(crate) mod tests {
                 Err(IntegrationError::Auth(_))
             ));
         }
+    }
+
+    pub(crate) fn issue_json(identifier: &str, updated_at: &str) -> Value {
+        json!({
+            "id": format!("id-{identifier}"), "identifier": identifier,
+            "title": format!("Title of {identifier}"), "description": "Some details",
+            "url": format!("https://linear.app/acme/issue/{identifier}"),
+            "priority": 1.0, "priorityLabel": "Urgent", "dueDate": "2026-10-09",
+            "createdAt": "2026-10-01T09:00:00.000Z", "updatedAt": updated_at,
+            "state": {"id": "s1", "name": "In Progress", "type": "started"},
+            "team": {"id": "t1", "key": "ENG", "name": "Engineering"},
+            "assignee": {"id": "u1", "name": "Ada", "email": "ada@example.com"},
+            "creator": {"id": "u2", "name": "Bea", "email": null},
+            "labels": {"nodes": [{"name": "bug"}]},
+            "comments": {"nodes": [{"id": "c1", "body": "On it", "createdAt": "2026-10-02T10:00:00.000Z",
+                                    "user": {"id": "u1", "name": "Ada"}}]}
+        })
+    }
+
+    #[tokio::test]
+    async fn my_issues_page_sends_the_filter_and_decodes_the_page() {
+        let t = FakeTransport::ok(&[json!({"data": {
+            "viewer": {"id": "u1"},
+            "issues": {
+                "nodes": [issue_json("ENG-1", "2026-10-05T00:00:00.000Z")],
+                "pageInfo": {"hasNextPage": true, "endCursor": "cur-1"}
+            }
+        }})]);
+        let c = LinearClient::with_transport("k", t.clone());
+        let (viewer, page) = c
+            .my_issues_page(Some("2026-10-01T00:00:00Z"), None)
+            .await
+            .unwrap();
+        assert_eq!(viewer, "u1");
+        assert_eq!(page.next.as_deref(), Some("cur-1"));
+        let i = &page.issues[0];
+        assert_eq!((i.identifier.as_str(), i.priority), ("ENG-1", 1));
+        assert_eq!(i.labels.nodes[0].name, "bug");
+        assert!(!i.state.is_closed());
+
+        let body = &t.sent()[0].1;
+        assert!(
+            body["query"]
+                .as_str()
+                .unwrap()
+                .starts_with("query MyIssues")
+        );
+        assert!(
+            body["query"]
+                .as_str()
+                .unwrap()
+                .contains("fragment IssueFields")
+        );
+        assert_eq!(
+            body["variables"]["filter"]["updatedAt"]["gt"],
+            "2026-10-01T00:00:00Z"
+        );
+        assert_eq!(
+            body["variables"]["filter"]["or"][0]["assignee"]["isMe"]["eq"],
+            true
+        );
+        assert!(my_issues_filter(None).get("updatedAt").is_none());
     }
 
     #[tokio::test]

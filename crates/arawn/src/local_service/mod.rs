@@ -261,6 +261,33 @@ impl LocalService {
         }
     }
 
+    /// Default feeds of the services that `arawn setup` connects with no
+    /// connect flow (Linear, COLLIERY-I-0532). There is no connect event
+    /// to hang them on, so the server creates them at startup once the
+    /// key is saved. Owns its clones, for a spawned task.
+    pub fn setup_only_default_feeds(
+        &self,
+    ) -> impl std::future::Future<Output = ()> + Send + 'static {
+        let registry = Arc::clone(&self.integration_registry);
+        let feed_runtime = Arc::clone(&self.feed_runtime);
+        let notice_tx = self.notice_tx.clone();
+        async move {
+            let service = arawn_integrations::linear::SERVICE_NAME;
+            let integration = registry.read().recover().get(service).cloned();
+            if let Some(i) = integration
+                && i.is_connected().await
+            {
+                integrations::auto_create_default_feed(
+                    &feed_runtime,
+                    &notice_tx,
+                    service,
+                    "arawn setup linear",
+                )
+                .await;
+            }
+        }
+    }
+
     /// Make lenses, tags, bindings and feeds match arawn.toml. Additive:
     /// never deletes. Feeds whose integration is not connected wait.
     pub async fn reconcile_declared(&self) -> declared::ReconcileReport {
@@ -880,6 +907,7 @@ pub(super) fn default_feed_for_service(service: &str) -> Option<(&'static str, &
         "google_calendar" => Some(("calendar/upcoming-archive", "calendar-upcoming")),
         "google_drive" => Some(("drive/recent", "drive-recent")),
         "atlassian" => Some(("jira/assignee-tracker", "jira-assigned")),
+        "linear" => Some(("linear/my-issues", "linear-mine")),
         _ => None,
     }
 }
@@ -1020,6 +1048,10 @@ mod feed_default_tests {
             default_feed_for_service("atlassian"),
             Some(("jira/assignee-tracker", "jira-assigned"))
         );
+        assert_eq!(
+            default_feed_for_service("linear"),
+            Some(("linear/my-issues", "linear-mine"))
+        );
     }
 
     #[test]
@@ -1032,6 +1064,7 @@ mod feed_default_tests {
             "google_calendar",
             "google_drive",
             "atlassian",
+            "linear",
         ]
         .iter()
         .map(|s| default_feed_for_service(s).unwrap().1)

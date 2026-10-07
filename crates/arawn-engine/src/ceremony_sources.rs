@@ -185,8 +185,8 @@ impl CalendarSource for ProjectionsCalendarSource {
     }
 }
 
-/// Production `AttentionSource` backed by `gmail_messages` +
-/// `slack_messages` projection tables.
+/// Production `AttentionSource` backed by the `gmail_messages`,
+/// `slack_messages` and `linear_issues` projection tables.
 ///
 /// `store` resolves each row's `feed_id` to a lens name (via
 /// `Store::find_lens_for_feed`). Results are cached in
@@ -239,8 +239,110 @@ impl ProjectionsAttentionSource {
     }
 }
 
+/// Linear issues on the user's plate at `end`: open (state type not
+/// completed / canceled), assigned to the user, and urgent / high
+/// priority or due within [`LINEAR_DUE_DAYS`] (overdue included).
+/// Standing signals, not windowed by `start`: an urgent issue matters
+/// whether or not it changed today. Due date first, then priority.
+const LINEAR_ATTENTION_SQL: &str = "SELECT id, source_id, source_ts, title, body_text, \
+         'linear' AS kind, feed_id, \
+         json_extract(metadata, '$.priority_label'), json_extract(metadata, '$.due_date') \
+       FROM linear_issues \
+      WHERE source_ts < ?1 \
+        AND json_extract(metadata, '$.assigned_to_me') = 1 \
+        AND COALESCE(json_extract(metadata, '$.state_type'), '') \
+            NOT IN ('completed', 'canceled') \
+        AND (json_extract(metadata, '$.priority') IN (1, 2) \
+             OR json_extract(metadata, '$.due_date') <= ?2) \
+      ORDER BY json_extract(metadata, '$.due_date') IS NULL, \
+               json_extract(metadata, '$.due_date'), \
+               json_extract(metadata, '$.priority'), source_ts DESC \
+      LIMIT ?3";
+
+/// Gmail and Slack signals inside `[start, end)`, newest first.
+const WINDOW_ATTENTION_SQL: &str = "SELECT id, source_id, source_ts, title, body_text, kind, feed_id, \
+         NULL, NULL FROM ( \
+           SELECT id, source_id, source_ts, title, body_text, 'gmail' AS kind, feed_id \
+             FROM gmail_messages WHERE source_ts >= ?1 AND source_ts < ?2 \
+           UNION ALL \
+           SELECT id, source_id, source_ts, title, body_text, 'slack' AS kind, feed_id \
+             FROM slack_messages WHERE source_ts >= ?1 AND source_ts < ?2 \
+       ) ORDER BY source_ts DESC LIMIT ?3";
+
+/// How far ahead a Linear due date pulls an issue into the brief.
+const LINEAR_DUE_DAYS: i64 = 7;
+
+struct RawSignal {
+    id: String,
+    source_id: String,
+    ts: DateTime<Utc>,
+    summary: String,
+    kind: String,
+    feed_id: String,
+}
+
+/// Run one attention query (9 columns: the 7 signal columns, then an
+/// optional priority label and due date for the summary).
+fn query_signals(
+    conn: &rusqlite::Connection,
+    sql: &str,
+    params: &[&dyn rusqlite::types::ToSql],
+) -> Result<Vec<RawSignal>, CeremonyError> {
+    let mut stmt = conn
+        .prepare(sql)
+        .map_err(|e| storage_err(format!("prepare attention between: {e}")))?;
+    let mut rows = stmt
+        .query(params)
+        .map_err(|e| storage_err(format!("query attention between: {e}")))?;
+    let mut out = Vec::new();
+    while let Some(row) = rows
+        .next()
+        .map_err(|e| storage_err(format!("attention between row: {e}")))?
+    {
+        let col = |i: usize, name: &str| -> Result<String, CeremonyError> {
+            row.get(i)
+                .map_err(|e| storage_err(format!("col {name}: {e}")))
+        };
+        let title = col(3, "title")?;
+        let body_text = col(4, "body_text")?;
+        let label: Option<String> = row
+            .get(7)
+            .map_err(|e| storage_err(format!("col priority_label: {e}")))?;
+        let due: Option<String> = row
+            .get(8)
+            .map_err(|e| storage_err(format!("col due_date: {e}")))?;
+        let mut summary = if !title.is_empty() {
+            truncate_excerpt(&title)
+        } else {
+            truncate_excerpt(&body_text)
+        };
+        // "(Urgent, due 2026-10-09)": the word "due" also makes the
+        // weekly plugin read it as a deadline.
+        let note: Vec<String> = label
+            .filter(|l| !l.is_empty() && l != "No priority")
+            .into_iter()
+            .chain(due.map(|d| format!("due {d}")))
+            .collect();
+        if !note.is_empty() {
+            summary.push_str(&format!(" ({})", note.join(", ")));
+        }
+        out.push(RawSignal {
+            id: col(0, "id")?,
+            source_id: col(1, "source_id")?,
+            ts: parse_rfc3339(&col(2, "source_ts")?)?,
+            summary,
+            kind: col(5, "kind")?,
+            feed_id: col(6, "feed_id")?,
+        });
+    }
+    Ok(out)
+}
+
 #[async_trait]
 impl AttentionSource for ProjectionsAttentionSource {
+    /// Linear issues on the user's plate come first (they are few and
+    /// must not be crowded out), then Gmail and Slack signals of the
+    /// window fill the rest of `cap`.
     async fn between(
         &self,
         start: DateTime<Utc>,
@@ -250,91 +352,39 @@ impl AttentionSource for ProjectionsAttentionSource {
         if cap == 0 || end <= start {
             return Ok(Vec::new());
         }
-        self.projections
-            .ensure_feed_type("gmail_messages")
-            .map_err(|e| storage_err(format!("ensure gmail_messages: {e}")))?;
-        self.projections
-            .ensure_feed_type("slack_messages")
-            .map_err(|e| storage_err(format!("ensure slack_messages: {e}")))?;
+        for feed_type in ["gmail_messages", "slack_messages", "linear_issues"] {
+            self.projections
+                .ensure_feed_type(feed_type)
+                .map_err(|e| storage_err(format!("ensure {feed_type}: {e}")))?;
+        }
 
         let start_str = start.to_rfc3339();
         let end_str = end.to_rfc3339();
+        let due_by = (end + chrono::Duration::days(LINEAR_DUE_DAYS))
+            .date_naive()
+            .to_string();
 
-        let conn = self
-            .projections
-            .conn()
-            .lock()
-            .map_err(|_| storage_err("projection connection mutex poisoned"))?;
-
-        let sql = "SELECT id, source_id, source_ts, title, body_text, kind, feed_id FROM ( \
-                       SELECT id, source_id, source_ts, title, body_text, 'gmail' AS kind, feed_id \
-                         FROM gmail_messages WHERE source_ts >= ?1 AND source_ts < ?2 \
-                       UNION ALL \
-                       SELECT id, source_id, source_ts, title, body_text, 'slack' AS kind, feed_id \
-                         FROM slack_messages WHERE source_ts >= ?1 AND source_ts < ?2 \
-                   ) ORDER BY source_ts DESC LIMIT ?3";
-
-        let mut stmt = conn
-            .prepare(sql)
-            .map_err(|e| storage_err(format!("prepare attention between: {e}")))?;
-
-        let mut rows = stmt
-            .query(params![start_str, end_str, cap as i64])
-            .map_err(|e| storage_err(format!("query attention between: {e}")))?;
-
-        struct Raw {
-            id: String,
-            source_id: String,
-            ts: DateTime<Utc>,
-            summary: String,
-            kind: String,
-            feed_id: String,
-        }
-        let mut raws: Vec<Raw> = Vec::new();
-        while let Some(row) = rows
-            .next()
-            .map_err(|e| storage_err(format!("attention between row: {e}")))?
-        {
-            let id: String = row
-                .get(0)
-                .map_err(|e| storage_err(format!("col id: {e}")))?;
-            let source_id: String = row
-                .get(1)
-                .map_err(|e| storage_err(format!("col source_id: {e}")))?;
-            let source_ts_str: String = row
-                .get(2)
-                .map_err(|e| storage_err(format!("col source_ts: {e}")))?;
-            let title: String = row
-                .get(3)
-                .map_err(|e| storage_err(format!("col title: {e}")))?;
-            let body_text: String = row
-                .get(4)
-                .map_err(|e| storage_err(format!("col body_text: {e}")))?;
-            let kind: String = row
-                .get(5)
-                .map_err(|e| storage_err(format!("col kind: {e}")))?;
-            let feed_id: String = row
-                .get(6)
-                .map_err(|e| storage_err(format!("col feed_id: {e}")))?;
-
-            let ts = parse_rfc3339(&source_ts_str)?;
-            let summary = if !title.is_empty() {
-                truncate_excerpt(&title)
-            } else {
-                truncate_excerpt(&body_text)
-            };
-            raws.push(Raw {
-                id,
-                source_id,
-                ts,
-                summary,
-                kind,
-                feed_id,
-            });
-        }
-        drop(rows);
-        drop(stmt);
-        drop(conn);
+        let raws = {
+            let conn = self
+                .projections
+                .conn()
+                .lock()
+                .map_err(|_| storage_err("projection connection mutex poisoned"))?;
+            let mut raws = query_signals(
+                &conn,
+                LINEAR_ATTENTION_SQL,
+                params![end_str, due_by, cap as i64],
+            )?;
+            let rest = cap - raws.len();
+            if rest > 0 {
+                raws.extend(query_signals(
+                    &conn,
+                    WINDOW_ATTENTION_SQL,
+                    params![start_str, end_str, rest as i64],
+                )?);
+            }
+            raws
+        };
 
         let mut out = Vec::with_capacity(raws.len());
         for r in raws {
@@ -358,6 +408,7 @@ mod tests {
 
     use arawn_projections::calendar::CalendarEventProjection;
     use arawn_projections::gmail::GmailMessageProjection;
+    use arawn_projections::linear::LinearIssueProjection;
     use arawn_projections::slack::SlackMessageProjection;
     use chrono::{Duration, TimeZone, Utc};
     use tempfile::tempdir;
@@ -502,6 +553,82 @@ mod tests {
         // Stable ids flow through.
         let ids: Vec<&str> = out.iter().map(|s| s.id.as_str()).collect();
         assert!(ids.contains(&g3.id.as_str()));
+    }
+
+    fn linear_issue(
+        n: u32,
+        updated: DateTime<Utc>,
+        priority: u8,
+        due: Option<&str>,
+        state_type: &str,
+        mine: bool,
+    ) -> LinearIssueProjection {
+        LinearIssueProjection {
+            id: format!("li-{n}"),
+            feed_id: "linear-mine".into(),
+            source_id: format!("uuid-{n}"),
+            source_ts: updated,
+            identifier: format!("ENG-{n}"),
+            title: format!("Issue {n}"),
+            description: String::new(),
+            url: None,
+            state: Some("Todo".into()),
+            state_type: Some(state_type.into()),
+            priority,
+            priority_label: Some(
+                ["No priority", "Urgent", "High", "Medium", "Low"][priority as usize].into(),
+            ),
+            due_date: due.map(String::from),
+            team_key: Some("ENG".into()),
+            labels: vec![],
+            assignee: Some("Me".into()),
+            creator: None,
+            assigned_to_me: mine,
+            comments: vec![],
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn attention_brings_my_urgent_or_due_soon_open_linear_issues() {
+        let (projections, store, _tmp) = make_store_pair();
+        let end = DateTime::parse_from_rfc3339("2026-10-07T07:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let start = end - Duration::hours(24);
+        // Last changed weeks ago: still on the plate.
+        let old = end - Duration::days(20);
+        projections
+            .write_batch(&[
+                linear_issue(1, old, 1, None, "started", true), // urgent: in
+                linear_issue(2, old, 3, Some("2026-10-10"), "unstarted", true), // due in 3d: in
+                linear_issue(3, old, 1, None, "completed", true), // done: out
+                linear_issue(4, old, 2, None, "canceled", true), // canceled: out
+                linear_issue(5, old, 3, Some("2026-10-30"), "started", true), // not due soon: out
+                linear_issue(6, old, 1, None, "started", false), // not mine: out
+                linear_issue(7, old, 4, Some("2026-10-01"), "started", true), // overdue: in
+            ])
+            .unwrap();
+        projections
+            .write_batch(&[gmail_signal("g", end - Duration::hours(1))])
+            .unwrap();
+
+        let src = ProjectionsAttentionSource::new(projections, store);
+        let out = src.between(start, end, 10).await.unwrap();
+        let linear: Vec<&str> = out
+            .iter()
+            .filter(|r| r.source_kind == "linear")
+            .map(|r| r.source_id.as_str())
+            .collect();
+        // Due date first (overdue, then soon), then priority.
+        assert_eq!(linear, ["uuid-7", "uuid-2", "uuid-1"], "{out:?}");
+        let due_soon = out.iter().find(|r| r.source_id == "uuid-2").unwrap();
+        assert_eq!(due_soon.summary, "ENG-2: Issue 2 (Medium, due 2026-10-10)");
+        assert!(out.iter().any(|r| r.source_kind == "gmail"));
+
+        // Linear is not crowded out by the window rows, and the cap holds.
+        let capped = src.between(start, end, 2).await.unwrap();
+        assert_eq!(capped.len(), 2);
+        assert!(capped.iter().all(|r| r.source_kind == "linear"));
     }
 
     /// 2026-05-17T01:30:00Z is "May 17" in UTC but "May 16 18:30" in

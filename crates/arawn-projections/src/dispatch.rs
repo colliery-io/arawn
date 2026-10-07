@@ -17,6 +17,7 @@ use crate::error::ProjectionError;
 use crate::filesystem;
 use crate::github;
 use crate::gmail;
+use crate::linear;
 use crate::slack;
 use crate::store::{ProjectionStore, WriteOutcome};
 
@@ -97,6 +98,9 @@ pub fn project_feed_dir(
                 p.source_id.clone()
             })?
         }
+        // Every snapshot is upserted, not only new ones: an issue that
+        // moves to Done must stop looking open (state drives the brief).
+        "linear" => store.write_batch(&linear::walk_feed_dir(feed_id, feed_dir)?)?,
         "slack" => {
             let parsed = slack::walk_feed_dir(feed_id, feed_dir)?;
             let (top, reply): (Vec<_>, Vec<_>) =

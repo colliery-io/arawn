@@ -136,6 +136,9 @@ impl FeedClients for WithFakeGithub {
     fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
         Some(self.gh.clone())
     }
+    fn linear(&self) -> Option<Arc<dyn arawn_feeds::LinearFeedClient>> {
+        None
+    }
 }
 
 fn commit(sha: &str, date: &str) -> Value {

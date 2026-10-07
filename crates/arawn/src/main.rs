@@ -1507,6 +1507,7 @@ async fn main() -> Result<()> {
         // slow provider must not hold the server in not-ready.
         service.set_declared(config.lenses.clone(), config.feeds.clone());
         let reconcile = service.reconcile_ctx();
+        let setup_only_feeds = service.setup_only_default_feeds();
         tokio::spawn(async move {
             let report = reconcile.reconcile().await;
             if !report.done.is_empty() || !report.waiting.is_empty() || !report.problems.is_empty()
@@ -1518,6 +1519,9 @@ async fn main() -> Result<()> {
                     "arawn.toml lenses and feeds reconciled"
                 );
             }
+            // After the reconcile, so a declared feed of the same
+            // template wins and the default is skipped.
+            setup_only_feeds.await;
         });
 
         // ARAWN-I-0068 P2-1: all post-startup wiring (feeds, ceremonies,

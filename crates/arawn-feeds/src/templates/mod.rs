@@ -6,6 +6,7 @@ pub mod drive;
 pub mod github;
 pub mod gmail;
 pub mod jira;
+pub mod linear;
 pub mod slack;
 pub mod stub;
 
@@ -35,6 +36,7 @@ pub fn default_registry() -> FeedTemplateRegistry {
     r.register(Arc::new(github::IssuesAndPrsTemplate));
     r.register(Arc::new(github::ReviewQueueTemplate));
     r.register(Arc::new(github::RepoMirrorTemplate));
+    r.register(Arc::new(linear::MyIssuesTemplate));
     r.register(Arc::new(crate::clients::filesystem::FilesystemFeedTemplate));
     r
 }
@@ -61,6 +63,7 @@ pub fn template_blurb(name: &str) -> &'static str {
         "github/issues-and-prs" => "GitHub issues and PRs you're involved in",
         "github/review-queue" => "GitHub PRs awaiting your review",
         "github/repo-mirror" => "Mirror a GitHub repo's activity",
+        "linear/my-issues" => "Linear issues assigned to you or created by you",
         "filesystem/folder" => "Watch a local folder for text-file changes",
         _ => "",
     }
