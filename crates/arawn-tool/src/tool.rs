@@ -41,6 +41,8 @@ pub enum ToolCategory {
     Atlassian,
     /// GitHub integration tools.
     GitHub,
+    /// Linear integration tools (issues: list, get, comment, state, assignee, priority).
+    Linear,
 }
 
 /// Risk class of a tool — used by the permission system to decide fallback

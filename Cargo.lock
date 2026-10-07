@@ -378,6 +378,7 @@ dependencies = [
  "pulldown-cmark",
  "rand 0.8.5",
  "reqwest",
+ "rusqlite",
  "rustls",
  "rvstruct",
  "serde",

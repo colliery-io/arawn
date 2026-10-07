@@ -22,7 +22,9 @@ use serde_json::{Value, json};
 
 use crate::error::IntegrationError;
 
-use super::models::{Issue, IssuePage};
+use super::models::{
+    CommentRef, Issue, IssuePage, IssueRef, Member, Nodes, UpdatedIssue, WorkflowState,
+};
 use super::queries;
 
 /// The one Linear API endpoint.
@@ -210,6 +212,180 @@ impl LinearClient {
             },
         ))
     }
+
+    /// One issue, by identifier (`ENG-123`) or id.
+    pub async fn issue(&self, id: &str) -> Result<Issue, IntegrationError> {
+        #[derive(Deserialize)]
+        struct Data {
+            issue: Option<Issue>,
+        }
+        let d: Data = self
+            .execute(
+                &format!("{} {}", queries::ISSUE, queries::ISSUE_FIELDS),
+                json!({ "id": id }),
+            )
+            .await?;
+        d.issue.ok_or_else(|| not_found(id))
+    }
+
+    /// The issue's id, identifier, URL and team.
+    pub async fn issue_ref(&self, id: &str) -> Result<IssueRef, IntegrationError> {
+        #[derive(Deserialize)]
+        struct Data {
+            issue: Option<IssueRef>,
+        }
+        let d: Data = self
+            .execute(queries::ISSUE_REF, json!({ "id": id }))
+            .await?;
+        d.issue.ok_or_else(|| not_found(id))
+    }
+
+    /// The issue, and the workflow states of its team.
+    pub async fn issue_team_states(
+        &self,
+        id: &str,
+    ) -> Result<(IssueRef, Vec<WorkflowState>), IntegrationError> {
+        #[derive(Deserialize)]
+        struct Team {
+            id: String,
+            key: String,
+            states: Nodes<WorkflowState>,
+        }
+        #[derive(Deserialize)]
+        struct I {
+            id: String,
+            identifier: String,
+            url: String,
+            team: Team,
+        }
+        #[derive(Deserialize)]
+        struct Data {
+            issue: Option<I>,
+        }
+        let d: Data = self
+            .execute(queries::ISSUE_TEAM_STATES, json!({ "id": id }))
+            .await?;
+        let i = d.issue.ok_or_else(|| not_found(id))?;
+        Ok((
+            IssueRef {
+                id: i.id,
+                identifier: i.identifier,
+                url: i.url,
+                team: super::models::TeamRef {
+                    id: i.team.id,
+                    key: i.team.key,
+                },
+            },
+            i.team.states.nodes,
+        ))
+    }
+
+    /// The issue, and the members of its team.
+    pub async fn issue_team_members(
+        &self,
+        id: &str,
+    ) -> Result<(IssueRef, Vec<Member>), IntegrationError> {
+        #[derive(Deserialize)]
+        struct Team {
+            id: String,
+            key: String,
+            members: Nodes<Member>,
+        }
+        #[derive(Deserialize)]
+        struct I {
+            id: String,
+            identifier: String,
+            url: String,
+            team: Team,
+        }
+        #[derive(Deserialize)]
+        struct Data {
+            issue: Option<I>,
+        }
+        let d: Data = self
+            .execute(queries::ISSUE_TEAM_MEMBERS, json!({ "id": id }))
+            .await?;
+        let i = d.issue.ok_or_else(|| not_found(id))?;
+        Ok((
+            IssueRef {
+                id: i.id,
+                identifier: i.identifier,
+                url: i.url,
+                team: super::models::TeamRef {
+                    id: i.team.id,
+                    key: i.team.key,
+                },
+            },
+            i.team.members.nodes,
+        ))
+    }
+
+    /// Add a comment to the issue with this id.
+    pub async fn comment_create(
+        &self,
+        issue_id: &str,
+        body: &str,
+    ) -> Result<CommentRef, IntegrationError> {
+        #[derive(Deserialize)]
+        struct Payload {
+            success: bool,
+            comment: Option<CommentRef>,
+        }
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Data {
+            comment_create: Payload,
+        }
+        let d: Data = self
+            .execute(
+                queries::COMMENT_CREATE,
+                json!({ "issueId": issue_id, "body": body }),
+            )
+            .await?;
+        match d.comment_create {
+            Payload {
+                success: true,
+                comment: Some(c),
+            } => Ok(c),
+            _ => Err(IntegrationError::Provider(
+                "linear: commentCreate did not succeed".into(),
+            )),
+        }
+    }
+
+    /// Change the issue (identifier or id) with an `IssueUpdateInput`.
+    pub async fn issue_update(
+        &self,
+        id: &str,
+        input: Value,
+    ) -> Result<UpdatedIssue, IntegrationError> {
+        #[derive(Deserialize)]
+        struct Payload {
+            success: bool,
+            issue: Option<UpdatedIssue>,
+        }
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Data {
+            issue_update: Payload,
+        }
+        let d: Data = self
+            .execute(queries::ISSUE_UPDATE, json!({ "id": id, "input": input }))
+            .await?;
+        match d.issue_update {
+            Payload {
+                success: true,
+                issue: Some(i),
+            } => Ok(i),
+            _ => Err(IntegrationError::Provider(
+                "linear: issueUpdate did not succeed".into(),
+            )),
+        }
+    }
+}
+
+fn not_found(id: &str) -> IntegrationError {
+    IntegrationError::Provider(format!("linear: no issue `{id}`"))
 }
 
 /// The `IssueFilter` for "assigned to me or created by me", updated

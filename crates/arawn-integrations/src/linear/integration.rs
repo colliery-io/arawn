@@ -130,7 +130,8 @@ impl Integration for LinearIntegration {
     async fn capabilities_summary(&self) -> Option<String> {
         let creds = self.load_credentials().ok().flatten()?;
         Some(format!(
-            "linear (connected as {} in workspace {})",
+            "linear (connected as {} in workspace {}; issues assigned to or created by me — \
+             list, get, comment, set state, set assignee, set priority)",
             creds.viewer_name, creds.organization
         ))
     }

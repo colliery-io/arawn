@@ -335,7 +335,10 @@ pub fn wire_integrations(
         std::path::PathBuf::from(&data_dir),
     ));
     service.register_integration(Arc::clone(&linear) as Arc<dyn arawn_integrations::Integration>);
-    info!("Linear integration registered");
+    for tool in arawn_integrations::linear::linear_tools(Arc::clone(&linear)) {
+        registry.register(tool);
+    }
+    info!("Linear integration registered (6 tools)");
 
     log_integration_summary(config, data_dir);
 
@@ -439,6 +442,14 @@ pub fn wire_uat_mock_integrations(
                     registry.register(tool);
                 }
                 info!("registered UAT drive tools (1)");
+            }
+            // Replaces the production read tools of the same names; the
+            // write tools stay production-only.
+            "linear" => {
+                for tool in arawn_integrations::linear::uat_linear_tools(data_dir_path.clone()) {
+                    registry.register(tool);
+                }
+                info!("registered UAT linear tools (2)");
             }
             _ => {
                 debug!(

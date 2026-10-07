@@ -114,3 +114,55 @@ pub struct IssuePage {
     /// The cursor of the next page, when there is one.
     pub next: Option<String>,
 }
+
+/// A team member, for assignee resolution.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Member {
+    pub id: String,
+    pub name: String,
+    pub display_name: String,
+    #[serde(default)]
+    pub email: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TeamRef {
+    pub id: String,
+    pub key: String,
+}
+
+/// What a write needs to know about its issue.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct IssueRef {
+    pub id: String,
+    pub identifier: String,
+    pub url: String,
+    pub team: TeamRef,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CommentRef {
+    pub id: String,
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NameOnly {
+    pub name: String,
+}
+
+/// The issue as `issueUpdate` gives it back.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdatedIssue {
+    pub id: String,
+    pub identifier: String,
+    pub url: String,
+    #[serde(deserialize_with = "whole_number")]
+    pub priority: u8,
+    pub priority_label: String,
+    pub state: NameOnly,
+    #[serde(default)]
+    pub assignee: Option<NameOnly>,
+}

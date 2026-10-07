@@ -28,3 +28,28 @@ pub const MY_ISSUES: &str = "query MyIssues($filter: IssueFilter, $after: String
         pageInfo { hasNextPage endCursor } \
     } \
 }";
+
+/// One issue with its fields. `$id` is the identifier (`ENG-123`) or id.
+pub const ISSUE: &str = "query Issue($id: String!) { issue(id: $id) { ...IssueFields } }";
+
+/// The issue's id, identifier, URL and team: what a write needs first.
+pub const ISSUE_REF: &str =
+    "query IssueRef($id: String!) { issue(id: $id) { id identifier url team { id key } } }";
+
+/// The workflow states of the issue's team, to resolve a state name.
+pub const ISSUE_TEAM_STATES: &str = "query IssueTeamStates($id: String!) { issue(id: $id) { \
+    id identifier url team { id key states(first: 100) { nodes { id name type } } } } }";
+
+/// The members of the issue's team, to resolve an assignee.
+pub const ISSUE_TEAM_MEMBERS: &str = "query IssueTeamMembers($id: String!) { issue(id: $id) { \
+    id identifier url team { id key members(first: 250) { nodes { id name displayName email } } } } }";
+
+/// Add a comment. `$issueId` is the issue's id.
+pub const COMMENT_CREATE: &str = "mutation CommentCreate($issueId: String!, $body: String!) { \
+    commentCreate(input: { issueId: $issueId, body: $body }) { success comment { id url } } }";
+
+/// Change an issue. `$input` carries one of `stateId`, `assigneeId`,
+/// `priority`.
+pub const ISSUE_UPDATE: &str = "mutation IssueUpdate($id: String!, $input: IssueUpdateInput!) { \
+    issueUpdate(id: $id, input: $input) { success issue { \
+        id identifier url priority priorityLabel state { name } assignee { name } } } }";
