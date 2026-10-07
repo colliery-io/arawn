@@ -475,11 +475,30 @@ pub struct SystemStatus {
     pub llm: LlmStatus,
     /// Steward background-maintenance health (ARAWN-T-0477). Added in v2.
     pub steward: StewardStatus,
+    /// Per-integration setup state (ARAWN-T-0502). Added in v3; absent
+    /// (empty) from older servers.
+    #[serde(default)]
+    pub integrations: Vec<IntegrationHealth>,
+}
+
+/// One integration's setup state in the `status` RPC (ARAWN-T-0502).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IntegrationHealth {
+    /// Registry name, what `/connect` takes (e.g. `google_calendar`).
+    pub name: String,
+    /// `not_configured` | `missing_secret` | `incomplete` | `configured` |
+    /// `connected` | `token_error` | `restart_needed` | `config_error`.
+    pub state: String,
+    /// What is true now, in a few words.
+    pub detail: String,
+    /// The one-line fix, when one is needed.
+    pub hint: Option<String>,
 }
 
 /// Current schema version of [`SystemStatus`]. Bump when adding blocks.
 /// v2 (ARAWN-T-0477) adds `ceremonies.recent_runs` + the `steward` block.
-pub const SYSTEM_STATUS_VERSION: u32 = 2;
+/// v3 (ARAWN-T-0502) adds the `integrations` block.
+pub const SYSTEM_STATUS_VERSION: u32 = 3;
 
 /// Feed subsystem health: whether the runtime is wired and a per-feed
 /// last-run summary.

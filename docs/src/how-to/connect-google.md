@@ -41,7 +41,15 @@ Left nav → **Google Auth Platform → Branding**. Direct URL: `https://console
 
 Save.
 
-> **Gotcha:** your app will be in **Testing mode** by default. Google warns anyone who connects that "this app is unverified" and caps you at 100 test users (yourself + anyone you explicitly add in step 5). For personal use that's fine. Verification is only needed to ship to strangers; see [I-0037](../explanation/integrations-overview.md#the-byo-reality) for the long-term plan.
+> **Important — publishing status.** A new app has the publishing status **Testing**. In Testing, Google issues refresh tokens that **expire after 7 days** when the app asks for scopes other than name, email and profile. arawn asks for Gmail, Calendar and Drive scopes, so in Testing you must reconnect every week. ([Google: Using OAuth 2.0](https://developers.google.com/identity/protocols/oauth2#expiration): "…a publishing status of 'Testing' is issued a refresh token expiring in 7 days…")
+>
+> For personal use, set the status to **In production**: **Google Auth Platform → Audience → Publish app**. Do not submit the app for verification. Google allows an app that is used only by you, or by a few people you know, to stay unverified ([Google: unverified apps](https://support.google.com/cloud/answer/13464323)). The consent page then shows "Google hasn't verified this app" each time you connect. Click **Advanced**, then continue (see step 8). The limit for an unverified app is 100 users. That limit does not affect one person.
+>
+> Google's pages do not say directly that the Gmail and full-Drive scopes work for an unverified app In production. If Google blocks the consent, set the status back to Testing and add yourself as a test user (step 5). Then reconnect weekly.
+>
+> Verification is necessary only to give the app to people you do not know. See [the BYO reality](../explanation/integrations-overview.md#the-byo-reality) for the long-term plan.
+
+<!-- VERIFY: 2026-10-04 — publishing-status guidance per ARAWN-T-0508 (sources: developers.google.com/identity/protocols/oauth2, support.google.com/cloud/answer/13464323, /15549945). -->
 
 ## 4. Add OAuth scopes
 

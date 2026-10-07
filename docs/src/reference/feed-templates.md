@@ -403,22 +403,24 @@ Each `signals.jsonl` line is one change event:
 | Template | Cadence | Auto-create |
 |---|---|---|
 | `slack/channel-archive` | every 15 min | No |
-| `slack/my-mentions` | every 15 min | Yes (singleton) |
+| `slack/my-mentions` | every 15 min | Yes, as `slack-mentions` (one per install) |
 | `slack/dm-archive` | hourly | No |
-| `gmail/inbox-archive` | every 15 min | Yes (singleton) |
+| `gmail/inbox-archive` | every 15 min | Yes, as `gmail-inbox` (one per install) |
 | `gmail/label-archive` | every 30 min | No |
 | `gmail/sender-filter` | every 30 min | No |
-| `calendar/upcoming-archive` | every 30 min | Yes (singleton) |
-| `drive/recent` | every 30 min | Yes (singleton) |
+| `calendar/upcoming-archive` | every 30 min | Yes, as `calendar-upcoming` (one per install) |
+| `drive/recent` | every 30 min | Yes, as `drive-recent` (one per install) |
 | `drive/folder-sync` | hourly | No |
 | `jira/project-tracker` | every 30 min | No |
-| `jira/assignee-tracker` | every 30 min | Yes (singleton) |
+| `jira/assignee-tracker` | every 30 min | Yes, as `jira-assigned` (one per install) |
 | `confluence/space-archive` | every 30 min | No |
 | `github/notifications` | every 30 min | No |
 | `github/issues-and-prs` | every 30 min | No |
 | `github/review-queue` | every 30 min | No |
 | `github/repo-mirror` | every 30 min | No (registered by lens bind) |
 | `filesystem/folder` | every 15 min | No |
+
+When you connect a service, arawn makes its default feed, if no feed of that template exists yet. An older install can have the default feed under the ID `me` or `primary`. arawn keeps that feed and does not make a second one.
 
 ## Related
 

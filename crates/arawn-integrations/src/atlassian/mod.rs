@@ -30,7 +30,7 @@ pub use confluence::{
 };
 pub use integration::{
     ATLASSIAN_OAUTH_SCOPES, AtlassianIntegration, AtlassianProviderConfig, AtlassianSite,
-    DEFAULT_ATLASSIAN_REDIRECT_PORT,
+    DEFAULT_ATLASSIAN_REDIRECT_PORT, SERVICE_NAME,
 };
 pub use jira::{
     JiraAddCommentTool, JiraCreateIssueTool, JiraGetIssueTool, JiraSearchTool,

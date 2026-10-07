@@ -29,6 +29,90 @@ arawn "draft a one-line commit message for the diff in this repo"
 
 Sends the prompt to a `serve`-running server and streams the response. Useful for shell scripts.
 
+## `arawn init`
+
+Write a starter `arawn.toml` with one LLM profile into the data directory.
+
+| Flag | Default | Description |
+|---|---|---|
+| `--provider <name>` | `groq` | LLM provider: `groq`, `openai`, `anthropic`, `ollama`, or a different OpenAI-compatible provider. |
+| `--model <name>` | built-in default | Model name. |
+| `--api-key-env <VAR>` | per provider | The env var that holds the API key, for example `GROQ_API_KEY`. |
+| `--force` | off | Replace an existing `arawn.toml`. |
+| `--profile <name>` | — | Also add a ready-made set of `[[lenses]]` and `[[feeds]]`. `work` adds a `work` lens bound to Gmail, Calendar, Slack, Jira and GitHub feeds. If `arawn.toml` exists, only the profile entries that are not in the file yet are added. |
+
+```sh
+arawn init --profile work
+```
+
+Each feed in the profile starts when its service is connected. Edit the lens description and tags in `arawn.toml` to match your work. See [`[[lenses]]` and `[[feeds]]`](./config-schema.md#lenses-and-feeds).
+
+## `arawn setup`
+
+Set up the integrations: Google (Gmail, Calendar, Drive), Slack, Atlassian (Jira, Confluence) and GitHub. For each provider, `arawn setup` shows the console steps, the scopes to add and the redirect URL. Then it asks for the credentials and writes the `[integrations.<provider>]` table into `arawn.toml`.
+
+```sh
+arawn setup              # Walk through all providers
+arawn setup slack        # Set up one provider
+```
+
+If `arawn.toml` does not exist, `arawn setup` writes a starter config first, as `arawn init` does. Comments and other tables in `arawn.toml` stay as they are. The file is written with mode `0600`, because it can hold client secrets.
+
+For scripts, give the provider and the credentials as flags. Then `arawn setup` asks no questions.
+
+| Flag | Description |
+|---|---|
+| `<provider>` | `google`, `slack`, `atlassian` or `github`. `gmail`, `calendar`, `drive`, `jira` and `confluence` are also accepted. |
+| `--client-id <id>` | OAuth client ID. |
+| `--client-secret <secret>` | OAuth client secret. To keep the secret out of your shell history, give `--client-id` without `--client-secret` and set `ARAWN_SETUP_CLIENT_SECRET`. |
+| `--secret-from-env` | Do not write the secret into `arawn.toml`. arawn reads it from `ARAWN_<PROVIDER>_CLIENT_SECRET` when the server starts. |
+| `--app-id <id>` | GitHub App ID. |
+| `--app-slug <slug>` | GitHub App slug. |
+| `--private-key-path <path>` | GitHub App private key (`.pem`). `arawn setup` makes sure that the key can sign a token before it writes the config. |
+| `--llm-provider <name>` | LLM provider for the starter config, when `arawn.toml` does not exist. Default `groq`. |
+
+```sh
+arawn setup google --client-id ID.apps.googleusercontent.com --client-secret GOCSPX-…
+arawn setup atlassian --client-id ID --secret-from-env
+arawn setup github --app-id 42 --app-slug my-arawn --private-key-path ~/keys/arawn.pem
+```
+
+An env var such as `ARAWN_GMAIL_CLIENT_ID`, or a per-service table such as `[integrations.gmail]`, comes before the table that `arawn setup` writes. If one of them hides the new client, `arawn setup` shows a warning that names it. See [Integrations config](./integrations-config.md#the-lookup-precedence).
+
+After `arawn setup`, restart `arawn serve`. Then connect each service with `arawn connect`.
+
+## `arawn connect`
+
+Connect integrations. For each service, `arawn connect` asks the running server to start the OAuth flow, opens the provider's consent page in your browser, and waits until the server reports success or failure. The server must be running (`arawn serve`).
+
+```sh
+arawn connect gmail          # One service
+arawn connect google         # Gmail, Calendar and Drive
+arawn connect --all          # Every set-up service that is not connected yet
+```
+
+| Argument or flag | Default | Description |
+|---|---|---|
+| `<service>...` | — | `gmail`, `google_calendar`, `google_drive`, `slack`, `atlassian` or `github`. `google` means the three Google services. `jira` and `confluence` mean `atlassian`. |
+| `--all` | off | Connect every set-up service that is not connected yet. |
+| `--url <ws-url>` | `ws://127.0.0.1:3100/ws` | WebSocket URL of the running server. |
+| `--no-browser` | off | Show the consent URL, but do not open a browser. Use this on a machine with no browser, and open the URL on a different machine. |
+| `--timeout <seconds>` | `300` | Time to wait for each approval. |
+
+A service that is already connected is skipped. If the server did not load a service, `arawn connect` tells you why and gives the fix, for example a client secret that is not exported, or a server that needs a restart. The exit code is non-zero if a service did not connect.
+
+## `arawn disconnect`
+
+Disconnect one integration and delete its stored token. `google` means the three Google services.
+
+```sh
+arawn disconnect slack
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--url <ws-url>` | `ws://127.0.0.1:3100/ws` | WebSocket URL of the running server. |
+
 ## `arawn serve`
 
 Start the WebSocket server.
@@ -76,6 +160,19 @@ Run diagnostic checks against the local install. Validates config, integration c
 | `--json` | Emit machine-readable JSON instead of human-readable text. |
 
 Exit code is non-zero if any check fails.
+
+Doctor shows one `integration:<service>` line for each integration, with the fix:
+
+| Result | Meaning | Fix shown |
+|---|---|---|
+| PASS | Connected. | — |
+| SKIP | Not configured. | `run: arawn setup <provider>` |
+| SKIP | Configured, but not connected. | `run: arawn connect <service>` |
+| FAIL | A client ID is in `arawn.toml`, but no client secret is set. | Export the named `ARAWN_*_CLIENT_SECRET`, or run `arawn setup <provider>`. |
+| FAIL | The GitHub App is incomplete, or its key file cannot be read. | `run: arawn setup github` |
+| FAIL | The stored token cannot be read. | `run: arawn disconnect <service>, then arawn connect <service>` |
+
+The same states are in the `status` RPC, the TUI `/status` output and the web health page. There, a state of `restart needed` means that the integration is in `arawn.toml`, but the running server did not load it. Restart `arawn serve`.
 
 ## `arawn usage`
 

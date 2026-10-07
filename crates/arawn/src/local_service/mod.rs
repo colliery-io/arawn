@@ -78,6 +78,11 @@ pub struct LocalService {
     /// runner, no DB, etc.) — `/watch` and `/feeds` then return a
     /// clear "feeds runtime unavailable" error.
     feed_runtime: Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>>,
+    /// Lenses and feeds declared in arawn.toml (ARAWN-T-0506). Reconciled
+    /// at startup and after each successful connect.
+    declared: Arc<std::sync::RwLock<declared::Declared>>,
+    /// Serializes reconciles (startup + concurrent connects).
+    reconcile_lock: Arc<tokio::sync::Mutex<()>>,
     /// Shared active-lens shim. Memory tools read this to route
     /// memory_store / memory_search to the right KB. Set on session
     /// resume from the persisted Session.lens_name so the
@@ -143,6 +148,8 @@ impl LocalService {
             notice_tx: tokio::sync::broadcast::channel(64).0,
             integration_registry: Arc::new(std::sync::RwLock::new(HashMap::new())),
             feed_runtime: Arc::new(std::sync::RwLock::new(None)),
+            declared: Arc::new(std::sync::RwLock::new(declared::Declared::default())),
+            reconcile_lock: Arc::new(tokio::sync::Mutex::new(())),
             active_lens: None,
             ceremony_service: Arc::new(std::sync::RwLock::new(None)),
             todo_event_tx: arawn_storage::todo_event_channel().0,
@@ -230,6 +237,34 @@ impl LocalService {
     /// `arawn_feeds::start` returns.
     pub fn set_feed_runtime(&self, runtime: Arc<arawn_feeds::FeedRuntime>) {
         *self.feed_runtime.write().recover() = Some(runtime);
+    }
+
+    /// Set the `[[lenses]]` / `[[feeds]]` declared in arawn.toml
+    /// (ARAWN-T-0506). Call [`Self::reconcile_declared`] to apply them.
+    pub fn set_declared(
+        &self,
+        lenses: Vec<crate::config::LensDecl>,
+        feeds: Vec<crate::config::FeedDecl>,
+    ) {
+        *self.declared.write().recover() = declared::Declared { lenses, feeds };
+    }
+
+    /// Everything a reconcile needs, as clones a spawned task can own.
+    pub fn reconcile_ctx(&self) -> declared::ReconcileCtx {
+        declared::ReconcileCtx {
+            store: Arc::clone(&self.store),
+            data_dir: self.data_dir.clone(),
+            feed_runtime: Arc::clone(&self.feed_runtime),
+            registry: Arc::clone(&self.integration_registry),
+            declared: Arc::clone(&self.declared),
+            lock: Arc::clone(&self.reconcile_lock),
+        }
+    }
+
+    /// Make lenses, tags, bindings and feeds match arawn.toml. Additive:
+    /// never deletes. Feeds whose integration is not connected wait.
+    pub async fn reconcile_declared(&self) -> declared::ReconcileReport {
+        self.reconcile_ctx().reconcile().await
     }
 
     fn feed_runtime_or_err(&self) -> Result<Arc<arawn_feeds::FeedRuntime>, ServiceError> {
@@ -636,6 +671,7 @@ pub(super) fn infer_entity_type(text: &str) -> (arawn_memory::EntityType, String
 use async_trait::async_trait;
 
 mod commands;
+pub mod declared;
 mod feeds;
 mod inspect;
 mod integrations;
@@ -827,13 +863,23 @@ impl ArawnService for LocalService {
 /// has no auto-feed; users must `/watch` explicitly."
 ///
 /// Returns `(template_name, feed_id)`.
+/// The default feed is a singleton per template: create it only when no
+/// feed (under any id) already uses that template. `existing` is
+/// `(id, template)` pairs.
+pub(super) fn should_auto_create(existing: &[(String, String)], template: &str) -> bool {
+    !existing.iter().any(|(_, t)| t == template)
+}
+
 pub(super) fn default_feed_for_service(service: &str) -> Option<(&'static str, &'static str)> {
     match service {
-        "slack" => Some(("slack/my-mentions", "me")),
-        "gmail" => Some(("gmail/inbox-archive", "me")),
-        "google_calendar" => Some(("calendar/upcoming-archive", "primary")),
-        "google_drive" => Some(("drive/recent", "me")),
-        "atlassian" => Some(("jira/assignee-tracker", "me")),
+        // Ids must differ per service: `feeds.id` is the PRIMARY KEY. They
+        // were all "me" once, so only the first connected service got
+        // its feed (ARAWN-T-0510).
+        "slack" => Some(("slack/my-mentions", "slack-mentions")),
+        "gmail" => Some(("gmail/inbox-archive", "gmail-inbox")),
+        "google_calendar" => Some(("calendar/upcoming-archive", "calendar-upcoming")),
+        "google_drive" => Some(("drive/recent", "drive-recent")),
+        "atlassian" => Some(("jira/assignee-tracker", "jira-assigned")),
         _ => None,
     }
 }
@@ -954,24 +1000,52 @@ mod feed_default_tests {
         // against typos.
         assert_eq!(
             default_feed_for_service("slack"),
-            Some(("slack/my-mentions", "me"))
+            Some(("slack/my-mentions", "slack-mentions"))
         );
         assert_eq!(
             default_feed_for_service("gmail"),
-            Some(("gmail/inbox-archive", "me"))
+            Some(("gmail/inbox-archive", "gmail-inbox"))
         );
         assert_eq!(
             default_feed_for_service("google_calendar"),
-            Some(("calendar/upcoming-archive", "primary"))
+            Some(("calendar/upcoming-archive", "calendar-upcoming"))
         );
         assert_eq!(
             default_feed_for_service("google_drive"),
-            Some(("drive/recent", "me"))
+            Some(("drive/recent", "drive-recent"))
         );
         assert_eq!(
             default_feed_for_service("atlassian"),
-            Some(("jira/assignee-tracker", "me"))
+            Some(("jira/assignee-tracker", "jira-assigned"))
         );
+    }
+
+    #[test]
+    fn default_feed_ids_are_distinct_across_services() {
+        // ARAWN-T-0510: feeds.id is the primary key; a shared id meant
+        // only the first connected service got its feed.
+        let ids: Vec<&str> = [
+            "slack",
+            "gmail",
+            "google_calendar",
+            "google_drive",
+            "atlassian",
+        ]
+        .iter()
+        .map(|s| default_feed_for_service(s).unwrap().1)
+        .collect();
+        let unique: std::collections::HashSet<_> = ids.iter().collect();
+        assert_eq!(unique.len(), ids.len(), "{ids:?}");
+    }
+
+    #[test]
+    fn auto_create_is_singleton_by_template() {
+        use super::should_auto_create;
+        let existing = [("me".to_string(), "slack/my-mentions".to_string())];
+        // An older install already has the Slack feed under "me": skip.
+        assert!(!should_auto_create(&existing, "slack/my-mentions"));
+        // Gmail has no feed yet: create it.
+        assert!(should_auto_create(&existing, "gmail/inbox-archive"));
     }
 
     #[test]
