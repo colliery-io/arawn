@@ -1,6 +1,6 @@
 //! `linear/my-issues` against a scripted Linear client. Mock-only.
 
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -15,14 +15,21 @@ use arawn_feeds::{
 };
 
 /// Pages served in order; records `(since, after)` of every call.
+/// `known` is what Linear has now, for the by-id recheck: every queued
+/// issue is added, and a test can change or remove one.
 #[derive(Default)]
 struct MockLinear {
     pages: Mutex<VecDeque<Result<LinearIssuePage, FeedError>>>,
     calls: Mutex<Vec<(Option<String>, Option<String>)>>,
+    known: Mutex<HashMap<String, LinearIssue>>,
+    by_id_calls: Mutex<Vec<Vec<String>>>,
 }
 
 impl MockLinear {
     fn queue(&self, issues: Vec<LinearIssue>, next: Option<&str>) {
+        for i in &issues {
+            self.known.lock().unwrap().insert(i.id.clone(), i.clone());
+        }
         self.pages.lock().unwrap().push_back(Ok(LinearIssuePage {
             issues,
             next: next.map(String::from),
@@ -33,6 +40,9 @@ impl MockLinear {
     }
     fn calls(&self) -> Vec<(Option<String>, Option<String>)> {
         self.calls.lock().unwrap().clone()
+    }
+    fn by_id_calls(&self) -> Vec<Vec<String>> {
+        self.by_id_calls.lock().unwrap().clone()
     }
 }
 
@@ -54,6 +64,15 @@ impl LinearFeedClient for MockLinear {
             .pop_front()
             .unwrap_or_else(|| Ok(LinearIssuePage::default()))?;
         Ok(("me".into(), page))
+    }
+
+    async fn issues_by_ids(&self, ids: &[String]) -> Result<(String, Vec<LinearIssue>), FeedError> {
+        self.by_id_calls.lock().unwrap().push(ids.to_vec());
+        let known = self.known.lock().unwrap();
+        Ok((
+            "me".into(),
+            ids.iter().filter_map(|id| known.get(id).cloned()).collect(),
+        ))
     }
 }
 
@@ -158,14 +177,105 @@ async fn follows_every_page_and_advances_the_cursor() {
     assert_eq!(s1["comments"][0]["author"], "Me");
     assert_eq!(read_snapshot(dir.path(), "uuid-2")["assigned_to_me"], false);
 
-    // The next run asks only for what changed after the cursor.
+    // The first run rechecked nothing: everything it had came back.
+    assert!(linear.by_id_calls().is_empty());
+
+    // The next run asks only for what changed after the cursor, and
+    // rechecks the open issue that is mine (not the done one, not the
+    // one of someone else).
     let out2 = t.run(&ctx, &params, dir.path(), &out.cursor).await.unwrap();
-    assert_eq!(out2.status, "no-new-items");
     assert_eq!(
         linear.calls()[2],
         (Some("2026-10-06T10:00:00.000Z".to_string()), None)
     );
+    assert_eq!(linear.by_id_calls(), [vec!["uuid-1".to_string()]]);
+    assert_eq!(read_snapshot(dir.path(), "uuid-1")["assigned_to_me"], true);
     assert_eq!(out2.cursor, out.cursor);
+}
+
+#[tokio::test]
+async fn an_issue_reassigned_away_is_rewritten_as_not_mine() {
+    let (linear, ctx, dir) = setup();
+    linear.queue(
+        vec![issue(1, "2026-10-05T10:00:00.000Z", "me", "started")],
+        None,
+    );
+    let t = MyIssuesTemplate;
+    let params = TemplateParams::default();
+    let out = t
+        .run(
+            &ctx,
+            &params,
+            dir.path(),
+            &t.defaults(&params).initial_cursor,
+        )
+        .await
+        .unwrap();
+    assert_eq!(read_snapshot(dir.path(), "uuid-1")["assigned_to_me"], true);
+
+    // Reassigned to someone else, and I did not create it (the creator
+    // in `issue()` is "me"; make it someone else): the query no longer
+    // returns it.
+    let mut moved = issue(1, "2026-10-06T10:00:00.000Z", "other", "started");
+    moved.creator = None;
+    linear.known.lock().unwrap().insert("uuid-1".into(), moved);
+    t.run(&ctx, &params, dir.path(), &out.cursor).await.unwrap();
+
+    let s = read_snapshot(dir.path(), "uuid-1");
+    assert_eq!(s["assigned_to_me"], false);
+    assert_eq!(s["updated_at"], "2026-10-06T10:00:00.000Z");
+}
+
+#[tokio::test]
+async fn an_issue_that_is_gone_has_its_snapshot_removed() {
+    let (linear, ctx, dir) = setup();
+    linear.queue(
+        vec![
+            issue(1, "2026-10-05T10:00:00.000Z", "me", "started"),
+            issue(2, "2026-10-05T11:00:00.000Z", "me", "started"),
+        ],
+        None,
+    );
+    let t = MyIssuesTemplate;
+    let params = TemplateParams::default();
+    let out = t
+        .run(
+            &ctx,
+            &params,
+            dir.path(),
+            &t.defaults(&params).initial_cursor,
+        )
+        .await
+        .unwrap();
+
+    // Deleted, or moved out of the key's teams: by-id gives nothing back.
+    linear.known.lock().unwrap().remove("uuid-2");
+    t.run(&ctx, &params, dir.path(), &out.cursor).await.unwrap();
+    assert!(!dir.path().join("uuid-2").exists());
+    assert!(dir.path().join("uuid-1").join("issue.json").exists());
+}
+
+#[tokio::test]
+async fn the_recheck_asks_in_batches_of_50() {
+    let (linear, ctx, dir) = setup();
+    let many: Vec<LinearIssue> = (1..=120)
+        .map(|n| issue(n, "2026-10-05T10:00:00.000Z", "me", "started"))
+        .collect();
+    linear.queue(many, None);
+    let t = MyIssuesTemplate;
+    let params = TemplateParams::default();
+    let out = t
+        .run(
+            &ctx,
+            &params,
+            dir.path(),
+            &t.defaults(&params).initial_cursor,
+        )
+        .await
+        .unwrap();
+    t.run(&ctx, &params, dir.path(), &out.cursor).await.unwrap();
+    let sizes: Vec<usize> = linear.by_id_calls().iter().map(Vec::len).collect();
+    assert_eq!(sizes, [50, 50, 20]);
 }
 
 #[tokio::test]

@@ -73,7 +73,7 @@ The morning brief lists your open issues (state not completed or canceled) that 
 
 ## Rate limits
 
-Linear allows each API key 2,500 requests and 3,000,000 complexity points per hour. When a limit is spent, arawn waits until the reset time that Linear gives (`X-RateLimit-Requests-Reset`): a feed run reports `rate limited` and the next run continues from its cursor; a tool call gives the error with the wait. The feed uses one request per 50 issues per run.
+Linear allows each API key 2,500 requests and 3,000,000 complexity points per hour. When a limit is spent, arawn waits until the reset time that Linear gives (`X-RateLimit-Requests-Reset`): a feed run reports `rate limited` and the next run continues from its cursor; a tool call gives the error with the wait. The feed uses one request per 50 changed issues per run, plus one per 50 of your open issues that did not change (it rechecks them, so an issue reassigned away from you leaves the brief).
 
 ## Troubleshooting
 

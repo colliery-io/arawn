@@ -631,6 +631,60 @@ mod tests {
         assert!(capped.iter().all(|r| r.source_kind == "linear"));
     }
 
+    /// End to end from the feed's snapshots: an issue reassigned away
+    /// (the feed rewrites it with `assigned_to_me: false`) leaves the
+    /// brief, and so does one whose snapshot the feed removed.
+    #[tokio::test(flavor = "current_thread")]
+    async fn a_reassigned_or_gone_linear_issue_leaves_the_brief() {
+        let (projections, store, tmp) = make_store_pair();
+        let feed_dir = tmp.path().join("linear-mine");
+        let write = |id: &str, mine: bool| {
+            let dir = feed_dir.join(id);
+            std::fs::create_dir_all(&dir).unwrap();
+            let snap = serde_json::json!({
+                "id": id, "identifier": format!("ENG-{id}"), "title": "Urgent thing",
+                "state": {"name": "Todo", "type": "unstarted"},
+                "priority": 1, "priority_label": "Urgent",
+                "assigned_to_me": mine,
+                "updated_at": "2026-10-01T00:00:00.000Z",
+            });
+            std::fs::write(dir.join("issue.json"), snap.to_string()).unwrap();
+        };
+        let project = || {
+            arawn_projections::project_feed_dir(
+                &projections,
+                "linear/my-issues",
+                "linear-mine",
+                &feed_dir,
+            )
+            .unwrap();
+        };
+        let end = DateTime::parse_from_rfc3339("2026-10-07T07:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let src = ProjectionsAttentionSource::new(Arc::clone(&projections), store);
+        let linear_ids = |out: Vec<SignalRow>| -> Vec<String> {
+            out.into_iter()
+                .filter(|r| r.source_kind == "linear")
+                .map(|r| r.source_id)
+                .collect()
+        };
+
+        write("a", true);
+        write("b", true);
+        project();
+        let start = end - Duration::hours(24);
+        assert_eq!(
+            linear_ids(src.between(start, end, 10).await.unwrap()),
+            ["a", "b"]
+        );
+
+        write("a", false); // reassigned away
+        std::fs::remove_dir_all(feed_dir.join("b")).unwrap(); // gone
+        project();
+        assert!(linear_ids(src.between(start, end, 10).await.unwrap()).is_empty());
+    }
+
     /// 2026-05-17T01:30:00Z is "May 17" in UTC but "May 16 18:30" in
     /// US/Pacific (PDT, UTC-7). `events_for(2026-05-16)` should pick
     /// up the event under US/Pacific and miss it under UTC.

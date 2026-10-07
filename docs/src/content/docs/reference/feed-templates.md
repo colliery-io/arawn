@@ -371,8 +371,13 @@ linear/my-issues/linear-mine/
 ```
 
 Each run asks for `updatedAt > cursor` and follows every page (50
-issues each). A rate-limited run writes what it got and leaves the
-cursor where it was; the next run continues.
+issues each). An issue that is reassigned away from you, and that you
+did not create, drops out of that query. So each run also fetches by id
+(50 per request) every open snapshot still marked `assigned_to_me` that
+the query did not return, and rewrites it; a snapshot whose issue no
+longer comes back (deleted, archived, or out of the key's teams) is
+removed, and its projection row with it. A rate-limited run writes what
+it got and leaves the cursor where it was; the next run continues.
 
 ## Filesystem
 

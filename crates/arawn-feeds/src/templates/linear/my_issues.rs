@@ -17,7 +17,17 @@
 //! run asks for `updatedAt > cursor` and follows every page, so the
 //! cursor only advances once the whole run has been written. A first
 //! run starts from the `since` param when it is given.
+//!
+//! Recheck: an issue reassigned away from me that I did not create
+//! leaves the query, so its snapshot would stay "assigned to me"
+//! forever. After the query, every open snapshot still marked
+//! `assigned_to_me` that this run did not return is fetched by id (50
+//! per request) and rewritten; one that comes back no more (deleted,
+//! archived, or out of the key's teams) has its snapshot removed.
+//! Closed snapshots are not rechecked: they are not in the brief, and
+//! rechecking them would grow without bound.
 
+use std::collections::HashSet;
 use std::path::Path;
 use std::time::Instant;
 
@@ -35,6 +45,8 @@ pub struct MyIssuesTemplate;
 const NAME: &str = "linear/my-issues";
 /// 50 issues per page; a cap so a runaway cursor cannot loop forever.
 const MAX_PAGES_PER_RUN: usize = 40;
+/// Ids per by-id recheck request (one page).
+const RECHECK_BATCH: usize = 50;
 
 #[async_trait]
 impl FeedTemplate for MyIssuesTemplate {
@@ -86,6 +98,7 @@ impl FeedTemplate for MyIssuesTemplate {
         let mut total_bytes: u64 = 0;
         let mut latest = prior;
         let mut after: Option<String> = None;
+        let mut seen: HashSet<String> = HashSet::new();
         for page_no in 0.. {
             if page_no == MAX_PAGES_PER_RUN {
                 tracing::warn!(
@@ -102,6 +115,7 @@ impl FeedTemplate for MyIssuesTemplate {
             for issue in &page.issues {
                 total_bytes += write_snapshot(&feed_dir.join(&issue.id), issue, &viewer_id)?;
                 total_items += 1;
+                seen.insert(issue.id.clone());
                 if latest
                     .as_deref()
                     .map(|l| is_later(&issue.updated_at, l))
@@ -113,6 +127,27 @@ impl FeedTemplate for MyIssuesTemplate {
             match page.next {
                 Some(c) => after = Some(c),
                 None => break,
+            }
+        }
+
+        // Rewrite or remove the open "mine" snapshots the query did not
+        // return (see the module docs).
+        let stale: Vec<String> = open_mine_snapshots(feed_dir)?
+            .into_iter()
+            .filter(|id| !seen.contains(id))
+            .collect();
+        for batch in stale.chunks(RECHECK_BATCH) {
+            let (viewer_id, issues) = linear.issues_by_ids(batch).await?;
+            let mut back: HashSet<&str> = HashSet::new();
+            for issue in &issues {
+                total_bytes += write_snapshot(&feed_dir.join(&issue.id), issue, &viewer_id)?;
+                total_items += 1;
+                back.insert(issue.id.as_str());
+            }
+            for gone in batch.iter().filter(|id| !back.contains(id.as_str())) {
+                let dir = feed_dir.join(gone);
+                std::fs::remove_dir_all(&dir)
+                    .map_err(|e| FeedError::Storage(format!("remove {}: {e}", dir.display())))?;
             }
         }
 
@@ -130,6 +165,42 @@ impl FeedTemplate for MyIssuesTemplate {
             },
         })
     }
+}
+
+/// Ids of the snapshots under `feed_dir` that are marked
+/// `assigned_to_me` and whose state is not completed / canceled, sorted.
+/// Unreadable snapshots are skipped.
+fn open_mine_snapshots(feed_dir: &Path) -> Result<Vec<String>, FeedError> {
+    let entries = match std::fs::read_dir(feed_dir) {
+        Ok(it) => it,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => {
+            return Err(FeedError::Storage(format!(
+                "read {}: {e}",
+                feed_dir.display()
+            )));
+        }
+    };
+    let mut out = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|e| FeedError::Storage(e.to_string()))?;
+        let Ok(bytes) = std::fs::read(entry.path().join("issue.json")) else {
+            continue;
+        };
+        let Ok(v) = serde_json::from_slice::<Value>(&bytes) else {
+            continue;
+        };
+        let mine = v.get("assigned_to_me").and_then(Value::as_bool) == Some(true);
+        let closed = matches!(
+            v.pointer("/state/type").and_then(Value::as_str),
+            Some("completed" | "canceled")
+        );
+        if let (true, false, Some(id)) = (mine, closed, v.get("id").and_then(Value::as_str)) {
+            out.push(id.to_string());
+        }
+    }
+    out.sort();
+    Ok(out)
 }
 
 /// The cursor when there is one; else the `since` param (RFC3339),

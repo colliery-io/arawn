@@ -99,8 +99,16 @@ pub fn project_feed_dir(
             })?
         }
         // Every snapshot is upserted, not only new ones: an issue that
-        // moves to Done must stop looking open (state drives the brief).
-        "linear" => store.write_batch(&linear::walk_feed_dir(feed_id, feed_dir)?)?,
+        // moves to Done, or away from me, must stop looking mine and open
+        // (state drives the brief). A snapshot the feed removed (the issue
+        // is gone or no longer visible) takes its row with it.
+        "linear" => {
+            let parsed = linear::walk_feed_dir(feed_id, feed_dir)?;
+            let keep: Vec<String> = parsed.iter().map(|p| p.source_id.clone()).collect();
+            let outcome = store.write_batch(&parsed)?;
+            store.retain_source_ids(linear::FEED_TYPE, feed_id, &keep)?;
+            outcome
+        }
         "slack" => {
             let parsed = slack::walk_feed_dir(feed_id, feed_dir)?;
             let (top, reply): (Vec<_>, Vec<_>) =

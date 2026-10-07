@@ -25,6 +25,12 @@ pub trait LinearFeedClient: Send + Sync {
         since: Option<&str>,
         after: Option<&str>,
     ) -> Result<(String, LinearIssuePage), FeedError>;
+
+    /// The issues with these ids (at most 50) that the key can still
+    /// see, whoever they are assigned to. A missing id is an issue that
+    /// was deleted, archived, or moved out of the key's teams. Gives the
+    /// user's id with them.
+    async fn issues_by_ids(&self, ids: &[String]) -> Result<(String, Vec<LinearIssue>), FeedError>;
 }
 
 pub struct RealLinearClient {
@@ -46,6 +52,11 @@ impl LinearFeedClient for RealLinearClient {
     ) -> Result<(String, LinearIssuePage), FeedError> {
         let client = self.integration.client().map_err(integ_err)?;
         client.my_issues_page(since, after).await.map_err(integ_err)
+    }
+
+    async fn issues_by_ids(&self, ids: &[String]) -> Result<(String, Vec<LinearIssue>), FeedError> {
+        let client = self.integration.client().map_err(integ_err)?;
+        client.issues_by_ids(ids).await.map_err(integ_err)
     }
 }
 

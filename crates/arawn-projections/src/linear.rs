@@ -276,6 +276,27 @@ mod tests {
     }
 
     #[test]
+    fn a_removed_snapshot_takes_its_row_with_it() {
+        let tmp = tempfile::tempdir().unwrap();
+        let store = ProjectionStore::in_memory().unwrap();
+        for id in ["uuid-7", "uuid-8"] {
+            let dir = tmp.path().join(id);
+            std::fs::create_dir(&dir).unwrap();
+            let mut s = snapshot("started");
+            s["id"] = json!(id);
+            std::fs::write(dir.join("issue.json"), s.to_string()).unwrap();
+        }
+        crate::project_feed_dir(&store, "linear/my-issues", "linear-mine", tmp.path()).unwrap();
+        assert_eq!(store.count(FEED_TYPE).unwrap(), 2);
+
+        std::fs::remove_dir_all(tmp.path().join("uuid-8")).unwrap();
+        crate::project_feed_dir(&store, "linear/my-issues", "linear-mine", tmp.path()).unwrap();
+        assert_eq!(store.count(FEED_TYPE).unwrap(), 1);
+        // FTS goes with the row: the remaining row is the only hit.
+        assert_eq!(store.fts_search(FEED_TYPE, "checkout", 5).unwrap().len(), 1);
+    }
+
+    #[test]
     fn snapshot_without_identity_is_skipped() {
         assert!(from_snapshot("f", &json!({"title": "x"})).is_none());
     }

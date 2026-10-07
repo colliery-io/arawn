@@ -163,6 +163,19 @@ impl LinearClient {
         self.issues_page(my_issues_filter(since), after).await
     }
 
+    /// The issues with these ids (at most 50, one page) that the key can
+    /// still see. A deleted, archived or no longer visible issue is not
+    /// in the result. Gives the key's user id with them.
+    pub async fn issues_by_ids(
+        &self,
+        ids: &[String],
+    ) -> Result<(String, Vec<Issue>), IntegrationError> {
+        let (viewer, page) = self
+            .issues_page(json!({ "id": { "in": ids } }), None)
+            .await?;
+        Ok((viewer, page.issues))
+    }
+
     /// One page of [`queries::MY_ISSUES`] with any `IssueFilter`, most
     /// recently updated first. Gives the key's user id with the page.
     pub async fn issues_page(
@@ -654,6 +667,25 @@ pub(crate) mod tests {
             true
         );
         assert!(my_issues_filter(None).get("updatedAt").is_none());
+    }
+
+    #[tokio::test]
+    async fn issues_by_ids_filters_on_the_ids() {
+        let t = FakeTransport::ok(&[json!({"data": {
+            "viewer": {"id": "u1"},
+            "issues": {
+                "nodes": [issue_json("ENG-1", "2026-10-05T00:00:00.000Z")],
+                "pageInfo": {"hasNextPage": false, "endCursor": null}
+            }
+        }})]);
+        let c = LinearClient::with_transport("k", t.clone());
+        let ids = vec!["id-ENG-1".to_string(), "id-ENG-2".to_string()];
+        let (viewer, issues) = c.issues_by_ids(&ids).await.unwrap();
+        assert_eq!((viewer.as_str(), issues.len()), ("u1", 1));
+        assert_eq!(
+            t.sent()[0].1["variables"]["filter"],
+            json!({"id": {"in": ["id-ENG-1", "id-ENG-2"]}})
+        );
     }
 
     #[tokio::test]
