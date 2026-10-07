@@ -4,7 +4,9 @@
 //! so they cannot disagree.
 //!
 //! Configuration comes from [`OAuthClientResolver`]; connection comes from
-//! the encrypted token store. Nothing here talks to a provider.
+//! the encrypted stores: OAuth tokens in the token store, other credentials
+//! (the GitHub install, an API key) in the credential store. Nothing here
+//! talks to a provider.
 
 use std::path::Path;
 
@@ -121,8 +123,19 @@ impl IntegrationReport {
     }
 }
 
-/// Token-store lookup: `Ok(true)` when a token is stored for the service.
-pub type TokenLookup<'a> = dyn Fn(&str) -> Result<bool, String> + 'a;
+/// Where a service keeps its credential.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CredentialSource {
+    /// An OAuth token in [`arawn_auth::TokenStore`].
+    TokenStore,
+    /// A non-OAuth credential in [`arawn_integrations::CredentialStore`],
+    /// under the entry named after the service (GitHub's install row).
+    CredentialStore,
+}
+
+/// Credential lookup: `Ok(true)` when a credential is stored for the
+/// service in the given source.
+pub type TokenLookup<'a> = dyn Fn(CredentialSource, &str) -> Result<bool, String> + 'a;
 
 fn setup_target(p: OAuthProvider) -> &'static str {
     if p.uses_shared_google() {
@@ -132,8 +145,13 @@ fn setup_target(p: OAuthProvider) -> &'static str {
     }
 }
 
-fn token_state(lookup: &TokenLookup<'_>, service: &str, origin: String) -> IntegrationState {
-    match lookup(service) {
+fn token_state(
+    lookup: &TokenLookup<'_>,
+    source: CredentialSource,
+    service: &str,
+    origin: String,
+) -> IntegrationState {
+    match lookup(source, service) {
         Ok(true) => IntegrationState::Connected { origin },
         Ok(false) => IntegrationState::Configured { origin },
         Err(error) => IntegrationState::TokenError { error },
@@ -175,7 +193,12 @@ pub fn inspect_with(
         .iter()
         .map(|&p| {
             let state = match resolver.resolve(p) {
-                Some(c) => token_state(tokens, p.service_name(), c.client_id_origin.to_string()),
+                Some(c) => token_state(
+                    tokens,
+                    CredentialSource::TokenStore,
+                    p.service_name(),
+                    c.client_id_origin.to_string(),
+                ),
                 None => match ids_without_secret(cfg, p) {
                     Some((tables, env_var)) => IntegrationState::MissingSecret { tables, env_var },
                     None => IntegrationState::NotConfigured,
@@ -194,6 +217,7 @@ pub fn inspect_with(
         Some(app) => match app.load_private_key() {
             Ok(_) => token_state(
                 tokens,
+                CredentialSource::CredentialStore,
                 arawn_integrations::github::SERVICE_NAME,
                 app.app_id_origin.to_string(),
             ),
@@ -230,21 +254,51 @@ pub fn inspect_with(
 }
 
 /// Inspect every integration against the process environment and the
-/// token store in `data_dir`. `Err` when the token store cannot be opened.
+/// stores in `data_dir`. `Err` when the token store cannot be opened.
 pub fn inspect(
     cfg: &IntegrationsConfig,
     data_dir: &Path,
 ) -> Result<Vec<IntegrationReport>, String> {
-    let store = arawn_auth::TokenStore::open(data_dir)
-        .map_err(|e| format!("cannot open the token store in {}: {e}", data_dir.display()))?;
-    let lookup = |service: &str| -> Result<bool, String> {
-        store
-            .load(service)
-            .map(|t| t.is_some())
-            .map_err(|e| e.to_string())
-    };
+    let lookup = stored_credentials(data_dir)?;
     let resolver = OAuthClientResolver::new(cfg);
     Ok(inspect_with(cfg, &resolver, &lookup))
+}
+
+/// The lookup over the real stores in `data_dir`.
+fn stored_credentials(
+    data_dir: &Path,
+) -> Result<impl Fn(CredentialSource, &str) -> Result<bool, String> + '_, String> {
+    let store = arawn_auth::TokenStore::open(data_dir)
+        .map_err(|e| format!("cannot open the token store in {}: {e}", data_dir.display()))?;
+    Ok(
+        move |source: CredentialSource, service: &str| -> Result<bool, String> {
+            match source {
+                CredentialSource::TokenStore => store
+                    .load(service)
+                    .map(|t| t.is_some())
+                    .map_err(|e| e.to_string()),
+                CredentialSource::CredentialStore => credential_stored(data_dir, service),
+            }
+        },
+    )
+}
+
+/// `Ok(true)` when the credential store holds a readable entry named after
+/// the service. The entry is decrypted (as untyped JSON) so a bad file is a
+/// [`IntegrationState::TokenError`], not "connected". A missing entry does
+/// not open the store, so doctor creates no directories for it.
+fn credential_stored(data_dir: &Path, service: &str) -> Result<bool, String> {
+    let entry = data_dir
+        .join("integrations")
+        .join(service)
+        .join(format!("{service}.bin"));
+    if !entry.exists() {
+        return Ok(false);
+    }
+    arawn_integrations::CredentialStore::<serde_json::Value>::open(data_dir, service)
+        .and_then(|s| s.load(service))
+        .map(|v| v.is_some())
+        .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -279,7 +333,7 @@ mod tests {
             move |k| env.get(k).map(|v| v.to_string()),
             no_bundled,
         );
-        let lookup = move |s: &str| -> Result<bool, String> {
+        let lookup = move |_: CredentialSource, s: &str| -> Result<bool, String> {
             if broken.contains(s) {
                 Err("decrypt failed".into())
             } else {
@@ -419,5 +473,61 @@ mod tests {
                 .iter()
                 .all(|r| !matches!(r.state, IntegrationState::Connected { .. }))
         );
+    }
+
+    fn github_app(dir: &Path) -> IntegrationsConfig {
+        let key = dir.join("app.pem");
+        std::fs::write(&key, "-----BEGIN RSA PRIVATE KEY-----").unwrap();
+        IntegrationsConfig {
+            github: GithubAppCredentials {
+                app_id: "42".into(),
+                app_slug: "arawn-test".into(),
+                private_key_path: key.display().to_string(),
+            },
+            ..Default::default()
+        }
+    }
+
+    fn github_state(cfg: &IntegrationsConfig, dir: &Path) -> IntegrationState {
+        let lookup = stored_credentials(dir).unwrap();
+        let resolver = OAuthClientResolver::with_sources(cfg, |_| None, no_bundled);
+        inspect_with(cfg, &resolver, &lookup)
+            .into_iter()
+            .find(|r| r.service == "github")
+            .unwrap()
+            .state
+    }
+
+    #[test]
+    fn saved_github_install_is_connected() {
+        // Regression (ARAWN-T-0511): the GitHub check read the token store,
+        // but the install row is in the credential store.
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = github_app(dir.path());
+        assert_eq!(github_state(&cfg, dir.path()).code(), "configured");
+
+        use arawn_integrations::github::GithubCredentials;
+        let store: arawn_integrations::CredentialStore<GithubCredentials> =
+            arawn_integrations::CredentialStore::open(dir.path(), "github").unwrap();
+        store
+            .save(
+                "github",
+                &GithubCredentials {
+                    installation_id: 7,
+                    setup_action: "install".into(),
+                },
+            )
+            .unwrap();
+        assert_eq!(github_state(&cfg, dir.path()).code(), "connected");
+    }
+
+    #[test]
+    fn unreadable_github_install_is_a_token_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let cfg = github_app(dir.path());
+        let svc = dir.path().join("integrations").join("github");
+        std::fs::create_dir_all(&svc).unwrap();
+        std::fs::write(svc.join("github.bin"), b"garbage").unwrap();
+        assert_eq!(github_state(&cfg, dir.path()).code(), "token_error");
     }
 }
