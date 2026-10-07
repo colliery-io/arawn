@@ -40,7 +40,7 @@ Embeddings live in `<feed_type>_vec`, **not** as a column on the data table. The
 
 ## Per-table metadata
 
-The 16 projection tables (source: `crates/arawn-projections/src/`):
+The 17 projection tables (source: `crates/arawn-projections/src/`):
 
 | Feed type | Source | Per-type metadata |
 |---|---|---|
@@ -60,6 +60,7 @@ The 16 projection tables (source: `crates/arawn-projections/src/`):
 | `github_repo_issues` | github/repo-mirror | repo, number, state, labels, assignees, author |
 | `github_repo_prs` | github/repo-mirror | repo, number, state, labels, requested_reviewers, author |
 | `github_issue_or_pr_comments` | github/repo-mirror | repo, issue_or_pr_number, author |
+| `linear_issues` | linear/my-issues | identifier, url, state, state_type, priority (0–4), priority_label, due_date, team_key, labels, assignee, creator, assigned_to_me. Rows are upserted on every run, so state changes land. `body_text` is title + description + recent comments. |
 
 ## `ProjectionRow` (type-erased view)
 

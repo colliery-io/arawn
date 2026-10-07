@@ -253,4 +253,4 @@ template = "filesystem/folder"
 params = { root = "/Users/me/notes" }
 ```
 
-Use the default feed IDs (`gmail-inbox`, `slack-mentions`, `calendar-upcoming`, `drive-recent`, `jira-assigned`) for the default feeds. Then the feed that `arawn connect` makes and the declared feed are the same feed.
+Use the default feed IDs (`gmail-inbox`, `slack-mentions`, `calendar-upcoming`, `drive-recent`, `jira-assigned`, `linear-mine`) for the default feeds. Then the feed that `arawn connect` makes and the declared feed are the same feed.

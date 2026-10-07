@@ -59,7 +59,7 @@ If the doc lists tool counts ("6 Slack tools", "11 Atlassian tools"), verify the
 ### Env-var names
 
 ```sh
-grep -E 'ARAWN_(GMAIL|GCAL|GDRIVE|GOOGLE|SLACK|ATLASSIAN|GITHUB)_' crates/arawn/src/main.rs
+grep -E 'ARAWN_(GMAIL|GCAL|GDRIVE|GOOGLE|SLACK|ATLASSIAN|GITHUB|LINEAR)_' crates/arawn/src/main.rs
 ```
 
 These are documented in `docs/src/reference/env-vars.md` and `docs/src/reference/integrations-config.md`. Both must match.
