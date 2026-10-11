@@ -71,5 +71,3 @@ coverage/
 # Backup / scratch
 /backup/
 
-# mdbook build output
-/docs/book/
