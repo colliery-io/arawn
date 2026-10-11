@@ -1,6 +1,6 @@
 # Workflow Examples
 
-Worked examples demonstrating arawn workflow patterns. Read [`docs/src/workflows.md`](../../docs/src/workflows.md) first for the conceptual overview.
+Worked examples demonstrating arawn workflow patterns. Read [`docs/src/content/docs/explanation/workflows.md`](../../docs/src/content/docs/explanation/workflows.md) first for the conceptual overview.
 
 ## Layout
 

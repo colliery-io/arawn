@@ -33,7 +33,7 @@ The agent has tools for shell, file editing, web search, and more.
 
 For Ollama Cloud (`OLLAMA_API_KEY` instead, model like `gemma4:31b-cloud`,
 provider `https://ollama.com/v1`) and the full troubleshooting walkthrough,
-see **[docs/src/tutorials/first-chat.md](docs/src/tutorials/first-chat.md)**.
+see **[docs/src/content/docs/tutorials/first-chat.md](docs/src/content/docs/tutorials/first-chat.md)**.
 
 ## What's in here
 
@@ -71,7 +71,7 @@ angreal test unit              # workspace lib tests
 angreal test integration       # ignored integration tests
 angreal test uat               # end-to-end against a real LLM
 angreal check all              # fmt + clippy + cargo check
-angreal docs serve             # serve docs locally (mdbook)
+angreal docs serve             # serve docs locally (Starlight)
 ```
 
 Code map and semantic summaries live in

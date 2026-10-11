@@ -544,7 +544,7 @@ fn sandbox_unavailable_message(detail: &str) -> String {
          `apt install bubblewrap` / `pacman -S bubblewrap`; \
          macOS: built-in `sandbox-exec`; Windows: not supported), \
          or run arawn on a host that ships one. See \
-         docs/src/reference/shell-sandbox.md for details."
+         docs/src/content/docs/reference/shell-sandbox.md for details."
     )
 }
 
