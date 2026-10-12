@@ -3,9 +3,10 @@
 //! - [`GoogleDriveIntegration`] implements [`crate::Integration`].
 //! - [`DriveHub`] is the typed Google Drive v3 client built via shared
 //!   plumbing in [`crate::google_common`].
-//! - Seven [`arawn_tool::Tool`] impls: `drive_search`, `drive_list`,
+//! - Nine [`arawn_tool::Tool`] impls: `drive_search`, `drive_list`,
 //!   `drive_get_metadata`, `drive_read`, `drive_upload`, `drive_update`,
-//!   `drive_delete`.
+//!   `drive_delete`, and for doc comments `drive_list_open_comments` and
+//!   `drive_reply_to_comment` (see [`comments`]).
 //!
 //! See `docs/src/integrations/drive.md` for setup.
 
@@ -20,7 +21,7 @@ pub use integration::{
     DRIVE_OAUTH_SCOPE, GoogleDriveIntegration, GoogleDriveProviderConfig, SERVICE_NAME,
 };
 pub use tools::{
-    DriveDeleteTool, DriveGetMetadataTool, DriveListTool, DriveReadTool, DriveSearchTool,
-    DriveUpdateTool, DriveUploadTool,
+    DriveDeleteTool, DriveGetMetadataTool, DriveListOpenCommentsTool, DriveListTool, DriveReadTool,
+    DriveReplyToCommentTool, DriveSearchTool, DriveUpdateTool, DriveUploadTool,
 };
-pub use uat_tools::{UatDriveSearchTool, uat_drive_tools};
+pub use uat_tools::{UatDriveListOpenCommentsTool, UatDriveSearchTool, uat_drive_tools};

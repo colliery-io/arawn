@@ -6,6 +6,8 @@
 //! `drive_search` — because no UAT scenario reaches further. Additional
 //! tools (`drive_list`, `drive_get_metadata`, …) can come in T-G or
 //! whenever a scenario calls for them; the shared pattern is identical.
+//! `drive_list_open_comments` (COLLIERY-I-0533) reads the seeded
+//! `drive_comments` rows; the reply tool has no UAT form.
 
 use std::path::{Path, PathBuf};
 
@@ -183,8 +185,61 @@ fn strip_drive_query(query: &str) -> String {
         .join(" ")
 }
 
+/// UAT impl of `drive_list_open_comments` (COLLIERY-I-0533): the seeded
+/// `drive_comments` rows. `file_id` keeps one doc's rows instead of
+/// asking Drive.
+pub struct UatDriveListOpenCommentsTool {
+    data_dir: PathBuf,
+}
+
+impl UatDriveListOpenCommentsTool {
+    pub fn new(data_dir: PathBuf) -> Self {
+        Self { data_dir }
+    }
+
+    fn list(&self, params: &Value) -> Result<Value, ToolError> {
+        let file_id = params.get("file_id").and_then(Value::as_str);
+        let out = super::tools::open_comments_from_projection(
+            &self.data_dir,
+            file_id,
+            super::tools::limit_param(params),
+        )?;
+        Ok(json!({ "comments": out, "source": "feed" }))
+    }
+}
+
+#[async_trait]
+impl Tool for UatDriveListOpenCommentsTool {
+    fn name(&self) -> &str {
+        "drive_list_open_comments"
+    }
+    fn description(&self) -> &str {
+        super::tools::LIST_OPEN_COMMENTS_DESCRIPTION
+    }
+    fn category(&self) -> ToolCategory {
+        ToolCategory::Drive
+    }
+    fn permission_category(&self) -> PermissionCategory {
+        PermissionCategory::ReadOnly
+    }
+    fn parameters_schema(&self) -> Value {
+        super::tools::list_open_comments_schema()
+    }
+
+    async fn execute(
+        &self,
+        _ctx: &dyn ToolContext,
+        params: Value,
+    ) -> Result<ToolOutput, ToolError> {
+        Ok(ToolOutput::success(self.list(&params)?.to_string()))
+    }
+}
+
 pub fn uat_drive_tools(data_dir: PathBuf) -> Vec<Box<dyn Tool>> {
-    vec![Box::new(UatDriveSearchTool::new(data_dir)) as Box<dyn Tool>]
+    vec![
+        Box::new(UatDriveSearchTool::new(data_dir.clone())) as Box<dyn Tool>,
+        Box::new(UatDriveListOpenCommentsTool::new(data_dir)),
+    ]
 }
 
 #[cfg(test)]
@@ -252,6 +307,38 @@ mod tests {
                 .any(|f| f.name.as_deref() == Some("RFC-0042.md")),
             "expected RFC hit via body text, got {hits:?}"
         );
+    }
+
+    #[test]
+    fn uat_list_open_comments_reads_seeded_rows() {
+        use arawn_projections::drive_comments::DriveCommentProjection;
+        let tmp = tempfile::tempdir().unwrap();
+        let store = ProjectionStore::open(&tmp.path().join("projections.db")).unwrap();
+        let row = |n: u32, file: &str| DriveCommentProjection {
+            id: format!("dc-{n}"),
+            feed_id: "drive-comments".into(),
+            source_id: format!("{file}/C{n}"),
+            source_ts: Utc::now() - chrono::Duration::hours(n as i64),
+            file_id: file.into(),
+            comment_id: format!("C{n}"),
+            doc_title: "Q3 plan".into(),
+            link: None,
+            reason: "assigned".into(),
+            author: Some("Robin".into()),
+            content: "Please update the totals".into(),
+            quoted: None,
+            reply_count: 0,
+            last_reply_author: None,
+            last_reply: None,
+        };
+        store.write_batch(&[row(1, "F1"), row(2, "F2")]).unwrap();
+
+        let tool = UatDriveListOpenCommentsTool::new(tmp.path().to_path_buf());
+        let v = tool.list(&json!({ "file_id": "F2" })).unwrap();
+        let comments = v["comments"].as_array().unwrap();
+        assert_eq!(comments.len(), 1);
+        assert_eq!(comments[0]["comment_id"], "C2");
+        assert_eq!(comments[0]["reason"], "assigned");
     }
 
     #[test]

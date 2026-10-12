@@ -162,7 +162,16 @@ pub fn wire_integrations(
         registry.register(Box::new(arawn_integrations::drive::DriveDeleteTool::new(
             Arc::clone(&drive),
         )));
-        info!("Google Drive integration registered (7 tools)");
+        registry.register(Box::new(
+            arawn_integrations::drive::DriveListOpenCommentsTool::new(
+                Arc::clone(&drive),
+                std::path::PathBuf::from(&data_dir),
+            ),
+        ));
+        registry.register(Box::new(
+            arawn_integrations::drive::DriveReplyToCommentTool::new(Arc::clone(&drive)),
+        ));
+        info!("Google Drive integration registered (9 tools)");
         drive_integration_for_feeds = Some(drive);
     } else {
         drive_integration_for_feeds = None;
@@ -441,7 +450,7 @@ pub fn wire_uat_mock_integrations(
                 for tool in arawn_integrations::drive::uat_drive_tools(data_dir_path.clone()) {
                     registry.register(tool);
                 }
-                info!("registered UAT drive tools (1)");
+                info!("registered UAT drive tools (2)");
             }
             // Replaces the production read tools of the same names; the
             // write tools stay production-only.

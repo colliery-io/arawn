@@ -69,6 +69,7 @@ impl Projection for DriveCommentProjection {
             "link": self.link,
             "reason": self.reason,
             "author": self.author,
+            "content": self.content,
             "quoted": self.quoted,
             "reply_count": self.reply_count,
             "last_reply_author": self.last_reply_author,
