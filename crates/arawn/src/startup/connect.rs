@@ -84,8 +84,24 @@ fn setup_only(service: &str) -> bool {
     service == arawn_integrations::linear::SERVICE_NAME
 }
 
+/// `slack` (a new workspace) or `slack@<alias>`.
+fn is_slack(service: &str) -> bool {
+    service == arawn_integrations::slack::SERVICE_NAME
+        || arawn_integrations::slack::alias_of(service).is_some()
+}
+
+/// The aliases of the connected Slack workspaces in the registry.
+fn slack_aliases(registry: &[Registered]) -> Vec<String> {
+    registry
+        .iter()
+        .filter(|r| r.connected)
+        .filter_map(|r| arawn_integrations::slack::alias_of(&r.name).map(String::from))
+        .collect()
+}
+
 /// Turn the user's names into registry names. An exact service name
-/// (`gmail`) always means only that service, loaded or not. `google`
+/// (`gmail`) always means only that service, loaded or not. A Slack
+/// workspace is `slack@<alias>`. `google`
 /// expands to the three Google services, `calendar`/`drive` to one, and
 /// `jira`/`confluence` mean `atlassian`. `--all` leaves out the services
 /// that only `arawn setup` connects.
@@ -106,19 +122,21 @@ fn expand(
     let mut unknown = Vec::new();
     for raw in requested {
         let name = raw.trim().to_ascii_lowercase();
-        let names: Vec<String> =
-            if registry.iter().any(|r| r.name == name) || known.contains(&name.as_str()) {
-                vec![name.clone()]
-            } else if name == "calendar" {
-                vec![arawn_integrations::calendar::SERVICE_NAME.into()]
-            } else if name == "drive" {
-                vec![arawn_integrations::drive::SERVICE_NAME.into()]
-            } else if let Some(t) = SetupTarget::from_key(&name) {
-                t.connect_names().into_iter().map(String::from).collect()
-            } else {
-                unknown.push(raw.clone());
-                continue;
-            };
+        let names: Vec<String> = if registry.iter().any(|r| r.name == name)
+            || known.contains(&name.as_str())
+            || is_slack(&name)
+        {
+            vec![name.clone()]
+        } else if name == "calendar" {
+            vec![arawn_integrations::calendar::SERVICE_NAME.into()]
+        } else if name == "drive" {
+            vec![arawn_integrations::drive::SERVICE_NAME.into()]
+        } else if let Some(t) = SetupTarget::from_key(&name) {
+            t.connect_names().into_iter().map(String::from).collect()
+        } else {
+            unknown.push(raw.clone());
+            continue;
+        };
         for n in names {
             if !out.contains(&n) {
                 out.push(n);
@@ -162,21 +180,30 @@ fn not_loaded_reason(dirs: Dirs<'_>, service: &str) -> String {
 /// auto-created default feed.
 pub const FEED_NOTICE_GRACE: Duration = Duration::from_secs(2);
 
-/// Wait for the `integration` notice about `service`. Returns the error
+/// Wait for the `integration` notice about `service`. Returns the name
+/// that connected (`slack` connects as `slack@<alias>`), or the error
 /// text on failure. Other notices are printed when they matter.
 async fn await_outcome(
     t: &mut dyn ConnectTransport,
     service: &str,
     opts: &ConnectOptions,
     out: &mut dyn Write,
-) -> Result<std::result::Result<(), String>> {
+) -> Result<std::result::Result<String, String>> {
     let timeout = opts.timeout;
     let ok = format!("{service} connected");
     let failed = format!("{service} connection FAILED: ");
+    let connected_as = |message: &str| -> Option<String> {
+        let name = message.strip_suffix(" connected")?;
+        let new_workspace = service == arawn_integrations::slack::SERVICE_NAME
+            && arawn_integrations::slack::alias_of(name).is_some();
+        (message == ok || new_workspace).then(|| name.to_string())
+    };
     let wait = async {
         while let Some(n) = t.next_notice().await {
             match n.category.as_str() {
-                "integration" if n.message == ok => return Some(Ok(())),
+                "integration" if connected_as(&n.message).is_some() => {
+                    return connected_as(&n.message).map(Ok);
+                }
                 "integration" => {
                     if let Some(err) = n.message.strip_prefix(&failed) {
                         return Some(Err(err.to_string()));
@@ -192,7 +219,7 @@ async fn await_outcome(
         None
     };
     match tokio::time::timeout(timeout, wait).await {
-        Ok(Some(Ok(()))) => {
+        Ok(Some(Ok(name))) => {
             // The server auto-creates the service's default feed right
             // AFTER the "connected" notice. Listen briefly so it is shown.
             let _ = tokio::time::timeout(opts.feed_grace, async {
@@ -204,7 +231,7 @@ async fn await_outcome(
                 }
             })
             .await;
-            Ok(Ok(()))
+            Ok(Ok(name))
         }
         Ok(Some(r)) => Ok(r),
         Ok(None) => bail!("the server closed the connection before {service} finished"),
@@ -251,9 +278,21 @@ pub async fn run_connect(
         return Ok(());
     }
 
+    // The Slack app is loaded when the server lists it or any workspace.
+    let slack_loaded = registry.iter().any(|r| is_slack(&r.name));
     let mut failures = Vec::new();
     for service in &services {
-        let Some(row) = registry.iter().find(|r| &r.name == service) else {
+        let row = registry.iter().find(|r| &r.name == service).cloned();
+        let row = match row {
+            Some(r) => Some(r),
+            // `slack` adds a workspace; a new `slack@<alias>` is not listed yet.
+            None if is_slack(service) && slack_loaded => Some(Registered {
+                name: service.clone(),
+                connected: false,
+            }),
+            None => None,
+        };
+        let Some(row) = row else {
             let why = not_loaded_reason(dirs, service);
             writeln!(out, "{service}: not available — {why}.")?;
             failures.push(service.clone());
@@ -274,7 +313,8 @@ pub async fn run_connect(
             failures.push(service.clone());
             continue;
         }
-        if row.connected {
+        // A named Slack workspace reconnects to refresh its token.
+        if row.connected && !is_slack(service) {
             writeln!(
                 out,
                 "{service}: already connected. To reconnect: arawn disconnect {service}, then \
@@ -303,7 +343,8 @@ pub async fn run_connect(
         out.flush()?;
 
         match await_outcome(t, service, opts, out).await? {
-            Ok(()) => writeln!(out, "{service}: connected.")?,
+            Ok(name) if &name != service => writeln!(out, "{service}: connected as {name}.")?,
+            Ok(_) => writeln!(out, "{service}: connected.")?,
             Err(e) => {
                 writeln!(out, "{service}: FAILED — {e}")?;
                 failures.push(service.clone());
@@ -325,6 +366,21 @@ pub async fn run_disconnect(
     out: &mut dyn Write,
 ) -> Result<()> {
     let registry = t.list_integrations().await?;
+    // `slack` alone names the one connected workspace.
+    let service = if service == arawn_integrations::slack::SERVICE_NAME {
+        match slack_aliases(&registry).as_slice() {
+            [] => bail!("no Slack workspace is connected"),
+            [one] => arawn_integrations::slack::workspace_name(one),
+            many => bail!(
+                "more than one Slack workspace is connected: {}. Name one: arawn disconnect \
+                 slack@<alias>",
+                many.join(", ")
+            ),
+        }
+    } else {
+        service.to_string()
+    };
+    let service = service.as_str();
     let names = expand(&[service.to_string()], false, &registry)
         .map_err(|_| anyhow!("unknown service: {service}"))?;
     for name in names {
@@ -583,10 +639,10 @@ mod tests {
             // The server's real order: "connected" first, then the
             // auto-created default feed.
             vec![
-                notice("integration", "slack connected"),
+                notice("integration", "slack@acme connected"),
                 notice(
                     "feeds",
-                    "auto-registered slack/my-mentions as `slack-mentions` after /connect slack",
+                    "auto-registered slack/my-mentions as `slack-acme-mentions` after /connect slack",
                 ),
             ],
         );
@@ -595,8 +651,51 @@ mod tests {
         r.unwrap();
         assert_eq!(fake.started, ["slack"]);
         assert_eq!(*opened.borrow(), ["https://auth.example/slack"]);
-        assert!(out.contains("slack: connected."), "{out}");
+        // `slack` connects a new workspace, named after its team.
+        assert!(out.contains("slack: connected as slack@acme."), "{out}");
         assert!(out.contains("auto-registered slack/my-mentions"), "{out}");
+    }
+
+    #[tokio::test]
+    async fn connect_slack_adds_a_workspace_and_a_named_one_reconnects() {
+        // Workspaces are connected, so the server lists no bare `slack`.
+        let mut fake = Fake::new(&[("slack@acme", true)])
+            .on(
+                "slack",
+                vec![notice("integration", "slack@personal connected")],
+            )
+            .on(
+                "slack@acme",
+                vec![notice("integration", "slack@acme connected")],
+            );
+        let opened = Default::default();
+        let (r, out) = run(&mut fake, opts(&["slack", "slack@acme"], false), &opened).await;
+        r.unwrap();
+        assert_eq!(fake.started, ["slack", "slack@acme"]);
+        assert!(out.contains("slack: connected as slack@personal."), "{out}");
+        assert!(out.contains("slack@acme: connected."), "{out}");
+    }
+
+    #[tokio::test]
+    async fn disconnect_slack_needs_an_alias_when_two_are_connected() {
+        let mut fake = Fake::new(&[("slack@acme", true), ("slack@personal", true)]);
+        let mut out = Vec::new();
+        let err = run_disconnect(&mut fake, "slack", &mut out)
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("acme, personal"), "{err}");
+        assert!(err.contains("slack@<alias>"), "{err}");
+        assert!(fake.disconnected.is_empty());
+
+        // Named, or the only one: disconnected.
+        run_disconnect(&mut fake, "slack@acme", &mut out)
+            .await
+            .unwrap();
+        let mut one = Fake::new(&[("slack@personal", true)]);
+        run_disconnect(&mut one, "slack", &mut out).await.unwrap();
+        assert_eq!(fake.disconnected, ["slack@acme"]);
+        assert_eq!(one.disconnected, ["slack@personal"]);
     }
 
     #[tokio::test]

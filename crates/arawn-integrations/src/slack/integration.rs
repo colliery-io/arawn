@@ -6,7 +6,7 @@ use url::Url;
 
 use crate::error::IntegrationError;
 use crate::integration::{ConnectContext, Integration};
-use crate::oauth_flow::run_oauth_flow;
+use crate::oauth_flow::{obtain_oauth_token, run_oauth_flow};
 
 use super::client::{SlackContext, build_slack_client};
 
@@ -72,6 +72,37 @@ pub fn sanitize_alias(team_name: &str, team_id: &str) -> Option<String> {
         from_name
     };
     (!alias.is_empty()).then_some(alias)
+}
+
+/// The alias for a team that just connected through `/connect slack`.
+/// A team that is already connected keeps its alias (a reconnect
+/// refreshes its token). Otherwise [`sanitize_alias`] of the team, or
+/// [`DEFAULT_ALIAS`]; a taken alias gets `-2`, `-3`… `existing` is each
+/// connected alias with its stored team.
+pub fn pick_alias(team: Option<&SlackTeam>, existing: &[(String, Option<SlackTeam>)]) -> String {
+    if let Some(t) = team.filter(|t| !t.id.is_empty())
+        && let Some((alias, _)) = existing
+            .iter()
+            .find(|(_, e)| e.as_ref().is_some_and(|e| e.id == t.id))
+    {
+        return alias.clone();
+    }
+    let base = team
+        .and_then(|t| sanitize_alias(&t.name, &t.id))
+        .unwrap_or_else(|| DEFAULT_ALIAS.to_string());
+    let taken = |a: &str| existing.iter().any(|(e, _)| e == a);
+    if !taken(&base) {
+        return base;
+    }
+    (2..)
+        .map(|n| {
+            let suffix = format!("-{n}");
+            let mut stem = base.clone();
+            stem.truncate(ALIAS_MAX_LEN - suffix.len());
+            format!("{}{suffix}", stem.trim_end_matches('-'))
+        })
+        .find(|a| !taken(a))
+        .expect("an unused suffix exists")
 }
 
 /// The Slack team a token was granted in. Slack's `oauth.v2.access`
@@ -269,6 +300,31 @@ impl SlackApp {
     /// names only.
     pub fn connected_aliases(&self) -> Vec<String> {
         connected_aliases(&self.data_dir)
+    }
+
+    /// `/connect slack`: run the OAuth flow, then name the workspace after
+    /// the team the user picked in Slack's page ([`pick_alias`]) and store
+    /// the token under it.
+    pub async fn connect_new(
+        &self,
+        ctx: &dyn ConnectContext,
+    ) -> Result<SlackIntegration, IntegrationError> {
+        let provider = self.provider_config.clone().unwrap_or_default();
+        let port = provider.redirect_port;
+        let oauth =
+            provider.into_oauth_provider(self.client_id.clone(), self.client_secret.clone());
+        let token = obtain_oauth_token(oauth, "/oauth/callback", Some(port), ctx).await?;
+        let existing: Vec<(String, Option<SlackTeam>)> = self
+            .connected_aliases()
+            .into_iter()
+            .map(|a| {
+                let team = self.workspace(&a).ok().and_then(|w| w.team());
+                (a, team)
+            })
+            .collect();
+        let alias = pick_alias(team_of(&token).as_ref(), &existing);
+        TokenStore::open(&self.data_dir)?.save(&workspace_name(&alias), &token)?;
+        self.workspace(&alias)
     }
 }
 
@@ -624,6 +680,38 @@ mod tests {
         assert!(personal.is_connected().await);
         assert_eq!(personal.team().unwrap().name, "Personal");
         assert_eq!(app.connected_aliases(), ["personal"]);
+    }
+
+    fn team(id: &str, name: &str) -> SlackTeam {
+        SlackTeam {
+            id: id.into(),
+            name: name.into(),
+        }
+    }
+
+    #[test]
+    fn pick_alias_derives_from_the_team() {
+        assert_eq!(pick_alias(Some(&team("TA", "Acme Corp")), &[]), "acme-corp");
+        assert_eq!(pick_alias(Some(&team("T0X", "Équipe")), &[]), "t0x");
+        assert_eq!(pick_alias(None, &[]), DEFAULT_ALIAS);
+    }
+
+    #[test]
+    fn pick_alias_suffixes_a_collision_and_keeps_a_known_team() {
+        let existing = vec![
+            ("acme".to_string(), Some(team("TA", "Acme"))),
+            ("acme-2".to_string(), None),
+        ];
+        // Another team also called Acme.
+        assert_eq!(pick_alias(Some(&team("TB", "Acme")), &existing), "acme-3");
+        // The same team again: a reconnect keeps its alias.
+        assert_eq!(pick_alias(Some(&team("TA", "Acme Inc")), &existing), "acme");
+        // The suffix fits in the length cap.
+        let long = "x".repeat(ALIAS_MAX_LEN);
+        let taken = vec![(long.clone(), Some(team("T1", &long)))];
+        let a = pick_alias(Some(&team("T2", &long)), &taken);
+        assert_eq!(a.len(), ALIAS_MAX_LEN);
+        assert!(a.ends_with("-2") && is_valid_alias(&a), "{a}");
     }
 
     #[test]

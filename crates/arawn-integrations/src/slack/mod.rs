@@ -24,7 +24,7 @@ pub use client::{SlackContext, build_slack_client};
 pub use integration::{
     ALIAS_MAX_LEN, DEFAULT_ALIAS, DEFAULT_SLACK_REDIRECT_PORT, SERVICE_NAME, SLACK_OAUTH_SCOPES,
     SLACK_OAUTH_USER_SCOPES, SlackApp, SlackIntegration, SlackProviderConfig, SlackTeam, alias_of,
-    connected_aliases, is_valid_alias, sanitize_alias, team_of, workspace_name,
+    connected_aliases, is_valid_alias, pick_alias, sanitize_alias, team_of, workspace_name,
 };
 pub use tools::{
     SLACK_TOOL_OPS, SlackHistoryTool, SlackListChannelsTool, SlackOpenDmTool, SlackPostTool,

@@ -373,7 +373,7 @@ fn log_integration_summary(config: &ArawnConfig, data_dir: &str) {
     let not_set_up: Vec<&str> = reports
         .iter()
         .filter(|r| r.state == IntegrationState::NotConfigured)
-        .map(|r| r.service)
+        .map(|r| r.service.as_str())
         .collect();
     if !not_set_up.is_empty() {
         info!(
@@ -383,7 +383,7 @@ fn log_integration_summary(config: &ArawnConfig, data_dir: &str) {
     }
     for r in reports.iter().filter(|r| r.state.is_broken()) {
         warn!(
-            service = r.service,
+            service = %r.service,
             "{}. Fix: {}",
             r.describe(),
             r.hint().unwrap_or_default()

@@ -23,22 +23,64 @@ impl LocalService {
             .map(|(k, v)| (k.clone(), Arc::clone(v)))
             .collect();
 
-        let mut out = Vec::with_capacity(entries.len());
+        let slack_app = self.slack_app.read().recover().clone();
+        let mut out = Vec::with_capacity(entries.len() + 1);
         for (name, integration) in entries {
             let connected = integration.is_connected().await;
-            out.push(arawn_service::IntegrationStatus { name, connected });
+            // One row per Slack workspace: `slack@acme ✓ (16 scopes)`.
+            let detail = match (&slack_app, name.strip_prefix("slack@")) {
+                (Some(app), Some(alias)) if connected => app
+                    .workspace(alias)
+                    .and_then(|ws| ws.granted_scopes())
+                    .ok()
+                    .map(|s| format!("{} scopes", s.len())),
+                _ => None,
+            };
+            out.push(arawn_service::IntegrationStatus {
+                name,
+                connected,
+                detail,
+            });
+        }
+        // The Slack app with no workspace yet: `/connect slack` adds one.
+        if slack_app.is_some() && !out.iter().any(|i| i.name.starts_with("slack@")) {
+            out.push(arawn_service::IntegrationStatus {
+                name: arawn_integrations::slack::SERVICE_NAME.into(),
+                connected: false,
+                detail: None,
+            });
         }
         out.sort_by(|a, b| a.name.cmp(&b.name));
         Ok(out)
     }
 
-    /// What `/connect <service>` connects. A Slack workspace is built
-    /// from the Slack app, registered or not.
+    /// The registered Slack workspaces' aliases, sorted.
+    fn slack_aliases(&self) -> Vec<String> {
+        let mut out: Vec<String> = self
+            .integration_registry
+            .read()
+            .recover()
+            .keys()
+            .filter_map(|k| k.strip_prefix("slack@").map(String::from))
+            .collect();
+        out.sort();
+        out
+    }
+
+    /// What `/connect <service>` connects. `slack` is a new workspace,
+    /// named after its team once the flow is done; `slack@<alias>` is
+    /// built from the Slack app, registered or not.
     fn connect_target(&self, service: &str) -> Result<ConnectTarget, ServiceError> {
-        if let Some(alias) = service.strip_prefix("slack@") {
-            let app = self.slack_app.read().recover().clone().ok_or_else(|| {
+        let slack_app = || {
+            self.slack_app.read().recover().clone().ok_or_else(|| {
                 ServiceError::InvalidOperation("Slack is not set up. Run: arawn setup slack".into())
-            })?;
+            })
+        };
+        if service == arawn_integrations::slack::SERVICE_NAME {
+            return Ok(ConnectTarget::SlackNew(slack_app()?));
+        }
+        if let Some(alias) = service.strip_prefix("slack@") {
+            let app = slack_app()?;
             let ws = app
                 .workspace(alias)
                 .map_err(|e| ServiceError::InvalidOperation(e.user_message()))?;
@@ -97,6 +139,11 @@ impl LocalService {
                 ConnectTarget::SlackWorkspace(ws) => ws.connect(&ctx).await.map(|()| {
                     let name = ws.name().to_string();
                     crate::slack_workspaces::register(&integrations, &tools, ws);
+                    name
+                }),
+                ConnectTarget::SlackNew(app) => app.connect_new(&ctx).await.map(|ws| {
+                    let name = ws.name().to_string();
+                    crate::slack_workspaces::register(&integrations, &tools, Arc::new(ws));
                     name
                 }),
             };
@@ -188,6 +235,29 @@ impl LocalService {
         &self,
         service: &str,
     ) -> Result<(), ServiceError> {
+        // `slack` alone names the one connected workspace; with more than
+        // one, the user must pick.
+        let resolved;
+        let service = if service == arawn_integrations::slack::SERVICE_NAME {
+            resolved = match self.slack_aliases().as_slice() {
+                [] => {
+                    return Err(ServiceError::InvalidOperation(
+                        "no Slack workspace is connected".into(),
+                    ));
+                }
+                [one] => arawn_integrations::slack::workspace_name(one),
+                many => {
+                    return Err(ServiceError::InvalidOperation(format!(
+                        "more than one Slack workspace is connected: {}. Name one: \
+                         /disconnect slack@<alias>",
+                        many.join(", ")
+                    )));
+                }
+            };
+            resolved.as_str()
+        } else {
+            service
+        };
         let integration = self
             .integration_registry
             .read()
@@ -221,6 +291,7 @@ impl LocalService {
 enum ConnectTarget {
     Registered(Arc<dyn arawn_integrations::Integration>),
     SlackWorkspace(Arc<arawn_integrations::slack::SlackIntegration>),
+    SlackNew(Arc<arawn_integrations::slack::SlackApp>),
 }
 
 type FeedRuntimeCell = Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>>;

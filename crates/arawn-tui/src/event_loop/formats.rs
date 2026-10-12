@@ -13,10 +13,18 @@ pub(super) fn format_integrations_list(items: &[serde_json::Value]) -> String {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
         let mark = if connected { "✓" } else { "—" };
-        let _ = writeln!(out, "| {name} | {mark} |");
+        match item.get("detail").and_then(|v| v.as_str()) {
+            Some(d) => {
+                let _ = writeln!(out, "| {name} | {mark} ({d}) |");
+            }
+            None => {
+                let _ = writeln!(out, "| {name} | {mark} |");
+            }
+        }
     }
     out.push_str(
-        "\nRun `/connect <service>` to authorize, `/disconnect <service>` to drop credentials.",
+        "\nRun `/connect <service>` to authorize, `/disconnect <service>` to drop credentials. \
+         `/connect slack` adds a Slack workspace.",
     );
     out
 }
@@ -414,6 +422,19 @@ mod tests {
         FeedStatusRow, FeedsStatus, LlmClientStatus, LlmStatus, SYSTEM_STATUS_VERSION,
         StewardErrorStatus, StewardStatus, SystemStatus,
     };
+
+    #[test]
+    fn integrations_list_shows_one_row_per_slack_workspace() {
+        let items = vec![
+            serde_json::json!({ "name": "gmail", "connected": false }),
+            serde_json::json!({ "name": "slack@acme", "connected": true, "detail": "16 scopes" }),
+            serde_json::json!({ "name": "slack@personal", "connected": true, "detail": "12 scopes" }),
+        ];
+        let out = format_integrations_list(&items);
+        assert!(out.contains("| gmail | — |"), "{out}");
+        assert!(out.contains("| slack@acme | ✓ (16 scopes) |"), "{out}");
+        assert!(out.contains("| slack@personal | ✓ (12 scopes) |"), "{out}");
+    }
 
     fn populated() -> SystemStatus {
         SystemStatus {
