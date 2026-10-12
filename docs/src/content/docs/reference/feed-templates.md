@@ -13,6 +13,15 @@ Eighteen templates ship today across nine providers. This page is the contract t
 
 ## Slack
 
+Every Slack template takes a required `workspace` param: the alias of a connected workspace, `acme` for `slack@acme`. A feed reads that workspace only. `/watch` offers the connected workspaces; a missing or unknown `workspace` is refused with the list of connected ones. In `arawn.toml`:
+
+```toml
+[[feeds]]
+id = "design"
+template = "slack/channel-archive"
+params = { workspace = "acme", channel = "#design" }
+```
+
 ### `slack/channel-archive`
 
 Append every message in one Slack channel to JSONL, time-partitioned
@@ -20,9 +29,9 @@ by day, plus per-thread reply files.
 
 | Field | Value |
 |---|---|
-| Param | `channel: string` (name like `#design` or id like `C123ABC`) |
+| Params | `workspace: string`, `channel: string` (name like `#design` or id like `C123ABC`) |
 | Default cadence | `*/15 * * * *` |
-| Auto-create | No — use `/watch slack/channel-archive <channel>` |
+| Auto-create | No — use `/watch slack/channel-archive <id> workspace=acme channel=#design` |
 
 ```text
 slack/channel-archive/<feed_id>/
@@ -43,12 +52,12 @@ Every message anywhere in the workspace containing an `@me` mention.
 
 | Field | Value |
 |---|---|
-| Param | (none) |
+| Param | `workspace: string` |
 | Default cadence | `*/15 * * * *` |
-| Auto-create | Yes — singleton, on `/connect slack` |
+| Auto-create | Yes — one per workspace, as `slack-<alias>-mentions`, when the workspace connects |
 
 ```text
-slack/my-mentions/me/
+slack/my-mentions/<feed_id>/
   ├── meta.json                       # cursor: { my_user_id, latest_ts }
   ├── 2026-05-08.jsonl                # mention messages by their Slack ts
   └── 2026-05-07.jsonl
@@ -64,7 +73,7 @@ channel-archive.
 
 | Field | Value |
 |---|---|
-| Param | `user: string` (Slack user id `UABC123` or username) |
+| Params | `workspace: string`, `user: string` (Slack user id `UABC123` or username) |
 | Default cadence | `0 * * * *` (hourly) |
 | Auto-create | No |
 
@@ -491,7 +500,7 @@ Each `signals.jsonl` line is one change event:
 | Template | Cadence | Auto-create |
 |---|---|---|
 | `slack/channel-archive` | every 15 min | No |
-| `slack/my-mentions` | every 15 min | Yes, as `slack-mentions` (one per install) |
+| `slack/my-mentions` | every 15 min | Yes, as `slack-<alias>-mentions` (one per workspace) |
 | `slack/dm-archive` | hourly | No |
 | `gmail/inbox-archive` | every 15 min | Yes, as `gmail-inbox` (one per install) |
 | `gmail/label-archive` | every 30 min | No |

@@ -40,7 +40,7 @@ Write a starter `arawn.toml` with one LLM profile into the data directory.
 | `--model <name>` | built-in default | Model name. |
 | `--api-key-env <VAR>` | per provider | The env var that holds the API key, for example `GROQ_API_KEY`. |
 | `--force` | off | Replace an existing `arawn.toml`. |
-| `--profile <name>` | — | Also add a ready-made set of `[[lenses]]` and `[[feeds]]`. `work` adds a `work` lens bound to Gmail, Calendar, Slack, Jira, GitHub, Linear and Drive comment feeds. If `arawn.toml` exists, only the profile entries that are not in the file yet are added. |
+| `--profile <name>` | — | Also add a ready-made set of `[[lenses]]` and `[[feeds]]`. `work` adds a `work` lens bound to Gmail, Calendar, Slack, Jira, GitHub, Linear and Drive comment feeds. The Slack feed reads the first connected Slack workspace (`slack-<alias>-mentions`); with none connected it is left out. If `arawn.toml` exists, only the profile entries that are not in the file yet are added. |
 
 ```sh
 arawn init --profile work
@@ -99,20 +99,20 @@ arawn connect --all          # Every set-up service that is not connected yet
 
 | Argument or flag | Default | Description |
 |---|---|---|
-| `<service>...` | — | `gmail`, `google_calendar`, `google_drive`, `slack`, `atlassian` or `github`. `google` means the three Google services. `jira` and `confluence` mean `atlassian`. |
+| `<service>...` | — | `gmail`, `google_calendar`, `google_drive`, `slack`, `slack@<alias>`, `atlassian` or `github`. `google` means the three Google services. `jira` and `confluence` mean `atlassian`. `slack` adds a Slack workspace, named after its team; `slack@<alias>` names it, or refreshes the token of a connected one. |
 | `--all` | off | Connect every set-up service that is not connected yet. |
 | `--url <ws-url>` | `ws://127.0.0.1:3100/ws` | WebSocket URL of the running server. |
 | `--no-browser` | off | Show the consent URL, but do not open a browser. Use this on a machine with no browser, and open the URL on a different machine. |
 | `--timeout <seconds>` | `300` | Time to wait for each approval. |
 
-A service that is already connected is skipped. `arawn connect linear` starts no flow: it says to run `arawn setup linear`, and `--all` leaves Linear out. If the server did not load a service, `arawn connect` tells you why and gives the fix, for example a client secret that is not exported, or a server that needs a restart. The exit code is non-zero if a service did not connect.
+A service that is already connected is skipped; a named Slack workspace (`slack@acme`) is reconnected, which refreshes its token. `arawn connect slack` adds a workspace and prints its name (`slack: connected as slack@acme.`). `arawn connect linear` starts no flow: it says to run `arawn setup linear`, and `--all` leaves Linear out. If the server did not load a service, `arawn connect` tells you why and gives the fix, for example a client secret that is not exported, or a server that needs a restart. The exit code is non-zero if a service did not connect.
 
 ## `arawn disconnect`
 
-Disconnect one integration and delete its stored token. `google` means the three Google services.
+Disconnect one integration and delete its stored token. `google` means the three Google services. A Slack workspace is `slack@<alias>`; plain `slack` works only while one workspace is connected, and with more the command fails and lists the aliases.
 
 ```sh
-arawn disconnect slack
+arawn disconnect slack@personal
 ```
 
 | Flag | Default | Description |

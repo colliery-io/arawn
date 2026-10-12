@@ -45,8 +45,8 @@ The tool's default scan covers every projection type listed below — gmail / sl
 | `feed_type`              | Source                              | `metadata` keys |
 |--------------------------|-------------------------------------|-----------------|
 | `gmail_messages`         | gmail/inbox-archive et al.          | sender, recipients, subject, thread_id, labels |
-| `slack_messages`         | slack/channel-archive (top-level)   | channel_id, sender_id, thread_ts, reactions |
-| `slack_thread_messages`  | slack/channel-archive (replies)     | channel_id, sender_id, thread_ts, reactions |
+| `slack_messages`         | slack/channel-archive (top-level)   | channel_id, sender_id, thread_ts, reactions, workspace |
+| `slack_thread_messages`  | slack/channel-archive (replies)     | channel_id, sender_id, thread_ts, reactions, workspace |
 | `drive_files`            | drive/folder-sync                   | path, name, mime_type, size_bytes |
 | `drive_comments`         | drive/comments                      | file_id, comment_id, doc_title, link, reason, author, content, quoted, reply_count, last_reply_author |
 | `jira_issues`            | jira/project-tracker, jira/assignee-tracker | project_key, summary, status, assignee, reporter, priority, labels |

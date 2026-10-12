@@ -41,11 +41,11 @@ Clear the chat history for the current session. Does NOT delete server-side sess
 
 ### `/connect <service>`
 
-Start the OAuth flow for an integration. Services: `gmail`, `google_calendar`, `google_drive`, `slack`, `atlassian`, `github`. Opens your browser to the provider's consent screen.
+Start the OAuth flow for an integration. Services: `gmail`, `google_calendar`, `google_drive`, `slack`, `slack@<alias>`, `atlassian`, `github`. Opens your browser to the provider's consent screen. `slack` adds a Slack workspace named after its team; `slack@<alias>` names it. See [connect Slack](../../how-to/connect-slack/#connect-another-workspace).
 
 ### `/disconnect <service>`
 
-Drop stored credentials for an integration. The provider's permissions page is untouched — revoke there separately if needed.
+Drop stored credentials for an integration. The provider's permissions page is untouched — revoke there separately if needed. A Slack workspace is `slack@<alias>`, and its tools go with it; plain `slack` works only while one workspace is connected.
 
 ### `/feeds [pause <id>|resume <id>|rm <id> [--yes]|run <id>]`
 

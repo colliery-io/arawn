@@ -224,11 +224,15 @@ Doc comments. Source: `crates/arawn-integrations/src/drive/tools.rs`.
 | `drive_list_open_comments` | Read — auto-allow | The open comment threads for me (assigned to me, mentioning me, or on a doc I own and not answered by me), from the `drive_comments` projection, newest first. With `file_id`, asks Drive now for that doc's open threads; `reason` is null for a thread that is not for me. `limit` (default 20, max 100). |
 | `drive_reply_to_comment` | Other — asks | Reply to a thread as me: `file_id`, `comment_id`, `body` (plain text, not empty). Never resolves the thread. Gives back the reply id and a link to the thread. |
 
-### Slack (6)
+### Slack (6 per workspace)
 
-`slack_list_channels`, `slack_history`, `slack_post`, `slack_react`, `slack_users_list`, `slack_open_dm`.
+Each connected workspace `slack@<alias>` has its own six tools, `slack_<alias>_<op>` (a `-` in the alias becomes `_`). For `slack@acme`:
 
-> **Note:** older docs used `slack_channels_list`, `slack_channel_history`, `slack_post_message`, and `slack_search`. The first three were renamed; `slack_search` is deferred and not in the registry.
+`slack_acme_list_channels`, `slack_acme_history`, `slack_acme_post`, `slack_acme_react`, `slack_acme_users_list`, `slack_acme_open_dm`.
+
+The names carry the alias even with one workspace. Each description starts with `[Slack workspace slack@acme]`. The tools appear when the workspace connects and go when it disconnects, with no restart. A permission rule can cover every workspace with a glob, such as `slack_*_post`. See [connect Slack](../../how-to/connect-slack/#tools-and-permission-rules).
+
+> **Note:** before workspaces were named the tools were `slack_list_channels`, `slack_post`, and so on; the [upgrade](../../how-to/connect-slack/#upgrading-from-one-workspace) rewrites permission rules that name them. `slack_search` is deferred and not in the registry.
 
 ### Atlassian — Jira (6)
 
