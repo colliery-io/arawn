@@ -10,9 +10,9 @@ use serde_json::json;
 
 use arawn_feeds::templates::drive::FolderSyncTemplate;
 use arawn_feeds::{
-    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, DriveFile, FeedClients,
-    FeedError, FeedMeta, FeedTemplate, GithubFeedClient, GmailFeedClient, MetaStore,
-    SlackFeedClient, TemplateCtx, TemplateParams,
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DocComment, DocMeta, DriveFeedClient,
+    DriveFile, FeedClients, FeedError, FeedMeta, FeedTemplate, GithubFeedClient, GmailFeedClient,
+    MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
 };
 
 /// In-memory Drive emulator. Tests build a tree (folder_id ->
@@ -95,6 +95,18 @@ impl DriveFeedClient for MockDriveClient {
                 .cloned()
                 .ok_or_else(|| FeedError::Provider(format!("no raw body queued for {file_id}")))
         }
+    }
+    async fn about_me(&self) -> Result<String, FeedError> {
+        unreachable!("folder-sync doesn't read comments")
+    }
+    async fn list_touched_docs(&self, _: DateTime<Utc>) -> Result<Vec<DocMeta>, FeedError> {
+        unreachable!("folder-sync doesn't read comments")
+    }
+    async fn get_doc(&self, _: &str) -> Result<Option<DocMeta>, FeedError> {
+        unreachable!("folder-sync doesn't read comments")
+    }
+    async fn list_comments(&self, _: &str, _: Option<&str>) -> Result<Vec<DocComment>, FeedError> {
+        unreachable!("folder-sync doesn't read comments")
     }
 }
 

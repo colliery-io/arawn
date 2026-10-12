@@ -680,7 +680,8 @@ pub fn run_setup_with(
         writeln!(out)?;
         if p.confirm(
             "Add the work profile? (a `work` lens bound to mail, calendar, Slack, Jira, \
-             GitHub and Linear feeds; each feed starts when its service connects)",
+             GitHub, Linear and Drive comment feeds; each feed starts when its service \
+             connects)",
             false,
         )? {
             let (lenses, feeds) = super::profile::profile("work")?;
@@ -869,7 +870,7 @@ mod tests {
         run_setup(dir.path(), opts(), &mut p, &mut out, true).unwrap();
         let cfg = config(dir.path());
         assert_eq!(cfg.lenses[0].name, "work");
-        assert_eq!(cfg.feeds.len(), 7);
+        assert_eq!(cfg.feeds.len(), 8);
         assert_eq!(cfg.integrations.google.client_secret, "GOCSPX-s");
         assert_eq!(cfg.integrations.atlassian.client_id, "atl-id");
         assert_eq!(cfg.integrations.slack.client_id, "");

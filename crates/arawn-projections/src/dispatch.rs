@@ -13,6 +13,7 @@ use tracing::{debug, warn};
 use crate::atlassian;
 use crate::calendar;
 use crate::drive;
+use crate::drive_comments;
 use crate::error::ProjectionError;
 use crate::filesystem;
 use crate::github;
@@ -85,6 +86,15 @@ pub fn project_feed_dir(
             dedup_and_write_single_type(store, calendar::FEED_TYPE, feed_id, parsed, |p| {
                 p.source_id.clone()
             })?
+        }
+        // Like linear: every snapshot is upserted, and a thread the feed
+        // removed (resolved, or no longer for me) takes its row with it.
+        "drive" if template_name == "drive/comments" => {
+            let parsed = drive_comments::walk_feed_dir(feed_id, feed_dir)?;
+            let keep: Vec<String> = parsed.iter().map(|p| p.source_id.clone()).collect();
+            let outcome = store.write_batch(&parsed)?;
+            store.retain_source_ids(drive_comments::FEED_TYPE, feed_id, &keep)?;
+            outcome
         }
         "drive" => {
             let parsed = drive::walk_feed_dir(feed_id, feed_dir)?;

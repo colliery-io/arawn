@@ -34,7 +34,7 @@ fn feed(id: &str, template: &str) -> FeedDecl {
 }
 
 /// A `work` lens over the standard work sources: mail, calendar, chat,
-/// tickets (Jira, Linear) and code review.
+/// tickets (Jira, Linear), code review and doc comments.
 fn work() -> (Vec<LensDecl>, Vec<FeedDecl>) {
     let feeds = vec![
         feed("gmail-inbox", "gmail/inbox-archive"),
@@ -44,6 +44,7 @@ fn work() -> (Vec<LensDecl>, Vec<FeedDecl>) {
         feed("github-review-queue", "github/review-queue"),
         feed("github-notifications", "github/notifications"),
         feed("linear-mine", "linear/my-issues"),
+        feed("drive-comments", "drive/comments"),
     ];
     let lens = LensDecl {
         name: "work".into(),
@@ -226,7 +227,7 @@ mod tests {
         let (l, f) = profile("work").unwrap();
         let applied = apply(&mut doc, &l, &f).unwrap();
         assert_eq!(applied.added_lenses, ["work"]);
-        assert_eq!(applied.added_feeds.len(), 7);
+        assert_eq!(applied.added_feeds.len(), 8);
         let text = doc.to_string();
         assert!(text.starts_with("# mine\n"));
         let cfg: crate::ArawnConfig = toml::from_str(&text).unwrap();
@@ -270,7 +271,7 @@ params = { label = "Work" }
         assert!(applied.added_lenses.is_empty());
         assert!(applied.kept.contains(&"lens work".to_string()));
         assert!(applied.kept.contains(&"feed gmail-inbox".to_string()));
-        assert_eq!(applied.added_feeds.len(), 6);
+        assert_eq!(applied.added_feeds.len(), 7);
         let cfg: crate::ArawnConfig = toml::from_str(&doc.to_string()).unwrap();
         assert_eq!(cfg.lenses[0].description, "mine, edited");
         assert_eq!(cfg.lenses[0].tags, ["custom"]);

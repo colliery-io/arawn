@@ -144,7 +144,8 @@ impl Integration for GoogleDriveIntegration {
             return None;
         }
         Some(
-            "google_drive (connected; can search, list, read, upload, update, delete files)"
+            "google_drive (connected; can search, list, read, upload, update, delete files; \
+             list and reply to open doc comments)"
                 .to_string(),
         )
     }

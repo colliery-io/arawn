@@ -9,11 +9,14 @@
 use std::sync::Arc;
 
 use arawn_integrations::drive::GoogleDriveIntegration;
+use arawn_integrations::drive::comments::{self as gcomments, CommentsApi, HubCommentsApi};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::error::FeedError;
+
+pub use arawn_integrations::drive::comments::{DocComment, DocMeta, DocReply};
 
 /// One file as feeds care about it. Subset of Google's File resource —
 /// only fields the templates actually read. Kept serializable so
@@ -41,6 +44,13 @@ pub struct DriveFile {
 }
 
 const MIME_FOLDER: &str = "application/vnd.google-apps.folder";
+
+/// The native types that carry comments: Docs, Sheets and Slides.
+pub const COMMENTABLE_MIMES: [&str; 3] = [
+    "application/vnd.google-apps.document",
+    "application/vnd.google-apps.spreadsheet",
+    "application/vnd.google-apps.presentation",
+];
 
 impl DriveFile {
     pub fn folder_mime() -> &'static str {
@@ -78,6 +88,24 @@ pub trait DriveFeedClient: Send + Sync {
         file_id: &str,
         export_mime: Option<&str>,
     ) -> Result<Vec<u8>, FeedError>;
+
+    /// The user's email. Used by `drive/comments` for the for-me filter.
+    async fn about_me(&self) -> Result<String, FeedError>;
+
+    /// The Docs, Sheets and Slides not in the trash that were modified
+    /// or viewed by me after `since`, newest first, following every page.
+    async fn list_touched_docs(&self, since: DateTime<Utc>) -> Result<Vec<DocMeta>, FeedError>;
+
+    /// One file's metadata; `None` when Drive has no such file.
+    async fn get_doc(&self, file_id: &str) -> Result<Option<DocMeta>, FeedError>;
+
+    /// Every comment thread on `file_id` modified at or after
+    /// `start_modified` (all when `None`), deleted ones included.
+    async fn list_comments(
+        &self,
+        file_id: &str,
+        start_modified: Option<&str>,
+    ) -> Result<Vec<DocComment>, FeedError>;
 }
 
 /// Pick the export mime + filename suffix for Google native types.
@@ -110,11 +138,24 @@ const FIELDS_ONE: &str = "id,name,mimeType,size,modifiedTime,md5Checksum,parents
 
 pub struct RealDriveClient {
     integration: Arc<GoogleDriveIntegration>,
+    comments: HubCommentsApi,
 }
 
 impl RealDriveClient {
     pub fn new(integration: Arc<GoogleDriveIntegration>) -> Self {
-        Self { integration }
+        Self {
+            comments: HubCommentsApi::new(Arc::clone(&integration)),
+            integration,
+        }
+    }
+}
+
+/// Errors of the comment calls: a provider message goes through the
+/// same rate-limit / auth sniffing as the other Drive calls.
+fn comments_err(e: arawn_integrations::IntegrationError) -> FeedError {
+    match e {
+        arawn_integrations::IntegrationError::Provider(msg) => google_err("drive comments", msg),
+        other => integ_err(other),
     }
 }
 
@@ -306,6 +347,72 @@ impl DriveFeedClient for RealDriveClient {
         };
         Ok(bytes)
     }
+
+    async fn about_me(&self) -> Result<String, FeedError> {
+        self.comments.about_me().await.map_err(comments_err)
+    }
+
+    async fn list_touched_docs(&self, since: DateTime<Utc>) -> Result<Vec<DocMeta>, FeedError> {
+        let hub = self.integration.hub().map_err(integ_err)?;
+        let t = since.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+        let mimes = COMMENTABLE_MIMES
+            .iter()
+            .map(|m| format!("mimeType = '{m}'"))
+            .collect::<Vec<_>>()
+            .join(" or ");
+        let q = format!(
+            "({mimes}) and trashed = false and (modifiedTime > '{t}' or viewedByMeTime > '{t}')"
+        );
+        let fields = format!("nextPageToken,files({})", gcomments::DOC_FIELDS);
+        let mut all = Vec::new();
+        let mut page_token: Option<String> = None;
+        loop {
+            let mut req = hub
+                .files()
+                .list()
+                .q(&q)
+                .order_by("modifiedTime desc")
+                .page_size(1000)
+                .param("fields", &fields);
+            if let Some(t) = page_token.as_deref() {
+                req = req.page_token(t);
+            }
+            let (_, resp) = req
+                .doit()
+                .await
+                .map_err(|e| google_err("files.list(touched)", e.to_string()))?;
+            all.extend(resp.files.unwrap_or_default().into_iter().map(|f| DocMeta {
+                id: f.id.unwrap_or_default(),
+                name: f.name.unwrap_or_default(),
+                mime_type: f.mime_type.unwrap_or_default(),
+                web_view_link: f.web_view_link,
+                owned_by_me: f.owned_by_me.unwrap_or(false),
+            }));
+            match resp.next_page_token {
+                Some(t) if !t.is_empty() => page_token = Some(t),
+                _ => break,
+            }
+        }
+        Ok(all)
+    }
+
+    async fn get_doc(&self, file_id: &str) -> Result<Option<DocMeta>, FeedError> {
+        match self.comments.doc_meta(file_id).await.map_err(comments_err) {
+            Ok(d) => Ok(Some(d)),
+            Err(FeedError::Provider(msg)) if is_not_found(&msg) => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    async fn list_comments(
+        &self,
+        file_id: &str,
+        start_modified: Option<&str>,
+    ) -> Result<Vec<DocComment>, FeedError> {
+        gcomments::list_comments(&self.comments, file_id, start_modified)
+            .await
+            .map_err(comments_err)
+    }
 }
 
 /// Try a Drive `files.get` against `path_or_id` as a literal id.
@@ -376,6 +483,17 @@ pub(crate) fn is_not_found(provider_msg: &str) -> bool {
     lc.contains("404") || lc.contains("notfound") || lc.contains("not found")
 }
 
+/// A doc that is gone or that the user can no longer see: a 404, or a
+/// 403 that is not a rate limit (rate limits are mapped to
+/// `FeedError::RateLimited` before this is asked).
+pub fn is_gone(provider_msg: &str) -> bool {
+    let lc = provider_msg.to_ascii_lowercase();
+    is_not_found(provider_msg)
+        || lc.contains("403")
+        || lc.contains("forbidden")
+        || lc.contains("insufficientfilepermissions")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -405,6 +523,15 @@ mod tests {
         assert!(!is_not_found("HTTP 500: internal server error"));
         assert!(!is_not_found("HTTP 403: forbidden"));
         assert!(!is_not_found("connection timed out"));
+    }
+
+    #[test]
+    fn is_gone_covers_404_and_403() {
+        assert!(is_gone("comments.list: HTTP 404: notFound"));
+        assert!(is_gone(
+            "comments.list: HTTP 403: insufficientFilePermissions"
+        ));
+        assert!(!is_gone("HTTP 500: internal server error"));
     }
 
     #[test]

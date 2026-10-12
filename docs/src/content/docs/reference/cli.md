@@ -40,7 +40,7 @@ Write a starter `arawn.toml` with one LLM profile into the data directory.
 | `--model <name>` | built-in default | Model name. |
 | `--api-key-env <VAR>` | per provider | The env var that holds the API key, for example `GROQ_API_KEY`. |
 | `--force` | off | Replace an existing `arawn.toml`. |
-| `--profile <name>` | — | Also add a ready-made set of `[[lenses]]` and `[[feeds]]`. `work` adds a `work` lens bound to Gmail, Calendar, Slack, Jira, GitHub and Linear feeds. If `arawn.toml` exists, only the profile entries that are not in the file yet are added. |
+| `--profile <name>` | — | Also add a ready-made set of `[[lenses]]` and `[[feeds]]`. `work` adds a `work` lens bound to Gmail, Calendar, Slack, Jira, GitHub, Linear and Drive comment feeds. If `arawn.toml` exists, only the profile entries that are not in the file yet are added. |
 
 ```sh
 arawn init --profile work

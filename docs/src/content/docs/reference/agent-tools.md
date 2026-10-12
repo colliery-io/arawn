@@ -213,9 +213,16 @@ Available only when the corresponding integration is connected. Resolve via `/in
 
 `calendar_upcoming`, `calendar_create_event`, `calendar_find_conflicts`.
 
-### Google Drive (7)
+### Google Drive (9)
 
 `drive_search`, `drive_list`, `drive_get_metadata`, `drive_read`, `drive_upload`, `drive_update`, `drive_delete`.
+
+Doc comments. Source: `crates/arawn-integrations/src/drive/tools.rs`.
+
+| Tool | Permission | Description |
+|---|---|---|
+| `drive_list_open_comments` | Read — auto-allow | The open comment threads for me (assigned to me, mentioning me, or on a doc I own and not answered by me), from the `drive_comments` projection, newest first. With `file_id`, asks Drive now for that doc's open threads; `reason` is null for a thread that is not for me. `limit` (default 20, max 100). |
+| `drive_reply_to_comment` | Other — asks | Reply to a thread as me: `file_id`, `comment_id`, `body` (plain text, not empty). Never resolves the thread. Gives back the reply id and a link to the thread. |
 
 ### Slack (6)
 

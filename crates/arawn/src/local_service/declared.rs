@@ -729,6 +729,7 @@ mod tests {
         );
         assert_eq!(template_service("github/review-queue"), Some("github"));
         assert_eq!(template_service("linear/my-issues"), Some("linear"));
+        assert_eq!(template_service("drive/comments"), Some("google_drive"));
         assert_eq!(template_service("filesystem/folder"), None);
     }
 }
