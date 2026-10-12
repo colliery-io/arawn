@@ -163,6 +163,61 @@ Every connected service should show as `connected`. Then send the agent a real p
 | Calendar | `what's on my calendar this week?` |
 | Drive | `list the files in my Drive root` |
 
+## Doc comments
+
+With Drive connected, arawn can watch the comment threads on your Docs,
+Sheets and Slides. It uses the same Drive connection and scope: no new
+consent.
+
+Add the `drive/comments` feed. The `work` profile has it; or declare it
+in `arawn.toml`:
+
+```toml
+[[feeds]]
+id = "drive-comments"
+template = "drive/comments"
+params = { lookback_days = 14 }
+```
+
+or in the TUI:
+
+```
+/watch drive/comments drive-comments
+```
+
+Every 30 minutes the feed looks at the docs you modified or opened in
+the last `lookback_days` (default 14), and keeps the open threads that
+are for you:
+
+- assigned to you;
+- mentioning your email, in the comment or a reply;
+- on a doc you own, where the last message is not yours.
+
+A thread leaves the list when it is resolved or deleted, or when you
+reply last on your own doc. A doc you have not opened or changed in the
+lookback is not polled, and its threads stay as they were.
+
+The morning brief lists these threads with the doc, the author, the
+text, the reason and a link that opens the doc on the comment. Once the
+feed has run, the brief leaves out Google's comment emails (from
+`comments-noreply@docs.google.com`), so a mention is not listed twice.
+
+The agent has two tools for them: `drive_list_open_comments` lists the
+threads (or, given a `file_id`, asks Drive about one doc now), and
+`drive_reply_to_comment` replies as you. It asks first, and it never
+resolves a thread: that stays with the people in it.
+
+Try it:
+
+| Prompt |
+|---|
+| `which doc comments are waiting for me?` |
+| `reply to Robin's comment on the Q3 plan: "Confirmed, 4 hires."` |
+
+See [feed templates](../../reference/feed-templates/) for the cursor and
+the file layout, and [projection tables](../../reference/projection-tables/)
+for the `drive_comments` table.
+
 ## Troubleshooting
 
 If the consent screen errors out or `/connect` doesn't work, see [debug OAuth failures](../debug-oauth-failures/) for the symptom → cause → fix table.

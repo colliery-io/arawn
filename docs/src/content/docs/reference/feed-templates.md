@@ -167,6 +167,54 @@ drive/recent/<feed_id>/
       └── <file_id_c>.json
 ```
 
+### `drive/comments`
+
+The open comment threads that are for you, on the Docs, Sheets and
+Slides you have modified or opened lately. One snapshot per thread.
+Feeds the `drive_comments` projection, which the morning brief reads.
+
+| Field | Value |
+|---|---|
+| Optional | `lookback_days: u32` (default 14, 1..=90), `extra_file_ids: [string]` (Drive file ids to poll as well) |
+| Default cadence | `*/30 * * * *` |
+| Auto-create | No — declare it in `[[feeds]]` (the `work` profile does, as `drive-comments`) or `/watch drive/comments` |
+
+```text
+drive/comments/<feed_id>/
+  ├── meta.json                       # cursor: { docs: { <file_id>: <iso> }, lookback_floor }
+  └── <file_id>/
+      └── <comment_id>.json           # snapshot, overwrite: doc_title, link (?disco=),
+                                      # reason, author, content, quoted, assignee,
+                                      # created_time, modified_time, reply_count,
+                                      # last_reply_author, last_reply
+```
+
+**Which docs.** Each run lists the Docs, Sheets and Slides not in the
+trash whose `modifiedTime` or `viewedByMeTime` is after now −
+`lookback_days`, plus `extra_file_ids`. `viewedByMeTime` covers a doc
+where someone commented but nobody changed the text.
+
+**Which threads.** A thread is for you when it is not resolved, not
+deleted, and one of these holds (`reason`):
+
+- `assigned` — it is assigned to you;
+- `mentioned` — your email is mentioned in the comment or a reply;
+- `owner_unanswered` — the doc is yours and the last message is not
+  yours.
+
+A thread that stops being for you (resolved, deleted, or you replied
+last on your own doc) has its snapshot removed, and its projection row
+with it.
+
+**Cursor.** One entry per doc: the newest comment `modifiedTime` seen.
+Each doc is asked for comments changed since its entry (all comments
+the first time). A doc that leaves the lookback is dropped from the
+cursor; its snapshots stay until the doc comes back into the window
+and the thread changes.
+
+**Cost.** One `about.get`, one `files.list` (1,000 docs per page) and
+one `comments.list` per doc per run.
+
 ### `drive/folder-sync`
 
 Rsync-style mirror of a Drive folder onto local disk. Bodies are
@@ -447,6 +495,7 @@ Each `signals.jsonl` line is one change event:
 | `gmail/sender-filter` | every 30 min | No |
 | `calendar/upcoming-archive` | every 30 min | Yes, as `calendar-upcoming` (one per install) |
 | `drive/recent` | every 30 min | Yes, as `drive-recent` (one per install) |
+| `drive/comments` | every 30 min | No (in the `work` profile as `drive-comments`) |
 | `drive/folder-sync` | hourly | No |
 | `jira/project-tracker` | every 30 min | No |
 | `jira/assignee-tracker` | every 30 min | Yes, as `jira-assigned` (one per install) |

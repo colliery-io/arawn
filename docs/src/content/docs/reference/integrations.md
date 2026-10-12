@@ -11,7 +11,7 @@ Source: `crates/arawn-integrations/src/<svc>/`.
 |---|---|---|---|
 | Gmail | OAuth 2.0 | 5 | `gmail/inbox-archive`, `gmail/label-archive`, `gmail/sender-filter` |
 | Google Calendar | OAuth 2.0 | 3 | `calendar/upcoming-archive` |
-| Google Drive | OAuth 2.0 | 7 | `drive/folder-sync`, `drive/recent` |
+| Google Drive | OAuth 2.0 | 9 | `drive/folder-sync`, `drive/recent`, `drive/comments` |
 | Slack | OAuth 2.0 (bot+user dual-token) | 6 | `slack/channel-archive`, `slack/dm-archive`, `slack/my-mentions` |
 | Atlassian (Jira+Confluence) | OAuth 2.0 (3LO) | 11 | `jira/project-tracker`, `jira/assignee-tracker`, `confluence/space-archive` |
 | GitHub | GitHub App (read-only) | 0 (feed-only) | `github/notifications`, `github/issues-and-prs`, `github/review-queue`, `github/repo-mirror` |
@@ -86,6 +86,8 @@ Full read+write (not `.readonly`), so write tools work. If you only want read ac
 | `drive_upload` | Other — asks |
 | `drive_update` | Other — asks |
 | `drive_delete` | Other — asks (delete moves to Drive's trash, not permadelete) |
+| `drive_list_open_comments` | Read — auto-allow |
+| `drive_reply_to_comment` | Other — asks (never resolves the thread) |
 
 **Read-content dispatch.** Google-native files are exported automatically:
 
@@ -98,7 +100,7 @@ Full read+write (not `.readonly`), so write tools work. If you only want read ac
 | Forms / Sites / Scripts | none (open in browser) |
 | Anything else | raw bytes — UTF-8 decoded for text-like MIME, base64 otherwise; capped at 1 MB |
 
-**Feed templates:** `drive/folder-sync`, `drive/recent`.
+**Feed templates:** `drive/folder-sync`, `drive/recent`, `drive/comments` (open doc comments for you; see [connect Google](../../how-to/connect-google/#doc-comments)).
 
 ## Slack
 
