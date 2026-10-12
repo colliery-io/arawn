@@ -1336,7 +1336,7 @@ fn filter_tools_for_context(
 
     // Per-service integration categories — capability-gated, not keyword-gated.
     // Service names come from `Integration::name()` (lowercase snake_case):
-    // gmail, google_calendar, google_drive, slack, atlassian, github.
+    // gmail, google_calendar, google_drive, slack, atlassian, github, linear.
     let is_connected = |service: &str| connected_services.iter().any(|s| s == service);
     if is_connected("google_calendar") {
         active_categories.insert(ToolCategory::Calendar);
@@ -1355,6 +1355,9 @@ fn filter_tools_for_context(
     }
     if is_connected("github") {
         active_categories.insert(ToolCategory::GitHub);
+    }
+    if is_connected("linear") {
+        active_categories.insert(ToolCategory::Linear);
     }
 
     // Web: URL patterns, web/search/fetch/http/api mentions.
@@ -2088,6 +2091,26 @@ mod tests {
             filtered.iter().all(|t| t.name != "slack_post"),
             "slack_post should be dropped when slack capability is absent"
         );
+    }
+
+    #[test]
+    fn linear_tools_follow_the_linear_capability() {
+        let registry = ToolRegistry::new();
+        registry.register(Box::new(CategorizedStub {
+            name_: "linear_set_state",
+            category_: arawn_tool::ToolCategory::Linear,
+        }));
+        let all = vec![tool_def("linear_set_state")];
+        // No Linear keyword in the message: only the capability counts.
+        let session = session_past_iter_1("move the checkout bug to done");
+        let visible = |connected: &[String]| {
+            filter_tools_for_context(&all, &session, &registry, connected, &small_model_limits())
+                .iter()
+                .any(|t| t.name == "linear_set_state")
+        };
+        assert!(visible(&["linear".to_string()]), "connected: in");
+        assert!(!visible(&[]), "not connected: out");
+        assert!(!visible(&["atlassian".to_string()]), "another service: out");
     }
 
     // ─── I-0055 T-C — non-integration keyword routing tests ──────────────

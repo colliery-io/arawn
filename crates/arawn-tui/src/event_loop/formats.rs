@@ -397,7 +397,8 @@ pub(super) fn format_known_templates() -> String {
      - gmail/inbox-archive · gmail/sender-filter · gmail/label-archive\n\
      - drive/folder-sync · drive/recent\n\
      - confluence/space-archive\n\
-     - jira/project-tracker · jira/assignee-tracker\n\n\
+     - jira/project-tracker · jira/assignee-tracker\n\
+     - linear/my-issues\n\n\
      Run `/watch list <template>` to pick a value when the template \
      supports discovery (slack/channel-archive, jira/project-tracker, \
      confluence/space-archive). Use the typed form `/watch <template> \

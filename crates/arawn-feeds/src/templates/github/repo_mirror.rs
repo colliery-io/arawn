@@ -539,6 +539,9 @@ mod tests {
         fn github(&self) -> Option<Arc<dyn Gh>> {
             Some(self.gh.clone())
         }
+        fn linear(&self) -> Option<Arc<dyn crate::clients::LinearFeedClient>> {
+            None
+        }
     }
 
     fn params() -> TemplateParams {

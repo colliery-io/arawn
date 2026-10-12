@@ -38,6 +38,8 @@ const KNOWN_FEED_TYPES: &[&str] = &[
     "github_issue_or_pr_comments",
     // I-0057 local filesystem feed — T-0419.
     "filesystem_signals",
+    // COLLIERY-I-0532 Linear issues.
+    "linear_issues",
 ];
 
 /// RRF constant (Cormack et al. 2009). Same value the memory bench
@@ -66,7 +68,7 @@ impl Tool for FeedSearchTool {
 
     fn description(&self) -> &str {
         "Search the raw projection rows of your continual data feeds (gmail, slack, \
-         drive, jira, confluence, calendar). Hybrid FTS5 + semantic similarity \
+         drive, jira, confluence, calendar, linear). Hybrid FTS5 + semantic similarity \
          (RRF-fused when an embedder is configured); **default limit is 10**, so \
          pass `limit` higher for sweeps where you can't afford to drop items.\n\n\
          **Reach for the live integration tool first when one applies** — \
@@ -106,7 +108,7 @@ impl Tool for FeedSearchTool {
                 "feed_types": {
                     "type": "array",
                     "items": { "type": "string" },
-                    "description": "Restrict to feed types. Defaults to all. Known: gmail_messages, slack_messages, slack_thread_messages, drive_files, jira_issues, jira_comments, jira_history, confluence_pages, calendar_events."
+                    "description": "Restrict to feed types. Defaults to all. Known: gmail_messages, slack_messages, slack_thread_messages, drive_files, jira_issues, jira_comments, jira_history, confluence_pages, calendar_events, linear_issues."
                 },
                 "since": {
                     "type": "string",
@@ -383,6 +385,7 @@ mod tests {
                 arawn_projections::github::ISSUE_OR_PR_COMMENTS_FEED_TYPE,
                 "github_issue_or_pr_comments",
             ),
+            (arawn_projections::linear::FEED_TYPE, "linear_issues"),
         ];
         for (proj_const, hardcoded) in pairs {
             assert_eq!(

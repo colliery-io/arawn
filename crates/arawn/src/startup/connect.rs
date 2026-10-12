@@ -74,13 +74,21 @@ fn known_service_names() -> Vec<&'static str> {
         .map(|p| p.service_name())
         .collect();
     v.push(arawn_integrations::github::SERVICE_NAME);
+    v.push(arawn_integrations::linear::SERVICE_NAME);
     v
+}
+
+/// Services set up by `arawn setup` alone, with no browser flow to run
+/// (an API key: Linear).
+fn setup_only(service: &str) -> bool {
+    service == arawn_integrations::linear::SERVICE_NAME
 }
 
 /// Turn the user's names into registry names. An exact service name
 /// (`gmail`) always means only that service, loaded or not. `google`
 /// expands to the three Google services, `calendar`/`drive` to one, and
-/// `jira`/`confluence` mean `atlassian`.
+/// `jira`/`confluence` mean `atlassian`. `--all` leaves out the services
+/// that only `arawn setup` connects.
 fn expand(
     requested: &[String],
     all: bool,
@@ -89,7 +97,7 @@ fn expand(
     if all {
         return Ok(registry
             .iter()
-            .filter(|r| !r.connected)
+            .filter(|r| !r.connected && !setup_only(&r.name))
             .map(|r| r.name.clone())
             .collect());
     }
@@ -251,6 +259,21 @@ pub async fn run_connect(
             failures.push(service.clone());
             continue;
         };
+        if row.connected && setup_only(service) {
+            writeln!(
+                out,
+                "{service}: already connected. To replace the key: arawn setup {service}"
+            )?;
+            continue;
+        }
+        if setup_only(service) {
+            writeln!(
+                out,
+                "{service}: uses an API key, not a browser sign-in. Run: arawn setup {service}"
+            )?;
+            failures.push(service.clone());
+            continue;
+        }
         if row.connected {
             writeln!(
                 out,
@@ -613,6 +636,32 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn linear_gives_the_setup_hint_and_starts_no_flow() {
+        let opened = Default::default();
+        let mut fake = Fake::new(&[("linear", false)]);
+        let (r, out) = run(&mut fake, opts(&["linear"], false), &opened).await;
+        assert!(r.is_err());
+        assert!(out.contains("linear: uses an API key"), "{out}");
+        assert!(out.contains("Run: arawn setup linear"), "{out}");
+        assert!(fake.started.is_empty());
+
+        let mut fake = Fake::new(&[("linear", true)]);
+        let (r, out) = run(&mut fake, opts(&["linear"], false), &opened).await;
+        r.unwrap();
+        assert!(
+            out.contains("To replace the key: arawn setup linear"),
+            "{out}"
+        );
+
+        // --all never tries it: there is nothing a browser can do.
+        let mut fake = Fake::new(&[("linear", false), ("slack", false)])
+            .on("slack", vec![notice("integration", "slack connected")]);
+        let (r, _) = run(&mut fake, opts(&[], true), &opened).await;
+        r.unwrap();
+        assert_eq!(fake.started, ["slack"]);
+    }
+
+    #[tokio::test]
     async fn failure_notice_fails_the_command_with_the_server_message() {
         let mut fake = Fake::new(&[("atlassian", false)]).on(
             "atlassian",
@@ -655,9 +704,9 @@ mod tests {
     async fn unknown_name_lists_what_the_server_has() {
         let mut fake = Fake::new(&[("slack", false), ("gmail", false)]);
         let opened = Default::default();
-        let (r, _) = run(&mut fake, opts(&["linear"], false), &opened).await;
+        let (r, _) = run(&mut fake, opts(&["notion"], false), &opened).await;
         let msg = format!("{}", r.unwrap_err());
-        assert!(msg.contains("unknown service: linear"), "{msg}");
+        assert!(msg.contains("unknown service: notion"), "{msg}");
         assert!(msg.contains("gmail, slack"), "{msg}");
     }
 

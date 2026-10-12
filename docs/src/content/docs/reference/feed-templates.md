@@ -3,9 +3,9 @@ title: "Feed templates"
 ---
 *Reference. Every shipped feed template with parameters, cadence, and on-disk layout.*
 
-Seventeen templates ship today across eight providers. This page is the contract the agent reads — what params each takes, what cadence it runs on, and what lands on disk.
+Eighteen templates ship today across nine providers. This page is the contract the agent reads — what params each takes, what cadence it runs on, and what lands on disk.
 
-(An 18th "stub/echo" template is registered as a test fixture and isn't user-facing.)
+(A 19th "stub/echo" template is registered as a test fixture and isn't user-facing.)
 
 > Paths below are shown relative to `~/.arawn/data/`. So
 > `slack/channel-archive/design/...` means
@@ -343,6 +343,42 @@ github/repo-mirror/<feed_id>/<owner>/<name>/
 
 Per-row JSON files in nested kind directories — not flat JSONL. The on-disk layout is shared by single-repo and org-expanded variants; the org URI just creates N feeds, each with one repo's worth of state.
 
+## Linear
+
+### `linear/my-issues`
+
+Personal feed: the Linear issues assigned to you or created by you,
+updated since the cursor. One snapshot per issue, keyed by the
+issue's stable id (an issue that moves to another team keeps its
+directory). Feeds the `linear_issues` projection, which the morning
+brief reads for urgent and due-soon issues.
+
+| Field | Value |
+|---|---|
+| Param | `since` (optional, first run only: how far back to start) |
+| Default cadence | `*/30 * * * *` |
+| Auto-create | Yes — `linear-mine`, at server start once `arawn setup linear` has saved a key |
+
+```text
+linear/my-issues/linear-mine/
+  ├── meta.json                       # cursor: { latest_updated_iso }
+  └── <issue id>/
+      └── issue.json                  # snapshot, overwrite: identifier, title,
+                                      # description, state {name, type}, priority,
+                                      # priority_label, due_date, team, labels,
+                                      # assignee, creator, assigned_to_me, url,
+                                      # created_at, updated_at, last 10 comments
+```
+
+Each run asks for `updatedAt > cursor` and follows every page (50
+issues each). An issue that is reassigned away from you, and that you
+did not create, drops out of that query. So each run also fetches by id
+(50 per request) every open snapshot still marked `assigned_to_me` that
+the query did not return, and rewrites it; a snapshot whose issue no
+longer comes back (deleted, archived, or out of the key's teams) is
+removed, and its projection row with it. A rate-limited run writes what
+it got and leaves the cursor where it was; the next run continues.
+
 ## Filesystem
 
 ### `filesystem/folder`
@@ -419,6 +455,7 @@ Each `signals.jsonl` line is one change event:
 | `github/issues-and-prs` | every 30 min | No |
 | `github/review-queue` | every 30 min | No |
 | `github/repo-mirror` | every 30 min | No (registered by lens bind) |
+| `linear/my-issues` | every 30 min | Yes, as `linear-mine` (one per install; at server start, as Linear has no connect step) |
 | `filesystem/folder` | every 15 min | No |
 
 When you connect a service, arawn makes its default feed, if no feed of that template exists yet. An older install can have the default feed under the ID `me` or `primary`. arawn keeps that feed and does not make a second one.

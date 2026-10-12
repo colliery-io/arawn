@@ -314,6 +314,7 @@ pub fn projection_feed_types_for(template_name: &str) -> Vec<String> {
         "confluence" => vec!["confluence_pages".into()],
         "calendar" => vec!["calendar_events".into()],
         "filesystem" => vec!["filesystem_signals".into()],
+        "linear" => vec!["linear_issues".into()],
         _ => Vec::new(),
     }
 }

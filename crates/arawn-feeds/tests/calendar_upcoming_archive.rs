@@ -78,6 +78,9 @@ impl FeedClients for MockClients {
     fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
         None
     }
+    fn linear(&self) -> Option<Arc<dyn arawn_feeds::LinearFeedClient>> {
+        None
+    }
 }
 
 fn event(id: &str, summary: &str, start: &str) -> Value {
@@ -298,6 +301,9 @@ async fn returns_auth_when_calendar_not_connected() {
             None
         }
         fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
+            None
+        }
+        fn linear(&self) -> Option<Arc<dyn arawn_feeds::LinearFeedClient>> {
             None
         }
     }

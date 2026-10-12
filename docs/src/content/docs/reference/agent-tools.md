@@ -237,4 +237,19 @@ Available only when the corresponding integration is connected. Resolve via `/in
 
 GitHub is read-only via the four feed templates (`github/notifications`, `github/issues-and-prs`, `github/review-queue`, `github/repo-mirror`). No agent tools today; v2 may add issue creation / PR comments.
 
+### Linear (6)
+
+Source: `crates/arawn-integrations/src/linear/tools.rs`. Available when `arawn setup linear` has saved an API key.
+
+| Tool | Permission | Description |
+|---|---|---|
+| `linear_list_my_issues` | Read — auto-allow | Issues assigned to me or created by me, newest update first. `state`: `open` (default), `closed`, `all`; `limit` (default 25, max 100). |
+| `linear_get_issue` | Read — auto-allow | One issue by identifier (`ENG-123`) or id, with description, labels and the ten newest comments. |
+| `linear_comment` | Other — asks | Add a Markdown comment. |
+| `linear_set_state` | Other — asks | Move to a workflow state by name, case-insensitive, resolved in the issue's team. An unknown name lists the valid states. |
+| `linear_set_assignee` | Other — asks | `me`, a team member's email or display name, or `none` to unassign. An unknown name lists the team's members. |
+| `linear_set_priority` | Other — asks | `0`–`4` or `none`, `urgent`, `high`, `medium`, `low`. |
+
+Each write gives back the new value and the issue URL.
+
 See [integrations reference](../integrations/) for per-provider OAuth + permission-prompt details.

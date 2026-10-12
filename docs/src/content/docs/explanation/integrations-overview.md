@@ -10,11 +10,13 @@ An **integration** wires arawn to one external account — your Gmail, your Slac
 1. A handful of agent **tools** register (`gmail_search`, `slack_post`, `jira_get_issue`, …) — the agent can read and act on that provider during a turn.
 2. **Feed templates** for that provider become usable — recurring ingest jobs that mirror data locally for grep-friendly access. See the [feeds explanation](../feeds/).
 
-Today arawn ships integrations for Google (Gmail + Calendar + Drive), Slack, Atlassian (Jira + Confluence), and GitHub. The exact tools-per-provider and feed templates are in the [integrations reference](../../reference/integrations/).
+Today arawn ships integrations for Google (Gmail + Calendar + Drive), Slack, Atlassian (Jira + Confluence), GitHub, and Linear. The exact tools-per-provider and feed templates are in the [integrations reference](../../reference/integrations/).
 
 ## The BYO reality
 
 Connecting an integration today is a **bring-your-own-OAuth-app** affair. You register an OAuth app at the provider (Google Cloud Console, api.slack.com, developer.atlassian.com), copy the credentials into arawn, then `/connect <svc>`. The fact that you have to register an app at all is a documented v1 trade-off — initiative I-0037 covers the longer-term plan to ship a vendor-owned shared OAuth client so users can `/connect` without any pre-setup. Until that lands, BYO is the path.
+
+**Linear is the exception.** It takes a personal API key, which you create in Linear's settings in a minute: no app to register, no consent screen, no `/connect`. `arawn setup linear` checks the key and saves it encrypted; the integration is connected from then on. One key is one user in one workspace. See [connect Linear](../../how-to/connect-linear/).
 
 If you've never set up an OAuth integration before, read the [OAuth primer](../oauth-primer/) first. It explains what a client_id is, what scopes mean, and what the "this app is unverified" warning is about. The per-provider how-tos assume that vocabulary.
 
@@ -55,11 +57,13 @@ The [debug OAuth failures how-to](../../how-to/debug-oauth-failures/) covers the
 
 After `/connect` completes, the access + refresh tokens get stored encrypted under `<data_dir>/tokens/<provider>.json.enc` using ChaCha20-Poly1305 with a key generated once at `<data_dir>/tokens/key.bin`. Tokens never leave the machine. `/disconnect <svc>` deletes the file; revoking the provider-side authorization is a separate step (see the [OAuth primer](../oauth-primer/#what-arawn-does-with-the-tokens)).
 
+Credentials that are not OAuth tokens (the GitHub App installation, the Linear API key) live under `<data_dir>/integrations/<service>/<service>.bin`, encrypted with the same key.
+
 ## Start here
 
 The fastest path is `arawn setup`. It shows each provider's console steps and scopes, asks for the credentials, and writes `arawn.toml` for you. See [`arawn setup`](../../reference/cli/#arawn-setup). The pages below give the full detail.
 
 1. **Concept:** [OAuth primer](../oauth-primer/) — read first if you're new to OAuth.
 2. **Reference:** [Integrations config](../../reference/integrations-config/) — exact env var names and TOML keys; [Integrations reference](../../reference/integrations/) — per-provider tools and scopes.
-3. **Walkthroughs:** [Google](../../how-to/connect-google/), [Slack](../../how-to/connect-slack/), [Atlassian](../../how-to/connect-atlassian/), [GitHub](../../how-to/connect-github/).
+3. **Walkthroughs:** [Google](../../how-to/connect-google/), [Slack](../../how-to/connect-slack/), [Atlassian](../../how-to/connect-atlassian/), [GitHub](../../how-to/connect-github/), [Linear](../../how-to/connect-linear/).
 4. **When something breaks:** [Debug OAuth failures](../../how-to/debug-oauth-failures/).

@@ -92,15 +92,16 @@ async fn main() -> Result<()> {
             #[arg(long)]
             profile: Option<String>,
         },
-        /// Set up integrations (Google, Slack, Atlassian, GitHub) step by step
+        /// Set up integrations (Google, Slack, Atlassian, GitHub, Linear) step by step
         #[command(after_help = "Examples:\n  \
             arawn setup                       Walk through every provider\n  \
             arawn setup slack                 Set up one provider\n  \
             arawn setup google --client-id ID --client-secret SECRET\n  \
             arawn setup atlassian --client-id ID --secret-from-env\n  \
-            arawn setup github --app-id 42 --app-slug my-app --private-key-path ~/app.pem")]
+            arawn setup github --app-id 42 --app-slug my-app --private-key-path ~/app.pem\n  \
+            ARAWN_LINEAR_API_KEY=lin_api_… arawn setup linear")]
         Setup {
-            /// Provider to set up: google, slack, atlassian or github. Omit it to walk through all.
+            /// Provider to set up: google, slack, atlassian, github or linear. Omit it to walk through all.
             provider: Option<String>,
             /// OAuth client ID (no prompts)
             #[arg(long)]
@@ -266,6 +267,13 @@ async fn main() -> Result<()> {
             app_id: app_id.clone(),
             app_slug: app_slug.clone(),
             private_key_path: private_key_path.clone(),
+            // Only `arawn setup linear` reads the key from the environment;
+            // the server never does (COLLIERY-I-0532).
+            linear_api_key: provider
+                .as_deref()
+                .filter(|p| p.eq_ignore_ascii_case("linear"))
+                .and_then(|_| std::env::var("ARAWN_LINEAR_API_KEY").ok())
+                .filter(|k| !k.is_empty()),
             llm_provider: llm_provider.clone(),
         };
         let interactive = std::io::stdin().is_terminal();
@@ -1499,6 +1507,7 @@ async fn main() -> Result<()> {
         // slow provider must not hold the server in not-ready.
         service.set_declared(config.lenses.clone(), config.feeds.clone());
         let reconcile = service.reconcile_ctx();
+        let setup_only_feeds = service.setup_only_default_feeds();
         tokio::spawn(async move {
             let report = reconcile.reconcile().await;
             if !report.done.is_empty() || !report.waiting.is_empty() || !report.problems.is_empty()
@@ -1510,6 +1519,9 @@ async fn main() -> Result<()> {
                     "arawn.toml lenses and feeds reconciled"
                 );
             }
+            // After the reconcile, so a declared feed of the same
+            // template wins and the default is skipped.
+            setup_only_feeds.await;
         });
 
         // ARAWN-I-0068 P2-1: all post-startup wiring (feeds, ceremonies,

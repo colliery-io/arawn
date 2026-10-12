@@ -23,6 +23,7 @@ pub mod drive;
 pub mod filesystem;
 pub mod github;
 pub mod gmail;
+pub mod linear;
 pub mod slack;
 
 pub use atlassian::{
@@ -38,6 +39,7 @@ pub use filesystem::{
 };
 pub use github::{GithubFeedClient, RealGithubClient};
 pub use gmail::{GmailFeedClient, RealGmailClient};
+pub use linear::{LinearFeedClient, LinearIssue, LinearIssuePage, RealLinearClient};
 pub use slack::{
     ChannelKind, RealSlackClient, SlackAuthInfo, SlackChannel, SlackFeedClient, SlackHistoryPage,
     classify_channel_id,
@@ -53,6 +55,7 @@ pub trait FeedClients: Send + Sync {
     fn drive(&self) -> Option<Arc<dyn DriveFeedClient>>;
     fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>>;
     fn github(&self) -> Option<Arc<dyn GithubFeedClient>>;
+    fn linear(&self) -> Option<Arc<dyn LinearFeedClient>>;
 }
 
 /// No-op `FeedClients`: every provider returns `None`. Useful for
@@ -79,6 +82,9 @@ impl FeedClients for NoopClients {
     fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
         None
     }
+    fn linear(&self) -> Option<Arc<dyn LinearFeedClient>> {
+        None
+    }
 }
 
 /// Production bundle. Built at server boot from the integrations the
@@ -92,6 +98,7 @@ pub struct RealClients {
     drive: Option<Arc<dyn DriveFeedClient>>,
     atlassian: Option<Arc<dyn AtlassianFeedClient>>,
     github: Option<Arc<dyn GithubFeedClient>>,
+    linear: Option<Arc<dyn LinearFeedClient>>,
 }
 
 impl RealClients {
@@ -146,6 +153,14 @@ impl RealClients {
         self.github = Some(Arc::new(RealGithubClient::new(integration)));
         self
     }
+
+    pub fn with_linear(
+        mut self,
+        integration: Arc<arawn_integrations::linear::LinearIntegration>,
+    ) -> Self {
+        self.linear = Some(Arc::new(RealLinearClient::new(integration)));
+        self
+    }
 }
 
 impl FeedClients for RealClients {
@@ -166,5 +181,8 @@ impl FeedClients for RealClients {
     }
     fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
         self.github.clone()
+    }
+    fn linear(&self) -> Option<Arc<dyn LinearFeedClient>> {
+        self.linear.clone()
     }
 }
