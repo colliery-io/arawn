@@ -576,6 +576,37 @@ async fn main() -> Result<()> {
         // Idempotent.
         arawn_integrations::install_default_crypto_provider();
 
+        // One-time move of a single-workspace Slack install to
+        // slack@<alias> (COLLIERY-I-0520), before the integrations,
+        // permission rules and feeds load. It may rewrite the Slack
+        // permission rules in arawn.toml; the notice says so.
+        let slack_migration_notice = {
+            let data = std::path::PathBuf::from(&data_dir);
+            let mut settings = vec![std::path::PathBuf::from(&bootstrap_dir).join("arawn.toml")];
+            let in_data = data.join("arawn.toml");
+            if !settings.contains(&in_data) {
+                settings.push(in_data);
+            }
+            match arawn_bin::startup::slack_migration::migrate(
+                &data,
+                &settings,
+                &arawn_bin::startup::slack_migration::AuthTest,
+            )
+            .await
+            {
+                Ok(Some(report)) => {
+                    let notice = report.notice();
+                    warn!("{notice}");
+                    Some(notice)
+                }
+                Ok(None) => None,
+                Err(e) => {
+                    warn!(error = %e, "Slack workspace migration failed; it runs again on the next start");
+                    None
+                }
+            }
+        };
+
         // Install the process-wide token usage tracker *before* the
         // pool builds — the pool wraps every entry in a
         // `UsageTrackingClient` decorator that calls into the
@@ -1329,6 +1360,17 @@ async fn main() -> Result<()> {
         }
         // ARAWN-I-0061: no lens_promote — there is no "promotion" into a lens.
         // Lenses are standing extractors over the corpus; memory is global.
+
+        // The Slack migration ran before the service existed; tell its
+        // subscribers too (the log already has it).
+        if let Some(message) = slack_migration_notice {
+            let _ = service.notice_sender().send(arawn_service::ServerNotice {
+                level: "warn".into(),
+                category: "integration".into(),
+                message,
+                timestamp: chrono::Utc::now().to_rfc3339(),
+            });
+        }
 
         // OAuth integrations (Gmail, Calendar, Drive, Atlassian, GitHub, Slack).
         // See `startup::integrations`.
