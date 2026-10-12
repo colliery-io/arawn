@@ -215,7 +215,7 @@ An install from before workspaces were named is moved once, the first time the n
 
 - The token moves from `slack` to `slack@<alias>`. The alias comes from the team stored with the token; if none is stored arawn asks Slack (`auth.test`), else it uses `default`. You do not reconnect.
 - Every `slack/*` feed gets `workspace = "<alias>"`, and its stored messages get the workspace.
-- In `arawn.toml`, permission rules that name an old tool (`slack_post`, `slack_history(...)`) are rewritten to the new name (`slack_acme_post`), and each `[[feeds]]` Slack entry gets `workspace` in its params. The file is backed up first as `arawn.toml.pre-slack-workspaces`. This is the only change arawn makes outside its data directory. Rules with `*` (`slack_*`) still match and are left alone.
+- In `arawn.toml`, permission rules that name an old tool (`slack_post`, `slack_history(...)`) are rewritten. An `allow` rule names the migrated workspace's tool (`slack_acme_post`); a `deny` or `ask` rule becomes a glob over every workspace (`slack_*_post`), so a workspace you connect later is held by it too. Each `[[feeds]]` Slack entry gets `workspace` in its params. The file is backed up first as `arawn.toml.pre-slack-workspaces`. This is the only change arawn makes outside its data directory. Rules with `*` (`slack_*`) still match and are left alone.
 - The server log and an `[integration]` notice say what changed.
 
 The move is recorded in `<data_dir>/slack-migration.json`. If the server stops part-way, the next start finishes it with the same alias. Once done it does not run again.

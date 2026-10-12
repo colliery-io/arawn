@@ -13,8 +13,10 @@
 //!    row and its `meta.json`), and their projection rows get the
 //!    `workspace` column;
 //! 4. permission rules that name an old tool (`slack_post`,
-//!    `slack_history(...)`) are rewritten to `slack_<alias>_<op>` in the
-//!    given arawn.toml files, each backed up first next to itself; in the
+//!    `slack_history(...)`) are rewritten in the given arawn.toml files:
+//!    `allow` to the alias's tool (`slack_<alias>_<op>`), `deny` and `ask`
+//!    to every workspace's (`slack_*_<op>`), so a workspace connected
+//!    later is held by the same rule. Each file is each backed up first next to itself; in the
 //!    same files a `[[feeds]]` Slack entry gets `workspace` in its params,
 //!    so it still matches the bound feed. These are the only files
 //!    written outside the data dir;
@@ -125,8 +127,10 @@ impl MigrationReport {
             }
             s.push_str(&format!(
                 " Changed in arawn.toml (the only change outside the data dir): {}. \
-                 Backup: {}.",
+                 deny and ask rules now cover every Slack workspace; allow rules only \
+                 slack@{}. Backup: {}.",
                 changes.join("; "),
+                self.alias,
                 files.join(", ")
             ));
         }
@@ -279,18 +283,33 @@ fn bind_feeds(
     Ok(on_alias)
 }
 
-/// `slack_<op>` or `slack_<op>(content)` → the alias's tool, keeping the
-/// content pattern. `None` when the rule names no old Slack tool (globs
-/// such as `slack_*` already match the new names).
-pub fn rewrite_rule(spec: &str, alias: &str) -> Option<String> {
+/// Which tools a rewritten rule names.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuleScope {
+    /// The migrated workspace's tool, `slack_<alias>_<op>` (allow).
+    Alias,
+    /// Every workspace's, `slack_*_<op>` (deny, ask): a workspace
+    /// connected later must not escape a deny or an ask.
+    AnyWorkspace,
+}
+
+/// `slack_<op>` or `slack_<op>(content)` → the new tool name for
+/// `scope`, keeping the content pattern. `None` when the rule names no
+/// old Slack tool (globs such as `slack_*` already match the new names).
+pub fn rewrite_rule(spec: &str, alias: &str, scope: RuleScope) -> Option<String> {
     let (tool, rest) = match spec.find('(') {
         Some(i) => spec.split_at(i),
         None => (spec, ""),
     };
     let op = tool.strip_prefix("slack_")?;
-    SLACK_TOOL_OPS
-        .contains(&op)
-        .then(|| format!("{}{rest}", tool_name(alias, op)))
+    if !SLACK_TOOL_OPS.contains(&op) {
+        return None;
+    }
+    let tool = match scope {
+        RuleScope::Alias => tool_name(alias, op),
+        RuleScope::AnyWorkspace => format!("slack_*_{op}"),
+    };
+    Some(format!("{tool}{rest}"))
 }
 
 /// Rewrite the old Slack tool names in `[permissions]` allow / deny / ask
@@ -311,8 +330,13 @@ fn rewrite_settings(file: &Path, alias: &str, report: &mut MigrationReport) -> R
             let Some(arr) = perms.get_mut(list).and_then(|v| v.as_array_mut()) else {
                 continue;
             };
+            let scope = if list == "allow" {
+                RuleScope::Alias
+            } else {
+                RuleScope::AnyWorkspace
+            };
             for v in arr.iter_mut() {
-                let Some(new) = v.as_str().and_then(|s| rewrite_rule(s, alias)) else {
+                let Some(new) = v.as_str().and_then(|s| rewrite_rule(s, alias, scope)) else {
                     continue;
                 };
                 let old = v.as_str().unwrap_or_default().to_string();
@@ -579,11 +603,8 @@ template = "gmail/inbox-archive"
                 "Read"
             ]
         );
-        assert_eq!(p.deny, ["slack_acme_corp_post(#general)"]);
-        assert_eq!(
-            p.ask,
-            ["slack_acme_corp_react", "slack_*", "slack_open_dm_extra"]
-        );
+        assert_eq!(p.deny, ["slack_*_post(#general)"]);
+        assert_eq!(p.ask, ["slack_*_react", "slack_*", "slack_open_dm_extra"]);
         assert!(text.starts_with("# my settings\n"), "{text}");
         assert!(text.contains("# ask before reacting"), "{text}");
         assert_eq!(report.rules_rewritten.len(), 4);
@@ -597,7 +618,8 @@ template = "gmail/inbox-archive"
         assert_eq!(std::fs::read_to_string(&backup).unwrap(), SETTINGS);
         let notice = report.notice();
         assert!(notice.contains("slack@acme-corp"), "{notice}");
-        assert!(notice.contains("slack_post(#general) -> slack_acme_corp_post(#general)"));
+        assert!(notice.contains("slack_post(#general) -> slack_*_post(#general)"));
+        assert!(notice.contains("deny and ask rules now cover every Slack workspace"));
         assert!(notice.contains("outside the data dir"), "{notice}");
 
         // A second run changes nothing.
@@ -649,7 +671,7 @@ template = "gmail/inbox-archive"
         assert!(!r.token_moved);
         assert_eq!(feed_params(data, "slack-mentions")["workspace"], "acme");
         let text = std::fs::read_to_string(&settings).unwrap();
-        assert!(text.contains("\"slack_acme_post(#general)\""), "{text}");
+        assert!(text.contains("\"slack_*_post(#general)\""), "{text}");
     }
 
     #[tokio::test]
@@ -661,16 +683,53 @@ template = "gmail/inbox-archive"
 
     #[test]
     fn rewrite_rule_cases() {
+        use RuleScope::{Alias, AnyWorkspace};
         assert_eq!(
-            rewrite_rule("slack_post", "acme").as_deref(),
+            rewrite_rule("slack_post", "acme", Alias).as_deref(),
             Some("slack_acme_post")
         );
         assert_eq!(
-            rewrite_rule("slack_history(C1*)", "a-b").as_deref(),
+            rewrite_rule("slack_post", "acme", AnyWorkspace).as_deref(),
+            Some("slack_*_post")
+        );
+        assert_eq!(
+            rewrite_rule("slack_history(C1*)", "a-b", Alias).as_deref(),
             Some("slack_a_b_history(C1*)")
         );
-        assert_eq!(rewrite_rule("slack_*", "acme"), None);
-        assert_eq!(rewrite_rule("slack_acme_post", "acme"), None);
-        assert_eq!(rewrite_rule("Read", "acme"), None);
+        assert_eq!(
+            rewrite_rule("slack_history(C1*)", "a-b", AnyWorkspace).as_deref(),
+            Some("slack_*_history(C1*)")
+        );
+        for scope in [Alias, AnyWorkspace] {
+            assert_eq!(rewrite_rule("slack_*", "acme", scope), None);
+            assert_eq!(rewrite_rule("slack_*_post", "acme", scope), None);
+            assert_eq!(rewrite_rule("slack_acme_post", "acme", scope), None);
+            assert_eq!(rewrite_rule("Read", "acme", scope), None);
+        }
+    }
+
+    #[test]
+    fn a_workspace_glob_matches_only_its_op_in_every_workspace() {
+        use arawn_engine::permissions::RuleKind;
+        // Aliases have `-`, so tool names have `_` inside the alias part:
+        // the glob still keys on the op at the end.
+        for op in SLACK_TOOL_OPS {
+            let rule =
+                arawn_engine::PermissionRule::parse(RuleKind::Deny, &format!("slack_*_{op}"));
+            for alias in ["acme", "acme-corp", "a-b-c", "post", "users"] {
+                for other in SLACK_TOOL_OPS {
+                    let name = tool_name(alias, other);
+                    assert_eq!(
+                        rule.matches(&name, "{}"),
+                        op == other,
+                        "slack_*_{op} vs {name}"
+                    );
+                }
+            }
+        }
+        // The content part still applies.
+        let rule = arawn_engine::PermissionRule::parse(RuleKind::Deny, "slack_*_post(#general)");
+        assert!(rule.matches("slack_acme_corp_post", "#general"));
+        assert!(!rule.matches("slack_acme_corp_post", "#random"));
     }
 }

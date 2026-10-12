@@ -232,7 +232,7 @@ Each connected workspace `slack@<alias>` has its own six tools, `slack_<alias>_<
 
 The names carry the alias even with one workspace. Each description starts with `[Slack workspace slack@acme]`. The tools appear when the workspace connects and go when it disconnects, with no restart. A permission rule can cover every workspace with a glob, such as `slack_*_post`. See [connect Slack](../../how-to/connect-slack/#tools-and-permission-rules).
 
-> **Note:** before workspaces were named the tools were `slack_list_channels`, `slack_post`, and so on; the [upgrade](../../how-to/connect-slack/#upgrading-from-one-workspace) rewrites permission rules that name them. `slack_search` is deferred and not in the registry.
+> **Note:** before workspaces were named the tools were `slack_list_channels`, `slack_post`, and so on; the [upgrade](../../how-to/connect-slack/#upgrading-from-one-workspace) rewrites permission rules that name them (`deny` and `ask` to `slack_*_<op>`, `allow` to the migrated workspace's tool). `slack_search` is deferred and not in the registry.
 
 ### Atlassian — Jira (6)
 
