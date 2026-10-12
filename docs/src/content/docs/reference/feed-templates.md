@@ -208,12 +208,15 @@ with it.
 
 **Cursor.** One entry per doc: the newest comment `modifiedTime` seen.
 Each doc is asked for comments changed since its entry (all comments
-the first time). A doc that leaves the lookback is dropped from the
-cursor; its snapshots stay until the doc comes back into the window
-and the thread changes.
+the first time). A doc that leaves the lookback but still holds a
+snapshot is polled each run and kept in the cursor until its last
+snapshot goes, so a resolve or your reply still clears it. A doc with
+no snapshot left drops out of the cursor. A doc that is gone or no
+longer shared with you (404 or 403) has its snapshots removed.
 
 **Cost.** One `about.get`, one `files.list` (1,000 docs per page) and
-one `comments.list` per doc per run.
+one `comments.list` per doc per run, plus one `files.get` per doc
+outside the lookback that still holds a snapshot.
 
 ### `drive/folder-sync`
 

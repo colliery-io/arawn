@@ -794,6 +794,48 @@ mod tests {
         assert!(out.iter().any(|r| r.source_kind == "gmail"));
     }
 
+    /// End to end from the feed's snapshots: when the feed removes a
+    /// thread's snapshot (resolved, or its doc gone), it leaves the brief.
+    #[tokio::test(flavor = "current_thread")]
+    async fn a_removed_doc_comment_snapshot_leaves_the_brief() {
+        let (projections, store, tmp) = make_store_pair();
+        let feed_dir = tmp.path().join("drive-comments");
+        let dir = feed_dir.join("F1");
+        std::fs::create_dir_all(&dir).unwrap();
+        let snap = serde_json::json!({
+            "file_id": "F1", "comment_id": "C1", "doc_title": "Q3 plan",
+            "reason": "mentioned", "author": "Robin", "content": "Check this",
+            "modified_time": "2026-09-01T00:00:00+00:00",
+        });
+        std::fs::write(dir.join("C1.json"), snap.to_string()).unwrap();
+        let project = || {
+            arawn_projections::project_feed_dir(
+                &projections,
+                "drive/comments",
+                "drive-comments",
+                &feed_dir,
+            )
+            .unwrap();
+        };
+        let end = DateTime::parse_from_rfc3339("2026-10-07T07:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let start = end - Duration::hours(24);
+        let src = ProjectionsAttentionSource::new(Arc::clone(&projections), store);
+        let comments = |out: Vec<SignalRow>| {
+            out.into_iter()
+                .filter(|r| r.source_kind == "drive_comment")
+                .count()
+        };
+
+        project();
+        assert_eq!(comments(src.between(start, end, 10).await.unwrap()), 1);
+
+        std::fs::remove_dir_all(&dir).unwrap();
+        project();
+        assert_eq!(comments(src.between(start, end, 10).await.unwrap()), 0);
+    }
+
     /// Google's comment notification email is left out once the comments
     /// feed has rows, and kept before that.
     #[tokio::test(flavor = "current_thread")]

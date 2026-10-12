@@ -483,6 +483,17 @@ pub(crate) fn is_not_found(provider_msg: &str) -> bool {
     lc.contains("404") || lc.contains("notfound") || lc.contains("not found")
 }
 
+/// A doc that is gone or that the user can no longer see: a 404, or a
+/// 403 that is not a rate limit (rate limits are mapped to
+/// `FeedError::RateLimited` before this is asked).
+pub fn is_gone(provider_msg: &str) -> bool {
+    let lc = provider_msg.to_ascii_lowercase();
+    is_not_found(provider_msg)
+        || lc.contains("403")
+        || lc.contains("forbidden")
+        || lc.contains("insufficientfilepermissions")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -512,6 +523,15 @@ mod tests {
         assert!(!is_not_found("HTTP 500: internal server error"));
         assert!(!is_not_found("HTTP 403: forbidden"));
         assert!(!is_not_found("connection timed out"));
+    }
+
+    #[test]
+    fn is_gone_covers_404_and_403() {
+        assert!(is_gone("comments.list: HTTP 404: notFound"));
+        assert!(is_gone(
+            "comments.list: HTTP 403: insufficientFilePermissions"
+        ));
+        assert!(!is_gone("HTTP 500: internal server error"));
     }
 
     #[test]

@@ -24,7 +24,11 @@
 //! entry (all comments when it has none). The API treats the time as a
 //! minimum, so the newest thread comes back each run; an unchanged
 //! snapshot is not rewritten. A doc that leaves the window is dropped
-//! from the cursor; its snapshots stay.
+//! from the cursor, unless it still holds a snapshot: such a doc is
+//! polled each run (its metadata by `files.get`) and kept in the cursor
+//! until its last snapshot goes, so a resolve or my reply still removes
+//! it. A doc that is gone or no longer visible (404 or 403) has its
+//! snapshots removed.
 
 use std::path::Path;
 use std::time::Instant;
@@ -35,6 +39,7 @@ use chrono::{Duration, Utc};
 use serde_json::{Map, Value, json};
 
 use super::common::sanitize_path_component;
+use crate::clients::drive::is_gone;
 use crate::clients::{DocComment, DocMeta};
 use crate::error::FeedError;
 use crate::template::{FeedTemplate, RunOutcome, TemplateCtx};
@@ -152,17 +157,43 @@ impl FeedTemplate for CommentsTemplate {
             .and_then(Value::as_object)
             .cloned()
             .unwrap_or_default();
-        let mut next = Map::new();
         let mut total_items: u64 = 0;
         let mut total_bytes: u64 = 0;
-        for doc in &docs {
+
+        // Docs outside the window that still hold a snapshot for me are
+        // polled too, so a resolve or my reply still removes it. A doc
+        // that is gone or no longer visible takes its snapshots with it.
+        let in_window = docs.len();
+        for id in snapshot_doc_ids(feed_dir)? {
+            if docs.iter().any(|d| sanitize_path_component(&d.id) == id) {
+                continue;
+            }
+            match drive.get_doc(&id).await {
+                Ok(Some(d)) => docs.push(d),
+                Ok(None) => total_items += remove_doc(feed_dir, &id)?,
+                Err(FeedError::Provider(msg)) if is_gone(&msg) => {
+                    total_items += remove_doc(feed_dir, &id)?
+                }
+                Err(e) => return Err(e),
+            }
+        }
+
+        let mut next = Map::new();
+        for (i, doc) in docs.iter().enumerate() {
             let start = prior
                 .get(&doc.id)
                 .and_then(Value::as_str)
                 .filter(|s| !s.is_empty());
-            let comments = drive.list_comments(&doc.id, start).await?;
-            let mut latest = start.map(String::from);
             let doc_dir = feed_dir.join(sanitize_path_component(&doc.id));
+            let comments = match drive.list_comments(&doc.id, start).await {
+                Ok(cs) => cs,
+                Err(FeedError::Provider(msg)) if is_gone(&msg) => {
+                    total_items += remove_doc(feed_dir, &sanitize_path_component(&doc.id))?;
+                    continue;
+                }
+                Err(e) => return Err(e),
+            };
+            let mut latest = start.map(String::from);
             for c in &comments {
                 if let Some(m) = c.modified_time.as_deref()
                     && latest.as_deref().map(|l| is_later(m, l)).unwrap_or(true)
@@ -188,10 +219,14 @@ impl FeedTemplate for CommentsTemplate {
                     None => {}
                 }
             }
-            next.insert(
-                doc.id.clone(),
-                latest.map(Value::String).unwrap_or(Value::Null),
-            );
+            // A doc outside the window stays in the cursor only while it
+            // holds a snapshot.
+            if i < in_window || doc_dir.exists() {
+                next.insert(
+                    doc.id.clone(),
+                    latest.map(Value::String).unwrap_or(Value::Null),
+                );
+            }
         }
 
         Ok(RunOutcome {
@@ -208,6 +243,47 @@ impl FeedTemplate for CommentsTemplate {
             },
         })
     }
+}
+
+/// Names of the doc folders under `feed_dir` that hold a snapshot,
+/// sorted.
+fn snapshot_doc_ids(feed_dir: &Path) -> Result<Vec<String>, FeedError> {
+    let entries = match std::fs::read_dir(feed_dir) {
+        Ok(it) => it,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => {
+            return Err(FeedError::Storage(format!(
+                "read {}: {e}",
+                feed_dir.display()
+            )));
+        }
+    };
+    let mut out = Vec::new();
+    for entry in entries {
+        let entry = entry.map_err(|e| FeedError::Storage(e.to_string()))?;
+        let has_snapshot = std::fs::read_dir(entry.path()).is_ok_and(|mut it| {
+            it.any(|f| {
+                f.is_ok_and(|f| f.path().extension().and_then(|e| e.to_str()) == Some("json"))
+            })
+        });
+        if has_snapshot && let Some(name) = entry.file_name().to_str() {
+            out.push(name.to_string());
+        }
+    }
+    out.sort();
+    Ok(out)
+}
+
+/// Remove a doc's folder (all its snapshots). Returns 1 when there was
+/// one, for `items_written`.
+fn remove_doc(feed_dir: &Path, dir_name: &str) -> Result<u64, FeedError> {
+    let dir = feed_dir.join(dir_name);
+    if !dir.exists() {
+        return Ok(0);
+    }
+    std::fs::remove_dir_all(&dir)
+        .map_err(|e| FeedError::Storage(format!("remove {}: {e}", dir.display())))?;
+    Ok(1)
 }
 
 /// `a` is after `b`, both RFC3339. Falls back to string order when one

@@ -18,7 +18,8 @@ use arawn_feeds::{
 const ME: &str = "me@example.com";
 
 /// `touched` is what the lookback query returns; `by_id` answers
-/// `get_doc`; `comments` is what Drive holds per file. Records every
+/// `get_doc` (a missing id is a 404); `comments` is what Drive holds per
+/// file. Records every
 /// `list_comments` call as `(file id, start)`.
 #[derive(Default)]
 struct FakeDrive {
@@ -26,6 +27,8 @@ struct FakeDrive {
     by_id: Mutex<HashMap<String, DocMeta>>,
     comments: Mutex<HashMap<String, Vec<DocComment>>>,
     calls: Mutex<Vec<(String, Option<String>)>>,
+    /// Files whose comments.list answers 403 (no longer shared with me).
+    forbidden: Mutex<Vec<String>>,
 }
 
 impl FakeDrive {
@@ -76,6 +79,11 @@ impl DriveFeedClient for FakeDrive {
             .lock()
             .unwrap()
             .push((file_id.into(), start.map(String::from)));
+        if self.forbidden.lock().unwrap().iter().any(|f| f == file_id) {
+            return Err(FeedError::Provider(format!(
+                "drive comments: comments.list: HTTP 403: insufficientFilePermissions {file_id}"
+            )));
+        }
         // startModifiedTime is a minimum (inclusive).
         Ok(self
             .comments
@@ -258,20 +266,23 @@ async fn the_per_doc_cursor_advances_and_skips_unchanged_threads() {
     assert_eq!(cursor2["docs"]["f1"], "2026-10-06T09:00:00+00:00");
 }
 
+/// A doc without a snapshot for me drops out of the cursor when it
+/// leaves the window, and is not polled any more.
 #[tokio::test]
 async fn a_doc_that_leaves_the_window_is_dropped_from_the_cursor() {
     let (drive, ctx, tmp) = setup();
     drive.touch(vec![doc("f1", false), doc("f2", false)]);
-    drive.set_comments("f2", vec![mentioning("a", "2026-10-05T10:00:00+00:00")]);
+    // Not for me: no snapshot.
+    drive.set_comments("f2", vec![comment("a", "2026-10-05T10:00:00+00:00")]);
     let (cursor, _) = run(&ctx, &json!({}), tmp.path(), &Value::Null).await;
-    assert!(cursor["docs"].get("f2").is_some());
+    assert_eq!(cursor["docs"]["f2"], "2026-10-05T10:00:00+00:00");
 
     drive.touch(vec![doc("f1", false)]);
     let (cursor, _) = run(&ctx, &json!({}), tmp.path(), &cursor).await;
     assert!(cursor["docs"].get("f2").is_none());
     assert!(cursor["docs"].get("f1").is_some());
-    // Its snapshot stays.
-    assert!(snapshot(tmp.path(), "f2", "a").is_some());
+    let polled: Vec<String> = drive.calls()[2..].iter().map(|(f, _)| f.clone()).collect();
+    assert_eq!(polled, ["f1"]);
 }
 
 #[tokio::test]
@@ -313,6 +324,97 @@ async fn a_resolved_thread_removes_its_snapshot() {
     );
     run(&ctx, &json!({}), tmp.path(), &Value::Null).await;
     assert!(!tmp.path().join("f1").exists());
+}
+
+#[tokio::test]
+async fn a_doc_outside_the_window_is_polled_while_it_holds_a_snapshot() {
+    let (drive, ctx, tmp) = setup();
+    drive.touch(vec![doc("f1", false)]);
+    drive
+        .by_id
+        .lock()
+        .unwrap()
+        .insert("f1".into(), doc("f1", false));
+    drive.set_comments(
+        "f1",
+        vec![
+            mentioning("a", "2026-10-05T10:00:00+00:00"),
+            mentioning("b", "2026-10-05T11:00:00+00:00"),
+        ],
+    );
+    let (cursor, _) = run(&ctx, &json!({}), tmp.path(), &Value::Null).await;
+
+    // f1 leaves the window; a is resolved.
+    drive.touch(vec![]);
+    drive.set_comments(
+        "f1",
+        vec![
+            DocComment {
+                resolved: true,
+                ..mentioning("a", "2026-10-06T08:00:00+00:00")
+            },
+            mentioning("b", "2026-10-05T11:00:00+00:00"),
+        ],
+    );
+    let (cursor, _) = run(&ctx, &json!({}), tmp.path(), &cursor).await;
+    assert!(
+        snapshot(tmp.path(), "f1", "a").is_none(),
+        "resolve still seen"
+    );
+    assert!(snapshot(tmp.path(), "f1", "b").is_some());
+    assert_eq!(
+        drive.calls().last().unwrap(),
+        &(
+            "f1".to_string(),
+            Some("2026-10-05T11:00:00+00:00".to_string())
+        ),
+        "polled from its cursor"
+    );
+    assert_eq!(cursor["docs"]["f1"], "2026-10-06T08:00:00+00:00");
+
+    // Its last thread is resolved: no snapshot left, out of the cursor.
+    drive.set_comments(
+        "f1",
+        vec![DocComment {
+            resolved: true,
+            ..mentioning("b", "2026-10-07T08:00:00+00:00")
+        }],
+    );
+    let (cursor, _) = run(&ctx, &json!({}), tmp.path(), &cursor).await;
+    assert!(!tmp.path().join("f1").exists());
+    assert!(cursor["docs"].get("f1").is_none());
+
+    // And it is not polled any more.
+    let n = drive.calls().len();
+    run(&ctx, &json!({}), tmp.path(), &cursor).await;
+    assert_eq!(drive.calls().len(), n);
+}
+
+#[tokio::test]
+async fn a_gone_or_unshared_doc_has_its_snapshots_removed() {
+    let (drive, ctx, tmp) = setup();
+    drive.touch(vec![doc("deleted", false), doc("unshared", false)]);
+    drive
+        .by_id
+        .lock()
+        .unwrap()
+        .insert("unshared".into(), doc("unshared", false));
+    for f in ["deleted", "unshared"] {
+        drive.set_comments(f, vec![mentioning("a", "2026-10-05T10:00:00+00:00")]);
+    }
+    let (cursor, _) = run(&ctx, &json!({}), tmp.path(), &Value::Null).await;
+    assert!(snapshot(tmp.path(), "deleted", "a").is_some());
+    assert!(snapshot(tmp.path(), "unshared", "a").is_some());
+
+    // Both leave the window: "deleted" is a 404 on files.get, "unshared"
+    // a 403 on comments.list.
+    drive.touch(vec![]);
+    drive.forbidden.lock().unwrap().push("unshared".into());
+    let (cursor, status) = run(&ctx, &json!({}), tmp.path(), &cursor).await;
+    assert_eq!(status, "ok");
+    assert!(!tmp.path().join("deleted").exists());
+    assert!(!tmp.path().join("unshared").exists());
+    assert_eq!(cursor["docs"], json!({}));
 }
 
 #[tokio::test]

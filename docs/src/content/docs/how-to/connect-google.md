@@ -194,8 +194,10 @@ are for you:
 - on a doc you own, where the last message is not yours.
 
 A thread leaves the list when it is resolved or deleted, or when you
-reply last on your own doc. A doc you have not opened or changed in the
-lookback is not polled, and its threads stay as they were.
+reply last on your own doc. A doc outside the lookback is still polled
+while it has a thread on the list, so those changes are seen there too.
+A doc that is deleted or no longer shared with you takes its threads
+with it.
 
 The morning brief lists these threads with the doc, the author, the
 text, the reason and a link that opens the doc on the comment. Once the
