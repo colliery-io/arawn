@@ -488,12 +488,15 @@ impl Integration for SlackIntegration {
             .join(", ");
 
         let name = &self.name;
+        let tools = super::tools::tool_name(&self.alias, "*");
         let team = match self.team() {
             Some(t) if !t.name.is_empty() => format!("team {}; ", t.name),
             _ => String::new(),
         };
         if user_scopes.is_empty() {
-            return Some(format!("{name} (connected; {team}bot scopes: {bot_list})"));
+            return Some(format!(
+                "{name} (connected; {team}bot scopes: {bot_list}). Tools: {tools}."
+            ));
         }
 
         let mut user_sorted: Vec<&String> = user_scopes.iter().collect();
@@ -506,7 +509,7 @@ impl Integration for SlackIntegration {
         Some(format!(
             "{name} (connected; {team}bot scopes: {bot_list}; user scopes: {user_list}). \
              Reads use the user token (sees private channels you're in without bot invite); \
-             posts use the bot token (appear as the bot)."
+             posts use the bot token (appear as the bot). Tools: {tools}."
         ))
     }
 }
@@ -608,6 +611,12 @@ mod tests {
                 .await
                 .unwrap()
                 .starts_with("slack@acme (connected; team Acme;")
+        );
+        assert!(
+            acme.capabilities_summary()
+                .await
+                .unwrap()
+                .ends_with("Tools: slack_acme_*.")
         );
 
         acme.disconnect().await.unwrap();

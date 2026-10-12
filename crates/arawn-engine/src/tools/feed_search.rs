@@ -74,7 +74,7 @@ impl Tool for FeedSearchTool {
          (RRF-fused when an embedder is configured); **default limit is 10**, so \
          pass `limit` higher for sweeps where you can't afford to drop items.\n\n\
          **Reach for the live integration tool first when one applies** — \
-         `slack_history` / `slack_list_channels` for any Slack-specific question \
+         `slack_<workspace>_history` / `slack_<workspace>_list_channels` for any Slack-specific question \
          (\"who said X\", \"@-mentions\", \"today in #X\"), `gmail_inbox_read` / \
          `gmail_search` for inbox lookups, `calendar_upcoming` for schedule \
          questions, `drive_search` for files. Those tools return complete, \

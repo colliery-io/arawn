@@ -1290,7 +1290,7 @@ fn mention_scan_scenario() -> Scenario {
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
-        mock_integrations: vec!["slack".to_string()],
+        mock_integrations: vec!["slack@uat".to_string()],
     }
 }
 

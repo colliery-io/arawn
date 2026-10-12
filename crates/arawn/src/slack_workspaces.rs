@@ -35,6 +35,23 @@ pub fn register(
     info!(workspace = %name, tools = count, "Slack workspace registered");
 }
 
+/// Drop workspace `alias` and its tools. The other workspaces keep
+/// theirs. Returns the names of the tools removed.
+pub fn deregister(
+    integrations: &IntegrationRegistry,
+    tools: &ToolRegistry,
+    alias: &str,
+) -> Vec<String> {
+    let removed: Vec<String> = arawn_integrations::slack::slack_tool_names(alias)
+        .into_iter()
+        .filter(|n| tools.unregister(n).is_some())
+        .collect();
+    let name = arawn_integrations::slack::workspace_name(alias);
+    integrations.write().recover().remove(&name);
+    info!(workspace = %name, tools = removed.len(), "Slack workspace removed");
+    removed
+}
+
 /// Register every workspace with a stored token (startup discovery).
 /// Returns their aliases.
 pub fn register_connected(
@@ -79,6 +96,88 @@ mod tests {
                 },
             )
             .unwrap();
+    }
+
+    fn ctx() -> arawn_engine::EngineToolContext {
+        let lens = arawn_core::Lens::scratch(std::env::temp_dir());
+        arawn_engine::EngineToolContext::new(&lens, uuid::Uuid::new_v4())
+    }
+
+    #[tokio::test]
+    async fn each_tool_calls_its_own_workspace_and_disconnect_removes_only_its_six() {
+        let dir = tempfile::tempdir().unwrap();
+        save_workspace(dir.path(), "acme");
+        save_workspace(dir.path(), "personal");
+        let app = SlackApp::new(dir.path().to_path_buf(), "cid".into(), "sec".into());
+        let integrations: IntegrationRegistry = Default::default();
+        let tools = ToolRegistry::new();
+        register_connected(&app, &integrations, &tools);
+        assert_eq!(tools.len(), 12);
+
+        // A call goes to its own workspace: with the token gone from
+        // acme only, acme's tool fails on acme and personal's does not
+        // fail on a missing token.
+        arawn_auth::TokenStore::open(dir.path())
+            .unwrap()
+            .delete("slack@acme")
+            .unwrap();
+        let params = serde_json::json!({ "channel": "C1", "name": "thumbsup", "timestamp": "1.2" });
+        let err = tools
+            .get("slack_acme_react")
+            .unwrap()
+            .execute(&ctx(), params.clone())
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("slack@acme"), "{err}");
+        // personal's token has no reactions:write: the scope check, not
+        // the token, stops it. No network either way.
+        let err = tools
+            .get("slack_personal_react")
+            .unwrap()
+            .execute(&ctx(), params)
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(
+            !err.contains("slack@acme") && err.contains("reactions:write"),
+            "{err}"
+        );
+
+        let removed = deregister(&integrations, &tools, "acme");
+        assert_eq!(removed.len(), 6);
+        assert_eq!(tools.len(), 6);
+        assert!(
+            arawn_integrations::slack::slack_tool_names("personal")
+                .iter()
+                .all(|n| tools.contains(n))
+        );
+        let names: Vec<String> = integrations.read().recover().keys().cloned().collect();
+        assert_eq!(names, ["slack@personal"]);
+    }
+
+    #[tokio::test]
+    async fn one_workspace_call_is_one_registry_lookup() {
+        // NFR-002: a tool holds its workspace, so a call is the tool
+        // registry's one map lookup and never reads the integration
+        // registry: with that registry emptied, the call still reaches
+        // acme's token (and stops at its scope check, before any network).
+        let dir = tempfile::tempdir().unwrap();
+        save_workspace(dir.path(), "acme");
+        let app = SlackApp::new(dir.path().to_path_buf(), "cid".into(), "sec".into());
+        let integrations: IntegrationRegistry = Default::default();
+        let tools = ToolRegistry::new();
+        register_connected(&app, &integrations, &tools);
+        integrations.write().recover().clear();
+        let params = serde_json::json!({ "channel": "C1", "name": "thumbsup", "timestamp": "1.2" });
+        let err = tools
+            .get("slack_acme_react")
+            .unwrap()
+            .execute(&ctx(), params)
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("reactions:write"), "{err}");
     }
 
     #[tokio::test]

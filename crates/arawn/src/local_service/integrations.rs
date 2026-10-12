@@ -4,6 +4,7 @@
 use crate::lock_ext::Recover;
 use std::sync::Arc;
 
+use arawn_integrations::Integration as _;
 use arawn_service::ServiceError;
 
 use super::{LocalService, OAuthFlowCtx, default_feed_for_service};
@@ -31,19 +32,34 @@ impl LocalService {
         Ok(out)
     }
 
-    pub(super) async fn start_oauth_flow_inner(
-        &self,
-        service: &str,
-    ) -> Result<arawn_service::OAuthFlowStarted, ServiceError> {
-        let integration = self
-            .integration_registry
+    /// What `/connect <service>` connects. A Slack workspace is built
+    /// from the Slack app, registered or not.
+    fn connect_target(&self, service: &str) -> Result<ConnectTarget, ServiceError> {
+        if let Some(alias) = service.strip_prefix("slack@") {
+            let app = self.slack_app.read().recover().clone().ok_or_else(|| {
+                ServiceError::InvalidOperation("Slack is not set up. Run: arawn setup slack".into())
+            })?;
+            let ws = app
+                .workspace(alias)
+                .map_err(|e| ServiceError::InvalidOperation(e.user_message()))?;
+            return Ok(ConnectTarget::SlackWorkspace(Arc::new(ws)));
+        }
+        self.integration_registry
             .read()
             .recover()
             .get(service)
             .cloned()
+            .map(ConnectTarget::Registered)
             .ok_or_else(|| {
                 ServiceError::InvalidOperation(format!("no integration registered for '{service}'"))
-            })?;
+            })
+    }
+
+    pub(super) async fn start_oauth_flow_inner(
+        &self,
+        service: &str,
+    ) -> Result<arawn_service::OAuthFlowStarted, ServiceError> {
+        let target = self.connect_target(service)?;
 
         // Per ARAWN-A-0001: the connect flow runs asynchronously on the
         // server. The TUI gets the auth URL back from this RPC and should
@@ -60,9 +76,10 @@ impl LocalService {
         let (url_tx, url_rx) = tokio::sync::oneshot::channel::<Result<url::Url, String>>();
         let notice_tx = self.notice_tx.clone();
         let service_name = service.to_string();
-        let integration_for_task = Arc::clone(&integration);
         let feed_runtime_for_task = self.feed_runtime.clone();
         let reconcile_ctx = self.reconcile_ctx();
+        let integrations = Arc::clone(&self.integration_registry);
+        let tools = Arc::clone(&self.registry);
 
         tokio::spawn(async move {
             let ctx = OAuthFlowCtx {
@@ -70,7 +87,19 @@ impl LocalService {
                 url_tx: tokio::sync::Mutex::new(Some(url_tx)),
                 notice_tx: notice_tx.clone(),
             };
-            let result = integration_for_task.connect(&ctx).await;
+            // Ok carries the name that is now connected.
+            let result = match target {
+                ConnectTarget::Registered(i) => {
+                    i.connect(&ctx).await.map(|()| service_name.clone())
+                }
+                // A new workspace, or a reconnect that refreshes the token:
+                // either way its tools are (re)registered, no restart.
+                ConnectTarget::SlackWorkspace(ws) => ws.connect(&ctx).await.map(|()| {
+                    let name = ws.name().to_string();
+                    crate::slack_workspaces::register(&integrations, &tools, ws);
+                    name
+                }),
+            };
             // Failed before any URL: give the caller the reason now
             // instead of a "no auth URL" timeout.
             if let Err(e) = &result
@@ -79,11 +108,12 @@ impl LocalService {
                 let _ = tx.send(Err(e.user_message()));
             }
             let succeeded = result.is_ok();
+            let connected_name = result.as_ref().cloned().unwrap_or_default();
             let notice = match &result {
-                Ok(()) => arawn_service::ServerNotice {
+                Ok(name) => arawn_service::ServerNotice {
                     level: "info".into(),
                     category: "integration".into(),
-                    message: format!("{service_name} connected"),
+                    message: format!("{name} connected"),
                     timestamp: chrono::Utc::now().to_rfc3339(),
                 },
                 Err(e) => arawn_service::ServerNotice {
@@ -122,7 +152,7 @@ impl LocalService {
                 auto_create_default_feed(
                     &feed_runtime_for_task,
                     &notice_tx,
-                    &service_name,
+                    &connected_name,
                     &format!("/connect {service_name}"),
                 )
                 .await;
@@ -172,6 +202,10 @@ impl LocalService {
             .disconnect()
             .await
             .map_err(|e| ServiceError::InvalidOperation(e.user_message()))?;
+        // A Slack workspace goes away with its tools; the others stay.
+        if let Some(alias) = service.strip_prefix("slack@") {
+            crate::slack_workspaces::deregister(&self.integration_registry, &self.registry, alias);
+        }
 
         let _ = self.notice_tx.send(arawn_service::ServerNotice {
             level: "info".into(),
@@ -181,6 +215,12 @@ impl LocalService {
         });
         Ok(())
     }
+}
+
+/// See [`LocalService::connect_target`].
+enum ConnectTarget {
+    Registered(Arc<dyn arawn_integrations::Integration>),
+    SlackWorkspace(Arc<arawn_integrations::slack::SlackIntegration>),
 }
 
 type FeedRuntimeCell = Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>>;

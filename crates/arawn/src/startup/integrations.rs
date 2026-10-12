@@ -436,7 +436,8 @@ pub fn wire_uat_mock_integrations(
                 }
                 info!("registered UAT gmail tools (2)");
             }
-            "slack" => {
+            // The mock Slack workspace: `slack_uat_*` tools.
+            "slack@uat" => {
                 for tool in arawn_integrations::slack::uat_slack_tools(data_dir_path.clone()) {
                     registry.register(tool);
                 }
