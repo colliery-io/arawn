@@ -35,6 +35,20 @@ pub async fn run_oauth_flow(
     redirect_port: Option<u16>,
     ctx: &dyn ConnectContext,
 ) -> Result<OAuthOutcome, IntegrationError> {
+    let token = obtain_oauth_token(provider_config, callback_path, redirect_port, ctx).await?;
+    token_store.save(service_name, &token)?;
+    Ok(OAuthOutcome { token })
+}
+
+/// Steps 1–5 of [`run_oauth_flow`]: the token, not yet stored. For a
+/// caller that picks the store key from the token (a Slack workspace is
+/// named after its team).
+pub async fn obtain_oauth_token(
+    provider_config: OAuthProviderConfig,
+    callback_path: &str,
+    redirect_port: Option<u16>,
+    ctx: &dyn ConnectContext,
+) -> Result<Token, IntegrationError> {
     // 1. Bind the callback first so we know what redirect_uri to advertise.
     // Slack-shaped providers pin the port (their redirect-URI allowlist is
     // exact-match); Google-shaped providers accept any 127.0.0.1 port.
@@ -65,14 +79,9 @@ pub async fn run_oauth_flow(
     }
     ctx.publish_progress("exchanging authorization code for token…")
         .await;
-    let token = client
+    Ok(client
         .exchange_code(&result.code, &redirect_uri, &auth_request.pkce_verifier)
-        .await?;
-
-    // 6. Persist.
-    token_store.save(service_name, &token)?;
-
-    Ok(OAuthOutcome { token })
+        .await?)
 }
 
 #[cfg(test)]

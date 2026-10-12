@@ -85,18 +85,16 @@ pub fn ensure_feed_type_tables(conn: &Connection, feed_type: &str) -> Result<(),
         .map_err(|e| ProjectionError::Schema(format!("create {feed_type}_embeddings: {e}")))?;
 
     // ARAWN-T-0481: `retry_count` backs the embed-pass backoff. Tables
-    // created before this column existed get it via an idempotent ALTER —
-    // SQLite errors on a duplicate column, which we treat as "already there".
-    let add_retry = format!(
-        "ALTER TABLE {feed_type}_embeddings ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0"
-    );
-    if let Err(e) = conn.execute(&add_retry, []) {
-        let msg = e.to_string();
-        if !msg.contains("duplicate column name") {
-            return Err(ProjectionError::Schema(format!(
-                "add retry_count to {feed_type}_embeddings: {e}"
-            )));
-        }
+    // created before this column existed get it via an idempotent ALTER.
+    add_column(
+        conn,
+        &format!("{feed_type}_embeddings"),
+        "retry_count INTEGER NOT NULL DEFAULT 0",
+    )?;
+
+    // COLLIERY-I-0520: a Slack row says which workspace it came from.
+    if crate::slack::FEED_TYPES.contains(&feed_type) {
+        add_column(conn, feed_type, "workspace TEXT")?;
     }
 
     let vec_sql = format!(
@@ -110,6 +108,17 @@ pub fn ensure_feed_type_tables(conn: &Connection, feed_type: &str) -> Result<(),
         .map_err(|e| ProjectionError::Schema(format!("create {feed_type}_vec: {e}")))?;
 
     Ok(())
+}
+
+/// `ALTER TABLE <table> ADD COLUMN <column>`, idempotent: SQLite errors
+/// on a duplicate column, which means "already there".
+fn add_column(conn: &Connection, table: &str, column: &str) -> Result<(), ProjectionError> {
+    match conn.execute(&format!("ALTER TABLE {table} ADD COLUMN {column}"), []) {
+        Err(e) if !e.to_string().contains("duplicate column name") => Err(ProjectionError::Schema(
+            format!("add {column} to {table}: {e}"),
+        )),
+        _ => Ok(()),
+    }
 }
 
 /// Set basic pragmas for a projection database.

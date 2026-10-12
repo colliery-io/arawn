@@ -100,11 +100,18 @@ impl AtlassianFeedClient for StubAtlassian {
 }
 
 impl FeedClients for StubClients {
-    fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+    fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
         if self.slack_channels.is_empty() {
             None
         } else {
             Some(Arc::new(StubSlack(self.slack_channels.clone())))
+        }
+    }
+    fn slack_workspaces(&self) -> Vec<String> {
+        if self.slack_channels.is_empty() {
+            Vec::new()
+        } else {
+            vec!["acme".into()]
         }
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
@@ -165,13 +172,20 @@ async fn slack_channel_archive_discovers_channels() {
         .await
         .unwrap()
         .expect("picker_supported");
-    assert_eq!(rows.len(), 3);
-    // Sorted by name alphabetically.
-    assert_eq!(rows[0].label, "#design");
-    assert_eq!(rows[0].params["channel"], "C0DESIGN");
-    assert_eq!(rows[1].label, "#engineering");
-    assert_eq!(rows[2].label, "#leads-only");
-    assert!(rows[2].hint.as_deref().unwrap().contains("private"));
+    // The workspace first, then its channels sorted by name.
+    assert_eq!(rows.len(), 4);
+    assert_eq!(rows[0].label, "slack@acme");
+    assert_eq!(rows[0].params, serde_json::json!({ "workspace": "acme" }));
+    assert_eq!(rows[1].label, "#design");
+    assert_eq!(rows[1].params["channel"], "C0DESIGN");
+    assert_eq!(rows[1].params["workspace"], "acme");
+    assert_eq!(rows[2].label, "#engineering");
+    assert_eq!(rows[3].label, "#leads-only");
+    let hint = rows[3].hint.as_deref().unwrap();
+    assert!(
+        hint.contains("private") && hint.contains("slack@acme"),
+        "{hint}"
+    );
 }
 
 #[tokio::test]

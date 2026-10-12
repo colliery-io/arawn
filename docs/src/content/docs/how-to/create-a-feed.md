@@ -17,7 +17,7 @@ Connecting Gmail, Drive, Slack, Calendar, or Atlassian auto-registers a personal
 - `/connect gmail` → `gmail/inbox-archive` for your inbox.
 - `/connect google_drive` → `drive/recent` for your recent Drive activity.
 - `/connect google_calendar` → `calendar/upcoming-archive` for your upcoming events.
-- `/connect slack` → `slack/my-mentions` for `@you` mentions across the workspace.
+- `/connect slack` → `slack/my-mentions` for `@you` mentions across the workspace, as `slack-<alias>-mentions`, one per workspace.
 - `/connect atlassian` → `jira/assignee-tracker` for `assignee = currentUser()` issues.
 
 No further setup. After `/connect`, `/feeds` will list these as running.
@@ -58,7 +58,7 @@ line just work — e.g. a **filesystem path containing spaces** needs no quoting
 Examples:
 
 ```
-/watch slack/channel-archive design channel=C0123ABCD   # mirrors #design
+/watch slack/channel-archive design workspace=acme channel=C0123ABCD   # mirrors #design on slack@acme
 /watch jira/project-tracker ENG project=ENG             # mirrors the ENG project
 /watch drive/folder-sync Reports folder=Reports/2026    # mirrors a Drive folder by name
 /watch gmail/sender-filter alerts sender_pattern=alerts@example.com
@@ -84,7 +84,7 @@ Lists what the provider exposes for that template — channels for Slack, projec
 Pass `since=<rfc3339>` to backfill historical data before the cron schedule starts:
 
 ```
-/watch slack/channel-archive design since=2026-01-01T00:00:00Z
+/watch slack/channel-archive design workspace=acme channel=C0123ABCD since=2026-01-01T00:00:00Z
 ```
 
 The backfill loop walks pagination from `since` forward, persisting the cursor after each page. Server restarts resume from where it left off. If the backfill exhausts a 5-minute rate-limit budget it pauses and the next cron tick continues. A 6-month Gmail backfill is one command.

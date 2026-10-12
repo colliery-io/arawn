@@ -1259,7 +1259,7 @@ fn mention_scan_scenario() -> Scenario {
         turns: vec![
             ScenarioTurn {
                 user_message: "Did anyone explicitly @-mention me on Slack today — meaning a message that starts with `@pat` or contains `@pat` as a token? Pull just those messages and quote them. Don't include messages that merely address me by name in the body (e.g., 'Pat?') — only ones with the literal @-prefix.".to_string(),
-                judge_expectation: "Slack is connected in this run, so the agent should use the live slack tools — `slack_list_channels` to discover channels, then `slack_history` per channel — and filter for the literal `@pat` token. Return EXACTLY TWO @mentions: Jamie's ledger-migration-dashboard ask in C-platform ('@pat — could you take a look...'), and Alice's RFC-0042 sign-off ping in C-eng-design ('RFC-0042 thread — @pat we'd love your sign-off here...'). FAIL if the agent reports only one. FAIL if the agent inflates the count by including David's 'Pat?' message (no @-prefix). FAIL if it summarizes without quoting.".to_string(),
+                judge_expectation: "Slack workspace slack@uat is connected in this run, so the agent should use its live tools — `slack_uat_list_channels` to discover channels, then `slack_uat_history` per channel — and filter for the literal `@pat` token. Return EXACTLY TWO @mentions: Jamie's ledger-migration-dashboard ask in C-platform ('@pat — could you take a look...'), and Alice's RFC-0042 sign-off ping in C-eng-design ('RFC-0042 thread — @pat we'd love your sign-off here...'). FAIL if the agent reports only one. FAIL if the agent inflates the count by including David's 'Pat?' message (no @-prefix). FAIL if it summarizes without quoting.".to_string(),
             },
         ],
         mechanical: MechanicalThresholds {
@@ -1277,20 +1277,20 @@ fn mention_scan_scenario() -> Scenario {
                 "ledger migration".to_string(),
                 "RFC-0042".to_string(),
             ],
-            // Live slack path: must call slack_history (channel discovery via
-            // slack_list_channels is allowed but not required — agent may
-            // already know channel names from prior turns / signals).
-            required_tool_names: vec!["slack_history".to_string()],
+            // Live slack path: must call slack_uat_history (channel discovery
+            // via slack_uat_list_channels is allowed but not required — agent
+            // may already know channel names from prior turns / signals).
+            required_tool_names: vec!["slack_uat_history".to_string()],
             // ARAWN-I-0062 T-G: scanning mentions should never post; defensive
-            // guard against an over-eager reply.
-            forbidden_tool_names: vec!["slack_post".to_string()],
+            // guard against an over-eager reply. Any workspace's post tool.
+            forbidden_tool_names: vec!["slack_uat_post".to_string()],
         },
         seed_fixture: Some(ASSISTANT_FIXTURE.to_string()),
         seed_tag_promoter: false,
         seed_retro_ceremony: false,
         seed_daily_ceremony: false,
         seed_weekly_ceremony: false,
-        mock_integrations: vec!["slack".to_string()],
+        mock_integrations: vec!["slack@uat".to_string()],
     }
 }
 
@@ -1618,6 +1618,47 @@ mod tests {
     use super::*;
 
     // ARAWN-T-0192 — workflow counter behavior.
+
+    // COLLIERY-I-0520 — the mock Slack workspace is slack@uat: every
+    // scenario that names a Slack tool names one of its tools.
+    #[test]
+    fn slack_scenarios_use_the_uat_workspace_tools() {
+        let uat_tools: Vec<String> =
+            arawn_integrations::slack::uat_slack_tools(std::path::PathBuf::from("/nonexistent"))
+                .iter()
+                .map(|t| t.name().to_string())
+                .collect();
+        assert_eq!(uat_tools, ["slack_uat_list_channels", "slack_uat_history"]);
+        let mut named = 0;
+        for sc in all_scenarios() {
+            let m = &sc.mechanical;
+            for name in m.required_tool_names.iter().chain(&m.forbidden_tool_names) {
+                if name.starts_with("slack_") {
+                    assert!(name.starts_with("slack_uat_"), "{}: {name}", sc.name);
+                    named += 1;
+                }
+            }
+            for (i, t) in sc.turns.iter().enumerate() {
+                assert!(
+                    !t.judge_expectation.contains("`slack_list_channels`")
+                        && !t.judge_expectation.contains("`slack_history`"),
+                    "{} turn {i} names an unscoped Slack tool",
+                    sc.name
+                );
+            }
+            if sc.mock_integrations.iter().any(|s| s.starts_with("slack")) {
+                assert_eq!(sc.mock_integrations, ["slack@uat"], "{}", sc.name);
+            }
+        }
+        assert!(named >= 2);
+        let ms = mention_scan_scenario();
+        assert!(
+            ms.mechanical
+                .required_tool_names
+                .iter()
+                .all(|n| uat_tools.contains(n))
+        );
+    }
 
     #[test]
     fn count_workflows_returns_zero_for_missing_dir() {

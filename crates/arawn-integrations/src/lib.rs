@@ -38,7 +38,7 @@ pub mod uat_mock;
 pub use credential_store::CredentialStore;
 pub use error::IntegrationError;
 pub use integration::{ConnectContext, Integration, IntegrationStatus};
-pub use oauth_flow::{OAuthOutcome, run_oauth_flow};
+pub use oauth_flow::{OAuthOutcome, obtain_oauth_token, run_oauth_flow};
 pub use retry_after::parse_retry_after;
 pub use uat_mock::UatMockIntegration;
 

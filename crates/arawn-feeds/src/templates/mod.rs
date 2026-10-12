@@ -169,11 +169,7 @@ mod param_schema_tests {
     #[test]
     fn paramless_feeds_have_empty_schema() {
         let reg = default_registry();
-        for name in [
-            "slack/my-mentions",
-            "github/issues-and-prs",
-            "github/review-queue",
-        ] {
+        for name in ["github/issues-and-prs", "github/review-queue"] {
             let tpl = reg.get(name).unwrap_or_else(|| panic!("{name} registered"));
             assert!(
                 tpl.param_schema().is_empty(),

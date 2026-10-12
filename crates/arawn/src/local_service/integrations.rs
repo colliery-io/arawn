@@ -4,6 +4,7 @@
 use crate::lock_ext::Recover;
 use std::sync::Arc;
 
+use arawn_integrations::Integration as _;
 use arawn_service::ServiceError;
 
 use super::{LocalService, OAuthFlowCtx, default_feed_for_service};
@@ -22,28 +23,85 @@ impl LocalService {
             .map(|(k, v)| (k.clone(), Arc::clone(v)))
             .collect();
 
-        let mut out = Vec::with_capacity(entries.len());
+        let slack_app = self.slack_app.read().recover().clone();
+        let mut out = Vec::with_capacity(entries.len() + 1);
         for (name, integration) in entries {
             let connected = integration.is_connected().await;
-            out.push(arawn_service::IntegrationStatus { name, connected });
+            // One row per Slack workspace: `slack@acme ✓ (16 scopes)`.
+            let detail = match (&slack_app, name.strip_prefix("slack@")) {
+                (Some(app), Some(alias)) if connected => app
+                    .workspace(alias)
+                    .and_then(|ws| ws.granted_scopes())
+                    .ok()
+                    .map(|s| format!("{} scopes", s.len())),
+                _ => None,
+            };
+            out.push(arawn_service::IntegrationStatus {
+                name,
+                connected,
+                detail,
+            });
+        }
+        // The Slack app with no workspace yet: `/connect slack` adds one.
+        if slack_app.is_some() && !out.iter().any(|i| i.name.starts_with("slack@")) {
+            out.push(arawn_service::IntegrationStatus {
+                name: arawn_integrations::slack::SERVICE_NAME.into(),
+                connected: false,
+                detail: None,
+            });
         }
         out.sort_by(|a, b| a.name.cmp(&b.name));
         Ok(out)
+    }
+
+    /// The registered Slack workspaces' aliases, sorted.
+    fn slack_aliases(&self) -> Vec<String> {
+        let mut out: Vec<String> = self
+            .integration_registry
+            .read()
+            .recover()
+            .keys()
+            .filter_map(|k| k.strip_prefix("slack@").map(String::from))
+            .collect();
+        out.sort();
+        out
+    }
+
+    /// What `/connect <service>` connects. `slack` is a new workspace,
+    /// named after its team once the flow is done; `slack@<alias>` is
+    /// built from the Slack app, registered or not.
+    fn connect_target(&self, service: &str) -> Result<ConnectTarget, ServiceError> {
+        let slack_app = || {
+            self.slack_app.read().recover().clone().ok_or_else(|| {
+                ServiceError::InvalidOperation("Slack is not set up. Run: arawn setup slack".into())
+            })
+        };
+        if service == arawn_integrations::slack::SERVICE_NAME {
+            return Ok(ConnectTarget::SlackNew(slack_app()?));
+        }
+        if let Some(alias) = service.strip_prefix("slack@") {
+            let app = slack_app()?;
+            let ws = app
+                .workspace(alias)
+                .map_err(|e| ServiceError::InvalidOperation(e.user_message()))?;
+            return Ok(ConnectTarget::SlackWorkspace(Arc::new(ws)));
+        }
+        self.integration_registry
+            .read()
+            .recover()
+            .get(service)
+            .cloned()
+            .map(ConnectTarget::Registered)
+            .ok_or_else(|| {
+                ServiceError::InvalidOperation(format!("no integration registered for '{service}'"))
+            })
     }
 
     pub(super) async fn start_oauth_flow_inner(
         &self,
         service: &str,
     ) -> Result<arawn_service::OAuthFlowStarted, ServiceError> {
-        let integration = self
-            .integration_registry
-            .read()
-            .recover()
-            .get(service)
-            .cloned()
-            .ok_or_else(|| {
-                ServiceError::InvalidOperation(format!("no integration registered for '{service}'"))
-            })?;
+        let target = self.connect_target(service)?;
 
         // Per ARAWN-A-0001: the connect flow runs asynchronously on the
         // server. The TUI gets the auth URL back from this RPC and should
@@ -60,9 +118,10 @@ impl LocalService {
         let (url_tx, url_rx) = tokio::sync::oneshot::channel::<Result<url::Url, String>>();
         let notice_tx = self.notice_tx.clone();
         let service_name = service.to_string();
-        let integration_for_task = Arc::clone(&integration);
         let feed_runtime_for_task = self.feed_runtime.clone();
         let reconcile_ctx = self.reconcile_ctx();
+        let integrations = Arc::clone(&self.integration_registry);
+        let tools = Arc::clone(&self.registry);
 
         tokio::spawn(async move {
             let ctx = OAuthFlowCtx {
@@ -70,7 +129,24 @@ impl LocalService {
                 url_tx: tokio::sync::Mutex::new(Some(url_tx)),
                 notice_tx: notice_tx.clone(),
             };
-            let result = integration_for_task.connect(&ctx).await;
+            // Ok carries the name that is now connected.
+            let result = match target {
+                ConnectTarget::Registered(i) => {
+                    i.connect(&ctx).await.map(|()| service_name.clone())
+                }
+                // A new workspace, or a reconnect that refreshes the token:
+                // either way its tools are (re)registered, no restart.
+                ConnectTarget::SlackWorkspace(ws) => ws.connect(&ctx).await.map(|()| {
+                    let name = ws.name().to_string();
+                    crate::slack_workspaces::register(&integrations, &tools, ws);
+                    name
+                }),
+                ConnectTarget::SlackNew(app) => app.connect_new(&ctx).await.map(|ws| {
+                    let name = ws.name().to_string();
+                    crate::slack_workspaces::register(&integrations, &tools, Arc::new(ws));
+                    name
+                }),
+            };
             // Failed before any URL: give the caller the reason now
             // instead of a "no auth URL" timeout.
             if let Err(e) = &result
@@ -79,11 +155,12 @@ impl LocalService {
                 let _ = tx.send(Err(e.user_message()));
             }
             let succeeded = result.is_ok();
+            let connected_name = result.as_ref().cloned().unwrap_or_default();
             let notice = match &result {
-                Ok(()) => arawn_service::ServerNotice {
+                Ok(name) => arawn_service::ServerNotice {
                     level: "info".into(),
                     category: "integration".into(),
-                    message: format!("{service_name} connected"),
+                    message: format!("{name} connected"),
                     timestamp: chrono::Utc::now().to_rfc3339(),
                 },
                 Err(e) => arawn_service::ServerNotice {
@@ -122,7 +199,7 @@ impl LocalService {
                 auto_create_default_feed(
                     &feed_runtime_for_task,
                     &notice_tx,
-                    &service_name,
+                    &connected_name,
                     &format!("/connect {service_name}"),
                 )
                 .await;
@@ -158,6 +235,29 @@ impl LocalService {
         &self,
         service: &str,
     ) -> Result<(), ServiceError> {
+        // `slack` alone names the one connected workspace; with more than
+        // one, the user must pick.
+        let resolved;
+        let service = if service == arawn_integrations::slack::SERVICE_NAME {
+            resolved = match self.slack_aliases().as_slice() {
+                [] => {
+                    return Err(ServiceError::InvalidOperation(
+                        "no Slack workspace is connected".into(),
+                    ));
+                }
+                [one] => arawn_integrations::slack::workspace_name(one),
+                many => {
+                    return Err(ServiceError::InvalidOperation(format!(
+                        "more than one Slack workspace is connected: {}. Name one: \
+                         /disconnect slack@<alias>",
+                        many.join(", ")
+                    )));
+                }
+            };
+            resolved.as_str()
+        } else {
+            service
+        };
         let integration = self
             .integration_registry
             .read()
@@ -172,6 +272,10 @@ impl LocalService {
             .disconnect()
             .await
             .map_err(|e| ServiceError::InvalidOperation(e.user_message()))?;
+        // A Slack workspace goes away with its tools; the others stay.
+        if let Some(alias) = service.strip_prefix("slack@") {
+            crate::slack_workspaces::deregister(&self.integration_registry, &self.registry, alias);
+        }
 
         let _ = self.notice_tx.send(arawn_service::ServerNotice {
             level: "info".into(),
@@ -181,6 +285,13 @@ impl LocalService {
         });
         Ok(())
     }
+}
+
+/// See [`LocalService::connect_target`].
+enum ConnectTarget {
+    Registered(Arc<dyn arawn_integrations::Integration>),
+    SlackWorkspace(Arc<arawn_integrations::slack::SlackIntegration>),
+    SlackNew(Arc<arawn_integrations::slack::SlackApp>),
 }
 
 type FeedRuntimeCell = Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>>;
@@ -196,19 +307,21 @@ pub(super) async fn auto_create_default_feed(
     after: &str,
 ) {
     let runtime = feed_runtime.read().recover().clone();
-    let (Some(runtime), Some((template, feed_id))) =
-        (runtime, default_feed_for_service(service_name))
-    else {
+    let (Some(runtime), Some(feed)) = (runtime, default_feed_for_service(service_name)) else {
         return;
     };
+    let (template, feed_id) = (feed.template, feed.id.as_str());
     let notice = |level: &str, message: String| arawn_service::ServerNotice {
         level: level.into(),
         category: "feeds".into(),
         message,
         timestamp: chrono::Utc::now().to_rfc3339(),
     };
-    let existing: Vec<(String, String)> = match runtime.list_summaries().await {
-        Ok(s) => s.into_iter().map(|f| (f.id, f.template)).collect(),
+    let existing: Vec<(String, String, serde_json::Value)> = match runtime.list_records().await {
+        Ok(s) => s
+            .into_iter()
+            .map(|f| (f.id, f.template, f.params.0))
+            .collect(),
         Err(e) => {
             let _ = notice_tx.send(notice(
                 "warn",
@@ -219,14 +332,14 @@ pub(super) async fn auto_create_default_feed(
             return;
         }
     };
-    if !super::should_auto_create(&existing, template) {
+    if !super::should_auto_create(&existing, &feed) {
         return;
     }
     match runtime
         .register_feed_dynamic(
             template,
             feed_id,
-            arawn_feeds::TemplateParams::default(),
+            arawn_feeds::TemplateParams::new(feed.params.clone()),
             None,
         )
         .await

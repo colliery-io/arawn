@@ -108,8 +108,49 @@ struct MockClients {
 }
 
 impl FeedClients for MockClients {
-    fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+    fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
         Some(self.slack.clone())
+    }
+    fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
+        None
+    }
+    fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>> {
+        None
+    }
+    fn drive(&self) -> Option<Arc<dyn DriveFeedClient>> {
+        None
+    }
+    fn atlassian(&self) -> Option<Arc<dyn AtlassianFeedClient>> {
+        None
+    }
+    fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
+        None
+    }
+    fn linear(&self) -> Option<Arc<dyn arawn_feeds::LinearFeedClient>> {
+        None
+    }
+}
+
+fn acme() -> TemplateParams {
+    TemplateParams::new(json!({ "workspace": "acme" }))
+}
+
+/// Two connected workspaces, each with its own client.
+struct TwoWorkspaces {
+    acme: Arc<MockSlackClient>,
+    personal: Arc<MockSlackClient>,
+}
+
+impl FeedClients for TwoWorkspaces {
+    fn slack(&self, workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
+        match workspace {
+            "acme" => Some(self.acme.clone()),
+            "personal" => Some(self.personal.clone()),
+            _ => None,
+        }
+    }
+    fn slack_workspaces(&self) -> Vec<String> {
+        vec!["acme".into(), "personal".into()]
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
         None
@@ -207,7 +248,7 @@ async fn first_run_resolves_user_id_and_writes_mentions() {
     });
     let ctx = TemplateCtx::new(clients);
     let template = MyMentionsTemplate;
-    let outcome = run_once(&template, &ctx, &TemplateParams::default(), &feed_dir).await;
+    let outcome = run_once(&template, &ctx, &acme(), &feed_dir).await;
     assert_eq!(outcome.summary.items_written, 2);
     assert_eq!(outcome.status, "ok");
 
@@ -272,8 +313,8 @@ async fn second_run_uses_cached_user_id_and_dedupes_overlap() {
     let ctx = TemplateCtx::new(clients);
     let template = MyMentionsTemplate;
 
-    run_once(&template, &ctx, &TemplateParams::default(), &feed_dir).await;
-    let outcome2 = run_once(&template, &ctx, &TemplateParams::default(), &feed_dir).await;
+    run_once(&template, &ctx, &acme(), &feed_dir).await;
+    let outcome2 = run_once(&template, &ctx, &acme(), &feed_dir).await;
     assert_eq!(
         outcome2.summary.items_written, 1,
         "second run should only write the new message, deduping the earlier two"
@@ -303,7 +344,7 @@ async fn empty_run_is_a_no_op() {
     let ctx = TemplateCtx::new(clients);
     let template = MyMentionsTemplate;
 
-    let outcome = run_once(&template, &ctx, &TemplateParams::default(), &feed_dir).await;
+    let outcome = run_once(&template, &ctx, &acme(), &feed_dir).await;
     assert_eq!(outcome.summary.items_written, 0);
     assert_eq!(outcome.status, "no-new-items");
 
@@ -325,7 +366,7 @@ async fn empty_run_is_a_no_op() {
 async fn returns_auth_when_slack_not_connected() {
     struct NoSlack;
     impl FeedClients for NoSlack {
-        fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+        fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
             None
         }
         fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
@@ -355,8 +396,68 @@ async fn returns_auth_when_slack_not_connected() {
     let ctx = TemplateCtx::new(Arc::new(NoSlack));
     let template = MyMentionsTemplate;
     let err = template
-        .run(&ctx, &TemplateParams::default(), &feed_dir, &Value::Null)
+        .run(&ctx, &acme(), &feed_dir, &Value::Null)
         .await
         .unwrap_err();
     assert!(matches!(err, FeedError::Auth(_)));
+}
+
+#[tokio::test]
+async fn two_feeds_on_two_workspaces_use_two_clients() {
+    let acme = Arc::new(MockSlackClient::new());
+    let personal = Arc::new(MockSlackClient::new());
+    *personal.auth_info.lock().unwrap() = SlackAuthInfo {
+        user_id: "U09SAM".into(),
+        team_id: "T09HOME".into(),
+    };
+    acme.queue_search(SlackHistoryPage {
+        messages: vec![mention_msg("1778284800.000100", "C1", "acme ping")],
+        next_cursor_ts: None,
+    });
+    personal.queue_search(SlackHistoryPage {
+        messages: vec![mention_msg("1778284900.000100", "C9", "home ping")],
+        next_cursor_ts: None,
+    });
+    let ctx = TemplateCtx::new(Arc::new(TwoWorkspaces {
+        acme: acme.clone(),
+        personal: personal.clone(),
+    }));
+    let tmp = tempfile::tempdir().unwrap();
+    let layout = DataLayout::new(tmp.path());
+    let template = MyMentionsTemplate;
+    for ws in ["acme", "personal"] {
+        let dir = layout
+            .ensure_feed_dir("slack/my-mentions", &format!("slack-{ws}-mentions"))
+            .unwrap();
+        let params = TemplateParams::new(json!({ "workspace": ws }));
+        run_once(&template, &ctx, &params, &dir).await;
+    }
+    assert_eq!(acme.search_calls()[0].0, "<@U01ALICE>");
+    assert_eq!(personal.search_calls()[0].0, "<@U09SAM>");
+    assert_eq!(acme.search_calls().len(), 1);
+    assert_eq!(personal.search_calls().len(), 1);
+}
+
+#[test]
+fn a_missing_or_unknown_workspace_lists_the_connected_ones() {
+    let ctx = TemplateCtx::new(Arc::new(TwoWorkspaces {
+        acme: Arc::new(MockSlackClient::new()),
+        personal: Arc::new(MockSlackClient::new()),
+    }));
+    let template = MyMentionsTemplate;
+    let err = template
+        .validate_with(&ctx, &TemplateParams::default())
+        .unwrap_err()
+        .to_string();
+    assert!(err.contains("`workspace`"), "{err}");
+    assert!(err.contains("connected: acme, personal"), "{err}");
+    let err = template
+        .validate_with(&ctx, &TemplateParams::new(json!({ "workspace": "work" })))
+        .unwrap_err()
+        .to_string();
+    assert!(
+        err.contains("`work` is not connected; connected: acme, personal"),
+        "{err}"
+    );
+    template.validate_with(&ctx, &acme()).unwrap();
 }

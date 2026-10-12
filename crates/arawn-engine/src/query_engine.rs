@@ -73,7 +73,7 @@ pub type IntegrationCapabilitiesFn = std::sync::Arc<dyn Fn() -> Vec<String> + Se
 /// Provider for the set of currently-connected integration service names.
 ///
 /// Returns canonical `Integration::name()` values (lowercase snake_case:
-/// `"gmail"`, `"google_calendar"`, `"google_drive"`, `"slack"`,
+/// `"gmail"`, `"google_calendar"`, `"google_drive"`, `"slack@<alias>"`,
 /// `"atlassian"`, `"github"`). Used by the tool-catalog filter to gate
 /// per-service tool categories (I-0055): a Calendar tool is only shown
 /// to the model when `"google_calendar"` is in the connected set.
@@ -1336,7 +1336,7 @@ fn filter_tools_for_context(
 
     // Per-service integration categories — capability-gated, not keyword-gated.
     // Service names come from `Integration::name()` (lowercase snake_case):
-    // gmail, google_calendar, google_drive, slack, atlassian, github, linear.
+    // gmail, google_calendar, google_drive, slack@<alias>, atlassian, github, linear.
     let is_connected = |service: &str| connected_services.iter().any(|s| s == service);
     if is_connected("google_calendar") {
         active_categories.insert(ToolCategory::Calendar);
@@ -1347,7 +1347,8 @@ fn filter_tools_for_context(
     if is_connected("google_drive") {
         active_categories.insert(ToolCategory::Drive);
     }
-    if is_connected("slack") {
+    // Slack is one integration per workspace: `slack@<alias>`.
+    if connected_services.iter().any(|s| s.starts_with("slack@")) {
         active_categories.insert(ToolCategory::Slack);
     }
     if is_connected("atlassian") {
@@ -2061,18 +2062,28 @@ mod tests {
     fn slack_tool_visible_when_slack_capability_present_no_keywords() {
         let registry = ToolRegistry::new();
         registry.register(Box::new(CategorizedStub {
-            name_: "slack_post",
+            name_: "slack_acme_post",
             category_: arawn_tool::ToolCategory::Slack,
         }));
-        let all = vec![tool_def("slack_post")];
+        let all = vec![tool_def("slack_acme_post")];
         let session = session_past_iter_1("Tell Pat we're shipping");
-        let connected = vec!["slack".to_string()];
+        // Any connected workspace turns the Slack category on; the bare
+        // app name does not.
+        let connected = vec!["slack@acme".to_string()];
         let filtered =
             filter_tools_for_context(&all, &session, &registry, &connected, &small_model_limits());
         assert!(
-            filtered.iter().any(|t| t.name == "slack_post"),
-            "slack_post should be visible when slack capability is connected"
+            filtered.iter().any(|t| t.name == "slack_acme_post"),
+            "slack_acme_post should be visible when a slack workspace is connected"
         );
+        let filtered = filter_tools_for_context(
+            &all,
+            &session,
+            &registry,
+            &["slack".to_string()],
+            &small_model_limits(),
+        );
+        assert!(filtered.iter().all(|t| t.name != "slack_acme_post"));
     }
 
     #[test]

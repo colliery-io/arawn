@@ -43,6 +43,8 @@ These don't have a shared fallback — only the service-specific path resolves t
 
 One Atlassian client covers both Jira and Confluence — they're a single OAuth app under Atlassian's developer console.
 
+One Slack client covers every Slack workspace: `[integrations.slack]` is the app, and each workspace you connect is installed from it. There is no per-workspace block. Each workspace's token is stored under `slack@<alias>` in `<data_dir>/tokens/`. `arawn doctor` shows one row for the app and one per connected workspace (`integration:slack@acme`).
+
 ### GitHub
 
 GitHub uses the App model, not OAuth. Different shape:
@@ -122,7 +124,7 @@ export ARAWN_SLACK_CLIENT_SECRET="0123456789abcdef..."
 arawn serve
 ```
 
-No `[integrations.slack]` block required. Slack registers if both env vars are non-empty; skipped otherwise.
+No `[integrations.slack]` block required. Slack registers if both env vars are non-empty; skipped otherwise. At startup arawn registers every workspace with a stored token.
 
 ## When an integration silently doesn't register
 

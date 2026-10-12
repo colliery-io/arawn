@@ -92,15 +92,35 @@ impl LocalService {
             .map(|(k, v)| (k.clone(), Arc::clone(v)))
             .collect();
 
+        // The Slack app has no registry entry of its own: it is loaded
+        // when the server holds it; its workspaces are `slack@*` entries.
+        let slack_app_loaded = self.slack_app.read().recover().is_some();
         let mut out = Vec::with_capacity(reports.len());
         for r in reports {
-            let row = match (registry.get(r.service), &r.state) {
+            if r.service == arawn_integrations::slack::SERVICE_NAME
+                && slack_app_loaded
+                && !r.state.is_broken()
+            {
+                let any = registry.keys().any(|k| k.starts_with("slack@"));
+                out.push(IntegrationHealth {
+                    name: r.service.clone(),
+                    state: if any { "connected" } else { "configured" }.into(),
+                    detail: if any {
+                        "connected".into()
+                    } else {
+                        "loaded by the server, no workspace connected".into()
+                    },
+                    hint: (!any).then(|| "run: arawn connect slack".to_string()),
+                });
+                continue;
+            }
+            let row = match (registry.get(&r.service), &r.state) {
                 // A broken token stays broken whatever the registry says.
                 (_, IntegrationState::TokenError { .. }) => None,
                 (Some(live), _) => {
                     let connected = live.is_connected().await;
                     Some(IntegrationHealth {
-                        name: r.service.into(),
+                        name: r.service.clone(),
                         state: if connected { "connected" } else { "configured" }.into(),
                         detail: if connected {
                             "connected".into()
@@ -114,7 +134,7 @@ impl LocalService {
                     None,
                     IntegrationState::Configured { .. } | IntegrationState::Connected { .. },
                 ) => Some(IntegrationHealth {
-                    name: r.service.into(),
+                    name: r.service.clone(),
                     state: "restart_needed".into(),
                     detail: "set up in arawn.toml, but the running server did not load it".into(),
                     hint: Some("restart arawn serve".into()),
@@ -122,7 +142,7 @@ impl LocalService {
                 (None, _) => None,
             };
             out.push(row.unwrap_or_else(|| IntegrationHealth {
-                name: r.service.into(),
+                name: r.service.clone(),
                 state: r.state.code().into(),
                 detail: r.describe(),
                 hint: r.hint(),

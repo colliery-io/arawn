@@ -7,10 +7,10 @@ title: "Integrations overview"
 
 An **integration** wires arawn to one external account — your Gmail, your Slack workspace, your Atlassian site. Two things happen when an integration is connected:
 
-1. A handful of agent **tools** register (`gmail_search`, `slack_post`, `jira_get_issue`, …) — the agent can read and act on that provider during a turn.
+1. A handful of agent **tools** register (`gmail_search`, `slack_acme_post`, `jira_get_issue`, …) — the agent can read and act on that provider during a turn.
 2. **Feed templates** for that provider become usable — recurring ingest jobs that mirror data locally for grep-friendly access. See the [feeds explanation](../feeds/).
 
-Today arawn ships integrations for Google (Gmail + Calendar + Drive), Slack, Atlassian (Jira + Confluence), GitHub, and Linear. The exact tools-per-provider and feed templates are in the [integrations reference](../../reference/integrations/).
+Today arawn ships integrations for Google (Gmail + Calendar + Drive), Slack, Atlassian (Jira + Confluence), GitHub, and Linear. Slack is one integration per workspace: each connected workspace is `slack@<alias>`, with its own token and tools, all from one Slack app. The exact tools-per-provider and feed templates are in the [integrations reference](../../reference/integrations/).
 
 ## The BYO reality
 
