@@ -16,6 +16,7 @@ pub mod atlassian;
 pub mod calendar;
 pub mod dispatch;
 pub mod drive;
+pub mod drive_comments;
 pub mod embed;
 pub mod error;
 pub mod filesystem;

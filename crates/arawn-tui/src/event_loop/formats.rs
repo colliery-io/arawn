@@ -395,7 +395,7 @@ pub(super) fn format_known_templates() -> String {
      - slack/channel-archive · slack/dm-archive · slack/my-mentions\n\
      - calendar/upcoming-archive\n\
      - gmail/inbox-archive · gmail/sender-filter · gmail/label-archive\n\
-     - drive/folder-sync · drive/recent\n\
+     - drive/folder-sync · drive/recent · drive/comments\n\
      - confluence/space-archive\n\
      - jira/project-tracker · jira/assignee-tracker\n\
      - linear/my-issues\n\n\

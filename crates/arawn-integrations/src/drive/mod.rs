@@ -10,6 +10,7 @@
 //! See `docs/src/integrations/drive.md` for setup.
 
 mod client;
+pub mod comments;
 mod integration;
 mod tools;
 pub mod uat_tools;
