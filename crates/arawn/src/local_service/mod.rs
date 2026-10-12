@@ -73,6 +73,10 @@ pub struct LocalService {
     /// look up their integration here at construction time.
     integration_registry:
         Arc<std::sync::RwLock<HashMap<String, Arc<dyn arawn_integrations::Integration>>>>,
+    /// The Slack app when `[integrations.slack]` resolves. Each connected
+    /// workspace is its own `slack@<alias>` entry in the registry above;
+    /// the app makes new ones on `/connect slack` (COLLIERY-I-0520).
+    slack_app: Arc<std::sync::RwLock<Option<Arc<arawn_integrations::slack::SlackApp>>>>,
     /// Live handle to the arawn-feeds runtime, set after the workflow
     /// runner comes up. `None` when feeds couldn't start (no workflow
     /// runner, no DB, etc.) — `/watch` and `/feeds` then return a
@@ -147,6 +151,7 @@ impl LocalService {
             permission_audit: arawn_engine::permissions::new_shared_audit(),
             notice_tx: tokio::sync::broadcast::channel(64).0,
             integration_registry: Arc::new(std::sync::RwLock::new(HashMap::new())),
+            slack_app: Arc::new(std::sync::RwLock::new(None)),
             feed_runtime: Arc::new(std::sync::RwLock::new(None)),
             declared: Arc::new(std::sync::RwLock::new(declared::Declared::default())),
             reconcile_lock: Arc::new(tokio::sync::Mutex::new(())),
@@ -309,6 +314,11 @@ impl LocalService {
             .write()
             .recover()
             .insert(name, integration);
+    }
+
+    /// Set the Slack app. Called from startup when its client resolves.
+    pub fn set_slack_app(&self, app: Arc<arawn_integrations::slack::SlackApp>) {
+        *self.slack_app.write().recover() = Some(app);
     }
 
     /// Shared reference to the integration registry — for tools that want

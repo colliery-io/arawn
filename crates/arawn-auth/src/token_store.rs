@@ -7,6 +7,9 @@
 //! <provider>.json.enc  — chacha20poly1305 ciphertext of the JSON token
 //! ```
 //!
+//! A key may hold `@` (`slack@acme`, one Slack workspace): it is a legal
+//! file-name character on macOS, Linux and Windows.
+//!
 //! On first use the master key is generated with cryptographic randomness and
 //! persisted with restrictive permissions. Subsequent opens load it.
 //!
@@ -134,11 +137,29 @@ impl TokenStore {
         &self.tokens_dir
     }
 
+    /// Every key with a stored token, sorted. Reads file names only;
+    /// nothing is decrypted.
+    pub fn keys(&self) -> Result<Vec<String>, AuthError> {
+        let entries = std::fs::read_dir(&self.tokens_dir)
+            .map_err(|e| AuthError::InvalidConfig(format!("read tokens dir: {e}")))?;
+        let mut out: Vec<String> = entries
+            .flatten()
+            .filter_map(|e| {
+                e.file_name()
+                    .to_str()
+                    .and_then(|n| n.strip_suffix(".json.enc"))
+                    .map(String::from)
+            })
+            .collect();
+        out.sort();
+        Ok(out)
+    }
+
     fn path_for(&self, provider: &str) -> PathBuf {
         // Defensive: refuse path-separator characters in provider names.
         let safe: String = provider
             .chars()
-            .filter(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_'))
+            .filter(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '@'))
             .collect();
         self.tokens_dir.join(format!("{safe}.json.enc"))
     }
@@ -283,6 +304,26 @@ mod tests {
         let p = store.path_for("../../etc/passwd");
         assert!(p.starts_with(store.tokens_dir()));
         assert_eq!(p.file_name().unwrap(), "etcpasswd.json.enc");
+    }
+
+    #[test]
+    fn workspace_keys_keep_the_at_sign_and_are_listed() {
+        let tmp = TempDir::new().unwrap();
+        let store = TokenStore::open(tmp.path()).unwrap();
+        store.save("slack@acme", &sample_token()).unwrap();
+        store.save("slack@personal", &sample_token()).unwrap();
+        store.save("gmail", &sample_token()).unwrap();
+        assert_eq!(
+            store.path_for("slack@acme").file_name().unwrap(),
+            "slack@acme.json.enc"
+        );
+        assert_eq!(
+            store.keys().unwrap(),
+            ["gmail", "slack@acme", "slack@personal"]
+        );
+        store.delete("slack@acme").unwrap();
+        assert!(store.load("slack@acme").unwrap().is_none());
+        assert!(store.load("slack@personal").unwrap().is_some());
     }
 
     #[cfg(unix)]

@@ -10,9 +10,93 @@ use crate::oauth_flow::run_oauth_flow;
 
 use super::client::{SlackContext, build_slack_client};
 
-/// Stable service name. Used as the [`TokenStore`] key, the integration
-/// registry key, and the argument to `/connect slack`.
+/// The Slack app: `[integrations.slack]`, and the argument to
+/// `/connect slack`. Each connected workspace is its own integration,
+/// named [`workspace_name`] (`slack@<alias>`).
 pub const SERVICE_NAME: &str = "slack";
+
+/// Longest workspace alias. With the longest tool op the tool name is
+/// `slack_` + 32 + `_list_channels`, 52 characters: inside the 64 that
+/// every LLM provider allows.
+pub const ALIAS_MAX_LEN: usize = 32;
+
+/// The alias when the team has neither a usable name nor an id.
+pub const DEFAULT_ALIAS: &str = "default";
+
+/// `slack@<alias>`: the integration name, the [`TokenStore`] key and the
+/// credentials dir of one workspace.
+pub fn workspace_name(alias: &str) -> String {
+    format!("{SERVICE_NAME}@{alias}")
+}
+
+/// The alias of a workspace name (`slack@acme` → `acme`), or `None` when
+/// `name` is not a valid workspace name.
+pub fn alias_of(name: &str) -> Option<&str> {
+    name.strip_prefix("slack@").filter(|a| is_valid_alias(a))
+}
+
+/// `[a-z0-9-]{1,32}`.
+pub fn is_valid_alias(alias: &str) -> bool {
+    !alias.is_empty()
+        && alias.len() <= ALIAS_MAX_LEN
+        && alias
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+}
+
+/// An alias from a Slack team: the lowercased name, every run of other
+/// characters made one `-`, trimmed and cut to [`ALIAS_MAX_LEN`]. A name
+/// with non-ASCII letters, or nothing left, gives the team id instead.
+/// `None` when neither gives an alias.
+pub fn sanitize_alias(team_name: &str, team_id: &str) -> Option<String> {
+    fn clean(s: &str) -> String {
+        let mut out = String::new();
+        for c in s.chars() {
+            if c.is_ascii_alphanumeric() {
+                out.push(c.to_ascii_lowercase());
+            } else if !out.is_empty() && !out.ends_with('-') {
+                out.push('-');
+            }
+        }
+        out.truncate(ALIAS_MAX_LEN);
+        out.trim_end_matches('-').to_string()
+    }
+    let from_name = if team_name.is_ascii() {
+        clean(team_name)
+    } else {
+        String::new()
+    };
+    let alias = if from_name.is_empty() {
+        clean(team_id)
+    } else {
+        from_name
+    };
+    (!alias.is_empty()).then_some(alias)
+}
+
+/// The Slack team a token was granted in. Slack's `oauth.v2.access`
+/// returns `team: {id, name}`, kept in the token's `extras`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SlackTeam {
+    pub id: String,
+    pub name: String,
+}
+
+/// The team stored in a token, if any.
+pub fn team_of(token: &arawn_auth::Token) -> Option<SlackTeam> {
+    let team = token.extras.get("team")?;
+    let field = |k: &str| {
+        team.get(k)
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string()
+    };
+    let t = SlackTeam {
+        id: field("id"),
+        name: field("name"),
+    };
+    (!t.id.is_empty() || !t.name.is_empty()).then_some(t)
+}
 
 /// Bot scopes requested at OAuth time. Per ADR-0001 § 4.
 ///
@@ -88,6 +172,7 @@ pub const SLACK_OAUTH_USER_SCOPES: &[&str] = &[
 
 /// Slack OAuth v2 provider config. Default values match Slack's standard
 /// endpoints; tests can override.
+#[derive(Clone)]
 pub struct SlackProviderConfig {
     pub auth_url: Url,
     pub token_url: Url,
@@ -138,15 +223,17 @@ impl SlackProviderConfig {
     }
 }
 
-/// Slack integration. Tools depend on it via `Arc<SlackIntegration>`.
-pub struct SlackIntegration {
+/// The Slack app (REQ-005): one client id and secret, installed in any
+/// number of workspaces. Makes the [`SlackIntegration`] of a workspace and
+/// finds the connected ones in the token store.
+pub struct SlackApp {
     data_dir: PathBuf,
     client_id: String,
     client_secret: String,
     provider_config: Option<SlackProviderConfig>,
 }
 
-impl SlackIntegration {
+impl SlackApp {
     pub fn new(data_dir: PathBuf, client_id: String, client_secret: String) -> Self {
         Self {
             data_dir,
@@ -154,6 +241,91 @@ impl SlackIntegration {
             client_secret,
             provider_config: None,
         }
+    }
+
+    pub fn with_provider_config(mut self, config: SlackProviderConfig) -> Self {
+        self.provider_config = Some(config);
+        self
+    }
+
+    /// The integration of workspace `alias`, connected or not.
+    pub fn workspace(&self, alias: &str) -> Result<SlackIntegration, IntegrationError> {
+        if !is_valid_alias(alias) {
+            return Err(IntegrationError::Provider(format!(
+                "`{alias}` is not a Slack workspace alias: use 1 to {ALIAS_MAX_LEN} of a-z, 0-9 and -"
+            )));
+        }
+        let mut ws = SlackIntegration::new(
+            self.data_dir.clone(),
+            alias,
+            self.client_id.clone(),
+            self.client_secret.clone(),
+        );
+        ws.provider_config = self.provider_config.clone();
+        Ok(ws)
+    }
+
+    /// Aliases of the workspaces with a stored token, sorted. Reads file
+    /// names only.
+    pub fn connected_aliases(&self) -> Vec<String> {
+        connected_aliases(&self.data_dir)
+    }
+}
+
+/// Aliases of the workspaces with a stored token in `data_dir`, sorted.
+pub fn connected_aliases(data_dir: &std::path::Path) -> Vec<String> {
+    TokenStore::open(data_dir)
+        .and_then(|s| s.keys())
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|k| alias_of(k).map(String::from))
+        .collect()
+}
+
+/// One Slack workspace. Tools depend on it via `Arc<SlackIntegration>`.
+pub struct SlackIntegration {
+    data_dir: PathBuf,
+    alias: String,
+    /// `slack@<alias>`: integration name and token-store key.
+    name: String,
+    client_id: String,
+    client_secret: String,
+    provider_config: Option<SlackProviderConfig>,
+}
+
+impl SlackIntegration {
+    /// The caller checks `alias` ([`is_valid_alias`]); [`SlackApp::workspace`]
+    /// does.
+    pub fn new(
+        data_dir: PathBuf,
+        alias: impl Into<String>,
+        client_id: String,
+        client_secret: String,
+    ) -> Self {
+        let alias = alias.into();
+        Self {
+            data_dir,
+            name: workspace_name(&alias),
+            alias,
+            client_id,
+            client_secret,
+            provider_config: None,
+        }
+    }
+
+    pub fn alias(&self) -> &str {
+        &self.alias
+    }
+
+    /// `<data_dir>/integrations/slack@<alias>/`. Slack keeps its token in
+    /// the token store; the dir is removed on disconnect if it exists.
+    pub fn creds_dir(&self) -> PathBuf {
+        self.data_dir.join("integrations").join(&self.name)
+    }
+
+    /// The team stored with the token, if any.
+    pub fn team(&self) -> Option<SlackTeam> {
+        self.load_token().ok().as_ref().and_then(team_of)
     }
 
     pub fn with_provider_config(mut self, config: SlackProviderConfig) -> Self {
@@ -192,9 +364,7 @@ impl SlackIntegration {
             .get("authed_user")
             .and_then(|v| v.get("access_token"))
             .and_then(|v| v.as_str())
-            .ok_or_else(|| {
-                IntegrationError::NotConnected(format!("{SERVICE_NAME} (user token)"))
-            })?;
+            .ok_or_else(|| IntegrationError::NotConnected(format!("{} (user token)", self.name)))?;
         // Synthesize a Token-shaped struct just for the user side so we
         // can reuse build_slack_client. We deliberately drop refresh /
         // expiry — Slack user tokens follow the same lifecycle as the
@@ -218,8 +388,8 @@ impl SlackIntegration {
     fn load_token(&self) -> Result<arawn_auth::Token, IntegrationError> {
         let store = self.token_store()?;
         store
-            .load(SERVICE_NAME)?
-            .ok_or_else(|| IntegrationError::NotConnected(SERVICE_NAME.to_string()))
+            .load(&self.name)?
+            .ok_or_else(|| IntegrationError::NotConnected(self.name.clone()))
     }
 
     /// Bot-token scope set from the persisted token's `scope` field.
@@ -253,15 +423,7 @@ impl SlackIntegration {
     }
 
     fn provider(&self) -> SlackProviderConfig {
-        self.provider_config
-            .as_ref()
-            .map(|c| SlackProviderConfig {
-                auth_url: c.auth_url.clone(),
-                token_url: c.token_url.clone(),
-                scopes: c.scopes.clone(),
-                redirect_port: c.redirect_port,
-            })
-            .unwrap_or_default()
+        self.provider_config.clone().unwrap_or_default()
     }
 
     fn token_store(&self) -> Result<TokenStore, IntegrationError> {
@@ -272,12 +434,12 @@ impl SlackIntegration {
 #[async_trait]
 impl Integration for SlackIntegration {
     fn name(&self) -> &str {
-        SERVICE_NAME
+        &self.name
     }
 
     async fn is_connected(&self) -> bool {
         match self.token_store() {
-            Ok(store) => store.load(SERVICE_NAME).ok().flatten().is_some(),
+            Ok(store) => store.load(&self.name).ok().flatten().is_some(),
             Err(_) => false,
         }
     }
@@ -289,7 +451,7 @@ impl Integration for SlackIntegration {
         run_oauth_flow(
             oauth_config,
             &store,
-            SERVICE_NAME,
+            &self.name,
             "/oauth/callback",
             Some(port),
             ctx,
@@ -300,8 +462,11 @@ impl Integration for SlackIntegration {
 
     async fn disconnect(&self) -> Result<(), IntegrationError> {
         let store = self.token_store()?;
-        store.delete(SERVICE_NAME)?;
-        Ok(())
+        store.delete(&self.name)?;
+        match std::fs::remove_dir_all(self.creds_dir()) {
+            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(IntegrationError::Io(e)),
+            _ => Ok(()),
+        }
     }
 
     async fn capabilities_summary(&self) -> Option<String> {
@@ -322,8 +487,13 @@ impl Integration for SlackIntegration {
             .collect::<Vec<_>>()
             .join(", ");
 
+        let name = &self.name;
+        let team = match self.team() {
+            Some(t) if !t.name.is_empty() => format!("team {}; ", t.name),
+            _ => String::new(),
+        };
         if user_scopes.is_empty() {
-            return Some(format!("slack (connected; bot scopes: {bot_list})"));
+            return Some(format!("{name} (connected; {team}bot scopes: {bot_list})"));
         }
 
         let mut user_sorted: Vec<&String> = user_scopes.iter().collect();
@@ -334,7 +504,7 @@ impl Integration for SlackIntegration {
             .collect::<Vec<_>>()
             .join(", ");
         Some(format!(
-            "slack (connected; bot scopes: {bot_list}; user scopes: {user_list}). \
+            "{name} (connected; {team}bot scopes: {bot_list}; user scopes: {user_list}). \
              Reads use the user token (sees private channels you're in without bot invite); \
              posts use the bot token (appear as the bot)."
         ))
@@ -359,6 +529,104 @@ mod tests {
         assert!(provider.scopes.iter().any(|s| s == "im:write"));
         assert!(provider.scopes.iter().any(|s| s == "mpim:write"));
         assert!(!provider.scopes.iter().any(|s| s == "search:read"));
+    }
+
+    fn token_for(team_id: &str, team_name: &str) -> arawn_auth::Token {
+        let mut extras = serde_json::Map::new();
+        extras.insert(
+            "team".into(),
+            serde_json::json!({ "id": team_id, "name": team_name }),
+        );
+        arawn_auth::Token {
+            access: format!("xoxb-{team_id}"),
+            refresh: None,
+            expires_at: None,
+            scope: Some("channels:read,chat:write".into()),
+            token_type: "Bearer".into(),
+            extras,
+        }
+    }
+
+    fn app(dir: &std::path::Path) -> SlackApp {
+        SlackApp::new(dir.to_path_buf(), "cid".into(), "csecret".into())
+    }
+
+    #[test]
+    fn sanitize_alias_cases() {
+        assert_eq!(sanitize_alias("Acme Corp", "T1").unwrap(), "acme-corp");
+        // Punctuation runs become one dash; ends are trimmed.
+        assert_eq!(
+            sanitize_alias("  R&D -- Team!! ", "T1").unwrap(),
+            "r-d-team"
+        );
+        // Non-ASCII name: the team id.
+        assert_eq!(sanitize_alias("Équipe", "T0ABC").unwrap(), "t0abc");
+        assert_eq!(sanitize_alias("", "T0ABC").unwrap(), "t0abc");
+        assert_eq!(sanitize_alias("!!!", "T0ABC").unwrap(), "t0abc");
+        assert!(sanitize_alias("", "").is_none());
+        // Length cap, with no dash left at the cut.
+        let long = sanitize_alias(&format!("{} b", "a".repeat(31)), "T1").unwrap();
+        assert_eq!(long, "a".repeat(31));
+        let cut = sanitize_alias(&"x".repeat(40), "T1").unwrap();
+        assert_eq!(cut.len(), ALIAS_MAX_LEN);
+        assert!(is_valid_alias(&cut));
+    }
+
+    #[test]
+    fn alias_names_and_validation() {
+        assert_eq!(workspace_name("acme"), "slack@acme");
+        assert_eq!(alias_of("slack@acme"), Some("acme"));
+        assert_eq!(alias_of("slack"), None);
+        assert_eq!(alias_of("slack@Acme"), None);
+        assert_eq!(alias_of(&format!("slack@{}", "a".repeat(33))), None);
+        assert!(
+            app(std::path::Path::new("/nonexistent"))
+                .workspace("a/b")
+                .is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn two_aliases_have_separate_tokens_and_disconnect_one_leaves_the_other() {
+        let dir = tempfile::tempdir().unwrap();
+        let app = app(dir.path());
+        let acme = app.workspace("acme").unwrap();
+        let personal = app.workspace("personal").unwrap();
+        assert_eq!(acme.name(), "slack@acme");
+        assert_eq!(personal.name(), "slack@personal");
+        let store = TokenStore::open(dir.path()).unwrap();
+        store.save("slack@acme", &token_for("TA", "Acme")).unwrap();
+        store
+            .save("slack@personal", &token_for("TP", "Personal"))
+            .unwrap();
+
+        assert_eq!(acme.team().unwrap().id, "TA");
+        assert_eq!(personal.team().unwrap().id, "TP");
+        assert!(acme.is_connected().await && personal.is_connected().await);
+        assert!(
+            acme.capabilities_summary()
+                .await
+                .unwrap()
+                .starts_with("slack@acme (connected; team Acme;")
+        );
+
+        acme.disconnect().await.unwrap();
+        assert!(!acme.is_connected().await);
+        assert!(personal.is_connected().await);
+        assert_eq!(personal.team().unwrap().name, "Personal");
+        assert_eq!(app.connected_aliases(), ["personal"]);
+    }
+
+    #[test]
+    fn connected_aliases_come_from_the_token_store() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = TokenStore::open(dir.path()).unwrap();
+        store.save("slack@personal", &token_for("TP", "P")).unwrap();
+        store.save("slack@acme", &token_for("TA", "A")).unwrap();
+        // Not workspaces: another service, and the pre-workspace key.
+        store.save("gmail", &token_for("x", "x")).unwrap();
+        store.save("slack", &token_for("x", "x")).unwrap();
+        assert_eq!(app(dir.path()).connected_aliases(), ["acme", "personal"]);
     }
 
     #[test]

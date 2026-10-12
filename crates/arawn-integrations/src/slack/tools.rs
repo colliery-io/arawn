@@ -869,6 +869,18 @@ impl Tool for SlackOpenDmTool {
     }
 }
 
+/// The six tools of one workspace.
+pub fn slack_tools(integration: Arc<SlackIntegration>) -> Vec<Box<dyn Tool>> {
+    vec![
+        Box::new(SlackListChannelsTool::new(Arc::clone(&integration))) as Box<dyn Tool>,
+        Box::new(SlackHistoryTool::new(Arc::clone(&integration))),
+        Box::new(SlackPostTool::new(Arc::clone(&integration))),
+        Box::new(SlackReactTool::new(Arc::clone(&integration))),
+        Box::new(SlackUsersListTool::new(Arc::clone(&integration))),
+        Box::new(SlackOpenDmTool::new(integration)),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
