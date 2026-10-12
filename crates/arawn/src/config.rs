@@ -842,7 +842,7 @@ mod tests {
         // the tutorial file is missing — fencing the README link target.
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../docs/src/tutorials/first-chat.md"
+            "/../../docs/src/content/docs/tutorials/first-chat.md"
         );
         let doc = std::fs::read_to_string(path)
             .unwrap_or_else(|e| panic!("first-chat.md must exist at {path}: {e}"));

@@ -1,7 +1,7 @@
 //! Provider guides for `arawn setup` (ARAWN-T-0501).
 //!
 //! Each guide is the short form of the matching how-to page under
-//! `docs/src/how-to/connect-*.md`. Scope strings and redirect ports come
+//! `docs/src/content/docs/how-to/connect-*.md`. Scope strings and redirect ports come
 //! from the integration crates' constants, never retyped, so the guide
 //! cannot drift from what `/connect` actually requests.
 
@@ -154,7 +154,7 @@ pub fn guide(target: SetupTarget) -> Guide {
                     label: "OAuth scopes",
                     items: scopes,
                 }],
-                doc: "docs/src/how-to/connect-google.md",
+                doc: "docs/src/content/docs/how-to/connect-google.md",
             }
         }
         SetupTarget::Slack => Guide {
@@ -186,7 +186,7 @@ pub fn guide(target: SetupTarget) -> Guide {
                     items: strings(arawn_integrations::slack::SLACK_OAUTH_USER_SCOPES),
                 },
             ],
-            doc: "docs/src/how-to/connect-slack.md",
+            doc: "docs/src/content/docs/how-to/connect-slack.md",
         },
         SetupTarget::Atlassian => Guide {
             console_url: "https://developer.atlassian.com/console/myapps/",
@@ -209,7 +209,7 @@ pub fn guide(target: SetupTarget) -> Guide {
                 label: "OAuth scopes",
                 items: strings(arawn_integrations::atlassian::ATLASSIAN_OAUTH_SCOPES),
             }],
-            doc: "docs/src/how-to/connect-atlassian.md",
+            doc: "docs/src/content/docs/how-to/connect-atlassian.md",
         },
         SetupTarget::Github => Guide {
             console_url: "https://github.com/settings/apps/new",
@@ -237,7 +237,7 @@ pub fn guide(target: SetupTarget) -> Guide {
                     "Account > Email addresses (optional)",
                 ]),
             }],
-            doc: "docs/src/how-to/connect-github.md",
+            doc: "docs/src/content/docs/how-to/connect-github.md",
         },
     }
 }
