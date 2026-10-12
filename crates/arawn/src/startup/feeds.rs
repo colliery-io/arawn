@@ -39,11 +39,8 @@ pub async fn wire_continual_feeds(
                 let feeds_registry = Arc::new(arawn_feeds::default_registry());
 
                 let mut clients = arawn_feeds::RealClients::new();
-                if let Some(ws) = integrations.slack.as_ref().and_then(|app| {
-                    let alias = app.connected_aliases().into_iter().next()?;
-                    app.workspace(&alias).ok()
-                }) {
-                    clients = clients.with_slack(Arc::new(ws));
+                if let Some(app) = integrations.slack.as_ref() {
+                    clients = clients.with_slack(Arc::clone(app));
                 }
                 if let Some(cal) = integrations.calendar.as_ref() {
                     clients = clients.with_calendar(Arc::clone(cal));

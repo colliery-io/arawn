@@ -21,6 +21,10 @@ use crate::types::{Projection, ProjectionRow};
 pub const TOPLEVEL_FEED_TYPE: &str = "slack_messages";
 pub const THREAD_FEED_TYPE: &str = "slack_thread_messages";
 
+/// Both tables carry a `workspace` column: the alias of the Slack
+/// workspace the row came from (COLLIERY-I-0520).
+pub const FEED_TYPES: [&str; 2] = [TOPLEVEL_FEED_TYPE, THREAD_FEED_TYPE];
+
 #[derive(Debug, Clone)]
 pub struct SlackMessageProjection {
     pub id: String,
@@ -33,6 +37,8 @@ pub struct SlackMessageProjection {
     pub thread_ts: Option<String>,
     pub reactions: Vec<Value>,
     pub is_thread_reply: bool,
+    /// The feed's `workspace` param (`acme` for slack@acme).
+    pub workspace: Option<String>,
 }
 
 impl Projection for SlackMessageProjection {
@@ -51,6 +57,7 @@ impl Projection for SlackMessageProjection {
             "sender_id": self.sender_id,
             "thread_ts": self.thread_ts,
             "reactions": self.reactions,
+            "workspace": self.workspace,
         });
         ProjectionRow {
             id: self.id.clone(),
@@ -143,7 +150,43 @@ pub fn from_slack_message(
         thread_ts,
         reactions,
         is_thread_reply,
+        workspace: None,
     })
+}
+
+/// The `workspace` param of the feed whose dir this is, from the
+/// runtime's `meta.json`.
+pub fn feed_workspace(feed_dir: &Path) -> Option<String> {
+    let meta = std::fs::read_to_string(feed_dir.join("meta.json")).ok()?;
+    let meta: Value = serde_json::from_str(&meta).ok()?;
+    meta.get("params")?
+        .get("workspace")?
+        .as_str()
+        .map(String::from)
+}
+
+/// Set the `workspace` column on every row of `feed_id` that does not
+/// have it yet, or has another. Idempotent; also back-fills rows written
+/// before the column existed. Returns the rows changed.
+pub fn set_workspace(
+    store: &crate::store::ProjectionStore,
+    feed_id: &str,
+    workspace: &str,
+) -> Result<usize, ProjectionError> {
+    let mut changed = 0;
+    for ft in FEED_TYPES {
+        store.ensure_feed_type(ft)?;
+        let conn = store.conn().lock().unwrap();
+        changed += conn
+            .execute(
+                &format!(
+                    "UPDATE {ft} SET workspace = ?1 WHERE feed_id = ?2 AND workspace IS NOT ?1"
+                ),
+                rusqlite::params![workspace, feed_id],
+            )
+            .map_err(|e| ProjectionError::Storage(format!("set workspace on {ft}: {e}")))?;
+    }
+    Ok(changed)
 }
 
 fn parse_jsonl(path: &Path) -> Result<Vec<Value>, ProjectionError> {
@@ -165,7 +208,20 @@ fn parse_jsonl(path: &Path) -> Result<Vec<Value>, ProjectionError> {
     Ok(out)
 }
 
+/// Every message under `feed_dir`, each with the feed's workspace.
 pub fn walk_feed_dir(
+    feed_id: &str,
+    feed_dir: &Path,
+) -> Result<Vec<SlackMessageProjection>, ProjectionError> {
+    let workspace = feed_workspace(feed_dir);
+    let mut out = walk_messages(feed_id, feed_dir)?;
+    for p in &mut out {
+        p.workspace = workspace.clone();
+    }
+    Ok(out)
+}
+
+fn walk_messages(
     feed_id: &str,
     feed_dir: &Path,
 ) -> Result<Vec<SlackMessageProjection>, ProjectionError> {
@@ -268,6 +324,49 @@ mod tests {
         assert_eq!(p.feed_type(), THREAD_FEED_TYPE);
     }
 
+    fn workspaces(store: &crate::store::ProjectionStore) -> Vec<Option<String>> {
+        let conn = store.conn().lock().unwrap();
+        let mut stmt = conn
+            .prepare("SELECT workspace FROM slack_messages ORDER BY source_id")
+            .unwrap();
+        stmt.query_map([], |r| r.get(0))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn rows_carry_their_workspace_and_old_rows_are_back_filled() {
+        let store = crate::store::ProjectionStore::in_memory().unwrap();
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::write(
+            tmp.path().join("2026-05-11.jsonl"),
+            "{\"ts\":\"1715000000.000001\",\"user\":\"U1\",\"text\":\"one\"}\n",
+        )
+        .unwrap();
+        // Written before the feed had a workspace: no value.
+        crate::project_feed_dir(&store, "slack/my-mentions", "m", tmp.path()).unwrap();
+        assert_eq!(workspaces(&store), [None]);
+
+        std::fs::write(
+            tmp.path().join("meta.json"),
+            r#"{"template":"slack/my-mentions","params":{"workspace":"acme"}}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            tmp.path().join("2026-05-12.jsonl"),
+            "{\"ts\":\"1715100000.000001\",\"user\":\"U2\",\"text\":\"two\"}\n",
+        )
+        .unwrap();
+        crate::project_feed_dir(&store, "slack/my-mentions", "m", tmp.path()).unwrap();
+        assert_eq!(
+            workspaces(&store),
+            [Some("acme".to_string()), Some("acme".to_string())]
+        );
+        // Again: nothing to change.
+        assert_eq!(set_workspace(&store, "m", "acme").unwrap(), 0);
+    }
+
     #[test]
     fn walks_top_level_and_threads() {
         let tmp = tempfile::tempdir().unwrap();
@@ -288,9 +387,17 @@ mod tests {
         )
         .unwrap();
 
+        std::fs::write(
+            tmp.path().join("meta.json"),
+            r#"{"template":"slack/channel-archive","params":{"workspace":"acme","channel":"C1"}}"#,
+        )
+        .unwrap();
+
         let out = walk_feed_dir("f", tmp.path()).unwrap();
         // 2 top-level + 1 reply (parent in thread file skipped).
         assert_eq!(out.len(), 3);
+        assert!(out.iter().all(|p| p.workspace.as_deref() == Some("acme")));
+        assert_eq!(out[0].row().metadata["workspace"], "acme");
         let top: Vec<_> = out.iter().filter(|p| !p.is_thread_reply).collect();
         let replies: Vec<_> = out.iter().filter(|p| p.is_thread_reply).collect();
         assert_eq!(top.len(), 2);

@@ -323,6 +323,7 @@ mod tests {
                 thread_ts: None,
                 reactions: Vec::new(),
                 is_thread_reply: false,
+                workspace: Some(UAT_ALIAS.into()),
             };
             store.write(&proj).unwrap();
         }

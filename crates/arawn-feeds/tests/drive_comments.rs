@@ -101,7 +101,7 @@ impl DriveFeedClient for FakeDrive {
 struct Clients(Arc<FakeDrive>);
 
 impl FeedClients for Clients {
-    fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+    fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
         None
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {

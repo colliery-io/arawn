@@ -276,15 +276,18 @@ const DOCS_NOTIFY_SENDER: &str = "comments-noreply@docs.google.com";
 /// Gmail and Slack signals inside `[start, end)`, newest first. Once the
 /// `drive_comments` feed has rows, Google's comment notification emails
 /// are left out: the doc comment row says the same and knows whether the
-/// thread is resolved. Before that, they stay, so nothing is lost.
+/// thread is resolved. Before that, they stay, so nothing is lost. A
+/// Slack row's note is its workspace (`slack@acme`, COLLIERY-I-0520).
 const WINDOW_ATTENTION_SQL: &str = "SELECT id, source_id, source_ts, title, body_text, kind, feed_id, \
-         NULL, NULL FROM ( \
-           SELECT id, source_id, source_ts, title, body_text, 'gmail' AS kind, feed_id \
+         note, NULL FROM ( \
+           SELECT id, source_id, source_ts, title, body_text, 'gmail' AS kind, feed_id, \
+                  NULL AS note \
              FROM gmail_messages WHERE source_ts >= ?1 AND source_ts < ?2 \
               AND NOT (instr(lower(COALESCE(json_extract(metadata, '$.sender'), '')), ?4) > 0 \
                        AND EXISTS (SELECT 1 FROM drive_comments)) \
            UNION ALL \
-           SELECT id, source_id, source_ts, title, body_text, 'slack' AS kind, feed_id \
+           SELECT id, source_id, source_ts, title, body_text, 'slack' AS kind, feed_id, \
+                  'slack@' || workspace AS note \
              FROM slack_messages WHERE source_ts >= ?1 AND source_ts < ?2 \
        ) ORDER BY source_ts DESC LIMIT ?3";
 
@@ -302,7 +305,8 @@ struct RawSignal {
 
 /// Run one attention query (9 columns: the 7 signal columns, then two
 /// optional note columns for the summary: priority label and due date
-/// for Linear, reason and link for doc comments).
+/// for Linear, reason and link for doc comments, the workspace for
+/// Slack).
 fn query_signals(
     conn: &rusqlite::Connection,
     sql: &str,
@@ -554,6 +558,7 @@ mod tests {
             thread_ts: None,
             reactions: vec![],
             is_thread_reply: false,
+            workspace: None,
         }
     }
 
@@ -598,9 +603,34 @@ mod tests {
         let kinds: Vec<&str> = out.iter().map(|s| s.source_kind.as_str()).collect();
         assert!(kinds.contains(&"gmail"));
         assert!(kinds.contains(&"slack"));
+        // A Slack row with no workspace yet has no note.
+        let slack = out.iter().find(|s| s.source_kind == "slack").unwrap();
+        assert!(!slack.summary.contains("slack@"), "{}", slack.summary);
         // Stable ids flow through.
         let ids: Vec<&str> = out.iter().map(|s| s.id.as_str()).collect();
         assert!(ids.contains(&g3.id.as_str()));
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn a_slack_signal_names_its_workspace() {
+        let (projections, store, _tmp) = make_store_pair();
+        let now = Utc::now();
+        let s = slack_signal("s-ws", now - Duration::minutes(5));
+        projections.write_batch(&[s]).unwrap();
+        arawn_projections::slack::set_workspace(&projections, "slack-feed", "acme").unwrap();
+
+        let src = ProjectionsAttentionSource::new(projections, store);
+        let out = src
+            .between(now - Duration::hours(1), now + Duration::hours(1), 10)
+            .await
+            .unwrap();
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].source_kind, "slack");
+        assert!(
+            out[0].summary.ends_with("(slack@acme)"),
+            "{}",
+            out[0].summary
+        );
     }
 
     fn linear_issue(

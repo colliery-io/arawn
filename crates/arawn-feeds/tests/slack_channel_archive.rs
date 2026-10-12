@@ -160,7 +160,7 @@ struct MockClients {
 }
 
 impl FeedClients for MockClients {
-    fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+    fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
         Some(self.slack.clone())
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
@@ -263,7 +263,7 @@ async fn first_run_writes_messages_and_advances_cursor() {
     });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
-    let params = TemplateParams::new(json!({ "channel": "#design" }));
+    let params = TemplateParams::new(json!({ "workspace": "acme", "channel": "#design" }));
 
     let outcome = run_once(&template, &ctx, &params, &feed_dir).await;
     assert_eq!(outcome.summary.items_written, 2);
@@ -319,7 +319,7 @@ async fn second_run_passes_cursor_and_only_writes_new() {
     });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
-    let params = TemplateParams::new(json!({ "channel": "#design" }));
+    let params = TemplateParams::new(json!({ "workspace": "acme", "channel": "#design" }));
 
     let _ = run_once(&template, &ctx, &params, &feed_dir).await;
     let _ = run_once(&template, &ctx, &params, &feed_dir).await;
@@ -354,7 +354,7 @@ async fn empty_run_is_a_no_op_with_status() {
     });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
-    let params = TemplateParams::new(json!({ "channel": "#design" }));
+    let params = TemplateParams::new(json!({ "workspace": "acme", "channel": "#design" }));
 
     let outcome = run_once(&template, &ctx, &params, &feed_dir).await;
     assert_eq!(outcome.summary.items_written, 0);
@@ -405,7 +405,7 @@ async fn messages_partition_across_days() {
     let clients = Arc::new(MockClients { slack: mock });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
-    let params = TemplateParams::new(json!({ "channel": "#design" }));
+    let params = TemplateParams::new(json!({ "workspace": "acme", "channel": "#design" }));
 
     let _ = run_once(&template, &ctx, &params, &feed_dir).await;
 
@@ -421,7 +421,7 @@ async fn messages_partition_across_days() {
 async fn run_returns_auth_when_slack_not_connected() {
     struct NoSlack;
     impl FeedClients for NoSlack {
-        fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+        fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
             None
         }
         fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
@@ -452,7 +452,7 @@ async fn run_returns_auth_when_slack_not_connected() {
 
     let ctx = TemplateCtx::new(Arc::new(NoSlack));
     let template = ChannelArchiveTemplate;
-    let params = TemplateParams::new(json!({ "channel": "#design" }));
+    let params = TemplateParams::new(json!({ "workspace": "acme", "channel": "#design" }));
 
     let err = template
         .run(&ctx, &params, &feed_dir, &Value::Null)
@@ -514,7 +514,7 @@ async fn parent_with_replies_seeds_thread_file_and_advances_thread_cursor() {
     });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
-    let params = TemplateParams::new(json!({ "channel": "#design" }));
+    let params = TemplateParams::new(json!({ "workspace": "acme", "channel": "#design" }));
 
     let outcome = run_once(&template, &ctx, &params, &feed_dir).await;
     assert_eq!(outcome.status, "ok");
@@ -594,7 +594,7 @@ async fn second_run_advances_thread_cursor_independently() {
     });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
-    let params = TemplateParams::new(json!({ "channel": "#design" }));
+    let params = TemplateParams::new(json!({ "workspace": "acme", "channel": "#design" }));
 
     run_once(&template, &ctx, &params, &feed_dir).await;
     let outcome2 = run_once(&template, &ctx, &params, &feed_dir).await;
@@ -647,7 +647,7 @@ async fn channel_archive_works_for_dm_id_passthrough() {
     });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
-    let params = TemplateParams::new(json!({ "channel": "D123ABC" }));
+    let params = TemplateParams::new(json!({ "workspace": "acme", "channel": "D123ABC" }));
 
     let outcome = run_once(&template, &ctx, &params, &feed_dir).await;
     assert_eq!(outcome.summary.items_written, 1);
@@ -681,7 +681,7 @@ async fn channel_archive_works_for_mpim_id_passthrough() {
     let clients = Arc::new(MockClients { slack: mock });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
-    let params = TemplateParams::new(json!({ "channel": "MXYZ789" }));
+    let params = TemplateParams::new(json!({ "workspace": "acme", "channel": "MXYZ789" }));
 
     let outcome = run_once(&template, &ctx, &params, &feed_dir).await;
     assert_eq!(outcome.summary.items_written, 1);
@@ -743,7 +743,7 @@ async fn thread_failure_does_not_block_channel_or_other_threads() {
     });
     let ctx = TemplateCtx::new(clients);
     let template = ChannelArchiveTemplate;
-    let params = TemplateParams::new(json!({ "channel": "#design" }));
+    let params = TemplateParams::new(json!({ "workspace": "acme", "channel": "#design" }));
 
     let outcome = run_once(&template, &ctx, &params, &feed_dir).await;
     assert_eq!(outcome.status, "ok"); // run did NOT fail overall

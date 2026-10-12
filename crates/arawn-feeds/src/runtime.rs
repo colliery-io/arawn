@@ -159,14 +159,14 @@ impl FeedRuntime {
         // Step 1 — template + params validation up front so a bad
         // call never touches disk or DB.
         let tmpl = self.runtime_ctx.registry.require(template)?;
-        tmpl.validate(&params)?;
+        let ctx = TemplateCtx::new(self.runtime_ctx.clients.clone());
+        tmpl.validate_with(&ctx, &params)?;
         // Provider-backed check: hits the upstream API to verify
         // referenced entities exist. Default impl is a no-op; only
         // templates with resolvable references (e.g. jira/project-
         // tracker resolving the `project` key against Jira) override
         // this. Failures here surface as a clear "project doesn't
         // exist" message instead of a silent first-fetch failure.
-        let ctx = TemplateCtx::new(self.runtime_ctx.clients.clone());
         tmpl.register_check(&ctx, &params).await?;
         let defaults = tmpl.defaults(&params);
         let cadence = cadence_override.unwrap_or(defaults.cadence);
@@ -368,6 +368,12 @@ impl FeedRuntime {
         let params = crate::types::TemplateParams::new(serde_json::json!({}));
         let cadence = template.defaults(&params).cadence;
         Ok((schema, cadence))
+    }
+
+    /// Every feed row (enabled or paused), with its params.
+    pub async fn list_records(&self) -> Result<Vec<FeedRecord>, FeedError> {
+        let c = self.runtime_ctx.conn.lock().await;
+        FeedStore::new(&c).list_all()
     }
 
     /// List every feed in the DB (enabled or paused) with on-disk

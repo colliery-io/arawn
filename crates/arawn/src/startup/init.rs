@@ -112,7 +112,10 @@ pub fn run_init_with_profile(
     opts: InitOptions,
     profile_name: Option<&str>,
 ) -> Result<()> {
-    let profile = profile_name.map(super::profile::profile).transpose()?;
+    let slack = super::profile::first_slack_workspace(data_dir);
+    let profile = profile_name
+        .map(|n| super::profile::profile(n, slack.as_deref()))
+        .transpose()?;
     let config_path = data_dir.join("arawn.toml");
     let additive = profile.is_some() && config_path.exists() && !opts.force;
     // In additive mode the LLM settings are not written; refuse rather

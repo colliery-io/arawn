@@ -79,6 +79,14 @@ pub trait FeedTemplate: Send + Sync {
     /// exist?"), override [`Self::register_check`].
     fn validate(&self, params: &TemplateParams) -> Result<(), FeedError>;
 
+    /// [`Self::validate`] with the clients at hand, for the dynamic
+    /// `/watch` / `feed_register` path: a template can name the choices
+    /// in its error (the Slack templates list the connected workspaces).
+    /// No network. Default: `validate`.
+    fn validate_with(&self, _ctx: &TemplateCtx, params: &TemplateParams) -> Result<(), FeedError> {
+        self.validate(params)
+    }
+
     /// Provider-backed check run at first-time registration, after
     /// `validate`. Default impl is a no-op. Override to call into
     /// `ctx.clients()` and verify that referenced entities (Jira

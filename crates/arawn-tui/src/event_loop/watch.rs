@@ -14,7 +14,9 @@ use crate::ws_client::WsClient;
 
 /// Map a `feed_discover` response into pick-list choices for `field_key`: each
 /// row's label/hint plus the value its `params[field_key]` resolves to. Rows
-/// that don't carry that key (or aren't picker-supported) are dropped.
+/// that don't carry that key (or aren't picker-supported) are dropped, and a
+/// value already offered is offered once (every Slack channel row also
+/// carries its `workspace`).
 fn discovery_choices(value: &serde_json::Value, field_key: &str) -> Vec<DiscoveryChoice> {
     let dto: FeedDiscoverDto = match serde_json::from_value(value.clone()) {
         Ok(d) => d,
@@ -23,6 +25,7 @@ fn discovery_choices(value: &serde_json::Value, field_key: &str) -> Vec<Discover
     if !dto.picker_supported {
         return Vec::new();
     }
+    let mut seen = std::collections::HashSet::new();
     dto.rows
         .into_iter()
         .filter_map(|row| {
@@ -31,6 +34,9 @@ fn discovery_choices(value: &serde_json::Value, field_key: &str) -> Vec<Discover
                 .get(field_key)
                 .and_then(|v| v.as_str())?
                 .to_string();
+            if !seen.insert(value.clone()) {
+                return None;
+            }
             Some(DiscoveryChoice {
                 label: row.label,
                 hint: row.hint,
@@ -174,6 +180,32 @@ mod tests {
         assert_eq!(out[0].value, "C1");
         assert_eq!(out[0].hint.as_deref(), Some("C1"));
         assert_eq!(out[1].value, "C2");
+    }
+
+    #[test]
+    fn a_workspace_is_offered_once() {
+        let dto = json!({
+            "template": "slack/channel-archive",
+            "picker_supported": true,
+            "rows": [
+                {"label": "slack@acme", "params": {"workspace": "acme"}},
+                {"label": "#design", "params": {"workspace": "acme", "channel": "C1"}},
+                {"label": "slack@personal", "params": {"workspace": "personal"}},
+                {"label": "#home", "params": {"workspace": "personal", "channel": "C9"}}
+            ]
+        });
+        let ws: Vec<_> = discovery_choices(&dto, "workspace")
+            .into_iter()
+            .map(|c| (c.label, c.value))
+            .collect();
+        assert_eq!(
+            ws,
+            [
+                ("slack@acme".to_string(), "acme".to_string()),
+                ("slack@personal".to_string(), "personal".to_string())
+            ]
+        );
+        assert_eq!(discovery_choices(&dto, "channel").len(), 2);
     }
 
     #[test]

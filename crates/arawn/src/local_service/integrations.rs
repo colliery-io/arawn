@@ -307,19 +307,21 @@ pub(super) async fn auto_create_default_feed(
     after: &str,
 ) {
     let runtime = feed_runtime.read().recover().clone();
-    let (Some(runtime), Some((template, feed_id))) =
-        (runtime, default_feed_for_service(service_name))
-    else {
+    let (Some(runtime), Some(feed)) = (runtime, default_feed_for_service(service_name)) else {
         return;
     };
+    let (template, feed_id) = (feed.template, feed.id.as_str());
     let notice = |level: &str, message: String| arawn_service::ServerNotice {
         level: level.into(),
         category: "feeds".into(),
         message,
         timestamp: chrono::Utc::now().to_rfc3339(),
     };
-    let existing: Vec<(String, String)> = match runtime.list_summaries().await {
-        Ok(s) => s.into_iter().map(|f| (f.id, f.template)).collect(),
+    let existing: Vec<(String, String, serde_json::Value)> = match runtime.list_records().await {
+        Ok(s) => s
+            .into_iter()
+            .map(|f| (f.id, f.template, f.params.0))
+            .collect(),
         Err(e) => {
             let _ = notice_tx.send(notice(
                 "warn",
@@ -330,14 +332,14 @@ pub(super) async fn auto_create_default_feed(
             return;
         }
     };
-    if !super::should_auto_create(&existing, template) {
+    if !super::should_auto_create(&existing, &feed) {
         return;
     }
     match runtime
         .register_feed_dynamic(
             template,
             feed_id,
-            arawn_feeds::TemplateParams::default(),
+            arawn_feeds::TemplateParams::new(feed.params.clone()),
             None,
         )
         .await

@@ -81,7 +81,39 @@ pub enum Step {
     Problem(String),
 }
 
+/// The integration a feed needs, or `None` (e.g. filesystem). A Slack
+/// feed needs its workspace, `slack@<workspace param>`; `Err` names the
+/// fix when the param is missing. `connected` lists the choices.
+pub fn feed_service(f: &FeedDecl, connected: &HashSet<String>) -> Result<Option<String>, String> {
+    if !f.template.starts_with("slack/") {
+        return Ok(template_service(&f.template).map(String::from));
+    }
+    match f.params.get("workspace").and_then(|v| v.as_str()) {
+        Some(ws) if arawn_integrations::slack::is_valid_alias(ws) => {
+            Ok(Some(arawn_integrations::slack::workspace_name(ws)))
+        }
+        _ => {
+            let mut aliases: Vec<&str> = connected
+                .iter()
+                .filter_map(|s| arawn_integrations::slack::alias_of(s))
+                .collect();
+            aliases.sort();
+            let choices = if aliases.is_empty() {
+                "no Slack workspace is connected yet (run: arawn connect slack)".to_string()
+            } else {
+                format!("connected: {}", aliases.join(", "))
+            };
+            Err(format!(
+                "feed `{}` ({}) needs `workspace` in its params, the alias of a Slack \
+                 workspace; {choices}",
+                f.id, f.template
+            ))
+        }
+    }
+}
+
 /// The integration a feed template needs, or `None` (e.g. filesystem).
+/// Slack feeds name their workspace: see [`feed_service`].
 pub fn template_service(template: &str) -> Option<&'static str> {
     match template.split('/').next().unwrap_or("") {
         "gmail" => Some(arawn_integrations::gmail::SERVICE_NAME),
@@ -240,12 +272,13 @@ pub fn plan(declared: &Declared, existing: &Existing, connected: &HashSet<String
                 )));
             }
             Some(_) => {}
-            None => match template_service(&f.template) {
-                Some(svc) if !connected.contains(svc) => steps.push(Step::Waiting {
+            None => match feed_service(f, connected) {
+                Err(problem) => steps.push(Step::Problem(problem)),
+                Ok(Some(svc)) if !connected.contains(&svc) => steps.push(Step::Waiting {
                     feed: f.id.clone(),
                     reason: format!("{svc} is not connected (run: arawn connect {svc})"),
                 }),
-                _ => steps.push(Step::CreateFeed(f.clone())),
+                Ok(_) => steps.push(Step::CreateFeed(f.clone())),
             },
         }
     }
@@ -509,7 +542,7 @@ mod tests {
             )],
             feeds: vec![
                 feed("gmail-inbox", "gmail/inbox-archive"),
-                feed("slack-mentions", "slack/my-mentions"),
+                slack_feed("slack-mentions", "acme"),
             ],
         };
         let steps = plan(&d, &no_feeds(), &connected(&["gmail"]));
@@ -527,7 +560,36 @@ mod tests {
             "gmail/inbox-archive"
         ))));
         assert!(steps.iter().any(|s| matches!(s,
-            Step::Waiting { feed, reason } if feed == "slack-mentions" && reason.contains("arawn connect slack"))));
+            Step::Waiting { feed, reason } if feed == "slack-mentions" && reason.contains("arawn connect slack@acme"))));
+    }
+
+    fn slack_feed(id: &str, workspace: &str) -> FeedDecl {
+        let mut f = feed(id, "slack/my-mentions");
+        f.params
+            .insert("workspace".into(), toml::Value::String(workspace.into()));
+        f
+    }
+
+    #[test]
+    fn a_slack_feed_waits_for_its_workspace_and_needs_one() {
+        let d = Declared {
+            lenses: vec![],
+            feeds: vec![
+                slack_feed("slack-acme-mentions", "acme"),
+                slack_feed("slack-personal-mentions", "personal"),
+                feed("slack-mentions", "slack/my-mentions"),
+            ],
+        };
+        let steps = plan(&d, &no_feeds(), &connected(&["slack@acme", "slack@beta"]));
+        assert!(steps.contains(&Step::CreateFeed(slack_feed("slack-acme-mentions", "acme"))));
+        assert!(steps.iter().any(|s| matches!(s,
+            Step::Waiting { feed, reason } if feed == "slack-personal-mentions"
+                && reason == "slack@personal is not connected (run: arawn connect slack@personal)")));
+        assert!(
+            steps.iter().any(|s| matches!(s,
+                Step::Problem(p) if p.contains("needs `workspace`") && p.contains("connected: acme, beta"))),
+            "{steps:?}"
+        );
     }
 
     #[test]
