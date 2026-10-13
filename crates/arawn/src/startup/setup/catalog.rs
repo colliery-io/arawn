@@ -331,6 +331,48 @@ mod tests {
         }
     }
 
+    /// Every `docs/src/….md` path named in the workspace's Rust sources
+    /// (startup and shell messages, TUI banners, module docs) exists.
+    #[test]
+    fn doc_paths_named_in_sources_exist() {
+        fn rs_files(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+            for entry in std::fs::read_dir(dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    rs_files(&path, out);
+                } else if path.extension().is_some_and(|e| e == "rs") {
+                    out.push(path);
+                }
+            }
+        }
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let mut files = Vec::new();
+        rs_files(&root.join("crates"), &mut files);
+        let mut named = 0;
+        let mut missing = Vec::new();
+        for file in files {
+            let text = std::fs::read_to_string(&file).unwrap();
+            for (at, _) in text.match_indices("docs/src/") {
+                let path: String = text[at..]
+                    .chars()
+                    .take_while(|c| c.is_ascii_alphanumeric() || "/-_.".contains(*c))
+                    .collect();
+                // Only whole page paths; a pattern such as `connect-*.md`
+                // stops short of `.md`.
+                let Some(end) = path.find(".md") else {
+                    continue;
+                };
+                let path = &path[..end + 3];
+                named += 1;
+                if !root.join(path).exists() {
+                    missing.push(format!("{}: {path}", file.display()));
+                }
+            }
+        }
+        assert!(named > 10, "found only {named} doc paths");
+        assert!(missing.is_empty(), "missing docs:\n{}", missing.join("\n"));
+    }
+
     #[test]
     fn connect_names_match_service_names() {
         assert_eq!(

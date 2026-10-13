@@ -47,6 +47,17 @@ pub struct JiraIssueProjection {
     pub assignee: Option<String>,
     pub reporter: Option<String>,
     pub priority: Option<String>,
+    /// Highest / High (or Blocker / Critical) priority.
+    pub high_priority: bool,
+    /// `fields.duedate`, `YYYY-MM-DD`.
+    pub due_date: Option<String>,
+    /// `fields.status.statusCategory.key`: `new`, `indeterminate` or
+    /// `done`.
+    pub status_category: Option<String>,
+    /// The snapshot's `assigned_to_me` (written by the assignee feed;
+    /// true when the key is missing). The dispatcher clears it for rows
+    /// of any other feed.
+    pub assigned_to_me: bool,
     pub labels: Vec<String>,
     pub body_text: String, // description
 }
@@ -63,6 +74,10 @@ impl Projection for JiraIssueProjection {
             "assignee": self.assignee,
             "reporter": self.reporter,
             "priority": self.priority,
+            "high_priority": self.high_priority,
+            "due_date": self.due_date,
+            "status_category": self.status_category,
+            "assigned_to_me": self.assigned_to_me,
             "labels": self.labels,
         });
         let title = if self.summary.is_empty() {
@@ -347,6 +362,25 @@ fn read_jira_issue(
         .and_then(|v| v.get("name"))
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
+    let priority_id = fields
+        .get("priority")
+        .and_then(|v| v.get("id"))
+        .and_then(|v| v.as_str());
+    let high_priority = is_high_priority(priority.as_deref(), priority_id);
+    let due_date = fields
+        .get("duedate")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let assigned_to_me = issue
+        .get("assigned_to_me")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+    let status_category = fields
+        .get("status")
+        .and_then(|v| v.get("statusCategory"))
+        .and_then(|v| v.get("key"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
     let project_key = fields
         .get("project")
         .and_then(|v| v.get("key"))
@@ -385,9 +419,22 @@ fn read_jira_issue(
         assignee,
         reporter,
         priority,
+        high_priority,
+        due_date,
+        status_category,
+        assigned_to_me,
         labels,
         body_text: description,
     }))
+}
+
+/// High priority by name in the default and the older Jira schemes, or
+/// by id 1-2 (the top two in both) when the name is custom.
+fn is_high_priority(name: Option<&str>, id: Option<&str>) -> bool {
+    let by_name = name.is_some_and(|n| {
+        ["highest", "high", "blocker", "critical"].contains(&n.to_ascii_lowercase().as_str())
+    });
+    by_name || matches!(id, Some("1" | "2"))
 }
 
 fn read_jira_comments(
@@ -634,6 +681,56 @@ mod tests {
         assert_eq!(i.status.as_deref(), Some("In Progress"));
         assert_eq!(i.project_key.as_deref(), Some("ENG"));
         assert_eq!(i.labels, vec!["backend", "auth"]);
+        assert!(i.high_priority);
+        // No duedate or statusCategory in this snapshot: no due date,
+        // category unknown.
+        assert_eq!(i.due_date, None);
+        assert_eq!(i.status_category, None);
+        // No `assigned_to_me` in the snapshot: mine until the dispatcher
+        // says the feed is not the assignee feed.
+        assert!(i.assigned_to_me);
+    }
+
+    #[test]
+    fn jira_issue_keeps_due_date_and_status_category() {
+        let tmp = tempfile::tempdir().unwrap();
+        let issue_dir = tmp.path().join("ENG-101");
+        std::fs::create_dir(&issue_dir).unwrap();
+        std::fs::write(
+            issue_dir.join("issue.json"),
+            json!({
+                "key": "ENG-101",
+                "fields": {
+                    "summary": "Renew cert",
+                    "status": { "name": "Doing", "statusCategory": { "key": "indeterminate" } },
+                    "priority": { "id": "3", "name": "Medium" },
+                    "duedate": "2026-10-09",
+                    "updated": "2026-10-01T10:00:00Z"
+                }
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let result = walk_jira_feed_dir("jt-feed", tmp.path()).unwrap();
+        let i = &result.issues[0];
+        assert!(!i.high_priority);
+        assert_eq!(i.due_date.as_deref(), Some("2026-10-09"));
+        assert_eq!(i.status_category.as_deref(), Some("indeterminate"));
+        let meta = i.row().metadata;
+        assert_eq!(meta["due_date"], "2026-10-09");
+        assert_eq!(meta["status_category"], "indeterminate");
+        assert_eq!(meta["high_priority"], false);
+    }
+
+    #[test]
+    fn high_priority_by_name_or_top_two_ids() {
+        assert!(is_high_priority(Some("Highest"), Some("1")));
+        assert!(is_high_priority(Some("Critical"), None));
+        assert!(is_high_priority(Some("P1 - Now"), Some("2")));
+        assert!(!is_high_priority(Some("Medium"), Some("3")));
+        assert!(!is_high_priority(Some("Lowest"), Some("10001")));
+        assert!(!is_high_priority(None, None));
     }
 
     #[test]

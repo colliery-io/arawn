@@ -3,7 +3,7 @@ title: "Connect Atlassian (Jira + Confluence)"
 ---
 *How-to. ~10 minutes. One OAuth 2.0 (3LO) app covers both Jira and Confluence on every site you authorize.*
 
-By the end of this guide arawn will have an OAuth token for one or more Atlassian cloud sites (your Jira + Confluence instances), and the agent will be able to search issues, transition them, read Confluence pages, and write content. 6 Jira tools + 5 Confluence tools register together.
+By the end of this guide arawn will have an OAuth token for one or more Atlassian cloud sites (your Jira + Confluence instances), and the agent will be able to search issues, transition them, read Confluence pages, and write content. 6 Jira tools + 5 Confluence tools register together. The `jira/assignee-tracker` feed brings the Jira issues assigned to you into arawn, and the open ones that are high priority or due within 7 days reach the morning brief.
 
 If you've never set up an OAuth integration, skim the [OAuth primer](../../explanation/oauth-primer/) first.
 

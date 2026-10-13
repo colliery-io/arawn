@@ -8,7 +8,7 @@
 //!   `drive_delete`, and for doc comments `drive_list_open_comments` and
 //!   `drive_reply_to_comment` (see [`comments`]).
 //!
-//! See `docs/src/integrations/drive.md` for setup.
+//! See `docs/src/content/docs/how-to/connect-google.md` for setup.
 
 mod client;
 pub mod comments;

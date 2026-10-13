@@ -118,18 +118,26 @@ pub struct IssueWriteOutcome {
     pub cursor: PerIssueCursor,
 }
 
-/// Write `<issue_dir>/issue.json` (overwrite).
-pub fn write_issue_snapshot(issue_dir: &Path, detail: &JiraIssueDetail) -> Result<u64, FeedError> {
+/// Write `<issue_dir>/issue.json` (overwrite). `assigned_to_me` is
+/// written when given (the assignee feed); else the key is left out.
+pub fn write_issue_snapshot(
+    issue_dir: &Path,
+    detail: &JiraIssueDetail,
+    assigned_to_me: Option<bool>,
+) -> Result<u64, FeedError> {
     std::fs::create_dir_all(issue_dir)
         .map_err(|e| FeedError::Storage(format!("create {}: {e}", issue_dir.display())))?;
     let path = issue_dir.join("issue.json");
-    let snapshot = serde_json::json!({
+    let mut snapshot = serde_json::json!({
         "key": detail.meta.key,
         "id": detail.meta.id,
         "updated": detail.meta.updated,
         "summary": detail.meta.summary,
         "fields": detail.fields,
     });
+    if let Some(mine) = assigned_to_me {
+        snapshot["assigned_to_me"] = Value::Bool(mine);
+    }
     let body = serde_json::to_vec_pretty(&snapshot)
         .map_err(|e| FeedError::Storage(format!("serialize issue: {e}")))?;
     let len = body.len() as u64;

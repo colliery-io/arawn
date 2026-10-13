@@ -53,7 +53,7 @@ pub fn wire_integrations(
 
     // Register Gmail integration if creds are present (env or config).
     // Skipped silently otherwise — users without Gmail credentials still
-    // get a working server. See docs/src/integrations/gmail.md.
+    // get a working server. See docs/src/content/docs/how-to/connect-google.md.
     let gmail_creds = resolve(OAuthProvider::Gmail);
     let gmail_integration_for_feeds: Option<Arc<arawn_integrations::gmail::GmailIntegration>>;
     if let Some((client_id, client_secret)) = gmail_creds {
@@ -86,7 +86,8 @@ pub fn wire_integrations(
         debug!(
             "Gmail integration skipped — set ARAWN_GMAIL_CLIENT_ID + \
              ARAWN_GMAIL_CLIENT_SECRET (env) or [integrations.gmail] (config) \
-             to enable. See docs/src/integrations/gmail.md."
+             to enable, or run `arawn setup google`. See \
+             docs/src/content/docs/how-to/connect-google.md."
         );
     }
 
@@ -123,7 +124,8 @@ pub fn wire_integrations(
         debug!(
             "Google Calendar integration skipped — set ARAWN_GCAL_CLIENT_ID + \
              ARAWN_GCAL_CLIENT_SECRET (env) or [integrations.calendar] / \
-             [integrations.google] (config) to enable."
+             [integrations.google] (config) to enable, or run `arawn setup google`. \
+             See docs/src/content/docs/how-to/connect-google.md."
         );
     }
 
@@ -178,7 +180,8 @@ pub fn wire_integrations(
         debug!(
             "Google Drive integration skipped — set ARAWN_GDRIVE_CLIENT_ID + \
              ARAWN_GDRIVE_CLIENT_SECRET (env) or [integrations.drive] / \
-             [integrations.google] (config) to enable."
+             [integrations.google] (config) to enable, or run `arawn setup google`. \
+             See docs/src/content/docs/how-to/connect-google.md."
         );
     }
 
@@ -249,7 +252,8 @@ pub fn wire_integrations(
         debug!(
             "Atlassian integration skipped — set ARAWN_ATLASSIAN_CLIENT_ID + \
              ARAWN_ATLASSIAN_CLIENT_SECRET (env) or [integrations.atlassian] (config) \
-             to enable."
+             to enable, or run `arawn setup atlassian`. See \
+             docs/src/content/docs/how-to/connect-atlassian.md."
         );
     }
 
@@ -293,8 +297,8 @@ pub fn wire_integrations(
         debug!(
             "GitHub integration skipped — set ARAWN_GITHUB_APP_ID + \
              ARAWN_GITHUB_APP_SLUG + ARAWN_GITHUB_PRIVATE_KEY_PATH (env) or \
-             [integrations.github] (config) to enable. See \
-             docs/src/integrations/github.md."
+             [integrations.github] (config) to enable, or run `arawn setup github`. \
+             See docs/src/content/docs/how-to/connect-github.md."
         );
     }
     // Register Slack. No sharing with Google — different OAuth ecosystem.
@@ -328,7 +332,8 @@ pub fn wire_integrations(
         debug!(
             "Slack integration skipped — set ARAWN_SLACK_CLIENT_ID + \
              ARAWN_SLACK_CLIENT_SECRET (env) or [integrations.slack] (config) \
-             to enable. See docs/src/integrations/slack.md."
+             to enable, or run `arawn setup slack`. See \
+             docs/src/content/docs/how-to/connect-slack.md."
         );
     }
 

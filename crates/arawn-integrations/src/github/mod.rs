@@ -16,7 +16,7 @@
 //!   private key, slug).
 //!
 //! Setup instructions for the operator live in
-//! `docs/src/integrations/github.md` (created at T-0317 land time).
+//! `docs/src/content/docs/how-to/connect-github.md`.
 
 mod client;
 mod install_flow;

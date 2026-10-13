@@ -300,6 +300,15 @@ jira/assignee-tracker/me/
       └── issue.json                  # snapshot only, overwrite
 ```
 
+Each snapshot carries `assigned_to_me`. An issue reassigned away from
+you leaves the query, so after it each run rechecks the open snapshots
+still marked yours that the query did not return:
+`key in (...) AND assignee = currentUser()`, 50 keys per request. Those
+still yours are kept. Each of the others is fetched: it is rewritten with
+`assigned_to_me: false`, or, when it is not found (deleted, or no longer
+visible to you), its snapshot is removed. Done snapshots are not
+rechecked.
+
 ## Confluence
 
 ### `confluence/space-archive`

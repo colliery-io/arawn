@@ -492,7 +492,8 @@ async fn execute_sandboxed(
             let stderr = if stderr.contains("--- Sandbox Violations ---") {
                 format!(
                     "{stderr}\n(Hint: the OS sandbox blocked one or more operations. \
-                     See docs/src/security.md, or run /permissions to inspect rules.)"
+                     See docs/src/content/docs/reference/shell-sandbox.md, or run /permissions to \
+                     inspect rules.)"
                 )
             } else {
                 stderr

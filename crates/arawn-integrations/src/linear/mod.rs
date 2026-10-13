@@ -14,7 +14,7 @@
 //! - Six agent tools ([`linear_tools`]): list and get, then comment,
 //!   set state, set assignee and set priority.
 //!
-//! See `docs/src/how-to/connect-linear.md` for setup.
+//! See `docs/src/content/docs/how-to/connect-linear.md` for setup.
 
 mod client;
 mod integration;
