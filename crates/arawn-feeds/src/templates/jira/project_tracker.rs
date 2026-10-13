@@ -151,7 +151,7 @@ impl FeedTemplate for ProjectTrackerTemplate {
             };
 
             let issue_dir = feed_dir.join(&detail.meta.key);
-            let snap_bytes = write_issue_snapshot(&issue_dir, &detail)?;
+            let snap_bytes = write_issue_snapshot(&issue_dir, &detail, None)?;
             let prior = state
                 .issues
                 .get(&detail.meta.key)

@@ -44,11 +44,15 @@ pub fn project_feed_dir(
         }
         "jira" => {
             let mut result = atlassian::walk_jira_feed_dir(feed_id, feed_dir)?;
-            // The assignee-tracker fetches only issues assigned to me.
+            // Only the assignee-tracker's issues can be mine; its snapshot
+            // says whether the issue still is.
             let mine = template_name == "jira/assignee-tracker";
             for issue in &mut result.issues {
-                issue.assigned_to_me = mine;
+                issue.assigned_to_me &= mine;
             }
+            // Like linear: the assignee feed removes the snapshot of an
+            // issue that is gone or no longer visible, and its row goes too.
+            let keep: Vec<String> = result.issues.iter().map(|i| i.source_id.clone()).collect();
             let mut combined = WriteOutcome::default();
             for (feed_type, projections, source_id_extractor) in [
                 (
@@ -77,6 +81,9 @@ pub fn project_feed_dir(
                 combined.inserted += outcome.inserted;
                 combined.updated += outcome.updated;
                 combined.unchanged += outcome.unchanged;
+            }
+            if mine {
+                store.retain_source_ids(atlassian::JIRA_ISSUES, feed_id, &keep)?;
             }
             combined
         }

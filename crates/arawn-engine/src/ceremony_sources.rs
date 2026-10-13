@@ -1078,6 +1078,75 @@ mod tests {
         assert!(jira_ids(src.between(start, end, 10).await.unwrap()).is_empty());
     }
 
+    /// End to end from the assignee feed's snapshots: an issue reassigned
+    /// away (the feed rewrites it with `assigned_to_me: false`) leaves the
+    /// brief, and so does one whose snapshot the feed removed.
+    #[tokio::test(flavor = "current_thread")]
+    async fn a_reassigned_or_gone_jira_issue_leaves_the_brief() {
+        let (projections, store, tmp) = make_store_pair();
+        let feed_dir = tmp.path().join("jira-mine");
+        let write = |key: &str, mine: Option<bool>| {
+            let dir = feed_dir.join(key);
+            std::fs::create_dir_all(&dir).unwrap();
+            let mut snap = serde_json::json!({
+                "key": key,
+                "fields": {
+                    "summary": "Urgent thing",
+                    "status": {"name": "Doing", "statusCategory": {"key": "indeterminate"}},
+                    "priority": {"id": "1", "name": "Highest"},
+                    "updated": "2026-10-01T00:00:00.000Z",
+                },
+            });
+            if let Some(m) = mine {
+                snap["assigned_to_me"] = serde_json::json!(m);
+            }
+            std::fs::write(dir.join("issue.json"), snap.to_string()).unwrap();
+        };
+        let project = || {
+            arawn_projections::project_feed_dir(
+                &projections,
+                "jira/assignee-tracker",
+                "jira-mine",
+                &feed_dir,
+            )
+            .unwrap();
+        };
+        let end = DateTime::parse_from_rfc3339("2026-10-07T07:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let start = end - Duration::hours(24);
+        let src = ProjectionsAttentionSource::new(Arc::clone(&projections), store);
+        let jira_ids = |out: Vec<SignalRow>| -> Vec<String> {
+            let mut ids: Vec<String> = out
+                .into_iter()
+                .filter(|r| r.source_kind == "jira")
+                .map(|r| r.source_id)
+                .collect();
+            ids.sort();
+            ids
+        };
+
+        write("OPS-1", Some(true));
+        write("OPS-2", None); // written before the flag: mine
+        project();
+        assert_eq!(
+            jira_ids(src.between(start, end, 10).await.unwrap()),
+            ["OPS-1", "OPS-2"]
+        );
+
+        write("OPS-1", Some(false)); // reassigned away
+        std::fs::remove_dir_all(feed_dir.join("OPS-2")).unwrap(); // gone
+        project();
+        assert!(jira_ids(src.between(start, end, 10).await.unwrap()).is_empty());
+        let rows: i64 = projections
+            .conn()
+            .lock()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM jira_issues", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(rows, 1, "the gone issue's row is deleted");
+    }
+
     /// 2026-05-17T01:30:00Z is "May 17" in UTC but "May 16 18:30" in
     /// US/Pacific (PDT, UTC-7). `events_for(2026-05-16)` should pick
     /// up the event under US/Pacific and miss it under UTC.

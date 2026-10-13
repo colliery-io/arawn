@@ -54,8 +54,9 @@ pub struct JiraIssueProjection {
     /// `fields.status.statusCategory.key`: `new`, `indeterminate` or
     /// `done`.
     pub status_category: Option<String>,
-    /// Set by the dispatcher for `jira/assignee-tracker` rows: every
-    /// issue that feed fetches is assigned to the user.
+    /// The snapshot's `assigned_to_me` (written by the assignee feed;
+    /// true when the key is missing). The dispatcher clears it for rows
+    /// of any other feed.
     pub assigned_to_me: bool,
     pub labels: Vec<String>,
     pub body_text: String, // description
@@ -370,6 +371,10 @@ fn read_jira_issue(
         .get("duedate")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
+    let assigned_to_me = issue
+        .get("assigned_to_me")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
     let status_category = fields
         .get("status")
         .and_then(|v| v.get("statusCategory"))
@@ -417,7 +422,7 @@ fn read_jira_issue(
         high_priority,
         due_date,
         status_category,
-        assigned_to_me: false,
+        assigned_to_me,
         labels,
         body_text: description,
     }))
@@ -681,7 +686,9 @@ mod tests {
         // category unknown.
         assert_eq!(i.due_date, None);
         assert_eq!(i.status_category, None);
-        assert!(!i.assigned_to_me);
+        // No `assigned_to_me` in the snapshot: mine until the dispatcher
+        // says the feed is not the assignee feed.
+        assert!(i.assigned_to_me);
     }
 
     #[test]
