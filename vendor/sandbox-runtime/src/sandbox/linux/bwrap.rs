@@ -116,15 +116,23 @@ fn build_inner_command(
 ) -> Result<String, SandboxError> {
     let mut parts = Vec::new();
 
+    // The bridges run in the background for the life of the script. Their
+    // output goes to /dev/null and the trap stops them when the script
+    // exits; otherwise they hold the caller's stdout/stderr open and the
+    // caller never sees EOF. The trap keeps the command's exit status.
+    if http_socket_path.is_some() || socks_socket_path.is_some() {
+        parts.push("trap 'kill $(jobs -p) 2>/dev/null' EXIT".to_string());
+    }
+
     // Set up socat bridges for proxy access
     if let Some(http_sock) = http_socket_path {
         let bridge_cmd = SocatBridge::tcp_to_unix_command(http_proxy_port, http_sock);
-        parts.push(format!("{} &", bridge_cmd));
+        parts.push(format!("{} >/dev/null 2>&1 &", bridge_cmd));
     }
 
     if let Some(socks_sock) = socks_socket_path {
         let bridge_cmd = SocatBridge::tcp_to_unix_command(socks_proxy_port, socks_sock);
-        parts.push(format!("{} &", bridge_cmd));
+        parts.push(format!("{} >/dev/null 2>&1 &", bridge_cmd));
     }
 
     // Small delay to let socat bridges start
@@ -238,6 +246,27 @@ mod tests {
             .status()
             .unwrap();
         assert!(status.success());
+    }
+
+    #[test]
+    fn test_background_steps_do_not_hold_output_open() {
+        // Stand-ins for the socat bridges: they would run for 100 s.
+        let parts = vec![
+            "trap 'kill $(jobs -p) 2>/dev/null' EXIT".to_string(),
+            "sleep 100 >/dev/null 2>&1 &".to_string(),
+            "sleep 100 >/dev/null 2>&1 &".to_string(),
+            "echo done".to_string(),
+            "exit 3".to_string(),
+        ];
+        let started = std::time::Instant::now();
+        let out = std::process::Command::new("bash")
+            .arg("-c")
+            .arg(join_script(&parts))
+            .output()
+            .unwrap();
+        assert!(started.elapsed() < std::time::Duration::from_secs(10));
+        assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "done");
+        assert_eq!(out.status.code(), Some(3));
     }
 
     #[test]
