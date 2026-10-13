@@ -156,16 +156,29 @@ fn build_inner_command(
             tracing::warn!(
                 "Seccomp not available - Unix socket creation will not be blocked"
             );
-            let env_vars = generate_proxy_env_string(http_proxy_port, socks_proxy_port);
-            parts.push(format!("{} {} -c {}", env_vars, shell, quote(command)));
+            parts.push(generate_proxy_env_string(http_proxy_port, socks_proxy_port));
+            parts.push(format!("{} -c {}", shell, quote(command)));
         }
     } else {
         // Unix sockets allowed, just run the command
-        let env_vars = generate_proxy_env_string(http_proxy_port, socks_proxy_port);
-        parts.push(format!("{} {} -c {}", env_vars, shell, quote(command)));
+        parts.push(generate_proxy_env_string(http_proxy_port, socks_proxy_port));
+        parts.push(format!("{} -c {}", shell, quote(command)));
     }
 
-    Ok(parts.join(" ; "))
+    Ok(join_script(&parts))
+}
+
+/// Join shell steps into one script. A step that ends in `&` already
+/// ends its command, and bash rejects `& ;`, so it gets no `;`.
+fn join_script(parts: &[String]) -> String {
+    let mut script = String::new();
+    for (i, part) in parts.iter().enumerate() {
+        script.push_str(part);
+        if i + 1 < parts.len() {
+            script.push_str(if part.trim_end().ends_with('&') { " " } else { " ; " });
+        }
+    }
+    script
 }
 
 /// Generate proxy environment variable exports.
@@ -196,6 +209,36 @@ pub fn generate_proxy_env(http_port: u16, socks_port: u16) -> Vec<(String, Strin
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_join_script_puts_no_semicolon_after_background_steps() {
+        let parts = vec![
+            "socat A &".to_string(),
+            "socat B &".to_string(),
+            "sleep 0.1".to_string(),
+            "export x=1".to_string(),
+            "/bin/bash -c 'echo hi'".to_string(),
+        ];
+        assert_eq!(
+            join_script(&parts),
+            "socat A & socat B & sleep 0.1 ; export x=1 ; /bin/bash -c 'echo hi'"
+        );
+    }
+
+    #[test]
+    fn test_join_script_runs_in_bash() {
+        let parts = vec![
+            "true &".to_string(),
+            "export x=1".to_string(),
+            "test \"$x\" = 1".to_string(),
+        ];
+        let status = std::process::Command::new("bash")
+            .arg("-c")
+            .arg(join_script(&parts))
+            .status()
+            .unwrap();
+        assert!(status.success());
+    }
 
     #[test]
     fn test_generate_proxy_env_string() {
