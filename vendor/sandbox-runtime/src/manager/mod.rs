@@ -78,16 +78,10 @@ impl SandboxManager {
         let http_port = http_proxy.port();
         let socks_port = socks_proxy.port();
 
-        // Update state
-        let mut state = self.state.write();
-        state.http_proxy = Some(http_proxy);
-        state.socks_proxy = Some(socks_proxy);
-        state.http_proxy_port = Some(http_port);
-        state.socks_proxy_port = Some(socks_port);
-
-        // Initialize platform-specific infrastructure
+        // Initialize platform-specific infrastructure. The bridges are
+        // awaited before the state lock is taken: the guard is not Send.
         #[cfg(target_os = "linux")]
-        {
+        let (http_socket_path, socks_socket_path, http_bridge, socks_bridge) = {
             use crate::sandbox::linux::{generate_socket_path, SocatBridge};
 
             // Create Unix socket bridges for proxies
@@ -99,7 +93,18 @@ impl SandboxManager {
             let socks_bridge =
                 SocatBridge::unix_to_tcp(socks_socket_path.clone(), "localhost", socks_port)
                     .await?;
+            (http_socket_path, socks_socket_path, http_bridge, socks_bridge)
+        };
 
+        // Update state
+        let mut state = self.state.write();
+        state.http_proxy = Some(http_proxy);
+        state.socks_proxy = Some(socks_proxy);
+        state.http_proxy_port = Some(http_port);
+        state.socks_proxy_port = Some(socks_port);
+
+        #[cfg(target_os = "linux")]
+        {
             state.http_socket_path = Some(http_socket_path.display().to_string());
             state.socks_socket_path = Some(socks_socket_path.display().to_string());
             state.bridges.push(http_bridge);

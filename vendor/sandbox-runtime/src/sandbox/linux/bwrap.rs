@@ -5,7 +5,7 @@ use std::path::Path;
 use crate::config::SandboxRuntimeConfig;
 use crate::error::SandboxError;
 use crate::sandbox::linux::bridge::SocatBridge;
-use crate::sandbox::linux::filesystem::{generate_bind_mounts, BindMount};
+use crate::sandbox::linux::filesystem::generate_bind_mounts;
 use crate::sandbox::linux::seccomp::{get_apply_seccomp_path, get_bpf_path};
 use crate::utils::quote;
 
@@ -116,15 +116,23 @@ fn build_inner_command(
 ) -> Result<String, SandboxError> {
     let mut parts = Vec::new();
 
+    // The bridges run in the background for the life of the script. Their
+    // output goes to /dev/null and the trap stops them when the script
+    // exits; otherwise they hold the caller's stdout/stderr open and the
+    // caller never sees EOF. The trap keeps the command's exit status.
+    if http_socket_path.is_some() || socks_socket_path.is_some() {
+        parts.push("trap 'kill $(jobs -p) 2>/dev/null' EXIT".to_string());
+    }
+
     // Set up socat bridges for proxy access
     if let Some(http_sock) = http_socket_path {
         let bridge_cmd = SocatBridge::tcp_to_unix_command(http_proxy_port, http_sock);
-        parts.push(format!("{} &", bridge_cmd));
+        parts.push(format!("{} >/dev/null 2>&1 &", bridge_cmd));
     }
 
     if let Some(socks_sock) = socks_socket_path {
         let bridge_cmd = SocatBridge::tcp_to_unix_command(socks_proxy_port, socks_sock);
-        parts.push(format!("{} &", bridge_cmd));
+        parts.push(format!("{} >/dev/null 2>&1 &", bridge_cmd));
     }
 
     // Small delay to let socat bridges start
@@ -156,16 +164,29 @@ fn build_inner_command(
             tracing::warn!(
                 "Seccomp not available - Unix socket creation will not be blocked"
             );
-            let env_vars = generate_proxy_env_string(http_proxy_port, socks_proxy_port);
-            parts.push(format!("{} {} -c {}", env_vars, shell, quote(command)));
+            parts.push(generate_proxy_env_string(http_proxy_port, socks_proxy_port));
+            parts.push(format!("{} -c {}", shell, quote(command)));
         }
     } else {
         // Unix sockets allowed, just run the command
-        let env_vars = generate_proxy_env_string(http_proxy_port, socks_proxy_port);
-        parts.push(format!("{} {} -c {}", env_vars, shell, quote(command)));
+        parts.push(generate_proxy_env_string(http_proxy_port, socks_proxy_port));
+        parts.push(format!("{} -c {}", shell, quote(command)));
     }
 
-    Ok(parts.join(" ; "))
+    Ok(join_script(&parts))
+}
+
+/// Join shell steps into one script. A step that ends in `&` already
+/// ends its command, and bash rejects `& ;`, so it gets no `;`.
+fn join_script(parts: &[String]) -> String {
+    let mut script = String::new();
+    for (i, part) in parts.iter().enumerate() {
+        script.push_str(part);
+        if i + 1 < parts.len() {
+            script.push_str(if part.trim_end().ends_with('&') { " " } else { " ; " });
+        }
+    }
+    script
 }
 
 /// Generate proxy environment variable exports.
@@ -173,7 +194,7 @@ fn generate_proxy_env_string(http_port: u16, socks_port: u16) -> String {
     format!(
         "export http_proxy='http://localhost:{}' https_proxy='http://localhost:{}' \
          HTTP_PROXY='http://localhost:{}' HTTPS_PROXY='http://localhost:{}' \
-         ALL_PROXY='socks5://localhost:{}' all_proxy='socks5://localhost:{}' ;",
+         ALL_PROXY='socks5://localhost:{}' all_proxy='socks5://localhost:{}'",
         http_port, http_port, http_port, http_port, socks_port, socks_port
     )
 }
@@ -198,10 +219,63 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_join_script_puts_no_semicolon_after_background_steps() {
+        let parts = vec![
+            "socat A &".to_string(),
+            "socat B &".to_string(),
+            "sleep 0.1".to_string(),
+            "export x=1".to_string(),
+            "/bin/bash -c 'echo hi'".to_string(),
+        ];
+        assert_eq!(
+            join_script(&parts),
+            "socat A & socat B & sleep 0.1 ; export x=1 ; /bin/bash -c 'echo hi'"
+        );
+    }
+
+    #[test]
+    fn test_join_script_runs_in_bash() {
+        let parts = vec![
+            "true &".to_string(),
+            "export x=1".to_string(),
+            "test \"$x\" = 1".to_string(),
+        ];
+        let status = std::process::Command::new("bash")
+            .arg("-c")
+            .arg(join_script(&parts))
+            .status()
+            .unwrap();
+        assert!(status.success());
+    }
+
+    #[test]
+    fn test_background_steps_do_not_hold_output_open() {
+        // Stand-ins for the socat bridges: they would run for 100 s.
+        let parts = vec![
+            "trap 'kill $(jobs -p) 2>/dev/null' EXIT".to_string(),
+            "sleep 100 >/dev/null 2>&1 &".to_string(),
+            "sleep 100 >/dev/null 2>&1 &".to_string(),
+            "echo done".to_string(),
+            "exit 3".to_string(),
+        ];
+        let started = std::time::Instant::now();
+        let out = std::process::Command::new("bash")
+            .arg("-c")
+            .arg(join_script(&parts))
+            .output()
+            .unwrap();
+        assert!(started.elapsed() < std::time::Duration::from_secs(10));
+        assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "done");
+        assert_eq!(out.status.code(), Some(3));
+    }
+
+    #[test]
     fn test_generate_proxy_env_string() {
         let env = generate_proxy_env_string(3128, 1080);
         assert!(env.contains("http_proxy='http://localhost:3128'"));
         assert!(env.contains("ALL_PROXY='socks5://localhost:1080'"));
+        // A step of the script: join_script adds the separators.
+        assert!(!env.trim_end().ends_with(';'));
     }
 
     #[test]
