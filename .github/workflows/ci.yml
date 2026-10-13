@@ -61,7 +61,9 @@ jobs:
         run: cargo test --workspace -- --test-threads=1
 
       - name: Run integration tests (ignored)
-        run: cargo test --workspace -- --ignored --test-threads=1
+        # uat_run is the live UAT against a real LLM: it needs the sops
+        # secrets and runs through `angreal test uat`, not in CI.
+        run: cargo test --workspace -- --ignored --test-threads=1 --skip uat_run
 
   coverage:
     name: Coverage
