@@ -6,10 +6,19 @@ use anyhow::Result;
 use uuid::Uuid;
 
 /// Run a CLI prompt by connecting to the running server via WebSocket.
-pub async fn run_cli_via_server(url: &str, prompt: &str, session_id: Option<Uuid>) -> Result<()> {
+pub async fn run_cli_via_server(
+    url: &str,
+    prompt: &str,
+    session_id: Option<Uuid>,
+    token: Option<&str>,
+) -> Result<()> {
     use arawn_tui::ws_client::{EventUpdate, WsClient, engine_event_to_update, parse_engine_event};
 
-    let mut client = WsClient::connect(url).await.map_err(|e| {
+    let connected = match token {
+        Some(t) => WsClient::connect_with_token(url, Some(t)).await,
+        None => WsClient::connect(url).await,
+    };
+    let mut client = connected.map_err(|e| {
         anyhow::anyhow!(
             "Could not connect to arawn server at {url}: {e}\n\
              Start the server first: arawn serve"

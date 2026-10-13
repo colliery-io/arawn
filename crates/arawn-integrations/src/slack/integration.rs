@@ -94,13 +94,13 @@ pub struct SlackProviderConfig {
     pub scopes: Vec<String>,
     /// Pinned port for the local OAuth callback. Slack's redirect-URI
     /// allowlist is exact-match — no wildcard ports — so we bind a known
-    /// port and the user adds `http://127.0.0.1:<port>/oauth/callback` to
+    /// port and the user adds `http://localhost:<port>/oauth/callback` to
     /// the Slack app config exactly once.
     pub redirect_port: u16,
 }
 
 /// Default callback port for Slack. The user adds
-/// `http://127.0.0.1:8080/oauth/callback` to the Slack app's redirect
+/// `http://localhost:8080/oauth/callback` to the Slack app's redirect
 /// allowlist; the binary always binds 8080. Override via
 /// [`SlackProviderConfig`] if 8080 is taken on your machine.
 pub const DEFAULT_SLACK_REDIRECT_PORT: u16 = 8080;

@@ -14,9 +14,9 @@ pub use types::{
     ExtractionCursor, ExtractionLogEntry, ExtractionStatus, FeedDiscoverDto, FeedDiscoverRow,
     FeedParamKindDto, FeedParamSpecDto, FeedRegisterSpec, FeedRemoveDto, FeedSchemaDto,
     FeedStatusRow, FeedSummaryDto, FeedTemplateInfo, FeedsStatus, ForgetCandidate, ForgetResult,
-    HealthStatus, IntegrationStatus, InventoryItem, LensInfo, LlmClientStatus, LlmStatus,
-    MemorySearchResult, MemoryStoreResult, MemoryStoreSummary, MemorySummary, MemoryTypeCount,
-    ModalPromptOption, OAuthFlowStarted, PermissionAuditEntry, PermissionModeInfo,
+    HealthStatus, IntegrationHealth, IntegrationStatus, InventoryItem, LensInfo, LlmClientStatus,
+    LlmStatus, MemorySearchResult, MemoryStoreResult, MemoryStoreSummary, MemorySummary,
+    MemoryTypeCount, ModalPromptOption, OAuthFlowStarted, PermissionAuditEntry, PermissionModeInfo,
     PermissionsStatus, SYSTEM_STATUS_VERSION, ServerCapabilities, ServerNotice, SessionDetail,
     SessionInfo, SignalDto, StewardErrorStatus, StewardStatus, SystemStatus, WorkflowInfo,
 };

@@ -167,6 +167,18 @@ fn status_class(s: Option<&str>) -> &'static str {
     }
 }
 
+/// CSS class for an integration state: green when connected, red when it
+/// is set up but broken, muted otherwise.
+fn integration_class(state: &str) -> &'static str {
+    match state {
+        "connected" => "ok",
+        "missing_secret" | "incomplete" | "token_error" | "restart_needed" | "config_error" => {
+            "err"
+        }
+        _ => "muted",
+    }
+}
+
 /// Render the full health dashboard.
 fn health_markup(s: &SystemStatus) -> Markup {
     let content = html! {
@@ -180,6 +192,27 @@ fn health_markup(s: &SystemStatus) -> Markup {
             }
         }
         div class="panels" {
+            // Integrations (ARAWN-T-0502): what is set up, and the fix for
+            // what is not.
+            section class="panel" {
+                h3 { "Integrations" }
+                @if s.integrations.is_empty() {
+                    p class="muted" { "No integration state reported." }
+                } @else {
+                    table {
+                        thead { tr { th { "service" } th { "state" } th { "fix" } } }
+                        tbody {
+                            @for i in &s.integrations {
+                                tr {
+                                    td { (i.name) }
+                                    td class=(integration_class(&i.state)) title=(i.detail) { (i.state.replace('_', " ")) }
+                                    td { (i.hint.as_deref().unwrap_or("—")) }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             // Feeds
             section class="panel" {
                 h3 { "Feeds " (badge(s.feeds.available, "available", "unavailable")) }
@@ -940,7 +973,33 @@ mod tests {
             steward: StewardStatus {
                 recent_errors: vec![],
             },
+            integrations: vec![
+                arawn_service::IntegrationHealth {
+                    name: "gmail".into(),
+                    state: "connected".into(),
+                    detail: "connected".into(),
+                    hint: None,
+                },
+                arawn_service::IntegrationHealth {
+                    name: "slack".into(),
+                    state: "missing_secret".into(),
+                    detail: "client ID in [integrations.slack], but no client secret".into(),
+                    hint: Some("export ARAWN_SLACK_CLIENT_SECRET".into()),
+                },
+            ],
         }
+    }
+
+    #[test]
+    fn health_renders_integration_states_and_fixes() {
+        let h = health_markup(&sample_status()).into_string();
+        assert!(h.contains("Integrations"), "{h}");
+        assert!(
+            h.contains(r#"<td class="ok" title="connected">connected</td>"#),
+            "{h}"
+        );
+        assert!(h.contains(">missing secret</td>"), "{h}");
+        assert!(h.contains("export ARAWN_SLACK_CLIENT_SECRET"), "{h}");
     }
 
     #[test]

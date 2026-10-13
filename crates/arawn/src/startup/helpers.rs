@@ -188,6 +188,29 @@ pub fn register_workflow_tools(
     )));
 }
 
+/// The data directory a server started with these arguments uses:
+/// `arawn.toml` is read from `bootstrap`, then `--data-dir` (if given)
+/// overrides `[storage].data_dir` (ARAWN-T-0509). Clients use this to
+/// find the server's `server.token`. A config that does not load falls
+/// back to `bootstrap`.
+pub fn resolve_data_dir(bootstrap: &std::path::Path, flag: Option<&str>) -> std::path::PathBuf {
+    match crate::ArawnConfig::try_load(bootstrap) {
+        Ok(mut cfg) => {
+            cfg.override_data_dir(flag);
+            cfg.data_dir()
+        }
+        Err(_) => bootstrap.to_path_buf(),
+    }
+}
+
+/// The server auth token in `<data_dir>/server.token`, if present.
+pub fn read_server_token(data_dir: &std::path::Path) -> Option<String> {
+    std::fs::read_to_string(data_dir.join("server.token"))
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
 pub fn dirs_path() -> Option<String> {
     #[cfg(target_os = "macos")]
     {

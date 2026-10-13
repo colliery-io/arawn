@@ -22,6 +22,6 @@ mod client;
 mod install_flow;
 mod integration;
 
-pub use client::{GithubClient, InstallationAccessToken};
+pub use client::{GithubClient, InstallationAccessToken, sign_app_jwt};
 pub use install_flow::{GithubInstallOutcome, run_install_flow};
 pub use integration::{GithubAppConfig, GithubCredentials, GithubIntegration, SERVICE_NAME};

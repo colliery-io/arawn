@@ -57,6 +57,11 @@ tempfile = { workspace = true }
 tokio = { workspace = true }
 tokio-util = { workspace = true }
 toml = "0.8"
+# In-place arawn.toml edits for `arawn setup` (ARAWN-T-0501): keeps comments
+# and key order. Same major as the toml crate above uses.
+toml_edit = "0.22"
+# Hidden input for client secrets in `arawn setup`.
+rpassword = "7"
 tokio-stream = { version = "0.1", features = ["sync"] }
 tokio-tungstenite = "0.26"
 futures-util = "0.3"

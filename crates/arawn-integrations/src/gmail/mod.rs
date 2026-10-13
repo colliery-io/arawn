@@ -15,7 +15,7 @@ mod tools;
 pub mod uat_tools;
 
 pub use client::{GmailHub, client_from_token_store};
-pub use integration::{GmailIntegration, GmailProviderConfig};
+pub use integration::{GMAIL_OAUTH_SCOPES, GmailIntegration, GmailProviderConfig, SERVICE_NAME};
 pub use tools::{
     GmailGetMessageTool, GmailInboxReadTool, GmailMarkReadTool, GmailSearchTool, GmailSendTool,
 };
