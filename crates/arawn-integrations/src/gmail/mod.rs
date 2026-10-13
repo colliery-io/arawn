@@ -6,7 +6,7 @@
 //! - Four [`arawn_tool::Tool`] impls: `gmail_inbox_read`, `gmail_search`,
 //!   `gmail_send`, `gmail_mark_read`.
 //!
-//! See `docs/src/integrations/gmail.md` for the Google Cloud Console
+//! See `docs/src/content/docs/how-to/connect-google.md` for the Google Cloud Console
 //! setup steps users need to complete before connecting.
 
 mod client;
