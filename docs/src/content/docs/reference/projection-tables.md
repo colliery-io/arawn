@@ -49,7 +49,7 @@ The 17 projection tables (source: `crates/arawn-projections/src/`):
 | `slack_thread_messages` | Slack `channel-archive` (thread replies) | same as above + `is_thread_reply: true`, and the `workspace` column |
 | `drive_files` | Drive `folder-sync` / `recent` | file_id, path, mime_type, owners |
 | `drive_comments` | drive/comments | file_id, comment_id, doc_title, link, reason (`assigned`, `mentioned`, `owner_unanswered`), author, content, quoted, reply_count, last_reply_author. One row per open thread for you; rows are upserted on every run, and a row whose snapshot the feed removed (resolved, or no longer for you) is deleted. `body_text` is the comment, the quoted text and the last reply. |
-| `jira_issues` | Jira `project-tracker` / `assignee-tracker` | key, status, assignee, components, labels |
+| `jira_issues` | Jira `project-tracker` / `assignee-tracker` | key, status, status_category (`new`, `indeterminate`, `done`), assignee, priority, high_priority, due_date, assigned_to_me (true on `assignee-tracker` rows), labels. Rows are upserted on every run, so status, priority and due date changes land. |
 | `jira_comments` | Jira issue comments | issue_key, author |
 | `jira_history` | Jira changelog entries | issue_key, field, from, to |
 | `confluence_pages` | Confluence `space-archive` | space_key, page_id, version, author |
