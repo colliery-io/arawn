@@ -124,7 +124,8 @@ pub fn wire_integrations(
         debug!(
             "Google Calendar integration skipped — set ARAWN_GCAL_CLIENT_ID + \
              ARAWN_GCAL_CLIENT_SECRET (env) or [integrations.calendar] / \
-             [integrations.google] (config) to enable."
+             [integrations.google] (config) to enable, or run `arawn setup google`. \
+             See docs/src/content/docs/how-to/connect-google.md."
         );
     }
 
@@ -179,7 +180,8 @@ pub fn wire_integrations(
         debug!(
             "Google Drive integration skipped — set ARAWN_GDRIVE_CLIENT_ID + \
              ARAWN_GDRIVE_CLIENT_SECRET (env) or [integrations.drive] / \
-             [integrations.google] (config) to enable."
+             [integrations.google] (config) to enable, or run `arawn setup google`. \
+             See docs/src/content/docs/how-to/connect-google.md."
         );
     }
 
@@ -250,7 +252,8 @@ pub fn wire_integrations(
         debug!(
             "Atlassian integration skipped — set ARAWN_ATLASSIAN_CLIENT_ID + \
              ARAWN_ATLASSIAN_CLIENT_SECRET (env) or [integrations.atlassian] (config) \
-             to enable."
+             to enable, or run `arawn setup atlassian`. See \
+             docs/src/content/docs/how-to/connect-atlassian.md."
         );
     }
 
