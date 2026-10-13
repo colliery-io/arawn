@@ -186,7 +186,7 @@ fn generate_proxy_env_string(http_port: u16, socks_port: u16) -> String {
     format!(
         "export http_proxy='http://localhost:{}' https_proxy='http://localhost:{}' \
          HTTP_PROXY='http://localhost:{}' HTTPS_PROXY='http://localhost:{}' \
-         ALL_PROXY='socks5://localhost:{}' all_proxy='socks5://localhost:{}' ;",
+         ALL_PROXY='socks5://localhost:{}' all_proxy='socks5://localhost:{}'",
         http_port, http_port, http_port, http_port, socks_port, socks_port
     )
 }
@@ -245,6 +245,8 @@ mod tests {
         let env = generate_proxy_env_string(3128, 1080);
         assert!(env.contains("http_proxy='http://localhost:3128'"));
         assert!(env.contains("ALL_PROXY='socks5://localhost:1080'"));
+        // A step of the script: join_script adds the separators.
+        assert!(!env.trim_end().ends_with(';'));
     }
 
     #[test]
