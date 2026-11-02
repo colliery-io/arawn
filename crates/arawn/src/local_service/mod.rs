@@ -73,6 +73,10 @@ pub struct LocalService {
     /// look up their integration here at construction time.
     integration_registry:
         Arc<std::sync::RwLock<HashMap<String, Arc<dyn arawn_integrations::Integration>>>>,
+    /// The Slack app when `[integrations.slack]` resolves. Each connected
+    /// workspace is its own `slack@<alias>` entry in the registry above;
+    /// the app makes new ones on `/connect slack` (COLLIERY-I-0520).
+    slack_app: Arc<std::sync::RwLock<Option<Arc<arawn_integrations::slack::SlackApp>>>>,
     /// Live handle to the arawn-feeds runtime, set after the workflow
     /// runner comes up. `None` when feeds couldn't start (no workflow
     /// runner, no DB, etc.) — `/watch` and `/feeds` then return a
@@ -147,6 +151,7 @@ impl LocalService {
             permission_audit: arawn_engine::permissions::new_shared_audit(),
             notice_tx: tokio::sync::broadcast::channel(64).0,
             integration_registry: Arc::new(std::sync::RwLock::new(HashMap::new())),
+            slack_app: Arc::new(std::sync::RwLock::new(None)),
             feed_runtime: Arc::new(std::sync::RwLock::new(None)),
             declared: Arc::new(std::sync::RwLock::new(declared::Declared::default())),
             reconcile_lock: Arc::new(tokio::sync::Mutex::new(())),
@@ -309,6 +314,11 @@ impl LocalService {
             .write()
             .recover()
             .insert(name, integration);
+    }
+
+    /// Set the Slack app. Called from startup when its client resolves.
+    pub fn set_slack_app(&self, app: Arc<arawn_integrations::slack::SlackApp>) {
+        *self.slack_app.write().recover() = Some(app);
     }
 
     /// Shared reference to the integration registry — for tools that want
@@ -886,30 +896,55 @@ impl ArawnService for LocalService {
 }
 
 /// Personal default feed registered automatically the first time
-/// the user runs `/connect <service>`. None means "this integration
-/// has no auto-feed; users must `/watch` explicitly."
-///
-/// Returns `(template_name, feed_id)`.
-/// The default feed is a singleton per template: create it only when no
-/// feed (under any id) already uses that template. `existing` is
-/// `(id, template)` pairs.
-pub(super) fn should_auto_create(existing: &[(String, String)], template: &str) -> bool {
-    !existing.iter().any(|(_, t)| t == template)
+/// the user runs `/connect <service>`.
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct DefaultFeed {
+    pub template: &'static str,
+    pub id: String,
+    pub params: serde_json::Value,
 }
 
-pub(super) fn default_feed_for_service(service: &str) -> Option<(&'static str, &'static str)> {
-    match service {
+/// The default feed is a singleton per template — per template and
+/// workspace for Slack: create it only when no feed (under any id)
+/// already uses that template with the same `workspace` param.
+/// `existing` is `(id, template, params)`.
+pub(super) fn should_auto_create(
+    existing: &[(String, String, serde_json::Value)],
+    feed: &DefaultFeed,
+) -> bool {
+    let workspace = |p: &serde_json::Value| p.get("workspace").cloned();
+    !existing
+        .iter()
+        .any(|(_, t, p)| t == feed.template && workspace(p) == workspace(&feed.params))
+}
+
+/// None means "this integration has no auto-feed; users must `/watch`
+/// explicitly."
+pub(super) fn default_feed_for_service(service: &str) -> Option<DefaultFeed> {
+    // One mentions feed per Slack workspace (COLLIERY-I-0520).
+    if let Some(alias) = arawn_integrations::slack::alias_of(service) {
+        return Some(DefaultFeed {
+            template: "slack/my-mentions",
+            id: format!("slack-{alias}-mentions"),
+            params: serde_json::json!({ "workspace": alias }),
+        });
+    }
+    let (template, id) = match service {
         // Ids must differ per service: `feeds.id` is the PRIMARY KEY. They
         // were all "me" once, so only the first connected service got
         // its feed (ARAWN-T-0510).
-        "slack" => Some(("slack/my-mentions", "slack-mentions")),
-        "gmail" => Some(("gmail/inbox-archive", "gmail-inbox")),
-        "google_calendar" => Some(("calendar/upcoming-archive", "calendar-upcoming")),
-        "google_drive" => Some(("drive/recent", "drive-recent")),
-        "atlassian" => Some(("jira/assignee-tracker", "jira-assigned")),
-        "linear" => Some(("linear/my-issues", "linear-mine")),
-        _ => None,
-    }
+        "gmail" => ("gmail/inbox-archive", "gmail-inbox"),
+        "google_calendar" => ("calendar/upcoming-archive", "calendar-upcoming"),
+        "google_drive" => ("drive/recent", "drive-recent"),
+        "atlassian" => ("jira/assignee-tracker", "jira-assigned"),
+        "linear" => ("linear/my-issues", "linear-mine"),
+        _ => return None,
+    };
+    Some(DefaultFeed {
+        template,
+        id: id.to_string(),
+        params: serde_json::Value::Null,
+    })
 }
 
 async fn current_summary(
@@ -1021,6 +1056,11 @@ pub(super) fn first_sentence(s: &str) -> String {
 mod feed_default_tests {
     use super::default_feed_for_service;
 
+    fn pair(service: &str) -> (&'static str, String) {
+        let f = default_feed_for_service(service).unwrap();
+        (f.template, f.id)
+    }
+
     #[test]
     fn known_services_each_have_a_default_feed() {
         // Sanity: every integration we ship a personal feed for is
@@ -1029,37 +1069,36 @@ mod feed_default_tests {
         // exhaustiveness check — but it fences the existing five
         // against typos.
         assert_eq!(
-            default_feed_for_service("slack"),
-            Some(("slack/my-mentions", "slack-mentions"))
+            pair("slack@acme"),
+            ("slack/my-mentions", "slack-acme-mentions".into())
         );
         assert_eq!(
-            default_feed_for_service("gmail"),
-            Some(("gmail/inbox-archive", "gmail-inbox"))
+            default_feed_for_service("slack@acme").unwrap().params,
+            serde_json::json!({ "workspace": "acme" })
+        );
+        assert_eq!(pair("gmail"), ("gmail/inbox-archive", "gmail-inbox".into()));
+        assert_eq!(
+            pair("google_calendar"),
+            ("calendar/upcoming-archive", "calendar-upcoming".into())
         );
         assert_eq!(
-            default_feed_for_service("google_calendar"),
-            Some(("calendar/upcoming-archive", "calendar-upcoming"))
+            pair("google_drive"),
+            ("drive/recent", "drive-recent".into())
         );
         assert_eq!(
-            default_feed_for_service("google_drive"),
-            Some(("drive/recent", "drive-recent"))
+            pair("atlassian"),
+            ("jira/assignee-tracker", "jira-assigned".into())
         );
-        assert_eq!(
-            default_feed_for_service("atlassian"),
-            Some(("jira/assignee-tracker", "jira-assigned"))
-        );
-        assert_eq!(
-            default_feed_for_service("linear"),
-            Some(("linear/my-issues", "linear-mine"))
-        );
+        assert_eq!(pair("linear"), ("linear/my-issues", "linear-mine".into()));
     }
 
     #[test]
     fn default_feed_ids_are_distinct_across_services() {
         // ARAWN-T-0510: feeds.id is the primary key; a shared id meant
         // only the first connected service got its feed.
-        let ids: Vec<&str> = [
-            "slack",
+        let ids: Vec<String> = [
+            "slack@acme",
+            "slack@personal",
             "gmail",
             "google_calendar",
             "google_drive",
@@ -1067,26 +1106,37 @@ mod feed_default_tests {
             "linear",
         ]
         .iter()
-        .map(|s| default_feed_for_service(s).unwrap().1)
+        .map(|s| pair(s).1)
         .collect();
         let unique: std::collections::HashSet<_> = ids.iter().collect();
         assert_eq!(unique.len(), ids.len(), "{ids:?}");
     }
 
     #[test]
-    fn auto_create_is_singleton_by_template() {
+    fn auto_create_is_singleton_by_template_and_workspace() {
         use super::should_auto_create;
-        let existing = [("me".to_string(), "slack/my-mentions".to_string())];
-        // An older install already has the Slack feed under "me": skip.
-        assert!(!should_auto_create(&existing, "slack/my-mentions"));
+        let existing = [(
+            "slack-mentions".to_string(),
+            "slack/my-mentions".to_string(),
+            serde_json::json!({ "workspace": "acme" }),
+        )];
+        // acme already has its mentions feed, under another id: skip.
+        let acme = default_feed_for_service("slack@acme").unwrap();
+        assert!(!should_auto_create(&existing, &acme));
+        // A second workspace gets its own.
+        let personal = default_feed_for_service("slack@personal").unwrap();
+        assert!(should_auto_create(&existing, &personal));
         // Gmail has no feed yet: create it.
-        assert!(should_auto_create(&existing, "gmail/inbox-archive"));
+        let gmail = default_feed_for_service("gmail").unwrap();
+        assert!(should_auto_create(&existing, &gmail));
     }
 
     #[test]
     fn unknown_service_has_no_default_feed() {
         assert!(default_feed_for_service("zoom").is_none());
         assert!(default_feed_for_service("").is_none());
+        // The Slack app alone has no feed; its workspaces do.
+        assert!(default_feed_for_service("slack").is_none());
     }
 }
 

@@ -360,7 +360,7 @@ fn check_declared(data_dir: &Path, config: &crate::ArawnConfig) -> Option<CheckR
                             crate::integration_state::IntegrationState::Connected { .. }
                         )
                     })
-                    .map(|r| r.service.to_string())
+                    .map(|r| r.service)
                     .collect()
             })
             .unwrap_or_default();
@@ -470,6 +470,52 @@ mod tests {
             .find(|c| c.name == name)
             .unwrap_or_else(|| panic!("no check named {name}"))
             .outcome
+    }
+
+    #[test]
+    fn doctor_shows_the_slack_app_and_each_workspace() {
+        let tmp = TempDir::new().unwrap();
+        let cfg: crate::ArawnConfig = toml::from_str(
+            r#"
+            [integrations.slack]
+            client_id = "sid"
+            client_secret = "ssec"
+            "#,
+        )
+        .unwrap();
+        let store = arawn_auth::TokenStore::open(tmp.path()).unwrap();
+        for alias in ["acme", "personal"] {
+            let token = arawn_auth::Token {
+                access: format!("xoxb-{alias}"),
+                refresh: None,
+                expires_at: None,
+                scope: None,
+                token_type: "Bearer".into(),
+                extras: Default::default(),
+            };
+            store.save(&format!("slack@{alias}"), &token).unwrap();
+        }
+        let checks = check_integrations(tmp.path(), &cfg);
+        let names: Vec<_> = checks.iter().map(|c| c.name.as_str()).collect();
+        let at = names
+            .iter()
+            .position(|n| *n == "integration:slack")
+            .unwrap();
+        assert_eq!(
+            names[at..at + 3],
+            [
+                "integration:slack",
+                "integration:slack@acme",
+                "integration:slack@personal"
+            ]
+        );
+        for name in &names[at..at + 3] {
+            assert!(
+                matches!(outcome(&checks, name), CheckOutcome::Pass),
+                "{name}: {:?}",
+                outcome(&checks, name)
+            );
+        }
     }
 
     #[test]

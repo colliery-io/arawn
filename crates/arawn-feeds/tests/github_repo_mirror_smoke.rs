@@ -118,7 +118,7 @@ struct WithFakeGithub {
     gh: Arc<dyn GithubFeedClient>,
 }
 impl FeedClients for WithFakeGithub {
-    fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+    fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
         None
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {

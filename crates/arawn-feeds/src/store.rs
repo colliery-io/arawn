@@ -114,6 +114,24 @@ impl<'a> FeedStore<'a> {
         Ok(())
     }
 
+    /// Replace a feed's params (the one-time Slack workspace migration).
+    pub fn set_params(&self, id: &str, params: &TemplateParams) -> Result<(), FeedError> {
+        let params_json = serde_json::to_string(params)
+            .map_err(|e| FeedError::Storage(format!("serialize params: {e}")))?;
+        let now = Utc::now().to_rfc3339();
+        let n = self
+            .conn
+            .execute(
+                "UPDATE feeds SET params = ?2, updated_at = ?3 WHERE id = ?1",
+                params![id, params_json, now],
+            )
+            .map_err(|e| FeedError::Storage(format!("update params: {e}")))?;
+        if n == 0 {
+            return Err(FeedError::Storage(format!("no feed with id '{id}'")));
+        }
+        Ok(())
+    }
+
     pub fn delete(&self, id: &str) -> Result<(), FeedError> {
         self.conn
             .execute("DELETE FROM feeds WHERE id = ?1", params![id])

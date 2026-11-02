@@ -35,7 +35,7 @@ pub enum ToolCategory {
     Gmail,
     /// Google Drive integration tools (drive_list, drive_read, drive_search, etc.).
     Drive,
-    /// Slack integration tools (slack_list_channels, slack_history, slack_post, etc.).
+    /// Slack integration tools, per workspace (slack_<alias>_history, slack_<alias>_post, etc.).
     Slack,
     /// Atlassian integration tools (Jira + Confluence: issue/page CRUD, search, etc.).
     Atlassian,

@@ -126,7 +126,7 @@ struct MockClients {
 }
 
 impl FeedClients for MockClients {
-    fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+    fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
         None
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
@@ -478,7 +478,7 @@ async fn assignee_tracker_uses_currentUser_jql_and_advances_cursor() {
 async fn returns_auth_when_atlassian_not_connected() {
     struct NoAtlassian;
     impl FeedClients for NoAtlassian {
-        fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+        fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
             None
         }
         fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {

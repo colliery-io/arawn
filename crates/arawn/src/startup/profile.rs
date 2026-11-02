@@ -14,10 +14,15 @@ use crate::config::{FeedDecl, LensDecl};
 /// Profiles that `--profile` accepts.
 pub const PROFILES: &[&str] = &["work"];
 
-/// The declarations of a profile.
-pub fn profile(name: &str) -> Result<(Vec<LensDecl>, Vec<FeedDecl>)> {
+/// The declarations of a profile. `slack_workspace` is the alias of the
+/// Slack workspace whose mentions the profile reads; with none
+/// connected, the profile has no Slack feed (COLLIERY-I-0520).
+pub fn profile(
+    name: &str,
+    slack_workspace: Option<&str>,
+) -> Result<(Vec<LensDecl>, Vec<FeedDecl>)> {
     match name {
-        "work" => Ok(work()),
+        "work" => Ok(work(slack_workspace)),
         other => bail!(
             "unknown profile `{other}`. Use one of: {}",
             PROFILES.join(", ")
@@ -33,19 +38,37 @@ fn feed(id: &str, template: &str) -> FeedDecl {
     }
 }
 
+/// The first connected Slack workspace in `data_dir`, for [`profile`].
+pub fn first_slack_workspace(data_dir: &std::path::Path) -> Option<String> {
+    arawn_integrations::slack::connected_aliases(data_dir)
+        .into_iter()
+        .next()
+}
+
 /// A `work` lens over the standard work sources: mail, calendar, chat,
 /// tickets (Jira, Linear), code review and doc comments.
-fn work() -> (Vec<LensDecl>, Vec<FeedDecl>) {
-    let feeds = vec![
-        feed("gmail-inbox", "gmail/inbox-archive"),
-        feed("calendar-upcoming", "calendar/upcoming-archive"),
-        feed("slack-mentions", "slack/my-mentions"),
-        feed("jira-assigned", "jira/assignee-tracker"),
-        feed("github-review-queue", "github/review-queue"),
-        feed("github-notifications", "github/notifications"),
-        feed("linear-mine", "linear/my-issues"),
-        feed("drive-comments", "drive/comments"),
-    ];
+fn work(slack_workspace: Option<&str>) -> (Vec<LensDecl>, Vec<FeedDecl>) {
+    // Same id as the default feed `arawn connect` creates for the
+    // workspace, so the two are one feed.
+    let slack = slack_workspace.map(|ws| {
+        let mut f = feed(&format!("slack-{ws}-mentions"), "slack/my-mentions");
+        f.params
+            .insert("workspace".into(), toml::Value::String(ws.into()));
+        f
+    });
+    let feeds: Vec<FeedDecl> = [
+        Some(feed("gmail-inbox", "gmail/inbox-archive")),
+        Some(feed("calendar-upcoming", "calendar/upcoming-archive")),
+        slack,
+        Some(feed("jira-assigned", "jira/assignee-tracker")),
+        Some(feed("github-review-queue", "github/review-queue")),
+        Some(feed("github-notifications", "github/notifications")),
+        Some(feed("linear-mine", "linear/my-issues")),
+        Some(feed("drive-comments", "drive/comments")),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
     let lens = LensDecl {
         name: "work".into(),
         display_name: Some("Work".into()),
@@ -188,7 +211,7 @@ mod tests {
     #[test]
     fn work_profile_templates_exist_and_accept_their_params() {
         let reg = arawn_feeds::templates::default_registry();
-        let (_, feeds) = profile("work").unwrap();
+        let (_, feeds) = profile("work", Some("acme")).unwrap();
         for f in &feeds {
             let tmpl = reg
                 .get(&f.template)
@@ -201,7 +224,7 @@ mod tests {
 
     #[test]
     fn work_profile_binds_every_feed_and_matches_default_feed_ids() {
-        let (lenses, feeds) = profile("work").unwrap();
+        let (lenses, feeds) = profile("work", Some("acme")).unwrap();
         let ids: Vec<_> = feeds.iter().map(|f| f.id.clone()).collect();
         assert_eq!(lenses[0].feeds, ids);
         assert!(!lenses[0].tags.is_empty());
@@ -210,7 +233,7 @@ mod tests {
         for (id, template) in [
             ("gmail-inbox", "gmail/inbox-archive"),
             ("calendar-upcoming", "calendar/upcoming-archive"),
-            ("slack-mentions", "slack/my-mentions"),
+            ("slack-acme-mentions", "slack/my-mentions"),
             ("jira-assigned", "jira/assignee-tracker"),
             ("linear-mine", "linear/my-issues"),
         ] {
@@ -224,7 +247,7 @@ mod tests {
     #[test]
     fn apply_writes_a_config_that_loads_and_plans_cleanly() {
         let mut doc: DocumentMut = "# mine\n[engine]\nllm = \"default\"\n".parse().unwrap();
-        let (l, f) = profile("work").unwrap();
+        let (l, f) = profile("work", Some("acme")).unwrap();
         let applied = apply(&mut doc, &l, &f).unwrap();
         assert_eq!(applied.added_lenses, ["work"]);
         assert_eq!(applied.added_feeds.len(), 8);
@@ -266,12 +289,12 @@ params = { label = "Work" }
 "#
         .parse()
         .unwrap();
-        let (l, f) = profile("work").unwrap();
+        let (l, f) = profile("work", None).unwrap();
         let applied = apply(&mut doc, &l, &f).unwrap();
         assert!(applied.added_lenses.is_empty());
         assert!(applied.kept.contains(&"lens work".to_string()));
         assert!(applied.kept.contains(&"feed gmail-inbox".to_string()));
-        assert_eq!(applied.added_feeds.len(), 7);
+        assert_eq!(applied.added_feeds.len(), 6);
         let cfg: crate::ArawnConfig = toml::from_str(&doc.to_string()).unwrap();
         assert_eq!(cfg.lenses[0].description, "mine, edited");
         assert_eq!(cfg.lenses[0].tags, ["custom"]);
@@ -301,8 +324,38 @@ params = { label = "Work" }
     }
 
     #[test]
+    fn work_profile_reads_the_first_workspace_or_has_no_slack_feed() {
+        let (lenses, feeds) = profile("work", None).unwrap();
+        assert!(feeds.iter().all(|f| !f.template.starts_with("slack/")));
+        assert_eq!(feeds.len(), 7);
+        assert_eq!(lenses[0].feeds.len(), 7);
+
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(first_slack_workspace(dir.path()), None);
+        let token = arawn_auth::Token {
+            access: "xoxb".into(),
+            refresh: None,
+            expires_at: None,
+            scope: None,
+            token_type: "Bearer".into(),
+            extras: Default::default(),
+        };
+        let store = arawn_auth::TokenStore::open(dir.path()).unwrap();
+        store.save("slack@personal", &token).unwrap();
+        store.save("slack@acme", &token).unwrap();
+        assert_eq!(first_slack_workspace(dir.path()).as_deref(), Some("acme"));
+        let (_, feeds) = profile("work", Some("acme")).unwrap();
+        let slack = feeds
+            .iter()
+            .find(|f| f.template == "slack/my-mentions")
+            .unwrap();
+        assert_eq!(slack.id, "slack-acme-mentions");
+        assert_eq!(slack.params["workspace"].as_str(), Some("acme"));
+    }
+
+    #[test]
     fn unknown_profile_names_the_choices() {
-        let err = profile("home").unwrap_err();
+        let err = profile("home", None).unwrap_err();
         assert!(format!("{err}").contains("Use one of: work"));
     }
 }

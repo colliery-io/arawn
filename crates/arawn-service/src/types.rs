@@ -305,6 +305,9 @@ pub struct ServerNotice {
 pub struct IntegrationStatus {
     pub name: String,
     pub connected: bool,
+    /// A short note for the list, e.g. `16 scopes` for a Slack workspace.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
 }
 
 /// Returned by `start_oauth_flow` so the TUI knows what URL to open.

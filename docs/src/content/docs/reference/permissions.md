@@ -30,7 +30,7 @@ ask = [
 ]
 ```
 
-- The **tool name** is matched first (exact or glob with `*`). Tool names are lowercase (`shell`, `file_read`, `web_fetch`).
+- The **tool name** is matched first (exact or glob with `*`). Tool names are lowercase (`shell`, `file_read`, `web_fetch`). A `*` can sit in the middle: `slack_*_post` matches the post tool of every Slack workspace (`slack_acme_post`, `slack_personal_post`).
 - If the rule has a `(content pattern)`, it is matched against the
   tool's **primary argument**, not the raw JSON. The extraction is
   per-tool:

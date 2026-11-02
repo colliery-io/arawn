@@ -1,10 +1,12 @@
 //! Engine tools wrapping the Slack integration.
 //!
-//! Four tools land in v1: `slack_list_channels`, `slack_history`,
-//! `slack_post`, `slack_react`. `slack_search` is deferred —
-//! slack-morphism doesn't typed-expose `search.messages`, and the agent
-//! can scan per-channel history to answer most "what was discussed"
-//! questions in the meantime.
+//! Six tools per workspace, named `slack_<alias>_<op>` ([`tool_name`]):
+//! `list_channels`, `history`, `post`, `react`, `users_list`, `open_dm`.
+//! The name is scoped even with one workspace, so it does not change
+//! when a second one connects (COLLIERY-I-0520). `slack_search` is
+//! deferred — slack-morphism doesn't typed-expose `search.messages`, and
+//! the agent can scan per-channel history to answer most "what was
+//! discussed" questions in the meantime.
 
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -25,6 +27,74 @@ use slack_morphism::prelude::{
 use rvstruct::ValueStruct;
 
 use super::integration::SlackIntegration;
+use crate::integration::Integration as _;
+
+/// The six tool ops, longest first (see [`scope_tool_names`]).
+pub const SLACK_TOOL_OPS: &[&str] = &[
+    "list_channels",
+    "users_list",
+    "open_dm",
+    "history",
+    "react",
+    "post",
+];
+
+/// `slack_<alias>_<op>`, with the alias's `-` as `_`. Aliases have no
+/// `_`, so two workspaces never share a name.
+pub fn tool_name(alias: &str, op: &str) -> String {
+    format!("slack_{}_{op}", alias.replace('-', "_"))
+}
+
+/// The names of one workspace's tools.
+pub fn slack_tool_names(alias: &str) -> Vec<String> {
+    SLACK_TOOL_OPS
+        .iter()
+        .map(|op| tool_name(alias, op))
+        .collect()
+}
+
+/// Rewrite the unscoped tool names in a description (`slack_history`)
+/// to this workspace's (`slack_acme_history`), in one pass.
+fn scope_tool_names(text: &str, alias: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find("slack_") {
+        out.push_str(&rest[..at]);
+        let tail = &rest[at + "slack_".len()..];
+        match SLACK_TOOL_OPS.iter().find(|op| tail.starts_with(**op)) {
+            Some(op) => {
+                out.push_str(&tool_name(alias, op));
+                rest = &tail[op.len()..];
+            }
+            None => {
+                out.push_str("slack_");
+                rest = tail;
+            }
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+/// A tool's name and description for one workspace: the description
+/// says which workspace, and names its sibling tools.
+fn scoped(
+    integration: &SlackIntegration,
+    op: &str,
+    base: &str,
+    scopes: &[&str],
+) -> (String, String) {
+    let alias = integration.alias();
+    (
+        tool_name(alias, op),
+        format!(
+            "[Slack workspace {}] {}{}",
+            integration.name(),
+            scope_tool_names(base, alias),
+            scope_footer(scopes)
+        ),
+    )
+}
 
 /// Format a scope footer for tool descriptions. Appended at construction
 /// time so the LLM sees scope requirements directly in the tool schema.
@@ -212,26 +282,35 @@ const SLACK_LIST_CHANNELS_SCOPES: &[&str] = &["channels:read"];
 
 pub struct SlackListChannelsTool {
     integration: Arc<SlackIntegration>,
+    name: String,
     description: String,
 }
 
 impl SlackListChannelsTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
+        let (name, description) = scoped(
+            &integration,
+            "list_channels",
+            SLACK_LIST_CHANNELS_BASE,
+            SLACK_LIST_CHANNELS_SCOPES,
+        );
         Self {
             integration,
-            description: format!(
-                "{}{}",
-                SLACK_LIST_CHANNELS_BASE,
-                scope_footer(SLACK_LIST_CHANNELS_SCOPES)
-            ),
+            name,
+            description,
         }
+    }
+
+    /// The workspace this tool calls.
+    pub fn integration(&self) -> &Arc<SlackIntegration> {
+        &self.integration
     }
 }
 
 #[async_trait]
 impl Tool for SlackListChannelsTool {
     fn name(&self) -> &str {
-        "slack_list_channels"
+        &self.name
     }
     fn description(&self) -> &str {
         &self.description
@@ -326,28 +405,37 @@ const SLACK_HISTORY_SCOPES: &[&str] = &["channels:history"];
 
 pub struct SlackHistoryTool {
     integration: Arc<SlackIntegration>,
+    name: String,
     description: String,
 }
 
 impl SlackHistoryTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
+        let (name, description) = scoped(
+            &integration,
+            "history",
+            SLACK_HISTORY_BASE,
+            &[
+                "channels:history (or groups:history / im:history / mpim:history depending on channel)",
+            ],
+        );
         Self {
             integration,
-            description: format!(
-                "{}{}",
-                SLACK_HISTORY_BASE,
-                scope_footer(&[
-                    "channels:history (or groups:history / im:history / mpim:history depending on channel)"
-                ])
-            ),
+            name,
+            description,
         }
+    }
+
+    /// The workspace this tool calls.
+    pub fn integration(&self) -> &Arc<SlackIntegration> {
+        &self.integration
     }
 }
 
 #[async_trait]
 impl Tool for SlackHistoryTool {
     fn name(&self) -> &str {
-        "slack_history"
+        &self.name
     }
     fn description(&self) -> &str {
         &self.description
@@ -450,6 +538,7 @@ impl Tool for SlackHistoryTool {
 
 pub struct SlackPostTool {
     integration: Arc<SlackIntegration>,
+    name: String,
     description: String,
 }
 
@@ -461,17 +550,24 @@ const SLACK_POST_SCOPES: &[&str] = &["chat:write"];
 
 impl SlackPostTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
+        let (name, description) = scoped(&integration, "post", SLACK_POST_BASE, SLACK_POST_SCOPES);
         Self {
             integration,
-            description: format!("{}{}", SLACK_POST_BASE, scope_footer(SLACK_POST_SCOPES)),
+            name,
+            description,
         }
+    }
+
+    /// The workspace this tool calls.
+    pub fn integration(&self) -> &Arc<SlackIntegration> {
+        &self.integration
     }
 }
 
 #[async_trait]
 impl Tool for SlackPostTool {
     fn name(&self) -> &str {
-        "slack_post"
+        &self.name
     }
     fn description(&self) -> &str {
         &self.description
@@ -552,22 +648,31 @@ const SLACK_REACT_SCOPES: &[&str] = &["reactions:write"];
 
 pub struct SlackReactTool {
     integration: Arc<SlackIntegration>,
+    name: String,
     description: String,
 }
 
 impl SlackReactTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
+        let (name, description) =
+            scoped(&integration, "react", SLACK_REACT_BASE, SLACK_REACT_SCOPES);
         Self {
             integration,
-            description: format!("{}{}", SLACK_REACT_BASE, scope_footer(SLACK_REACT_SCOPES)),
+            name,
+            description,
         }
+    }
+
+    /// The workspace this tool calls.
+    pub fn integration(&self) -> &Arc<SlackIntegration> {
+        &self.integration
     }
 }
 
 #[async_trait]
 impl Tool for SlackReactTool {
     fn name(&self) -> &str {
-        "slack_react"
+        &self.name
     }
     fn description(&self) -> &str {
         &self.description
@@ -672,26 +777,35 @@ const SLACK_USERS_LIST_SCOPES: &[&str] = &["users:read"];
 
 pub struct SlackUsersListTool {
     integration: Arc<SlackIntegration>,
+    name: String,
     description: String,
 }
 
 impl SlackUsersListTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
+        let (name, description) = scoped(
+            &integration,
+            "users_list",
+            SLACK_USERS_LIST_BASE,
+            SLACK_USERS_LIST_SCOPES,
+        );
         Self {
             integration,
-            description: format!(
-                "{}{}",
-                SLACK_USERS_LIST_BASE,
-                scope_footer(SLACK_USERS_LIST_SCOPES)
-            ),
+            name,
+            description,
         }
+    }
+
+    /// The workspace this tool calls.
+    pub fn integration(&self) -> &Arc<SlackIntegration> {
+        &self.integration
     }
 }
 
 #[async_trait]
 impl Tool for SlackUsersListTool {
     fn name(&self) -> &str {
-        "slack_users_list"
+        &self.name
     }
     fn description(&self) -> &str {
         &self.description
@@ -775,26 +889,35 @@ const SLACK_OPEN_DM_SCOPE_HINT: &[&str] = &["im:write", "mpim:write"];
 
 pub struct SlackOpenDmTool {
     integration: Arc<SlackIntegration>,
+    name: String,
     description: String,
 }
 
 impl SlackOpenDmTool {
     pub fn new(integration: Arc<SlackIntegration>) -> Self {
+        let (name, description) = scoped(
+            &integration,
+            "open_dm",
+            SLACK_OPEN_DM_BASE,
+            SLACK_OPEN_DM_SCOPE_HINT,
+        );
         Self {
             integration,
-            description: format!(
-                "{}{}",
-                SLACK_OPEN_DM_BASE,
-                scope_footer(SLACK_OPEN_DM_SCOPE_HINT)
-            ),
+            name,
+            description,
         }
+    }
+
+    /// The workspace this tool calls.
+    pub fn integration(&self) -> &Arc<SlackIntegration> {
+        &self.integration
     }
 }
 
 #[async_trait]
 impl Tool for SlackOpenDmTool {
     fn name(&self) -> &str {
-        "slack_open_dm"
+        &self.name
     }
     fn description(&self) -> &str {
         &self.description
@@ -869,9 +992,91 @@ impl Tool for SlackOpenDmTool {
     }
 }
 
+/// The six tools of one workspace.
+pub fn slack_tools(integration: Arc<SlackIntegration>) -> Vec<Box<dyn Tool>> {
+    vec![
+        Box::new(SlackListChannelsTool::new(Arc::clone(&integration))) as Box<dyn Tool>,
+        Box::new(SlackHistoryTool::new(Arc::clone(&integration))),
+        Box::new(SlackPostTool::new(Arc::clone(&integration))),
+        Box::new(SlackReactTool::new(Arc::clone(&integration))),
+        Box::new(SlackUsersListTool::new(Arc::clone(&integration))),
+        Box::new(SlackOpenDmTool::new(integration)),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn workspace(alias: &str) -> Arc<SlackIntegration> {
+        Arc::new(SlackIntegration::new(
+            std::path::PathBuf::from("/nonexistent"),
+            alias,
+            "cid".into(),
+            "sec".into(),
+        ))
+    }
+
+    #[test]
+    fn two_workspaces_give_twelve_distinct_tools() {
+        let mut names: Vec<String> = ["acme", "acme-corp"]
+            .iter()
+            .flat_map(|a| slack_tools(workspace(a)))
+            .map(|t| t.name().to_string())
+            .collect();
+        assert_eq!(names.len(), 12);
+        assert!(names.contains(&"slack_acme_post".to_string()));
+        assert!(names.contains(&"slack_acme_corp_list_channels".to_string()));
+        names.sort();
+        names.dedup();
+        assert_eq!(names.len(), 12);
+        assert_eq!(
+            slack_tool_names("acme-corp")[0],
+            "slack_acme_corp_list_channels"
+        );
+    }
+
+    #[test]
+    fn tool_names_fit_every_llm_provider() {
+        // ^[a-zA-Z0-9_-]{1,64}$ (Anthropic, OpenAI, Gemini) at the
+        // longest alias.
+        let alias = "a-".repeat(16);
+        let alias = &alias[..crate::slack::ALIAS_MAX_LEN];
+        assert!(crate::slack::is_valid_alias(alias.trim_end_matches('-')));
+        for name in slack_tool_names(alias) {
+            assert!(name.len() <= 64, "{name}");
+            assert!(
+                name.chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-'),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn description_names_the_workspace_and_its_own_tools() {
+        let dm = SlackOpenDmTool::new(workspace("acme"));
+        let d = dm.description();
+        assert!(d.starts_with("[Slack workspace slack@acme]"), "{d}");
+        assert!(
+            d.contains("slack_acme_history") && d.contains("slack_acme_post"),
+            "{d}"
+        );
+        assert!(!d.contains(" slack_history"), "{d}");
+        // One pass: an alias that is itself an op is not rewritten twice.
+        assert_eq!(
+            scope_tool_names("use slack_post or slack_users_list", "post"),
+            "use slack_post_post or slack_post_users_list"
+        );
+    }
+
+    #[test]
+    fn each_tool_holds_its_own_workspace() {
+        let acme = workspace("acme");
+        let post = SlackPostTool::new(Arc::clone(&acme));
+        assert!(Arc::ptr_eq(post.integration(), &acme));
+        assert_eq!(post.name(), "slack_acme_post");
+    }
     use slack_morphism::prelude::{
         SlackChannelDetails, SlackChannelFlags, SlackChannelInfo, SlackDateTime,
         SlackHistoryMessage, SlackMessageContent, SlackMessageOrigin, SlackMessageSender,

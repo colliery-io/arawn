@@ -98,7 +98,7 @@ struct MockClients {
 }
 
 impl FeedClients for MockClients {
-    fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+    fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
         None
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
@@ -297,7 +297,7 @@ async fn label_archive_query_uses_label_operator() {
 async fn returns_auth_when_gmail_not_connected() {
     struct NoGmail;
     impl FeedClients for NoGmail {
-        fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+        fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
             None
         }
         fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {

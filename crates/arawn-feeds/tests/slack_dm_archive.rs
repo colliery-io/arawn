@@ -114,7 +114,7 @@ struct MockClients {
 }
 
 impl FeedClients for MockClients {
-    fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+    fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
         Some(self.slack.clone())
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
@@ -210,7 +210,7 @@ async fn dm_archive_opens_dm_then_writes_messages() {
     });
     let ctx = TemplateCtx::new(clients);
     let template = DmArchiveTemplate;
-    let params = TemplateParams::new(json!({ "user": "@alice" }));
+    let params = TemplateParams::new(json!({ "workspace": "acme", "user": "@alice" }));
 
     let outcome = run_once(&template, &ctx, &params, &feed_dir).await;
     assert_eq!(outcome.summary.items_written, 2);
@@ -238,7 +238,7 @@ async fn dm_archive_opens_dm_then_writes_messages() {
 async fn dm_archive_returns_auth_when_slack_not_connected() {
     struct NoSlack;
     impl FeedClients for NoSlack {
-        fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+        fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
             None
         }
         fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
@@ -267,7 +267,7 @@ async fn dm_archive_returns_auth_when_slack_not_connected() {
 
     let ctx = TemplateCtx::new(Arc::new(NoSlack));
     let template = DmArchiveTemplate;
-    let params = TemplateParams::new(json!({ "user": "alice" }));
+    let params = TemplateParams::new(json!({ "workspace": "acme", "user": "alice" }));
 
     let err = template
         .run(&ctx, &params, &feed_dir, &Value::Null)

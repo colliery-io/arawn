@@ -1,4 +1,6 @@
 //! ARAWN-I-0062 T-D: UAT-mode Slack tools backed by the projection store.
+//! They stand for the mock workspace `slack@uat`, so their names are
+//! `slack_uat_*` like a real workspace's (COLLIERY-I-0520).
 //!
 //! Production Slack has no search-across-channels tool — the agent does
 //! `slack_list_channels` + `slack_history` per channel and filters in
@@ -13,6 +15,11 @@ use serde::Serialize;
 use serde_json::{Value, json};
 
 use arawn_projections::ProjectionStore;
+
+use super::tools::tool_name;
+
+/// The mock workspace's alias: `slack@uat`.
+pub const UAT_ALIAS: &str = "uat";
 
 #[derive(Debug, Clone, Serialize)]
 struct MessageSummary {
@@ -61,16 +68,20 @@ fn kind_for(id: &str) -> &'static str {
     }
 }
 
-/// `slack_list_channels` UAT impl — distinct channel ids appearing in the
+/// `slack_uat_list_channels` UAT impl — distinct channel ids appearing in the
 /// `slack_messages` projection. Channel "names" are derived from the
 /// channel-id suffix (so `C-platform` → `platform`).
 pub struct UatSlackListChannelsTool {
     data_dir: PathBuf,
+    name: String,
 }
 
 impl UatSlackListChannelsTool {
     pub fn new(data_dir: PathBuf) -> Self {
-        Self { data_dir }
+        Self {
+            data_dir,
+            name: tool_name(UAT_ALIAS, "list_channels"),
+        }
     }
 
     fn list_channels(&self) -> Result<Vec<ChannelSummary>, ToolError> {
@@ -116,7 +127,7 @@ impl UatSlackListChannelsTool {
 #[async_trait]
 impl Tool for UatSlackListChannelsTool {
     fn name(&self) -> &str {
-        "slack_list_channels"
+        &self.name
     }
     fn description(&self) -> &str {
         "List channels (public, private, DMs, group DMs) the bot can see in the connected Slack \
@@ -143,14 +154,18 @@ impl Tool for UatSlackListChannelsTool {
     }
 }
 
-/// `slack_history` UAT impl — returns messages for one channel, newest first.
+/// `slack_uat_history` UAT impl — returns messages for one channel, newest first.
 pub struct UatSlackHistoryTool {
     data_dir: PathBuf,
+    name: String,
 }
 
 impl UatSlackHistoryTool {
     pub fn new(data_dir: PathBuf) -> Self {
-        Self { data_dir }
+        Self {
+            data_dir,
+            name: tool_name(UAT_ALIAS, "history"),
+        }
     }
 
     fn channel_history(
@@ -221,11 +236,11 @@ impl UatSlackHistoryTool {
 #[async_trait]
 impl Tool for UatSlackHistoryTool {
     fn name(&self) -> &str {
-        "slack_history"
+        &self.name
     }
     fn description(&self) -> &str {
         "Read recent messages from a Slack channel by id. Returns ts, user id, text, thread_ts, \
-         reply_count, and a reactions summary. Use slack_list_channels first to discover ids."
+         reply_count, and a reactions summary. Use slack_uat_list_channels first to discover ids."
     }
     fn category(&self) -> ToolCategory {
         ToolCategory::Slack
@@ -308,6 +323,7 @@ mod tests {
                 thread_ts: None,
                 reactions: Vec::new(),
                 is_thread_reply: false,
+                workspace: Some(UAT_ALIAS.into()),
             };
             store.write(&proj).unwrap();
         }

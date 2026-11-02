@@ -50,7 +50,13 @@ pub use slack::{
 /// Implementors return `Some(...)` for providers configured by the
 /// user and `None` for ones they're not connected to.
 pub trait FeedClients: Send + Sync {
-    fn slack(&self) -> Option<Arc<dyn SlackFeedClient>>;
+    /// The client of Slack workspace `workspace` (its alias), or `None`
+    /// when that workspace is not connected.
+    fn slack(&self, workspace: &str) -> Option<Arc<dyn SlackFeedClient>>;
+    /// Aliases of the connected Slack workspaces, sorted.
+    fn slack_workspaces(&self) -> Vec<String> {
+        Vec::new()
+    }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>>;
     fn gmail(&self) -> Option<Arc<dyn GmailFeedClient>>;
     fn drive(&self) -> Option<Arc<dyn DriveFeedClient>>;
@@ -65,7 +71,7 @@ pub trait FeedClients: Send + Sync {
 pub struct NoopClients;
 
 impl FeedClients for NoopClients {
-    fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+    fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
         None
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
@@ -93,7 +99,9 @@ impl FeedClients for NoopClients {
 /// provider's adapter.
 #[derive(Default)]
 pub struct RealClients {
-    slack: Option<Arc<dyn SlackFeedClient>>,
+    /// The Slack app: a workspace's client is built per call, so a
+    /// workspace connected after boot is read with no restart.
+    slack: Option<Arc<arawn_integrations::slack::SlackApp>>,
     calendar: Option<Arc<dyn CalendarFeedClient>>,
     gmail: Option<Arc<dyn GmailFeedClient>>,
     drive: Option<Arc<dyn DriveFeedClient>>,
@@ -107,11 +115,8 @@ impl RealClients {
         Self::default()
     }
 
-    pub fn with_slack(
-        mut self,
-        integration: Arc<arawn_integrations::slack::SlackIntegration>,
-    ) -> Self {
-        self.slack = Some(Arc::new(RealSlackClient::new(integration)));
+    pub fn with_slack(mut self, app: Arc<arawn_integrations::slack::SlackApp>) -> Self {
+        self.slack = Some(app);
         self
     }
 
@@ -165,8 +170,19 @@ impl RealClients {
 }
 
 impl FeedClients for RealClients {
-    fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
-        self.slack.clone()
+    fn slack(&self, workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
+        let app = self.slack.as_ref()?;
+        if !app.connected_aliases().iter().any(|a| a == workspace) {
+            return None;
+        }
+        let ws = app.workspace(workspace).ok()?;
+        Some(Arc::new(RealSlackClient::new(Arc::new(ws))))
+    }
+    fn slack_workspaces(&self) -> Vec<String> {
+        self.slack
+            .as_ref()
+            .map(|app| app.connected_aliases())
+            .unwrap_or_default()
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
         self.calendar.clone()

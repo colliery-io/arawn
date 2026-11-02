@@ -69,7 +69,7 @@ struct MockClients {
 }
 
 impl FeedClients for MockClients {
-    fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+    fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
         None
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
@@ -203,7 +203,7 @@ async fn empty_run_is_no_op_with_status() {
 async fn returns_auth_when_drive_not_connected() {
     struct NoDrive;
     impl FeedClients for NoDrive {
-        fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+        fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
             None
         }
         fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {

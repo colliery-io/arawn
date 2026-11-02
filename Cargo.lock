@@ -522,6 +522,7 @@ name = "arawn-tests"
 version = "0.1.0"
 dependencies = [
  "arawn",
+ "arawn-auth",
  "arawn-core",
  "arawn-embed",
  "arawn-engine",

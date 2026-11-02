@@ -1,8 +1,8 @@
 //! `slack/my-mentions` — personal feed: every message anywhere in the
 //! workspace that contains an `@me` mention.
 //!
-//! Auto-creates on `/connect slack` (singleton — only one mentions
-//! feed per workspace). Backed by Slack's `search.messages` API
+//! Auto-creates on `/connect slack` as `slack-<alias>-mentions`, one per
+//! workspace: `workspace` names it (COLLIERY-I-0520). Backed by Slack's `search.messages` API
 //! (user-token only; needs the `search:read` scope, which is in our
 //! standard OAuth grant).
 //!
@@ -41,8 +41,9 @@ use async_trait::async_trait;
 use chrono::{DateTime, TimeZone, Utc};
 use serde_json::{Value, json};
 
+use super::workspace::{check_workspace, client, workspace_param, workspace_rows, workspace_spec};
 use crate::error::FeedError;
-use crate::template::{FeedTemplate, RunOutcome, TemplateCtx};
+use crate::template::{DiscoveryRow, FeedTemplate, RunOutcome, TemplateCtx};
 use crate::types::{FeedDefaults, RunSummary, TemplateParams};
 
 pub struct MyMentionsTemplate;
@@ -55,14 +56,21 @@ impl FeedTemplate for MyMentionsTemplate {
         NAME
     }
 
-    fn validate(&self, _params: &TemplateParams) -> Result<(), FeedError> {
-        // No required params — singleton feed.
-        Ok(())
+    fn validate(&self, params: &TemplateParams) -> Result<(), FeedError> {
+        workspace_param(NAME, params).map(|_| ())
     }
 
-    /// No params — a singleton feed of the current user's mentions.
+    fn validate_with(&self, ctx: &TemplateCtx, params: &TemplateParams) -> Result<(), FeedError> {
+        check_workspace(NAME, ctx, params)
+    }
+
+    /// Only the workspace: the feed is the user's own mentions there.
     fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
-        Vec::new()
+        vec![workspace_spec()]
+    }
+
+    async fn discover(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
+        Ok(Some(workspace_rows(ctx)))
     }
 
     fn defaults(&self, _params: &TemplateParams) -> FeedDefaults {
@@ -75,15 +83,12 @@ impl FeedTemplate for MyMentionsTemplate {
     async fn run(
         &self,
         ctx: &TemplateCtx,
-        _params: &TemplateParams,
+        params: &TemplateParams,
         feed_dir: &Path,
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
         let started = Instant::now();
-        let slack = ctx
-            .clients()
-            .slack()
-            .ok_or_else(|| FeedError::Auth("slack integration not connected".into()))?;
+        let slack = client(NAME, ctx, params)?;
 
         // ── 1. Resolve our user_id (cache-or-call) ───────────────────
         let my_user_id = match cursor.get("my_user_id").and_then(|v| v.as_str()) {
@@ -186,9 +191,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn validate_accepts_no_params() {
+    fn validate_needs_a_workspace() {
         let t = MyMentionsTemplate;
-        t.validate(&TemplateParams::default()).unwrap();
+        let err = t.validate(&TemplateParams::default()).unwrap_err();
+        assert!(err.to_string().contains("`workspace`"), "{err}");
+        t.validate(&TemplateParams::new(json!({ "workspace": "acme" })))
+            .unwrap();
+        assert!(
+            t.validate(&TemplateParams::new(json!({ "workspace": "Acme Corp" })))
+                .is_err()
+        );
     }
 
     #[test]

@@ -60,7 +60,7 @@ struct MockClients {
 }
 
 impl FeedClients for MockClients {
-    fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+    fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
         None
     }
     fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {
@@ -285,7 +285,7 @@ async fn params_reach_the_client() {
 async fn returns_auth_when_calendar_not_connected() {
     struct NoCal;
     impl FeedClients for NoCal {
-        fn slack(&self) -> Option<Arc<dyn SlackFeedClient>> {
+        fn slack(&self, _workspace: &str) -> Option<Arc<dyn SlackFeedClient>> {
             None
         }
         fn calendar(&self) -> Option<Arc<dyn CalendarFeedClient>> {

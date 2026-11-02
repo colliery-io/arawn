@@ -716,3 +716,66 @@ async fn error_after_successful_first_turn_preserves_history() {
         loaded.messages.len()
     );
 }
+
+/// COLLIERY-I-0520: one row per Slack workspace; `/disconnect slack` with
+/// two workspaces is refused and names them; a named one goes with its
+/// tools and leaves the other.
+#[tokio::test]
+async fn slack_workspaces_list_and_disconnect_by_alias() {
+    let (tmp, service) = setup_service(vec![]);
+    let store = arawn_auth::TokenStore::open(tmp.path()).unwrap();
+    for alias in ["acme", "personal"] {
+        let token = arawn_auth::Token {
+            access: format!("xoxb-{alias}"),
+            refresh: None,
+            expires_at: None,
+            scope: Some("channels:read,chat:write".into()),
+            token_type: "Bearer".into(),
+            extras: Default::default(),
+        };
+        store.save(&format!("slack@{alias}"), &token).unwrap();
+    }
+    let app = Arc::new(arawn_integrations::slack::SlackApp::new(
+        tmp.path().to_path_buf(),
+        "cid".into(),
+        "sec".into(),
+    ));
+    arawn_bin::slack_workspaces::register_connected(
+        &app,
+        &service.shared_integrations(),
+        &service.shared_registry(),
+    );
+    service.set_slack_app(app);
+
+    let rows = service.list_integrations().await.unwrap();
+    let slack: Vec<_> = rows
+        .iter()
+        .filter(|r| r.name.starts_with("slack"))
+        .map(|r| (r.name.as_str(), r.connected, r.detail.as_deref()))
+        .collect();
+    assert_eq!(
+        slack,
+        [
+            ("slack@acme", true, Some("2 scopes")),
+            ("slack@personal", true, Some("2 scopes")),
+        ]
+    );
+
+    let err = service.disconnect_integration("slack").await.unwrap_err();
+    assert!(err.to_string().contains("acme, personal"), "{err}");
+
+    service.disconnect_integration("slack@acme").await.unwrap();
+    let tools = service.shared_registry();
+    assert!(!tools.contains("slack_acme_post"));
+    assert!(tools.contains("slack_personal_post"));
+    // The last one can go by `slack` alone.
+    service.disconnect_integration("slack").await.unwrap();
+    let rows = service.list_integrations().await.unwrap();
+    let slack: Vec<_> = rows
+        .iter()
+        .filter(|r| r.name.starts_with("slack"))
+        .collect();
+    assert_eq!(slack.len(), 1);
+    assert_eq!(slack[0].name, "slack");
+    assert!(!slack[0].connected);
+}

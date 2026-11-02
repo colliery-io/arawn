@@ -36,6 +36,7 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 
 use super::common::{archive_channel_with_threads, synth_since_cursor};
+use super::workspace::{check_workspace, client, workspace_param, workspace_rows, workspace_spec};
 use crate::error::FeedError;
 use crate::template::{DiscoveryRow, FeedTemplate, RunOutcome, TemplateCtx};
 use crate::types::{FeedDefaults, TemplateParams};
@@ -51,6 +52,7 @@ impl FeedTemplate for ChannelArchiveTemplate {
     }
 
     fn validate(&self, params: &TemplateParams) -> Result<(), FeedError> {
+        workspace_param(NAME, params)?;
         let channel = params.get_str("channel").ok_or_else(|| {
             FeedError::InvalidParams(
                 "slack/channel-archive requires `channel` (name like '#design' or id like 'CABCDEF')"
@@ -65,9 +67,15 @@ impl FeedTemplate for ChannelArchiveTemplate {
         Ok(())
     }
 
+    fn validate_with(&self, ctx: &TemplateCtx, params: &TemplateParams) -> Result<(), FeedError> {
+        check_workspace(NAME, ctx, params)?;
+        self.validate(params)
+    }
+
     fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
         use crate::param_schema::{ParamKind, ParamSpec};
         vec![
+            workspace_spec(),
             ParamSpec::required(
                 "channel",
                 "Channel",
@@ -93,10 +101,7 @@ impl FeedTemplate for ChannelArchiveTemplate {
         feed_dir: &Path,
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
-        let slack = ctx
-            .clients()
-            .slack()
-            .ok_or_else(|| FeedError::Auth("slack integration not connected".into()))?;
+        let slack = client(NAME, ctx, params)?;
 
         let raw_channel = params
             .get_str("channel")
@@ -114,36 +119,35 @@ impl FeedTemplate for ChannelArchiveTemplate {
         archive_channel_with_threads(slack.as_ref(), &channel_id, feed_dir, &effective_cursor).await
     }
 
+    /// The connected workspaces, then each one's channels.
     async fn discover(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
-        let slack = match ctx.clients().slack() {
-            Some(c) => c,
-            None => return Ok(None),
-        };
-        let mut channels = slack.list_channels().await?;
-        // Stable, friendly order: by name.
-        channels.sort_by(|a, b| a.name.cmp(&b.name));
-        let rows = channels
-            .into_iter()
-            .map(|ch| {
-                let mut tags = Vec::new();
+        let workspaces = ctx.clients().slack_workspaces();
+        if workspaces.is_empty() {
+            return Ok(None);
+        }
+        let mut rows = workspace_rows(ctx);
+        for ws in workspaces {
+            let Some(slack) = ctx.clients().slack(&ws) else {
+                continue;
+            };
+            let mut channels = slack.list_channels().await?;
+            // Stable, friendly order: by name.
+            channels.sort_by(|a, b| a.name.cmp(&b.name));
+            rows.extend(channels.into_iter().map(|ch| {
+                let mut tags = vec![format!("slack@{ws}")];
                 if ch.is_private {
-                    tags.push("private");
+                    tags.push("private".into());
                 }
                 if ch.is_dm {
-                    tags.push("dm/group");
+                    tags.push("dm/group".into());
                 }
-                let hint = if tags.is_empty() {
-                    Some(ch.id.clone())
-                } else {
-                    Some(format!("{}  ·  {}", ch.id, tags.join(", ")))
-                };
                 DiscoveryRow {
                     label: format!("#{}", ch.name),
-                    hint,
-                    params: json!({ "channel": ch.id }),
+                    hint: Some(format!("{}  ·  {}", ch.id, tags.join(", "))),
+                    params: json!({ "workspace": ws, "channel": ch.id }),
                 }
-            })
-            .collect();
+            }));
+        }
         Ok(Some(rows))
     }
 }
@@ -154,17 +158,25 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn validate_rejects_missing_channel() {
+    fn validate_rejects_missing_channel_or_workspace() {
         let t = ChannelArchiveTemplate;
-        let err = t.validate(&TemplateParams::new(json!({}))).unwrap_err();
+        let err = t
+            .validate(&TemplateParams::new(json!({ "workspace": "acme" })))
+            .unwrap_err();
         assert!(matches!(err, FeedError::InvalidParams(_)));
+        let err = t
+            .validate(&TemplateParams::new(json!({ "channel": "#design" })))
+            .unwrap_err();
+        assert!(err.to_string().contains("`workspace`"), "{err}");
     }
 
     #[test]
     fn validate_rejects_empty_channel() {
         let t = ChannelArchiveTemplate;
         let err = t
-            .validate(&TemplateParams::new(json!({ "channel": "  " })))
+            .validate(&TemplateParams::new(
+                json!({ "workspace": "acme", "channel": "  " }),
+            ))
             .unwrap_err();
         assert!(matches!(err, FeedError::InvalidParams(_)));
     }
@@ -172,9 +184,13 @@ mod tests {
     #[test]
     fn validate_accepts_named_or_id_channel() {
         let t = ChannelArchiveTemplate;
-        t.validate(&TemplateParams::new(json!({ "channel": "#design" })))
-            .unwrap();
-        t.validate(&TemplateParams::new(json!({ "channel": "CABCDEF" })))
-            .unwrap();
+        t.validate(&TemplateParams::new(
+            json!({ "workspace": "acme", "channel": "#design" }),
+        ))
+        .unwrap();
+        t.validate(&TemplateParams::new(
+            json!({ "workspace": "acme", "channel": "CABCDEF" }),
+        ))
+        .unwrap();
     }
 }

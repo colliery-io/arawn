@@ -3,7 +3,7 @@ title: "Connect Slack"
 ---
 *How-to. ~10 minutes. Slack's OAuth model needs both bot and user tokens.*
 
-By the end of this guide arawn will have OAuth tokens for one Slack workspace, and the agent will be able to list channels, read history, post messages, react with emoji, list users, and open DMs.
+By the end of this guide arawn will have OAuth tokens for one or more Slack workspaces, and the agent will be able to list channels, read history, post messages, react with emoji, list users, and open DMs in each of them.
 
 If you've never set up an OAuth integration, skim the [OAuth primer](../../explanation/oauth-primer/) first.
 
@@ -21,9 +21,9 @@ If you've never set up an OAuth integration, skim the [OAuth primer](../../expla
 Go to <https://api.slack.com/apps> → **Create New App → From scratch**.
 
 - **Name:** anything (`arawn-personal` works).
-- **Workspace:** the workspace you want arawn to operate in.
+- **Workspace:** the first workspace you want arawn to operate in.
 
-> **Note:** Multi-workspace support is on the roadmap (initiative [I-0034](../../explanation/integrations-overview/)). Each app + token pair is scoped to a single workspace today; connecting a second one currently overwrites the first.
+One app serves every workspace: you create it once, and [install it in more workspaces](#connect-another-workspace) later.
 
 ## 2. Add OAuth scopes
 
@@ -31,7 +31,7 @@ Go to <https://api.slack.com/apps> → **Create New App → From scratch**.
 
 In the app's settings, navigate to **OAuth & Permissions → Scopes**.
 
-Slack runs a dual-token model. arawn uses **bot scopes** for writes (`slack_post` posts as the bot identity) and **user scopes** for reads (so private channels you've joined are visible without inviting the bot to every one). Add both sets — the strings below are pulled verbatim from `crates/arawn-integrations/src/slack/integration.rs`.
+Slack runs a dual-token model. arawn uses **bot scopes** for writes (`slack_<alias>_post` posts as the bot identity) and **user scopes** for reads (so private channels you've joined are visible without inviting the bot to every one). Add both sets — the strings below are pulled verbatim from `crates/arawn-integrations/src/slack/integration.rs`.
 
 **Bot Token Scopes (16):**
 
@@ -134,9 +134,19 @@ In the TUI:
 /connect slack
 ```
 
-Your browser opens; you re-approve (this time it's arawn's own OAuth dance, not the install flow). On success the TUI shows `ℹ [integration] connected: slack`.
+Your browser opens; you re-approve (this time it's arawn's own OAuth dance, not the install flow). If you are in more than one workspace, pick the one to connect in Slack's page. On success the TUI shows `ℹ [integration] slack@acme connected`.
 
-> **Scope changes after first install.** Slack issues tokens scoped to the install at time-of-install. If you go back and add or remove scopes in step 2, you must **re-install the app** in step 4 *and* `/disconnect slack` then `/connect slack` again. The new scopes only take effect on a fresh token.
+arawn names each workspace `slack@<alias>`. With plain `/connect slack` the alias comes from the workspace's name: lowercase, other characters turned into `-`, at most 32 characters (`Acme Corp` becomes `acme-corp`). A name with non-ASCII letters gives the team id instead (`t0123abcd`). If the alias is taken by another workspace, arawn adds `-2`, `-3`, and so on. To pick the alias yourself:
+
+```
+/connect slack@work
+```
+
+An alias is 1 to 32 of `a-z`, `0-9` and `-`.
+
+From the CLI, `arawn connect slack` does the same and prints the name it connected as.
+
+> **Scope changes after first install.** Slack issues tokens scoped to the install at time-of-install. If you go back and add or remove scopes in step 2, you must **re-install the app** in step 4 *and* run `/connect slack@<alias>` again. The new scopes only take effect on a fresh token.
 
 ## 8. Verify
 
@@ -144,13 +154,71 @@ Your browser opens; you re-approve (this time it's arawn's own OAuth dance, not 
 /integrations
 ```
 
-Slack should appear as `connected`. Then:
+Each workspace has its own row, with the number of scopes its token holds:
 
 ```
-list my Slack channels
+| slack@acme | ✓ (16 scopes) |
 ```
 
-The agent should return a list of channels from `slack_list_channels`.
+Then:
+
+```
+list my Slack channels on acme
+```
+
+The agent should return a list of channels from `slack_acme_list_channels`.
+
+## Connect another workspace
+
+<!-- VERIFY: 2026-10-11 — Manage Distribution page path; the live two-workspace check is the owner's step. -->
+
+1. Install the same app in the second workspace. An app can be installed outside the workspace it was created in only after **Manage Distribution → Activate Public Distribution**; then open the **Sharable URL** while signed in to the second workspace and approve. The app, its scopes, its redirect URL and its client id and secret stay the same: `[integrations.slack]` does not change.
+2. Run `/connect slack` again (or `arawn connect slack`). In Slack's page, pick the second workspace.
+3. `/integrations` now shows both, for example `slack@acme` and `slack@personal`.
+
+No restart is needed: the second workspace's tools appear at once. Connecting a workspace that is already connected (the same Slack team) keeps its alias and refreshes its token.
+
+## Tools and permission rules
+
+Each workspace has its own six tools, named `slack_<alias>_<op>`, with any `-` in the alias as `_`:
+
+| Workspace | Tools |
+|---|---|
+| `slack@acme` | `slack_acme_list_channels`, `slack_acme_history`, `slack_acme_post`, `slack_acme_react`, `slack_acme_users_list`, `slack_acme_open_dm` |
+| `slack@acme-corp` | `slack_acme_corp_post`, … |
+
+The names have the alias even with one workspace, so they do not change when you add a second. The agent's system prompt lists each connected workspace with its scopes.
+
+Permission rules match tool names with `*`, so one rule covers every workspace:
+
+```toml
+[permissions]
+ask  = ["slack_*_post"]          # ask before posting in any workspace
+deny = ["slack_personal_post"]   # never post in personal
+```
+
+See [permission rules](../../reference/permissions/).
+
+## Disconnect one workspace
+
+```
+/disconnect slack@personal
+```
+
+or `arawn disconnect slack@personal`. arawn deletes that workspace's token and drops its tools; the other workspaces stay connected. Its feeds stop working until you connect it again.
+
+With only one workspace connected, `/disconnect slack` is enough. With more than one, arawn refuses and lists the aliases, so you name the one to drop.
+
+## Upgrading from one workspace
+
+An install from before workspaces were named is moved once, the first time the new `arawn serve` starts:
+
+- The token moves from `slack` to `slack@<alias>`. The alias comes from the team stored with the token; if none is stored arawn asks Slack (`auth.test`), else it uses `default`. You do not reconnect.
+- Every `slack/*` feed gets `workspace = "<alias>"`, and its stored messages get the workspace.
+- In `arawn.toml`, permission rules that name an old tool (`slack_post`, `slack_history(...)`) are rewritten. An `allow` rule names the migrated workspace's tool (`slack_acme_post`); a `deny` or `ask` rule becomes a glob over every workspace (`slack_*_post`), so a workspace you connect later is held by it too. Each `[[feeds]]` Slack entry gets `workspace` in its params. The file is backed up first as `arawn.toml.pre-slack-workspaces`. This is the only change arawn makes outside its data directory. Rules with `*` (`slack_*`) still match and are left alone.
+- The server log and an `[integration]` notice say what changed.
+
+The move is recorded in `<data_dir>/slack-migration.json`. If the server stops part-way, the next start finishes it with the same alias. Once done it does not run again.
 
 ## Troubleshooting
 
@@ -164,4 +232,4 @@ See [debug OAuth failures](../debug-oauth-failures/) for the symptom → cause �
 
 - [Integrations reference](../../reference/integrations/) — every Slack tool the agent has.
 - [Bind a lens to a feed](../bind-a-lens-to-a-feed/) — turn a Slack channel into a local archive.
-- [Create a feed](../create-a-feed/) — `/watch slack/channel-archive` to continually mirror a channel.
+- [Create a feed](../create-a-feed/) — `/watch slack/channel-archive` to continually mirror a channel. Every Slack feed names its workspace; see [feed templates](../../reference/feed-templates/#slack).

@@ -21,7 +21,7 @@ pub struct IntegrationsForFeeds {
     pub drive: Option<Arc<arawn_integrations::drive::GoogleDriveIntegration>>,
     pub github: Option<Arc<arawn_integrations::github::GithubIntegration>>,
     pub gmail: Option<Arc<arawn_integrations::gmail::GmailIntegration>>,
-    pub slack: Option<Arc<arawn_integrations::slack::SlackIntegration>>,
+    pub slack: Option<Arc<arawn_integrations::slack::SlackApp>>,
     /// Always present: Linear needs no client registration.
     pub linear: Arc<arawn_integrations::linear::LinearIntegration>,
 }
@@ -298,37 +298,33 @@ pub fn wire_integrations(
         );
     }
     // Register Slack. No sharing with Google — different OAuth ecosystem.
-    let slack_integration_for_feeds: Option<Arc<arawn_integrations::slack::SlackIntegration>>;
+    // One app, one integration per connected workspace (COLLIERY-I-0520):
+    // each `slack@<alias>` in the token store is registered with its tools.
+    let slack_app_for_feeds: Option<Arc<arawn_integrations::slack::SlackApp>>;
     if let Some((client_id, client_secret)) = resolve(OAuthProvider::Slack) {
-        let slack = Arc::new(arawn_integrations::slack::SlackIntegration::new(
+        let app = Arc::new(arawn_integrations::slack::SlackApp::new(
             std::path::PathBuf::from(&data_dir),
             client_id,
             client_secret,
         ));
-        service
-            .register_integration(Arc::clone(&slack) as Arc<dyn arawn_integrations::Integration>);
-        registry.register(Box::new(
-            arawn_integrations::slack::SlackListChannelsTool::new(Arc::clone(&slack)),
-        ));
-        registry.register(Box::new(arawn_integrations::slack::SlackHistoryTool::new(
-            Arc::clone(&slack),
-        )));
-        registry.register(Box::new(arawn_integrations::slack::SlackPostTool::new(
-            Arc::clone(&slack),
-        )));
-        registry.register(Box::new(arawn_integrations::slack::SlackReactTool::new(
-            Arc::clone(&slack),
-        )));
-        registry.register(Box::new(
-            arawn_integrations::slack::SlackUsersListTool::new(Arc::clone(&slack)),
-        ));
-        registry.register(Box::new(arawn_integrations::slack::SlackOpenDmTool::new(
-            Arc::clone(&slack),
-        )));
-        info!("Slack integration registered (6 tools)");
-        slack_integration_for_feeds = Some(slack);
+        let aliases = crate::slack_workspaces::register_connected(
+            &app,
+            &service.shared_integrations(),
+            registry,
+        );
+        info!(
+            workspaces = aliases.len(),
+            "Slack app registered ({})",
+            if aliases.is_empty() {
+                "no workspace connected".to_string()
+            } else {
+                aliases.join(", ")
+            }
+        );
+        service.set_slack_app(Arc::clone(&app));
+        slack_app_for_feeds = Some(app);
     } else {
-        slack_integration_for_feeds = None;
+        slack_app_for_feeds = None;
         debug!(
             "Slack integration skipped — set ARAWN_SLACK_CLIENT_ID + \
              ARAWN_SLACK_CLIENT_SECRET (env) or [integrations.slack] (config) \
@@ -357,7 +353,7 @@ pub fn wire_integrations(
         drive: drive_integration_for_feeds,
         github: github_integration_for_feeds,
         gmail: gmail_integration_for_feeds,
-        slack: slack_integration_for_feeds,
+        slack: slack_app_for_feeds,
         linear,
     }
 }
@@ -377,7 +373,7 @@ fn log_integration_summary(config: &ArawnConfig, data_dir: &str) {
     let not_set_up: Vec<&str> = reports
         .iter()
         .filter(|r| r.state == IntegrationState::NotConfigured)
-        .map(|r| r.service)
+        .map(|r| r.service.as_str())
         .collect();
     if !not_set_up.is_empty() {
         info!(
@@ -387,7 +383,7 @@ fn log_integration_summary(config: &ArawnConfig, data_dir: &str) {
     }
     for r in reports.iter().filter(|r| r.state.is_broken()) {
         warn!(
-            service = r.service,
+            service = %r.service,
             "{}. Fix: {}",
             r.describe(),
             r.hint().unwrap_or_default()
@@ -440,7 +436,8 @@ pub fn wire_uat_mock_integrations(
                 }
                 info!("registered UAT gmail tools (2)");
             }
-            "slack" => {
+            // The mock Slack workspace: `slack_uat_*` tools.
+            "slack@uat" => {
                 for tool in arawn_integrations::slack::uat_slack_tools(data_dir_path.clone()) {
                     registry.register(tool);
                 }

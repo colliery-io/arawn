@@ -8,6 +8,7 @@ pub mod local_service;
 pub mod lock_ext;
 pub mod oauth_clients;
 pub mod plugin_cmd;
+pub mod slack_workspaces;
 pub mod startup;
 pub mod ws_server;
 

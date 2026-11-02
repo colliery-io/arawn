@@ -138,6 +138,11 @@ pub fn project_feed_dir(
             combined.inserted += o.inserted;
             combined.updated += o.updated;
             combined.unchanged += o.unchanged;
+            // The workspace column, from the feed's params: new rows, and
+            // rows written before the column existed.
+            if let Some(ws) = slack::feed_workspace(feed_dir) {
+                slack::set_workspace(store, feed_id, &ws)?;
+            }
             combined
         }
         "github" => {

@@ -23,8 +23,9 @@ use async_trait::async_trait;
 use serde_json::{Value, json};
 
 use super::common::{archive_channel_with_threads, synth_since_cursor};
+use super::workspace::{check_workspace, client, workspace_param, workspace_rows, workspace_spec};
 use crate::error::FeedError;
-use crate::template::{FeedTemplate, RunOutcome, TemplateCtx};
+use crate::template::{DiscoveryRow, FeedTemplate, RunOutcome, TemplateCtx};
 use crate::types::{FeedDefaults, TemplateParams};
 
 pub struct DmArchiveTemplate;
@@ -38,6 +39,7 @@ impl FeedTemplate for DmArchiveTemplate {
     }
 
     fn validate(&self, params: &TemplateParams) -> Result<(), FeedError> {
+        workspace_param(NAME, params)?;
         let user = params.get_str("user").ok_or_else(|| {
             FeedError::InvalidParams(
                 "slack/dm-archive requires `user` (Slack user id like 'UABC123' or username)"
@@ -52,9 +54,15 @@ impl FeedTemplate for DmArchiveTemplate {
         Ok(())
     }
 
+    fn validate_with(&self, ctx: &TemplateCtx, params: &TemplateParams) -> Result<(), FeedError> {
+        check_workspace(NAME, ctx, params)?;
+        self.validate(params)
+    }
+
     fn param_schema(&self) -> Vec<crate::param_schema::ParamSpec> {
         use crate::param_schema::{ParamKind, ParamSpec};
         vec![
+            workspace_spec(),
             ParamSpec::required(
                 "user",
                 "User",
@@ -82,10 +90,7 @@ impl FeedTemplate for DmArchiveTemplate {
         feed_dir: &Path,
         cursor: &Value,
     ) -> Result<RunOutcome, FeedError> {
-        let slack = ctx
-            .clients()
-            .slack()
-            .ok_or_else(|| FeedError::Auth("slack integration not connected".into()))?;
+        let slack = client(NAME, ctx, params)?;
 
         let user = params
             .get_str("user")
@@ -95,6 +100,11 @@ impl FeedTemplate for DmArchiveTemplate {
         let effective_cursor = synth_since_cursor(cursor, params)?;
         archive_channel_with_threads(slack.as_ref(), &dm_channel_id, feed_dir, &effective_cursor)
             .await
+    }
+
+    /// The connected workspaces; the user is typed.
+    async fn discover(&self, ctx: &TemplateCtx) -> Result<Option<Vec<DiscoveryRow>>, FeedError> {
+        Ok(Some(workspace_rows(ctx)))
     }
 }
 
@@ -106,7 +116,9 @@ mod tests {
     #[test]
     fn validate_rejects_missing_user() {
         let t = DmArchiveTemplate;
-        let err = t.validate(&TemplateParams::new(json!({}))).unwrap_err();
+        let err = t
+            .validate(&TemplateParams::new(json!({ "workspace": "acme" })))
+            .unwrap_err();
         assert!(matches!(err, FeedError::InvalidParams(_)));
     }
 
@@ -114,7 +126,9 @@ mod tests {
     fn validate_rejects_empty_user() {
         let t = DmArchiveTemplate;
         let err = t
-            .validate(&TemplateParams::new(json!({ "user": "  " })))
+            .validate(&TemplateParams::new(
+                json!({ "workspace": "acme", "user": "  " }),
+            ))
             .unwrap_err();
         assert!(matches!(err, FeedError::InvalidParams(_)));
     }
@@ -122,11 +136,11 @@ mod tests {
     #[test]
     fn validate_accepts_user_id_or_name() {
         let t = DmArchiveTemplate;
-        t.validate(&TemplateParams::new(json!({ "user": "UABC123" })))
+        for user in ["UABC123", "alice", "@alice"] {
+            t.validate(&TemplateParams::new(
+                json!({ "workspace": "acme", "user": user }),
+            ))
             .unwrap();
-        t.validate(&TemplateParams::new(json!({ "user": "alice" })))
-            .unwrap();
-        t.validate(&TemplateParams::new(json!({ "user": "@alice" })))
-            .unwrap();
+        }
     }
 }

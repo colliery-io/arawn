@@ -88,6 +88,8 @@ The `lenses/<name>/workspace/` directory is the sandbox root for shell + file to
 Two locations hold encrypted-at-rest data:
 
 - `integrations/<service>/<service>.bin` — provider-specific tokens (Slack workspace token, Atlassian cloud_id + token, GitHub installation_id).
-- `tokens/` — OAuth2 refresh tokens for the OAuth-flow providers (Google, Slack, Atlassian).
+- `tokens/` — OAuth2 refresh tokens for the OAuth-flow providers (Google, Slack, Atlassian). Each Slack workspace has its own, `slack@<alias>.json.enc`.
+
+`slack-migration.json` records the one-time move of a single-workspace Slack install to `slack@<alias>` (see [connect Slack](../../how-to/connect-slack/#upgrading-from-one-workspace)).
 
 Both use ChaCha20Poly1305 with a key derived from the user's keyring (or a fallback file under `<data_dir>` when the keyring isn't available).

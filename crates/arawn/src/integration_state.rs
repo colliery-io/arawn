@@ -63,8 +63,9 @@ impl IntegrationState {
 /// One integration, its state, and how to fix it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IntegrationReport {
-    /// Registry / token-store name, what `/connect` takes.
-    pub service: &'static str,
+    /// Registry / token-store name, what `/connect` takes. One row per
+    /// Slack workspace (`slack@acme`) follows the Slack app's row.
+    pub service: String,
     /// The `arawn setup <target>` that configures it.
     pub setup_target: &'static str,
     pub state: IntegrationState,
@@ -107,7 +108,7 @@ impl IntegrationReport {
 
     /// The one-line fix, or `None` when nothing is needed.
     pub fn hint(&self) -> Option<String> {
-        let svc = self.service;
+        let svc = &self.service;
         let target = self.setup_target;
         match &self.state {
             IntegrationState::NotConfigured => Some(format!("run: arawn setup {target}")),
@@ -188,34 +189,88 @@ fn ids_without_secret(cfg: &IntegrationsConfig, p: OAuthProvider) -> Option<(Vec
     None
 }
 
+/// The Slack app (`[integrations.slack]`, one client for every
+/// workspace) and one row per workspace in `slack_workspaces` (aliases
+/// with a stored token). The app is connected when any workspace is.
+fn slack_reports(
+    resolver: &OAuthClientResolver<'_>,
+    tokens: &TokenLookup<'_>,
+    slack_workspaces: &[String],
+    app_state: IntegrationState,
+) -> Vec<IntegrationReport> {
+    let origin = resolver
+        .resolve(OAuthProvider::Slack)
+        .map(|c| c.client_id_origin.to_string());
+    let app = match (&origin, slack_workspaces.is_empty()) {
+        (Some(origin), false) => IntegrationState::Connected {
+            origin: origin.clone(),
+        },
+        _ => app_state,
+    };
+    let mut out = vec![IntegrationReport {
+        service: OAuthProvider::Slack.service_name().to_string(),
+        setup_target: "slack",
+        state: app,
+    }];
+    for alias in slack_workspaces {
+        let service = arawn_integrations::slack::workspace_name(alias);
+        let state = match &origin {
+            Some(origin) => token_state(
+                tokens,
+                CredentialSource::TokenStore,
+                &service,
+                origin.clone(),
+            ),
+            None => IntegrationState::Incomplete {
+                reason: "a token is stored, but the Slack app is not set up".into(),
+            },
+        };
+        out.push(IntegrationReport {
+            service,
+            setup_target: "slack",
+            state,
+        });
+    }
+    out
+}
+
 /// Inspect every integration with the given resolver and token lookup.
+/// `slack_workspaces` are the aliases of the Slack workspaces with a
+/// stored token.
 pub fn inspect_with(
     cfg: &IntegrationsConfig,
     resolver: &OAuthClientResolver<'_>,
     tokens: &TokenLookup<'_>,
+    slack_workspaces: &[String],
 ) -> Vec<IntegrationReport> {
-    let mut out: Vec<IntegrationReport> = OAuthProvider::ALL
-        .iter()
-        .map(|&p| {
-            let state = match resolver.resolve(p) {
-                Some(c) => token_state(
-                    tokens,
-                    CredentialSource::TokenStore,
-                    p.service_name(),
-                    c.client_id_origin.to_string(),
-                ),
-                None => match ids_without_secret(cfg, p) {
-                    Some((tables, env_var)) => IntegrationState::MissingSecret { tables, env_var },
-                    None => IntegrationState::NotConfigured,
-                },
-            };
-            IntegrationReport {
-                service: p.service_name(),
-                setup_target: setup_target(p),
-                state,
-            }
-        })
-        .collect();
+    let mut out: Vec<IntegrationReport> = Vec::new();
+    for p in OAuthProvider::ALL {
+        let state = match resolver.resolve(p) {
+            // The app itself has no token; its workspaces do.
+            Some(c) if p == OAuthProvider::Slack => IntegrationState::Configured {
+                origin: c.client_id_origin.to_string(),
+            },
+            Some(c) => token_state(
+                tokens,
+                CredentialSource::TokenStore,
+                p.service_name(),
+                c.client_id_origin.to_string(),
+            ),
+            None => match ids_without_secret(cfg, p) {
+                Some((tables, env_var)) => IntegrationState::MissingSecret { tables, env_var },
+                None => IntegrationState::NotConfigured,
+            },
+        };
+        if p == OAuthProvider::Slack {
+            out.extend(slack_reports(resolver, tokens, slack_workspaces, state));
+            continue;
+        }
+        out.push(IntegrationReport {
+            service: p.service_name().to_string(),
+            setup_target: setup_target(p),
+            state,
+        });
+    }
 
     let gh = &cfg.github;
     let github_state = match resolver.resolve_github() {
@@ -251,7 +306,7 @@ pub fn inspect_with(
         None => IntegrationState::NotConfigured,
     };
     out.push(IntegrationReport {
-        service: arawn_integrations::github::SERVICE_NAME,
+        service: arawn_integrations::github::SERVICE_NAME.to_string(),
         setup_target: "github",
         state: github_state,
     });
@@ -260,7 +315,7 @@ pub fn inspect_with(
     // saved is the whole setup (COLLIERY-I-0532).
     let linear = arawn_integrations::linear::SERVICE_NAME;
     out.push(IntegrationReport {
-        service: linear,
+        service: linear.to_string(),
         setup_target: linear,
         state: match tokens(CredentialSource::CredentialStore, linear) {
             Ok(true) => IntegrationState::Connected {
@@ -281,7 +336,8 @@ pub fn inspect(
 ) -> Result<Vec<IntegrationReport>, String> {
     let lookup = stored_credentials(data_dir)?;
     let resolver = OAuthClientResolver::new(cfg);
-    Ok(inspect_with(cfg, &resolver, &lookup))
+    let slack = arawn_integrations::slack::connected_aliases(data_dir);
+    Ok(inspect_with(cfg, &resolver, &lookup, &slack))
 }
 
 /// The lookup over the real stores in `data_dir`.
@@ -344,7 +400,18 @@ mod tests {
         env: &[(&'static str, &'static str)],
         connected: &[&str],
         broken: &[&str],
-    ) -> HashMap<&'static str, IntegrationReport> {
+    ) -> HashMap<String, IntegrationReport> {
+        run_with_slack(cfg, env, connected, broken, &[])
+    }
+
+    fn run_with_slack(
+        cfg: &IntegrationsConfig,
+        env: &[(&'static str, &'static str)],
+        connected: &[&str],
+        broken: &[&str],
+        slack: &[&str],
+    ) -> HashMap<String, IntegrationReport> {
+        let slack: Vec<String> = slack.iter().map(|s| s.to_string()).collect();
         let env: HashMap<_, _> = env.iter().copied().collect();
         let connected: HashSet<String> = connected.iter().map(|s| s.to_string()).collect();
         let broken: HashSet<String> = broken.iter().map(|s| s.to_string()).collect();
@@ -360,9 +427,9 @@ mod tests {
                 Ok(connected.contains(s))
             }
         };
-        inspect_with(cfg, &resolver, &lookup)
+        inspect_with(cfg, &resolver, &lookup, &slack)
             .into_iter()
-            .map(|r| (r.service, r))
+            .map(|r| (r.service.clone(), r))
             .collect()
     }
 
@@ -434,12 +501,37 @@ mod tests {
             slack: creds("sid", "ssec"),
             ..Default::default()
         };
-        let r = run(&cfg, &[], &[], &["slack"]);
-        assert_eq!(r["slack"].state.code(), "token_error");
+        let r = run_with_slack(&cfg, &[], &[], &["slack@acme"], &["acme"]);
+        assert_eq!(r["slack@acme"].state.code(), "token_error");
         assert_eq!(
-            r["slack"].hint().unwrap(),
-            "run: arawn disconnect slack, then arawn connect slack"
+            r["slack@acme"].hint().unwrap(),
+            "run: arawn disconnect slack@acme, then arawn connect slack@acme"
         );
+    }
+
+    #[test]
+    fn slack_app_row_then_one_row_per_workspace() {
+        let cfg = IntegrationsConfig {
+            slack: creds("sid", "ssec"),
+            ..Default::default()
+        };
+        // The app alone: configured, connect adds a workspace.
+        let r = run(&cfg, &[], &[], &[]);
+        assert_eq!(r["slack"].state.code(), "configured");
+        assert_eq!(r["slack"].hint().unwrap(), "run: arawn connect slack");
+
+        let r = run_with_slack(
+            &cfg,
+            &[],
+            &["slack@acme", "slack@personal"],
+            &[],
+            &["acme", "personal"],
+        );
+        assert_eq!(r.len(), 9);
+        assert_eq!(r["slack"].state.code(), "connected");
+        assert_eq!(r["slack@acme"].state.code(), "connected");
+        assert_eq!(r["slack@personal"].state.code(), "connected");
+        assert_eq!(r["slack@acme"].setup_target, "slack");
     }
 
     #[test]
@@ -512,7 +604,7 @@ mod tests {
     fn github_state(cfg: &IntegrationsConfig, dir: &Path) -> IntegrationState {
         let lookup = stored_credentials(dir).unwrap();
         let resolver = OAuthClientResolver::with_sources(cfg, |_| None, no_bundled);
-        inspect_with(cfg, &resolver, &lookup)
+        inspect_with(cfg, &resolver, &lookup, &[])
             .into_iter()
             .find(|r| r.service == "github")
             .unwrap()

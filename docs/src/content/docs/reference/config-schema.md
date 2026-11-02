@@ -233,15 +233,16 @@ A change to these tables takes effect when `arawn serve` starts again.
 name = "work"
 description = "My job: hiring, architecture decisions, vendors"
 tags = ["hiring", "architecture", "vendors", "incidents"]
-feeds = ["gmail-inbox", "slack-mentions", "jira-assigned"]
+feeds = ["gmail-inbox", "slack-acme-mentions", "jira-assigned"]
 
 [[feeds]]
 id = "gmail-inbox"
 template = "gmail/inbox-archive"
 
 [[feeds]]
-id = "slack-mentions"
+id = "slack-acme-mentions"
 template = "slack/my-mentions"
+params = { workspace = "acme" }
 
 [[feeds]]
 id = "jira-assigned"
@@ -253,4 +254,4 @@ template = "filesystem/folder"
 params = { root = "/Users/me/notes" }
 ```
 
-Use the default feed IDs (`gmail-inbox`, `slack-mentions`, `calendar-upcoming`, `drive-recent`, `jira-assigned`, `linear-mine`) for the default feeds. Then the feed that `arawn connect` makes and the declared feed are the same feed.
+Use the default feed IDs (`gmail-inbox`, `slack-<alias>-mentions`, `calendar-upcoming`, `drive-recent`, `jira-assigned`, `linear-mine`) for the default feeds. Then the feed that `arawn connect` makes and the declared feed are the same feed. A Slack feed needs `workspace` in its params, the alias of a connected workspace (`acme` for `slack@acme`); it waits until that workspace is connected.

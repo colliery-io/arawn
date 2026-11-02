@@ -530,6 +530,8 @@ fn slack_to_projection(lens: &str, row: &SlackFixtureRow) -> SlackMessageProject
         thread_ts: row.thread_ts.clone(),
         reactions: row.reactions.clone(),
         is_thread_reply: row.is_thread_reply,
+        // The fixture's Slack rows stand for the mock workspace slack@uat.
+        workspace: Some("uat".into()),
     }
 }
 

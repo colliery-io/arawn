@@ -684,7 +684,8 @@ pub fn run_setup_with(
              connects)",
             false,
         )? {
-            let (lenses, feeds) = super::profile::profile("work")?;
+            let slack = super::profile::first_slack_workspace(data_dir);
+            let (lenses, feeds) = super::profile::profile("work", slack.as_deref())?;
             let mut doc = edit::load_doc(&path)?;
             let added = super::profile::apply(&mut doc, &lenses, &feeds)?;
             edit::write_config(&path, &doc)?;
@@ -870,7 +871,8 @@ mod tests {
         run_setup(dir.path(), opts(), &mut p, &mut out, true).unwrap();
         let cfg = config(dir.path());
         assert_eq!(cfg.lenses[0].name, "work");
-        assert_eq!(cfg.feeds.len(), 8);
+        // No Slack workspace is connected: no Slack feed.
+        assert_eq!(cfg.feeds.len(), 7);
         assert_eq!(cfg.integrations.google.client_secret, "GOCSPX-s");
         assert_eq!(cfg.integrations.atlassian.client_id, "atl-id");
         assert_eq!(cfg.integrations.slack.client_id, "");

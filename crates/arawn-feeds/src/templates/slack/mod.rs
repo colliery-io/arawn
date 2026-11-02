@@ -4,6 +4,7 @@ mod channel_archive;
 mod common;
 mod dm_archive;
 mod my_mentions;
+mod workspace;
 
 pub use channel_archive::ChannelArchiveTemplate;
 pub use dm_archive::DmArchiveTemplate;

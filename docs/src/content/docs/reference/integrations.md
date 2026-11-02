@@ -12,7 +12,7 @@ Source: `crates/arawn-integrations/src/<svc>/`.
 | Gmail | OAuth 2.0 | 5 | `gmail/inbox-archive`, `gmail/label-archive`, `gmail/sender-filter` |
 | Google Calendar | OAuth 2.0 | 3 | `calendar/upcoming-archive` |
 | Google Drive | OAuth 2.0 | 9 | `drive/folder-sync`, `drive/recent`, `drive/comments` |
-| Slack | OAuth 2.0 (bot+user dual-token) | 6 | `slack/channel-archive`, `slack/dm-archive`, `slack/my-mentions` |
+| Slack | OAuth 2.0 (bot+user dual-token) | 6 per workspace | `slack/channel-archive`, `slack/dm-archive`, `slack/my-mentions` |
 | Atlassian (Jira+Confluence) | OAuth 2.0 (3LO) | 11 | `jira/project-tracker`, `jira/assignee-tracker`, `confluence/space-archive` |
 | GitHub | GitHub App (read-only) | 0 (feed-only) | `github/notifications`, `github/issues-and-prs`, `github/review-queue`, `github/repo-mirror` |
 | Linear | Personal API key | 6 | `linear/my-issues` |
@@ -123,22 +123,22 @@ im:history, im:read, mpim:history, mpim:read, users:read,
 search:read
 ```
 
-**Tools:**
+**Workspaces:** one Slack app, installed in any number of workspaces. Each connected workspace is its own integration, `slack@<alias>`: its own token, scopes and tools. `/connect slack` adds a workspace named after its team; `/connect slack@<alias>` names it; `/disconnect slack@<alias>` drops one. See [connect Slack](../../how-to/connect-slack/#connect-another-workspace).
+
+**Tools** (per workspace; shown for `slack@acme`):
 
 | Tool | Permission-prompt behavior |
 |---|---|
-| `slack_list_channels` | Read — auto-allow |
-| `slack_history` | Read — auto-allow |
-| `slack_post` | Other — asks |
-| `slack_react` | Other — asks |
-| `slack_users_list` | Read — auto-allow |
-| `slack_open_dm` | Other — asks |
+| `slack_acme_list_channels` | Read — auto-allow |
+| `slack_acme_history` | Read — auto-allow |
+| `slack_acme_post` | Other — asks |
+| `slack_acme_react` | Other — asks |
+| `slack_acme_users_list` | Read — auto-allow |
+| `slack_acme_open_dm` | Other — asks |
 
 > **Note:** `slack_search` is deferred (slack-morphism doesn't yet expose the typed API). Older docs that mention `slack_search` are out of date.
 
-**Feed templates:** `slack/channel-archive`, `slack/dm-archive`, `slack/my-mentions`.
-
-**Multi-workspace:** today one Slack app is bound to one workspace. Multi-workspace support is on the roadmap (ARAWN-I-0034).
+**Feed templates:** `slack/channel-archive`, `slack/dm-archive`, `slack/my-mentions`. Each takes a required `workspace` param.
 
 ## Atlassian (Jira + Confluence)
 

@@ -13,6 +13,7 @@ pub mod init;
 pub mod integrations;
 pub mod profile;
 pub mod setup;
+pub mod slack_migration;
 
 pub use cli::run_cli_via_server;
 pub use engine::build_engine_config;

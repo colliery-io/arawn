@@ -303,7 +303,7 @@ mod tests {
         gh: Arc<dyn GithubFeedClient>,
     }
     impl FeedClients for WithFakeGithub {
-        fn slack(&self) -> Option<Arc<dyn crate::clients::SlackFeedClient>> {
+        fn slack(&self, _workspace: &str) -> Option<Arc<dyn crate::clients::SlackFeedClient>> {
             None
         }
         fn calendar(&self) -> Option<Arc<dyn crate::clients::CalendarFeedClient>> {
