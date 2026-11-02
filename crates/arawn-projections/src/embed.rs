@@ -45,6 +45,9 @@ pub const EMBEDDABLE_FEED_TYPES: &[&str] = &[
     "github_issue_or_pr_comments",
     // Linear (COLLIERY-I-0532): title, description and recent comments.
     "linear_issues",
+    // Doc comments (COLLIERY-I-0533): the comment, its anchor text and
+    // the last reply.
+    "drive_comments",
 ];
 
 /// Minimum body length worth embedding. Anything shorter is mostly

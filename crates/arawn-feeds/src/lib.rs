@@ -38,13 +38,13 @@ pub mod types;
 pub use cadence::{MIN_CADENCE, validate_cadence};
 pub use clients::{
     AtlassianFeedClient, CalendarFeedClient, ChannelKind, ConfluencePageBody, ConfluencePageMeta,
-    ConfluenceSpaceMeta, DriveFeedClient, DriveFile, FeedClients, FileFingerprint,
-    FilesystemFeedCursor, FilesystemFeedParams, FilesystemFeedTemplate, GithubFeedClient,
-    GmailFeedClient, JiraIssueDetail, JiraIssueMeta, JiraProjectMeta, LinearFeedClient,
-    LinearIssue, LinearIssuePage, NoopClients, RealAtlassianClient, RealCalendarClient,
-    RealClients, RealDriveClient, RealGithubClient, RealGmailClient, RealLinearClient,
-    RealSlackClient, SlackAuthInfo, SlackChannel, SlackFeedClient, SlackHistoryPage,
-    classify_channel_id, export_for, is_unsupported_google_native,
+    ConfluenceSpaceMeta, DocComment, DocMeta, DocReply, DriveFeedClient, DriveFile, FeedClients,
+    FileFingerprint, FilesystemFeedCursor, FilesystemFeedParams, FilesystemFeedTemplate,
+    GithubFeedClient, GmailFeedClient, JiraIssueDetail, JiraIssueMeta, JiraProjectMeta,
+    LinearFeedClient, LinearIssue, LinearIssuePage, NoopClients, RealAtlassianClient,
+    RealCalendarClient, RealClients, RealDriveClient, RealGithubClient, RealGmailClient,
+    RealLinearClient, RealSlackClient, SlackAuthInfo, SlackChannel, SlackFeedClient,
+    SlackHistoryPage, classify_channel_id, export_for, is_unsupported_google_native,
 };
 pub use dispatch::{
     FeedDispatchTask, FeedRuntimeContext, projection_feed_types_for, run_feed, run_feed_force,

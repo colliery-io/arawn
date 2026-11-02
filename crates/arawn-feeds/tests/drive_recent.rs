@@ -9,9 +9,9 @@ use serde_json::{Value, json};
 
 use arawn_feeds::templates::drive::RecentTemplate;
 use arawn_feeds::{
-    AtlassianFeedClient, CalendarFeedClient, DataLayout, DriveFeedClient, DriveFile, FeedClients,
-    FeedError, FeedMeta, FeedTemplate, GithubFeedClient, GmailFeedClient, MetaStore,
-    SlackFeedClient, TemplateCtx, TemplateParams,
+    AtlassianFeedClient, CalendarFeedClient, DataLayout, DocComment, DocMeta, DriveFeedClient,
+    DriveFile, FeedClients, FeedError, FeedMeta, FeedTemplate, GithubFeedClient, GmailFeedClient,
+    MetaStore, SlackFeedClient, TemplateCtx, TemplateParams,
 };
 
 #[derive(Default)]
@@ -49,6 +49,18 @@ impl DriveFeedClient for MockDriveClient {
     }
     async fn download(&self, _: &str, _: Option<&str>) -> Result<Vec<u8>, FeedError> {
         unreachable!("recent doesn't download bodies")
+    }
+    async fn about_me(&self) -> Result<String, FeedError> {
+        unreachable!("recent doesn't read comments")
+    }
+    async fn list_touched_docs(&self, _: DateTime<Utc>) -> Result<Vec<DocMeta>, FeedError> {
+        unreachable!("recent doesn't read comments")
+    }
+    async fn get_doc(&self, _: &str) -> Result<Option<DocMeta>, FeedError> {
+        unreachable!("recent doesn't read comments")
+    }
+    async fn list_comments(&self, _: &str, _: Option<&str>) -> Result<Vec<DocComment>, FeedError> {
+        unreachable!("recent doesn't read comments")
     }
 }
 

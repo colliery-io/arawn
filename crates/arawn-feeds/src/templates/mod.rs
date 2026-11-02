@@ -29,6 +29,7 @@ pub fn default_registry() -> FeedTemplateRegistry {
     r.register(Arc::new(gmail::LabelArchiveTemplate));
     r.register(Arc::new(drive::FolderSyncTemplate));
     r.register(Arc::new(drive::RecentTemplate));
+    r.register(Arc::new(drive::CommentsTemplate));
     r.register(Arc::new(confluence::SpaceArchiveTemplate));
     r.register(Arc::new(jira::ProjectTrackerTemplate));
     r.register(Arc::new(jira::AssigneeTrackerTemplate));
@@ -56,6 +57,7 @@ pub fn template_blurb(name: &str) -> &'static str {
         "gmail/label-archive" => "Gmail messages under a label",
         "drive/folder-sync" => "Mirror a Google Drive folder",
         "drive/recent" => "Recently changed Google Drive files",
+        "drive/comments" => "Open Google Docs comments for you",
         "confluence/space-archive" => "Pages in a Confluence space",
         "jira/project-tracker" => "Issues in a Jira project",
         "jira/assignee-tracker" => "Jira issues assigned to you",

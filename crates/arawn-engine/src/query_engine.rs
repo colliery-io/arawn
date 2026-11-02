@@ -2113,6 +2113,29 @@ mod tests {
         assert!(!visible(&["atlassian".to_string()]), "another service: out");
     }
 
+    #[test]
+    fn drive_comment_tools_follow_the_drive_capability() {
+        let registry = ToolRegistry::new();
+        for name in ["drive_list_open_comments", "drive_reply_to_comment"] {
+            registry.register(Box::new(CategorizedStub {
+                name_: name,
+                category_: arawn_tool::ToolCategory::Drive,
+            }));
+        }
+        let all = vec![
+            tool_def("drive_list_open_comments"),
+            tool_def("drive_reply_to_comment"),
+        ];
+        let session = session_past_iter_1("answer Robin on the planning doc");
+        let visible = |connected: &[String]| {
+            filter_tools_for_context(&all, &session, &registry, connected, &small_model_limits())
+                .len()
+        };
+        assert_eq!(visible(&["google_drive".to_string()]), 2, "connected: in");
+        assert_eq!(visible(&[]), 0, "not connected: out");
+        assert_eq!(visible(&["gmail".to_string()]), 0, "another service: out");
+    }
+
     // ─── I-0055 T-C — non-integration keyword routing tests ──────────────
     //
     // One positive + one negative per non-integration category that's still

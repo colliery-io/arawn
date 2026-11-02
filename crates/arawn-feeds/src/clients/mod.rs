@@ -32,7 +32,8 @@ pub use atlassian::{
 };
 pub use calendar::{CalendarFeedClient, RealCalendarClient};
 pub use drive::{
-    DriveFeedClient, DriveFile, RealDriveClient, export_for, is_unsupported_google_native,
+    DocComment, DocMeta, DocReply, DriveFeedClient, DriveFile, RealDriveClient, export_for,
+    is_unsupported_google_native,
 };
 pub use filesystem::{
     FileFingerprint, FilesystemFeedCursor, FilesystemFeedParams, FilesystemFeedTemplate,

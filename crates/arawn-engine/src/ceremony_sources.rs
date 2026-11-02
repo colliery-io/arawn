@@ -186,7 +186,8 @@ impl CalendarSource for ProjectionsCalendarSource {
 }
 
 /// Production `AttentionSource` backed by the `gmail_messages`,
-/// `slack_messages` and `linear_issues` projection tables.
+/// `slack_messages`, `linear_issues` and `drive_comments` projection
+/// tables.
 ///
 /// `store` resolves each row's `feed_id` to a lens name (via
 /// `Store::find_lens_for_feed`). Results are cached in
@@ -259,11 +260,29 @@ const LINEAR_ATTENTION_SQL: &str = "SELECT id, source_id, source_ts, title, body
                json_extract(metadata, '$.priority'), source_ts DESC \
       LIMIT ?3";
 
-/// Gmail and Slack signals inside `[start, end)`, newest first.
+/// Open doc comment threads for the user (COLLIERY-I-0533), newest
+/// first. The feed keeps only threads that are open and for the user, so
+/// every row is a standing signal, not windowed by `start`. Columns 7
+/// and 8 carry the reason and the link.
+const DOC_COMMENT_ATTENTION_SQL: &str = "SELECT id, source_id, source_ts, title, body_text, \
+         'drive_comment' AS kind, feed_id, \
+         json_extract(metadata, '$.reason'), json_extract(metadata, '$.link') \
+       FROM drive_comments WHERE source_ts < ?1 \
+      ORDER BY source_ts DESC LIMIT ?2";
+
+/// Sender of Google's comment notification emails.
+const DOCS_NOTIFY_SENDER: &str = "comments-noreply@docs.google.com";
+
+/// Gmail and Slack signals inside `[start, end)`, newest first. Once the
+/// `drive_comments` feed has rows, Google's comment notification emails
+/// are left out: the doc comment row says the same and knows whether the
+/// thread is resolved. Before that, they stay, so nothing is lost.
 const WINDOW_ATTENTION_SQL: &str = "SELECT id, source_id, source_ts, title, body_text, kind, feed_id, \
          NULL, NULL FROM ( \
            SELECT id, source_id, source_ts, title, body_text, 'gmail' AS kind, feed_id \
              FROM gmail_messages WHERE source_ts >= ?1 AND source_ts < ?2 \
+              AND NOT (instr(lower(COALESCE(json_extract(metadata, '$.sender'), '')), ?4) > 0 \
+                       AND EXISTS (SELECT 1 FROM drive_comments)) \
            UNION ALL \
            SELECT id, source_id, source_ts, title, body_text, 'slack' AS kind, feed_id \
              FROM slack_messages WHERE source_ts >= ?1 AND source_ts < ?2 \
@@ -281,8 +300,9 @@ struct RawSignal {
     feed_id: String,
 }
 
-/// Run one attention query (9 columns: the 7 signal columns, then an
-/// optional priority label and due date for the summary).
+/// Run one attention query (9 columns: the 7 signal columns, then two
+/// optional note columns for the summary: priority label and due date
+/// for Linear, reason and link for doc comments).
 fn query_signals(
     conn: &rusqlite::Connection,
     sql: &str,
@@ -311,18 +331,32 @@ fn query_signals(
         let due: Option<String> = row
             .get(8)
             .map_err(|e| storage_err(format!("col due_date: {e}")))?;
-        let mut summary = if !title.is_empty() {
-            truncate_excerpt(&title)
+        let kind = col(5, "kind")?;
+        let (mut summary, note) = if kind == "drive_comment" {
+            // "Comment on Q3 plan: Robin: Can you … (mentioned, <link>)";
+            // the label column is the reason, the due column the link.
+            let summary = truncate_excerpt(&format!("Comment on {title}: {body_text}"));
+            let note: Vec<String> = label
+                .map(|r| r.replace('_', " "))
+                .into_iter()
+                .chain(due)
+                .collect();
+            (summary, note)
         } else {
-            truncate_excerpt(&body_text)
+            let summary = if !title.is_empty() {
+                truncate_excerpt(&title)
+            } else {
+                truncate_excerpt(&body_text)
+            };
+            // "(Urgent, due 2026-10-09)": the word "due" also makes the
+            // weekly plugin read it as a deadline.
+            let note: Vec<String> = label
+                .filter(|l| !l.is_empty() && l != "No priority")
+                .into_iter()
+                .chain(due.map(|d| format!("due {d}")))
+                .collect();
+            (summary, note)
         };
-        // "(Urgent, due 2026-10-09)": the word "due" also makes the
-        // weekly plugin read it as a deadline.
-        let note: Vec<String> = label
-            .filter(|l| !l.is_empty() && l != "No priority")
-            .into_iter()
-            .chain(due.map(|d| format!("due {d}")))
-            .collect();
         if !note.is_empty() {
             summary.push_str(&format!(" ({})", note.join(", ")));
         }
@@ -331,7 +365,7 @@ fn query_signals(
             source_id: col(1, "source_id")?,
             ts: parse_rfc3339(&col(2, "source_ts")?)?,
             summary,
-            kind: col(5, "kind")?,
+            kind,
             feed_id: col(6, "feed_id")?,
         });
     }
@@ -341,8 +375,8 @@ fn query_signals(
 #[async_trait]
 impl AttentionSource for ProjectionsAttentionSource {
     /// Linear issues on the user's plate come first (they are few and
-    /// must not be crowded out), then Gmail and Slack signals of the
-    /// window fill the rest of `cap`.
+    /// must not be crowded out), then open doc comments for the user,
+    /// then Gmail and Slack signals of the window fill the rest of `cap`.
     async fn between(
         &self,
         start: DateTime<Utc>,
@@ -352,7 +386,12 @@ impl AttentionSource for ProjectionsAttentionSource {
         if cap == 0 || end <= start {
             return Ok(Vec::new());
         }
-        for feed_type in ["gmail_messages", "slack_messages", "linear_issues"] {
+        for feed_type in [
+            "gmail_messages",
+            "slack_messages",
+            "linear_issues",
+            "drive_comments",
+        ] {
             self.projections
                 .ensure_feed_type(feed_type)
                 .map_err(|e| storage_err(format!("ensure {feed_type}: {e}")))?;
@@ -379,8 +418,16 @@ impl AttentionSource for ProjectionsAttentionSource {
             if rest > 0 {
                 raws.extend(query_signals(
                     &conn,
+                    DOC_COMMENT_ATTENTION_SQL,
+                    params![end_str, rest as i64],
+                )?);
+            }
+            let rest = cap - raws.len();
+            if rest > 0 {
+                raws.extend(query_signals(
+                    &conn,
                     WINDOW_ATTENTION_SQL,
-                    params![start_str, end_str, rest as i64],
+                    params![start_str, end_str, rest as i64, DOCS_NOTIFY_SENDER],
                 )?);
             }
             raws
@@ -407,6 +454,7 @@ mod tests {
     use super::*;
 
     use arawn_projections::calendar::CalendarEventProjection;
+    use arawn_projections::drive_comments::DriveCommentProjection;
     use arawn_projections::gmail::GmailMessageProjection;
     use arawn_projections::linear::LinearIssueProjection;
     use arawn_projections::slack::SlackMessageProjection;
@@ -683,6 +731,147 @@ mod tests {
         std::fs::remove_dir_all(feed_dir.join("b")).unwrap(); // gone
         project();
         assert!(linear_ids(src.between(start, end, 10).await.unwrap()).is_empty());
+    }
+
+    fn doc_comment(n: u32, modified: DateTime<Utc>) -> DriveCommentProjection {
+        DriveCommentProjection {
+            id: format!("dc-{n}"),
+            feed_id: "drive-comments".into(),
+            source_id: format!("F{n}/C{n}"),
+            source_ts: modified,
+            file_id: format!("F{n}"),
+            comment_id: format!("C{n}"),
+            doc_title: "Q3 plan".into(),
+            link: Some(format!(
+                "https://docs.google.com/document/d/F{n}/edit?disco=C{n}"
+            )),
+            reason: "owner_unanswered".into(),
+            author: Some("Robin".into()),
+            content: "Can you confirm the budget?".into(),
+            quoted: None,
+            reply_count: 0,
+            last_reply_author: None,
+            last_reply: None,
+        }
+    }
+
+    fn docs_notification(ts: DateTime<Utc>) -> GmailMessageProjection {
+        GmailMessageProjection {
+            sender: Some("\"Robin (Google Docs)\" <Comments-NoReply@docs.google.com>".into()),
+            subject: "Q3 plan - Robin mentioned you".into(),
+            ..gmail_signal("docs-mail", ts)
+        }
+    }
+
+    /// An open comment for me is a standing signal: in even when it last
+    /// changed before the window.
+    #[tokio::test(flavor = "current_thread")]
+    async fn attention_brings_open_doc_comments_for_me() {
+        let (projections, store, _tmp) = make_store_pair();
+        let end = DateTime::parse_from_rfc3339("2026-10-07T07:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let start = end - Duration::hours(24);
+        projections
+            .write_batch(&[doc_comment(1, end - Duration::days(3))])
+            .unwrap();
+        projections
+            .write_batch(&[gmail_signal("g", end - Duration::hours(1))])
+            .unwrap();
+
+        let src = ProjectionsAttentionSource::new(projections, store);
+        let out = src.between(start, end, 10).await.unwrap();
+        let c = out
+            .iter()
+            .find(|r| r.source_kind == "drive_comment")
+            .expect("doc comment in the brief");
+        assert_eq!(c.source_id, "F1/C1");
+        assert_eq!(
+            c.summary,
+            "Comment on Q3 plan: Robin: Can you confirm the budget? \
+             (owner unanswered, https://docs.google.com/document/d/F1/edit?disco=C1)"
+        );
+        assert!(out.iter().any(|r| r.source_kind == "gmail"));
+    }
+
+    /// End to end from the feed's snapshots: when the feed removes a
+    /// thread's snapshot (resolved, or its doc gone), it leaves the brief.
+    #[tokio::test(flavor = "current_thread")]
+    async fn a_removed_doc_comment_snapshot_leaves_the_brief() {
+        let (projections, store, tmp) = make_store_pair();
+        let feed_dir = tmp.path().join("drive-comments");
+        let dir = feed_dir.join("F1");
+        std::fs::create_dir_all(&dir).unwrap();
+        let snap = serde_json::json!({
+            "file_id": "F1", "comment_id": "C1", "doc_title": "Q3 plan",
+            "reason": "mentioned", "author": "Robin", "content": "Check this",
+            "modified_time": "2026-09-01T00:00:00+00:00",
+        });
+        std::fs::write(dir.join("C1.json"), snap.to_string()).unwrap();
+        let project = || {
+            arawn_projections::project_feed_dir(
+                &projections,
+                "drive/comments",
+                "drive-comments",
+                &feed_dir,
+            )
+            .unwrap();
+        };
+        let end = DateTime::parse_from_rfc3339("2026-10-07T07:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let start = end - Duration::hours(24);
+        let src = ProjectionsAttentionSource::new(Arc::clone(&projections), store);
+        let comments = |out: Vec<SignalRow>| {
+            out.into_iter()
+                .filter(|r| r.source_kind == "drive_comment")
+                .count()
+        };
+
+        project();
+        assert_eq!(comments(src.between(start, end, 10).await.unwrap()), 1);
+
+        std::fs::remove_dir_all(&dir).unwrap();
+        project();
+        assert_eq!(comments(src.between(start, end, 10).await.unwrap()), 0);
+    }
+
+    /// Google's comment notification email is left out once the comments
+    /// feed has rows, and kept before that.
+    #[tokio::test(flavor = "current_thread")]
+    async fn docs_notification_email_is_dropped_only_once_comments_flow() {
+        let (projections, store, _tmp) = make_store_pair();
+        let end = DateTime::parse_from_rfc3339("2026-10-07T07:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let start = end - Duration::hours(24);
+        projections
+            .write_batch(&[
+                docs_notification(end - Duration::hours(2)),
+                gmail_signal("other", end - Duration::hours(1)),
+            ])
+            .unwrap();
+        let src = ProjectionsAttentionSource::new(Arc::clone(&projections), store);
+        let gmail_ids = |out: Vec<SignalRow>| -> Vec<String> {
+            out.into_iter()
+                .filter(|r| r.source_kind == "gmail")
+                .map(|r| r.source_id)
+                .collect()
+        };
+
+        // No drive_comments rows yet: the email is the only signal.
+        assert_eq!(
+            gmail_ids(src.between(start, end, 10).await.unwrap()),
+            ["other", "docs-mail"]
+        );
+
+        projections
+            .write_batch(&[doc_comment(1, end - Duration::hours(2))])
+            .unwrap();
+        assert_eq!(
+            gmail_ids(src.between(start, end, 10).await.unwrap()),
+            ["other"]
+        );
     }
 
     /// 2026-05-17T01:30:00Z is "May 17" in UTC but "May 16 18:30" in

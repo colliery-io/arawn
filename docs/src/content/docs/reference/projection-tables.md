@@ -48,6 +48,7 @@ The 17 projection tables (source: `crates/arawn-projections/src/`):
 | `slack_messages` | Slack `channel-archive` (top-level posts) | channel_id, sender_id, thread_ts, reactions |
 | `slack_thread_messages` | Slack `channel-archive` (thread replies) | same as above + `is_thread_reply: true` |
 | `drive_files` | Drive `folder-sync` / `recent` | file_id, path, mime_type, owners |
+| `drive_comments` | drive/comments | file_id, comment_id, doc_title, link, reason (`assigned`, `mentioned`, `owner_unanswered`), author, content, quoted, reply_count, last_reply_author. One row per open thread for you; rows are upserted on every run, and a row whose snapshot the feed removed (resolved, or no longer for you) is deleted. `body_text` is the comment, the quoted text and the last reply. |
 | `jira_issues` | Jira `project-tracker` / `assignee-tracker` | key, status, assignee, components, labels |
 | `jira_comments` | Jira issue comments | issue_key, author |
 | `jira_history` | Jira changelog entries | issue_key, field, from, to |

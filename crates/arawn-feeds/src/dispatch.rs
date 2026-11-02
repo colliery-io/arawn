@@ -301,6 +301,9 @@ async fn run_feed_inner(
 /// templates write to one each. Used to decide which extractor
 /// invocations to fan out after a feed run.
 pub fn projection_feed_types_for(template_name: &str) -> Vec<String> {
+    if template_name == "drive/comments" {
+        return vec!["drive_comments".into()];
+    }
     let provider = template_name.split('/').next().unwrap_or(template_name);
     match provider {
         "gmail" => vec!["gmail_messages".into()],
@@ -376,6 +379,15 @@ mod tests {
             projections: None,
             extractor: None,
         }
+    }
+
+    #[test]
+    fn drive_comments_fans_out_to_its_own_table() {
+        assert_eq!(
+            projection_feed_types_for("drive/comments"),
+            ["drive_comments"]
+        );
+        assert_eq!(projection_feed_types_for("drive/recent"), ["drive_files"]);
     }
 
     #[tokio::test]

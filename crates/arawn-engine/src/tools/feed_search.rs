@@ -40,6 +40,8 @@ const KNOWN_FEED_TYPES: &[&str] = &[
     "filesystem_signals",
     // COLLIERY-I-0532 Linear issues.
     "linear_issues",
+    // COLLIERY-I-0533 doc comments for me.
+    "drive_comments",
 ];
 
 /// RRF constant (Cormack et al. 2009). Same value the memory bench
@@ -108,7 +110,7 @@ impl Tool for FeedSearchTool {
                 "feed_types": {
                     "type": "array",
                     "items": { "type": "string" },
-                    "description": "Restrict to feed types. Defaults to all. Known: gmail_messages, slack_messages, slack_thread_messages, drive_files, jira_issues, jira_comments, jira_history, confluence_pages, calendar_events, linear_issues."
+                    "description": "Restrict to feed types. Defaults to all. Known: gmail_messages, slack_messages, slack_thread_messages, drive_files, jira_issues, jira_comments, jira_history, confluence_pages, calendar_events, linear_issues, drive_comments."
                 },
                 "since": {
                     "type": "string",
@@ -386,6 +388,10 @@ mod tests {
                 "github_issue_or_pr_comments",
             ),
             (arawn_projections::linear::FEED_TYPE, "linear_issues"),
+            (
+                arawn_projections::drive_comments::FEED_TYPE,
+                "drive_comments",
+            ),
         ];
         for (proj_const, hardcoded) in pairs {
             assert_eq!(
