@@ -48,11 +48,22 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - name: Install sandbox dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap socat
+          # Ubuntu 24.04 blocks unprivileged user namespaces; bubblewrap needs them.
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+
       - name: Run tests
         run: cargo test --workspace -- --test-threads=1
 
       - name: Run integration tests (ignored)
-        run: cargo test --workspace -- --ignored --test-threads=1
+        # uat_run is the live UAT against a real LLM: it needs the sops
+        # secrets and runs through `angreal test uat`, not in CI.
+        run: cargo test --workspace -- --ignored --test-threads=1 --skip uat_run
 
   coverage:
     name: Coverage
@@ -71,6 +82,15 @@ jobs:
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Install sandbox dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bubblewrap socat
+          # Ubuntu 24.04 blocks unprivileged user namespaces; bubblewrap needs them.
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
 
       - name: Generate coverage
         run: cargo llvm-cov --workspace --lcov --output-path lcov.info -- --test-threads=1
@@ -108,6 +128,13 @@ jobs:
           toolchain: "1.93"
 
       - uses: Swatinem/rust-cache@v2
+
+      - name: Install libpq (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install libpq
+          echo "LIBRARY_PATH=$(brew --prefix libpq)/lib" >> "$GITHUB_ENV"
+          echo "PQ_LIB_DIR=$(brew --prefix libpq)/lib" >> "$GITHUB_ENV"
 
       - name: Build release
         run: cargo build --release
