@@ -51,14 +51,26 @@ pub struct WsClient {
 impl WsClient {
     pub async fn connect(url: &str) -> Result<Self, Box<dyn std::error::Error>> {
         // Append auth token from ~/.arawn/server.token if available
-        let authed_url = if let Some(token) = Self::read_server_token() {
+        let token = Self::read_server_token();
+        Self::connect_with_token(url, token.as_deref()).await
+    }
+
+    /// Connect with an explicit auth token (the contents of the server's
+    /// `server.token`). For callers that know the data directory, e.g.
+    /// `arawn --data-dir <dir> connect`, which `connect` cannot see.
+    pub async fn connect_with_token(
+        url: &str,
+        token: Option<&str>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let authed_url = if let Some(token) = token {
             let separator = if url.contains('?') { "&" } else { "?" };
             format!("{url}{separator}token={token}")
         } else {
             url.to_string()
         };
 
-        debug!(url = %authed_url, "ws_client connecting");
+        // Log the URL without the token: debug logs must not carry it.
+        debug!(url = %url, with_token = token.is_some(), "ws_client connecting");
         let (ws_stream, resp) = connect_async(&authed_url).await?;
         debug!(status = ?resp.status(), "ws_client connected");
         let (write, read) = ws_stream.split();

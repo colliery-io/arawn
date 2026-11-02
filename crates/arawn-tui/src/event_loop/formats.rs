@@ -235,6 +235,37 @@ pub(super) fn format_system_status(status: &arawn_service::SystemStatus) -> Stri
         }
     }
 
+    // Integrations (ARAWN-T-0502, status v3) — state + the fix.
+    if !status.integrations.is_empty() {
+        let connected = status
+            .integrations
+            .iter()
+            .filter(|i| i.state == "connected")
+            .count();
+        let _ = writeln!(
+            out,
+            "Integrations: {connected}/{} connected",
+            status.integrations.len()
+        );
+        for i in &status.integrations {
+            let mark = match i.state.as_str() {
+                "connected" => "✓",
+                "missing_secret" | "incomplete" | "token_error" | "restart_needed"
+                | "config_error" => "⚠",
+                _ => "·",
+            };
+            let state = i.state.replace('_', " ");
+            match &i.hint {
+                Some(h) => {
+                    let _ = writeln!(out, "  {mark} {}: {state} — {h}", i.name);
+                }
+                None => {
+                    let _ = writeln!(out, "  {mark} {}: {state}", i.name);
+                }
+            }
+        }
+    }
+
     out
 }
 
@@ -436,7 +467,32 @@ mod tests {
                     failed_at: "2026-06-11T02:00:00Z".into(),
                 }],
             },
+            integrations: vec![
+                arawn_service::IntegrationHealth {
+                    name: "gmail".into(),
+                    state: "connected".into(),
+                    detail: "connected".into(),
+                    hint: None,
+                },
+                arawn_service::IntegrationHealth {
+                    name: "slack".into(),
+                    state: "not_configured".into(),
+                    detail: "not configured".into(),
+                    hint: Some("run: arawn setup slack".into()),
+                },
+            ],
         }
+    }
+
+    #[test]
+    fn format_system_status_renders_integrations_with_fixes() {
+        let out = format_system_status(&populated());
+        assert!(out.contains("Integrations: 1/2 connected"), "{out}");
+        assert!(out.contains("✓ gmail: connected\n"), "{out}");
+        assert!(
+            out.contains("· slack: not configured — run: arawn setup slack"),
+            "{out}"
+        );
     }
 
     #[test]

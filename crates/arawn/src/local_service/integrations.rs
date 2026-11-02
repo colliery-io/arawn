@@ -62,6 +62,7 @@ impl LocalService {
         let service_name = service.to_string();
         let integration_for_task = Arc::clone(&integration);
         let feed_runtime_for_task = self.feed_runtime.clone();
+        let reconcile_ctx = self.reconcile_ctx();
 
         tokio::spawn(async move {
             let ctx = OAuthFlowCtx {
@@ -88,14 +89,51 @@ impl LocalService {
             let _ = notice_tx.send(notice);
 
             // Auto-create the personal default feed for this service,
-            // if one is defined and the feeds runtime is available.
-            // Idempotent: silently swallows the UNIQUE-constraint
-            // duplicate when the feed already exists.
+            // if one is defined and the feeds runtime is available. It
+            // is a singleton per TEMPLATE: skip when any feed already
+            // uses the template, under whatever id (ARAWN-T-0510).
+            // Feeds declared in arawn.toml that waited for this service
+            // are created now (ARAWN-T-0506). Runs before the default-feed
+            // auto-create, so a declared feed of the same template wins
+            // and the singleton check below skips the default.
+            if succeeded {
+                // Announce only what this reconcile changed. Standing
+                // problems are in the startup log and `arawn doctor`;
+                // repeating them on every connect would blame the connect.
+                let report = reconcile_ctx.reconcile().await;
+                for line in &report.done {
+                    let _ = notice_tx.send(arawn_service::ServerNotice {
+                        level: "info".into(),
+                        category: "feeds".into(),
+                        message: format!("arawn.toml: {line}"),
+                        timestamp: chrono::Utc::now().to_rfc3339(),
+                    });
+                }
+            }
+
             if succeeded {
                 let runtime = feed_runtime_for_task.read().recover().clone();
                 if let Some(runtime) = runtime
                     && let Some((template, feed_id)) = default_feed_for_service(&service_name)
                 {
+                    let existing: Vec<(String, String)> = match runtime.list_summaries().await {
+                        Ok(s) => s.into_iter().map(|f| (f.id, f.template)).collect(),
+                        Err(e) => {
+                            let _ = notice_tx.send(arawn_service::ServerNotice {
+                                level: "warn".into(),
+                                category: "feeds".into(),
+                                message: format!(
+                                    "auto-create {template} for {service_name} skipped: \
+                                     cannot list feeds: {e}"
+                                ),
+                                timestamp: chrono::Utc::now().to_rfc3339(),
+                            });
+                            return;
+                        }
+                    };
+                    if !super::should_auto_create(&existing, template) {
+                        return;
+                    }
                     match runtime
                         .register_feed_dynamic(
                             template,
@@ -116,11 +154,10 @@ impl LocalService {
                                 timestamp: chrono::Utc::now().to_rfc3339(),
                             });
                         }
-                        // Existing feed → silent. Anything else gets
-                        // surfaced so the user knows the auto-create
-                        // didn't take.
-                        Err(arawn_feeds::FeedError::Storage(msg))
-                            if msg.contains("UNIQUE") || msg.contains("already exists") => {}
+                        // Every failure is surfaced, including a UNIQUE
+                        // clash: the template check above already covers
+                        // "this feed exists", so a clash here means a
+                        // different feed holds the id.
                         Err(e) => {
                             let _ = notice_tx.send(arawn_service::ServerNotice {
                                 level: "warn".into(),

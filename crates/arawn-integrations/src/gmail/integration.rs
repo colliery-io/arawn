@@ -15,6 +15,14 @@ use super::client::{GmailHub, client_from_token_store};
 /// argument to `/connect gmail`.
 pub const SERVICE_NAME: &str = "gmail";
 
+/// Scopes requested at `/connect gmail`. The OAuth app's consent screen
+/// must list each of these.
+pub const GMAIL_OAUTH_SCOPES: &[&str] = &[
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.modify",
+];
+
 /// Standard Gmail OAuth provider configuration. Encapsulated as a builder
 /// so tests can swap in a fake authorization endpoint.
 pub struct GmailProviderConfig {
@@ -30,11 +38,7 @@ impl Default for GmailProviderConfig {
                 .parse()
                 .unwrap(),
             token_url: "https://oauth2.googleapis.com/token".parse().unwrap(),
-            scopes: vec![
-                "https://www.googleapis.com/auth/gmail.readonly".to_string(),
-                "https://www.googleapis.com/auth/gmail.send".to_string(),
-                "https://www.googleapis.com/auth/gmail.modify".to_string(),
-            ],
+            scopes: GMAIL_OAUTH_SCOPES.iter().map(|s| s.to_string()).collect(),
         }
     }
 }

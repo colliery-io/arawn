@@ -6,7 +6,7 @@
 //! config exists (`LlmConfig::default().model`), so the scaffold can never
 //! drift from the built-in default.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Result, bail};
 
@@ -18,6 +18,14 @@ pub struct InitOptions {
     pub model: Option<String>,
     pub api_key_env: Option<String>,
     pub force: bool,
+}
+
+impl InitOptions {
+    /// True when an LLM flag differs from its default. (An explicit
+    /// `--provider groq` cannot be told apart from the default.)
+    pub fn llm_flags_given(&self) -> bool {
+        self.provider != "groq" || self.model.is_some() || self.api_key_env.is_some()
+    }
 }
 
 /// Conventional env var holding a provider's API key.
@@ -72,8 +80,10 @@ fn render_config(opts: &InitOptions) -> Result<(String, String)> {
     Ok((rendered, api_key_env))
 }
 
-/// Write `arawn.toml` into `data_dir`, then print next steps.
-pub fn run_init(data_dir: &Path, opts: InitOptions) -> Result<()> {
+/// Write `arawn.toml` into `data_dir` without printing. Returns the
+/// path and the env var that must hold the API key. Used by `arawn
+/// setup` when no config exists yet.
+pub fn write_init(data_dir: &Path, opts: &InitOptions) -> Result<(PathBuf, String)> {
     let config_path = data_dir.join("arawn.toml");
     if config_path.exists() && !opts.force {
         bail!(
@@ -82,17 +92,96 @@ pub fn run_init(data_dir: &Path, opts: InitOptions) -> Result<()> {
         );
     }
 
-    let (rendered, api_key_env) = render_config(&opts)?;
+    let (rendered, api_key_env) = render_config(opts)?;
 
     std::fs::create_dir_all(data_dir)?;
     std::fs::write(&config_path, &rendered)?;
+    Ok((config_path, api_key_env))
+}
 
-    println!("Wrote {}", config_path.display());
+/// Write `arawn.toml` into `data_dir`, then print next steps.
+pub fn run_init(data_dir: &Path, opts: InitOptions) -> Result<()> {
+    run_init_with_profile(data_dir, opts, None)
+}
+
+/// `arawn init [--profile <name>]`. With a profile and an existing
+/// arawn.toml (and no `--force`), only the profile's `[[lenses]]` /
+/// `[[feeds]]` are added; the rest of the file is kept (ARAWN-T-0507).
+pub fn run_init_with_profile(
+    data_dir: &Path,
+    opts: InitOptions,
+    profile_name: Option<&str>,
+) -> Result<()> {
+    let profile = profile_name.map(super::profile::profile).transpose()?;
+    let config_path = data_dir.join("arawn.toml");
+    let additive = profile.is_some() && config_path.exists() && !opts.force;
+    // In additive mode the LLM settings are not written; refuse rather
+    // than drop the flags without a word.
+    if additive && opts.llm_flags_given() {
+        bail!(
+            "{} already exists, so --provider, --model and --api-key-env are not applied. \
+             Give --force to rewrite the file, or leave those flags out to only add the profile",
+            config_path.display()
+        );
+    }
+
+    let api_key_env = if additive {
+        None
+    } else {
+        let (_, env) = write_init(data_dir, &opts)?;
+        println!("Wrote {}", config_path.display());
+        Some(env)
+    };
+
+    if let (Some((lenses, feeds)), Some(name)) = (&profile, profile_name) {
+        let mut doc = super::setup::edit::load_doc(&config_path)?;
+        let applied = super::profile::apply(&mut doc, lenses, feeds)?;
+        super::setup::edit::write_config(&config_path, &doc)?;
+        if applied.is_empty() {
+            println!(
+                "The `{name}` profile is already in {}. Nothing was added.",
+                config_path.display()
+            );
+        } else {
+            println!(
+                "Added the `{name}` profile to {}: {} lens(es), {} feed(s).",
+                config_path.display(),
+                applied.added_lenses.len(),
+                applied.added_feeds.len()
+            );
+            for (lens, feeds) in &applied.bound_to_kept {
+                println!("Bound to your existing `{lens}` lens: {}", feeds.join(", "));
+            }
+            if !applied.kept.is_empty() {
+                println!(
+                    "Already in the file, not changed: {}",
+                    applied.kept.join(", ")
+                );
+            }
+            println!("Edit the lens description and tags in arawn.toml to match your work.");
+        }
+    }
+
     println!();
     println!("Next steps:");
-    println!("  1. export {api_key_env}=<your-api-key>");
-    println!("  2. arawn serve      # start the server (in this terminal)");
-    println!("  3. arawn tui        # open the chat UI (in another terminal)");
+    let mut n = 1;
+    if let Some(env) = api_key_env {
+        println!("  {n}. export {env}=<your-api-key>");
+        n += 1;
+    }
+    if profile.is_some() {
+        println!("  {n}. arawn setup        # set up Google, Slack, Atlassian, GitHub");
+        n += 1;
+    }
+    println!("  {n}. arawn serve        # start the server (in this terminal)");
+    n += 1;
+    if profile.is_some() {
+        println!(
+            "  {n}. arawn connect --all  # in another terminal; feeds start as each service connects"
+        );
+    } else {
+        println!("  {n}. arawn tui          # open the chat UI (in another terminal)");
+    }
     Ok(())
 }
 
@@ -142,6 +231,33 @@ mod tests {
         assert_eq!(env, "MY_KEY");
         let cfg: ArawnConfig = toml::from_str(&rendered).unwrap();
         assert_eq!(cfg.llm.get("default").unwrap().model, "custom-model");
+    }
+
+    #[test]
+    fn profile_on_existing_config_adds_only_the_profile() {
+        let dir = tempfile::tempdir().unwrap();
+        run_init(dir.path(), opts("openai")).unwrap();
+        run_init_with_profile(dir.path(), opts("groq"), Some("work")).unwrap();
+        let cfg: ArawnConfig =
+            toml::from_str(&std::fs::read_to_string(dir.path().join("arawn.toml")).unwrap())
+                .unwrap();
+        // The LLM block from the first init is untouched.
+        assert_eq!(cfg.llm["default"].provider, "openai");
+        assert_eq!(cfg.lenses[0].name, "work");
+    }
+
+    #[test]
+    fn profile_with_llm_flags_on_existing_config_refuses_instead_of_ignoring() {
+        // Review regression: the flags used to be dropped without a word.
+        let dir = tempfile::tempdir().unwrap();
+        run_init(dir.path(), opts("groq")).unwrap();
+        let err = run_init_with_profile(dir.path(), opts("openai"), Some("work")).unwrap_err();
+        assert!(format!("{err}").contains("--force"), "{err}");
+        // Nothing was written.
+        let cfg: ArawnConfig =
+            toml::from_str(&std::fs::read_to_string(dir.path().join("arawn.toml")).unwrap())
+                .unwrap();
+        assert!(cfg.lenses.is_empty());
     }
 
     #[test]
