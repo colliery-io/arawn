@@ -123,6 +123,9 @@ impl FeedClients for MockClients {
     fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
         None
     }
+    fn linear(&self) -> Option<Arc<dyn arawn_feeds::LinearFeedClient>> {
+        None
+    }
 }
 
 fn page(id: &str, title: &str, modified: &str, version: i64) -> ConfluencePageMeta {
@@ -349,6 +352,9 @@ async fn returns_auth_when_atlassian_not_connected() {
             None
         }
         fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
+            None
+        }
+        fn linear(&self) -> Option<Arc<dyn arawn_feeds::LinearFeedClient>> {
             None
         }
     }

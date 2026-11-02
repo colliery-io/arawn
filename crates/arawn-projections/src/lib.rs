@@ -21,6 +21,7 @@ pub mod error;
 pub mod filesystem;
 pub mod github;
 pub mod gmail;
+pub mod linear;
 pub mod schema;
 pub mod slack;
 pub mod store;

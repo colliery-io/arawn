@@ -90,6 +90,7 @@ pub fn template_service(template: &str) -> Option<&'static str> {
         "slack" => Some(arawn_integrations::slack::SERVICE_NAME),
         "jira" | "confluence" => Some(arawn_integrations::atlassian::SERVICE_NAME),
         "github" => Some(arawn_integrations::github::SERVICE_NAME),
+        "linear" => Some(arawn_integrations::linear::SERVICE_NAME),
         _ => None,
     }
 }
@@ -727,6 +728,7 @@ mod tests {
             Some("atlassian")
         );
         assert_eq!(template_service("github/review-queue"), Some("github"));
+        assert_eq!(template_service("linear/my-issues"), Some("linear"));
         assert_eq!(template_service("filesystem/folder"), None);
     }
 }

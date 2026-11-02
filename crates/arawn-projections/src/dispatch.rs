@@ -17,6 +17,7 @@ use crate::error::ProjectionError;
 use crate::filesystem;
 use crate::github;
 use crate::gmail;
+use crate::linear;
 use crate::slack;
 use crate::store::{ProjectionStore, WriteOutcome};
 
@@ -96,6 +97,17 @@ pub fn project_feed_dir(
             dedup_and_write_single_type(store, filesystem::FEED_TYPE, feed_id, parsed, |p| {
                 p.source_id.clone()
             })?
+        }
+        // Every snapshot is upserted, not only new ones: an issue that
+        // moves to Done, or away from me, must stop looking mine and open
+        // (state drives the brief). A snapshot the feed removed (the issue
+        // is gone or no longer visible) takes its row with it.
+        "linear" => {
+            let parsed = linear::walk_feed_dir(feed_id, feed_dir)?;
+            let keep: Vec<String> = parsed.iter().map(|p| p.source_id.clone()).collect();
+            let outcome = store.write_batch(&parsed)?;
+            store.retain_source_ids(linear::FEED_TYPE, feed_id, &keep)?;
+            outcome
         }
         "slack" => {
             let parsed = slack::walk_feed_dir(feed_id, feed_dir)?;

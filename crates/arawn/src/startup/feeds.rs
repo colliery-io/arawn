@@ -57,6 +57,7 @@ pub async fn wire_continual_feeds(
                 if let Some(gh) = integrations.github.as_ref() {
                     clients = clients.with_github(Arc::clone(gh));
                 }
+                clients = clients.with_linear(Arc::clone(&integrations.linear));
                 let clients: Arc<dyn arawn_feeds::FeedClients> = Arc::new(clients);
 
                 // Reuse the outer projection store + extractor runner

@@ -146,6 +146,8 @@ async fn known_feed_types_are_a_strict_subset_of_routed_types() {
         "github_repo_issues",
         "github_repo_prs",
         "github_issue_or_pr_comments",
+        // Linear (COLLIERY-I-0532).
+        "linear_issues",
     ];
     let actual: Vec<&str> = EMBEDDABLE_FEED_TYPES.to_vec();
     assert_eq!(actual, expected);

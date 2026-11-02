@@ -129,6 +129,9 @@ impl FeedClients for StubClients {
     fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
         None
     }
+    fn linear(&self) -> Option<Arc<dyn arawn_feeds::LinearFeedClient>> {
+        None
+    }
 }
 
 #[tokio::test]

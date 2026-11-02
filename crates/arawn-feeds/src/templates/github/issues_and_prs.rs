@@ -321,6 +321,9 @@ mod tests {
         fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
             Some(self.gh.clone())
         }
+        fn linear(&self) -> Option<Arc<dyn crate::clients::LinearFeedClient>> {
+            None
+        }
     }
 
     fn issue(number: u64) -> Value {

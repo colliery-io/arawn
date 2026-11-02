@@ -54,6 +54,10 @@ GitHub uses the App model, not OAuth. Different shape:
 | `ARAWN_GITHUB_PRIVATE_KEY_PATH` | `private_key_path` | Filesystem path to the RSA private key PEM. Preferred. |
 | `ARAWN_GITHUB_PRIVATE_KEY_PEM` | *(none)* | Inline PEM body. Env-only, alternative to `_PATH`. |
 
+### Linear
+
+Linear has no `[integrations.linear]` block and no runtime env var. Its personal API key is saved encrypted in the credential store (`<data_dir>/integrations/linear/linear.bin`) by `arawn setup linear`, which also accepts `ARAWN_LINEAR_API_KEY` as its non-interactive input. The integration is always registered, and it is connected while the key is saved. See [connect Linear](../../how-to/connect-linear/).
+
 ## Pick a path: per-service vs shared Google
 
 You have one decision when configuring Gmail/Calendar/Drive: one OAuth client for all three, or one per service.
@@ -131,4 +135,4 @@ If you expected an integration to register and it didn't, run with `RUST_LOG=ara
 - [Environment variables reference](../env-vars/) — the complete env-var catalog including non-integration variables.
 - [Integrations reference](../integrations/) — per-provider matrix: scopes, tools, feed templates, permission behaviour.
 - [Configuration schema reference](../config-schema/) — the full `arawn.toml` shape.
-- [Connect Google how-to](../../how-to/connect-google/), [Slack](../../how-to/connect-slack/), [Atlassian](../../how-to/connect-atlassian/), [GitHub](../../how-to/connect-github/) — provider-side setup walkthroughs.
+- [Connect Google how-to](../../how-to/connect-google/), [Slack](../../how-to/connect-slack/), [Atlassian](../../how-to/connect-atlassian/), [GitHub](../../how-to/connect-github/), [Linear](../../how-to/connect-linear/) — provider-side setup walkthroughs.

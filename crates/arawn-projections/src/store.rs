@@ -216,6 +216,64 @@ impl ProjectionStore {
         Ok(total)
     }
 
+    /// Delete the rows of `feed_id` whose `source_id` is not in `keep`,
+    /// with their FTS, embedding and vector rows. For mirrors whose
+    /// items can disappear upstream (a Linear issue that was deleted or
+    /// is no longer visible). Returns the number of rows deleted.
+    pub fn retain_source_ids(
+        &self,
+        feed_type: &str,
+        feed_id: &str,
+        keep: &[String],
+    ) -> Result<usize, ProjectionError> {
+        let mut conn = self.conn.lock().unwrap();
+        schema::ensure_feed_type_tables(&conn, feed_type)?;
+        let keep: HashSet<&str> = keep.iter().map(String::as_str).collect();
+        let doomed: Vec<String> = {
+            let mut stmt = conn
+                .prepare(&format!(
+                    "SELECT id, source_id FROM {feed_type} WHERE feed_id = ?1"
+                ))
+                .map_err(|e| ProjectionError::Storage(format!("prepare retain: {e}")))?;
+            let rows = stmt
+                .query_map(params![feed_id], |r| {
+                    Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+                })
+                .map_err(|e| ProjectionError::Storage(format!("retain: {e}")))?;
+            let mut out = Vec::new();
+            for r in rows {
+                let (id, source_id) = r.map_err(|e| ProjectionError::Storage(e.to_string()))?;
+                if !keep.contains(source_id.as_str()) {
+                    out.push(id);
+                }
+            }
+            out
+        };
+        if doomed.is_empty() {
+            return Ok(0);
+        }
+        let tx = conn
+            .transaction()
+            .map_err(|e| ProjectionError::Storage(format!("tx begin: {e}")))?;
+        for id in &doomed {
+            for (table, col) in [
+                (feed_type.to_string(), "id"),
+                (format!("{feed_type}_fts"), "projection_id"),
+                (format!("{feed_type}_embeddings"), "projection_id"),
+                (format!("{feed_type}_vec"), "projection_id"),
+            ] {
+                tx.execute(
+                    &format!("DELETE FROM {table} WHERE {col} = ?1"),
+                    params![id],
+                )
+                .map_err(|e| ProjectionError::Storage(format!("delete from {table}: {e}")))?;
+            }
+        }
+        tx.commit()
+            .map_err(|e| ProjectionError::Storage(format!("tx commit: {e}")))?;
+        Ok(doomed.len())
+    }
+
     /// Total rows for a feed_type — useful for tests and ops.
     pub fn count(&self, feed_type: &str) -> Result<usize, ProjectionError> {
         let conn = self.conn.lock().unwrap();

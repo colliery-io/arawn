@@ -57,7 +57,7 @@ impl LocalService {
         // return synchronously with the URL, we use a oneshot to bridge:
         // the spawned task publishes the URL to the oneshot the moment the
         // integration calls publish_auth_url, then continues the flow.
-        let (url_tx, url_rx) = tokio::sync::oneshot::channel::<url::Url>();
+        let (url_tx, url_rx) = tokio::sync::oneshot::channel::<Result<url::Url, String>>();
         let notice_tx = self.notice_tx.clone();
         let service_name = service.to_string();
         let integration_for_task = Arc::clone(&integration);
@@ -71,6 +71,13 @@ impl LocalService {
                 notice_tx: notice_tx.clone(),
             };
             let result = integration_for_task.connect(&ctx).await;
+            // Failed before any URL: give the caller the reason now
+            // instead of a "no auth URL" timeout.
+            if let Err(e) = &result
+                && let Some(tx) = ctx.url_tx.lock().await.take()
+            {
+                let _ = tx.send(Err(e.user_message()));
+            }
             let succeeded = result.is_ok();
             let notice = match &result {
                 Ok(()) => arawn_service::ServerNotice {
@@ -112,64 +119,13 @@ impl LocalService {
             }
 
             if succeeded {
-                let runtime = feed_runtime_for_task.read().recover().clone();
-                if let Some(runtime) = runtime
-                    && let Some((template, feed_id)) = default_feed_for_service(&service_name)
-                {
-                    let existing: Vec<(String, String)> = match runtime.list_summaries().await {
-                        Ok(s) => s.into_iter().map(|f| (f.id, f.template)).collect(),
-                        Err(e) => {
-                            let _ = notice_tx.send(arawn_service::ServerNotice {
-                                level: "warn".into(),
-                                category: "feeds".into(),
-                                message: format!(
-                                    "auto-create {template} for {service_name} skipped: \
-                                     cannot list feeds: {e}"
-                                ),
-                                timestamp: chrono::Utc::now().to_rfc3339(),
-                            });
-                            return;
-                        }
-                    };
-                    if !super::should_auto_create(&existing, template) {
-                        return;
-                    }
-                    match runtime
-                        .register_feed_dynamic(
-                            template,
-                            feed_id,
-                            arawn_feeds::TemplateParams::default(),
-                            None,
-                        )
-                        .await
-                    {
-                        Ok(_) => {
-                            let _ = notice_tx.send(arawn_service::ServerNotice {
-                                level: "info".into(),
-                                category: "feeds".into(),
-                                message: format!(
-                                    "auto-registered {template} as `{feed_id}` after \
-                                     /connect {service_name}"
-                                ),
-                                timestamp: chrono::Utc::now().to_rfc3339(),
-                            });
-                        }
-                        // Every failure is surfaced, including a UNIQUE
-                        // clash: the template check above already covers
-                        // "this feed exists", so a clash here means a
-                        // different feed holds the id.
-                        Err(e) => {
-                            let _ = notice_tx.send(arawn_service::ServerNotice {
-                                level: "warn".into(),
-                                category: "feeds".into(),
-                                message: format!(
-                                    "auto-create {template} for {service_name} failed: {e}"
-                                ),
-                                timestamp: chrono::Utc::now().to_rfc3339(),
-                            });
-                        }
-                    }
-                }
+                auto_create_default_feed(
+                    &feed_runtime_for_task,
+                    &notice_tx,
+                    &service_name,
+                    &format!("/connect {service_name}"),
+                )
+                .await;
             }
         });
 
@@ -178,7 +134,8 @@ impl LocalService {
         // a 5s ceiling protects the RPC from hanging if an integration is
         // poorly behaved.
         let url = match tokio::time::timeout(std::time::Duration::from_secs(5), url_rx).await {
-            Ok(Ok(u)) => u,
+            Ok(Ok(Ok(u))) => u,
+            Ok(Ok(Err(reason))) => return Err(ServiceError::InvalidOperation(reason)),
             Ok(Err(_)) => {
                 return Err(ServiceError::InvalidOperation(format!(
                     "integration '{service}' did not publish an auth URL"
@@ -223,5 +180,71 @@ impl LocalService {
             timestamp: chrono::Utc::now().to_rfc3339(),
         });
         Ok(())
+    }
+}
+
+type FeedRuntimeCell = Arc<std::sync::RwLock<Option<Arc<arawn_feeds::FeedRuntime>>>>;
+
+/// Auto-create the personal default feed for `service_name`, if one is
+/// defined and the feeds runtime is available. It is a singleton per
+/// TEMPLATE: skip when any feed already uses the template, under
+/// whatever id (ARAWN-T-0510). `after` names the trigger in the notice.
+pub(super) async fn auto_create_default_feed(
+    feed_runtime: &FeedRuntimeCell,
+    notice_tx: &tokio::sync::broadcast::Sender<arawn_service::ServerNotice>,
+    service_name: &str,
+    after: &str,
+) {
+    let runtime = feed_runtime.read().recover().clone();
+    let (Some(runtime), Some((template, feed_id))) =
+        (runtime, default_feed_for_service(service_name))
+    else {
+        return;
+    };
+    let notice = |level: &str, message: String| arawn_service::ServerNotice {
+        level: level.into(),
+        category: "feeds".into(),
+        message,
+        timestamp: chrono::Utc::now().to_rfc3339(),
+    };
+    let existing: Vec<(String, String)> = match runtime.list_summaries().await {
+        Ok(s) => s.into_iter().map(|f| (f.id, f.template)).collect(),
+        Err(e) => {
+            let _ = notice_tx.send(notice(
+                "warn",
+                format!(
+                    "auto-create {template} for {service_name} skipped: cannot list feeds: {e}"
+                ),
+            ));
+            return;
+        }
+    };
+    if !super::should_auto_create(&existing, template) {
+        return;
+    }
+    match runtime
+        .register_feed_dynamic(
+            template,
+            feed_id,
+            arawn_feeds::TemplateParams::default(),
+            None,
+        )
+        .await
+    {
+        Ok(_) => {
+            let _ = notice_tx.send(notice(
+                "info",
+                format!("auto-registered {template} as `{feed_id}` after {after}"),
+            ));
+        }
+        // Every failure is surfaced, including a UNIQUE clash: the
+        // template check above already covers "this feed exists", so a
+        // clash here means a different feed holds the id.
+        Err(e) => {
+            let _ = notice_tx.send(notice(
+                "warn",
+                format!("auto-create {template} for {service_name} failed: {e}"),
+            ));
+        }
     }
 }

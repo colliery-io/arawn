@@ -178,6 +178,9 @@ impl FeedClients for MockClients {
     fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
         None
     }
+    fn linear(&self) -> Option<Arc<dyn arawn_feeds::LinearFeedClient>> {
+        None
+    }
 }
 
 fn slack_msg(ts: &str, text: &str) -> Value {
@@ -434,6 +437,9 @@ async fn run_returns_auth_when_slack_not_connected() {
             None
         }
         fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
+            None
+        }
+        fn linear(&self) -> Option<Arc<dyn arawn_feeds::LinearFeedClient>> {
             None
         }
     }

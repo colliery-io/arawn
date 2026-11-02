@@ -121,6 +121,9 @@ impl FeedClients for MockClients {
     fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
         None
     }
+    fn linear(&self) -> Option<Arc<dyn arawn_feeds::LinearFeedClient>> {
+        None
+    }
 }
 
 fn raw_file(id: &str, name: &str, mime: &str, md5: &str) -> DriveFile {
@@ -393,6 +396,9 @@ async fn returns_auth_when_drive_not_connected() {
             None
         }
         fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
+            None
+        }
+        fn linear(&self) -> Option<Arc<dyn arawn_feeds::LinearFeedClient>> {
             None
         }
     }

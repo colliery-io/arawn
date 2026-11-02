@@ -52,6 +52,12 @@ GitHub uses an App, not OAuth. Three env vars (path form preferred):
 | `ARAWN_GITHUB_PRIVATE_KEY_PATH` | Path to the App's RSA private key in PEM format. |
 | `ARAWN_GITHUB_PRIVATE_KEY_PEM` | Inline PEM body (alternative to `_PATH`; less common). |
 
+## Linear API key (setup only)
+
+| Variable | Read by | Effect |
+|---|---|---|
+| `ARAWN_LINEAR_API_KEY` | `arawn setup linear` only | The non-interactive input of `arawn setup linear`: the key is checked with Linear and saved encrypted. The server never reads it; the saved key is the only source at runtime. |
+
 ## Resolution order
 
 For OAuth credentials: env var > `arawn.toml` > integration disabled. If both env and TOML are set, env wins.

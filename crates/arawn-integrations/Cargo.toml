@@ -24,6 +24,7 @@ rand = "0.8"
 reqwest = { workspace = true }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
 rvstruct = "0.3"
+rusqlite = { version = "0.37", features = ["bundled"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 slack-morphism = { version = "2.20", features = ["hyper"] }

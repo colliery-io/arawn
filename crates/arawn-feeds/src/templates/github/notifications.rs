@@ -331,6 +331,9 @@ mod tests {
         fn github(&self) -> Option<Arc<dyn GithubFeedClient>> {
             Some(self.gh.clone())
         }
+        fn linear(&self) -> Option<Arc<dyn crate::clients::LinearFeedClient>> {
+            None
+        }
     }
 
     fn notif_json(id: &str, updated: &str) -> Value {

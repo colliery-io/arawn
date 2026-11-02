@@ -15,8 +15,9 @@ Source: `crates/arawn-integrations/src/<svc>/`.
 | Slack | OAuth 2.0 (bot+user dual-token) | 6 | `slack/channel-archive`, `slack/dm-archive`, `slack/my-mentions` |
 | Atlassian (Jira+Confluence) | OAuth 2.0 (3LO) | 11 | `jira/project-tracker`, `jira/assignee-tracker`, `confluence/space-archive` |
 | GitHub | GitHub App (read-only) | 0 (feed-only) | `github/notifications`, `github/issues-and-prs`, `github/review-queue`, `github/repo-mirror` |
+| Linear | Personal API key | 6 | `linear/my-issues` |
 
-How to connect: [Google](../../how-to/connect-google/), [Slack](../../how-to/connect-slack/), [Atlassian](../../how-to/connect-atlassian/), [GitHub](../../how-to/connect-github/).
+How to connect: [Google](../../how-to/connect-google/), [Slack](../../how-to/connect-slack/), [Atlassian](../../how-to/connect-atlassian/), [GitHub](../../how-to/connect-github/), [Linear](../../how-to/connect-linear/).
 
 ## Gmail
 
@@ -193,6 +194,27 @@ arawn uses the **classic scope set** (not granular). If a scope above doesn't ap
 
 Org binds supersede per-repo binds in the same lens. See [bind a lens to a feed](../../how-to/bind-a-lens-to-a-feed/).
 
+## Linear
+
+**Auth:** a personal API key, not OAuth. `arawn setup linear` checks the key with the `viewer` query and saves it encrypted; there is no `/connect` flow (`/connect linear` points at the setup command). One key is one user in one workspace. The key goes to `https://api.linear.app/graphql` as `Authorization: <key>` (no `Bearer`). Setup: [connect Linear](../../how-to/connect-linear/).
+
+**Key permissions:** Read (feed, read tools) and Write (the four write tools), with access to the teams arawn may see.
+
+**Rate limits:** 2,500 requests and 3,000,000 complexity points per key per hour. A spent limit is HTTP 400 with the GraphQL error code `RATELIMITED`; arawn maps it to a rate-limit error that waits until `X-RateLimit-Requests-Reset`.
+
+**Agent tools (6):**
+
+| Tool | Permission |
+|---|---|
+| `linear_list_my_issues` | Read — auto-allow |
+| `linear_get_issue` | Read — auto-allow |
+| `linear_comment` | Other — asks |
+| `linear_set_state` | Other — asks |
+| `linear_set_assignee` | Other — asks |
+| `linear_set_priority` | Other — asks |
+
+**Feed templates:** `linear/my-issues` (default feed `linear-mine`).
+
 ## Storage
 
 Encrypted-at-rest credential blobs land under:
@@ -206,7 +228,7 @@ See [data directory reference](../data-directory/) for the full layout.
 
 ## Related
 
-- Per-provider connect how-tos: [Google](../../how-to/connect-google/), [Slack](../../how-to/connect-slack/), [Atlassian](../../how-to/connect-atlassian/), [GitHub](../../how-to/connect-github/).
-- All 17 feed templates with params: [feed templates reference](../feed-templates/).
+- Per-provider connect how-tos: [Google](../../how-to/connect-google/), [Slack](../../how-to/connect-slack/), [Atlassian](../../how-to/connect-atlassian/), [GitHub](../../how-to/connect-github/), [Linear](../../how-to/connect-linear/).
+- All 18 feed templates with params: [feed templates reference](../feed-templates/).
 - Agent tools catalog: [agent tools reference](../agent-tools/).
 - Debugging connection failures: [debug OAuth failures](../../how-to/debug-oauth-failures/).
