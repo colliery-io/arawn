@@ -156,6 +156,8 @@ pub async fn wrap_command(
         Platform::Linux => {
             #[cfg(target_os = "linux")]
             {
+                // The log monitor is macOS only.
+                let _ = enable_log_monitor;
                 let cwd = std::env::current_dir()?;
                 let (wrapped, warnings) = linux::generate_bwrap_command(
                     command,
