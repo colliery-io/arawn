@@ -15,7 +15,7 @@
 //! - Six Jira tools and five Confluence tools, each declaring its
 //!   required scopes for the runtime check pattern from T-0204.
 //!
-//! See `docs/src/integrations/atlassian.md` for setup.
+//! See `docs/src/content/docs/how-to/connect-atlassian.md` for setup.
 
 mod adf;
 mod client;

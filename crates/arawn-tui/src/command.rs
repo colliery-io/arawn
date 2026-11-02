@@ -1541,12 +1541,14 @@ mod tests {
     /// path; the test exists so a docs-tree rename surfaces here too.
     #[test]
     fn capabilities_banner_doc_path_pinned() {
-        // If docs/src/memory.md moves, update event_loop.rs's capability
-        // warning AND this assertion.
-        const PINNED: &str = "docs/src/memory.md";
+        // If the memory model page moves, update event_loop.rs's
+        // capability warning AND this assertion.
+        const PINNED: &str = "docs/src/content/docs/reference/memory-model.md";
         assert!(
-            std::path::Path::new("../..").join(PINNED).exists()
-                || std::path::Path::new("../..").join("docs").exists(),
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../..")
+                .join(PINNED)
+                .exists(),
             "memory docs not at expected path; update banner copy in event_loop.rs"
         );
     }

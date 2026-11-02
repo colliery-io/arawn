@@ -25,6 +25,11 @@ struct MockAtlassian {
     issue_details: Mutex<HashMap<String, Vec<JiraIssueDetail>>>,
     /// keys whose `issue_full` should fail with Provider.
     fail_full: Mutex<std::collections::HashSet<String>>,
+    /// keys whose `issue_full` is a 404 (deleted, or not visible).
+    not_found: Mutex<std::collections::HashSet<String>>,
+    /// A JQL naming this text fails with a 400, as Jira does for a key
+    /// that no longer exists.
+    reject_jql_naming: Mutex<Option<String>>,
     /// Recorded calls.
     jql_calls: Mutex<Vec<(String, u32)>>,
     full_calls: Mutex<Vec<(String, bool, bool)>>,
@@ -45,6 +50,9 @@ impl MockAtlassian {
     }
     fn fail_full(&self, key: &str) {
         self.fail_full.lock().unwrap().insert(key.into());
+    }
+    fn not_found(&self, key: &str) {
+        self.not_found.lock().unwrap().insert(key.into());
     }
     fn jql_calls(&self) -> Vec<(String, u32)> {
         self.jql_calls.lock().unwrap().clone()
@@ -76,6 +84,13 @@ impl AtlassianFeedClient for MockAtlassian {
             .lock()
             .unwrap()
             .push((jql.into(), max_results));
+        if let Some(bad) = self.reject_jql_naming.lock().unwrap().as_deref()
+            && jql.contains(bad)
+        {
+            return Err(FeedError::Provider(format!(
+                "jira 400: {bad} does not exist"
+            )));
+        }
         let mut q = self.jql_pages.lock().unwrap();
         Ok(if q.is_empty() { vec![] } else { q.remove(0) })
     }
@@ -94,6 +109,9 @@ impl AtlassianFeedClient for MockAtlassian {
             return Err(FeedError::Provider(format!(
                 "simulated full fail for {key}"
             )));
+        }
+        if self.not_found.lock().unwrap().contains(key) {
+            return Err(FeedError::InvalidParams(format!("jira not found: {key}")));
         }
         let mut all = self.issue_details.lock().unwrap();
         let queue = all
@@ -446,6 +464,8 @@ async fn assignee_tracker_uses_currentUser_jql_and_advances_cursor() {
         issue_detail("X-1", "2026-05-08T09:00:00.000+0000", None, None),
     );
     mock.queue_search(vec![]); // run 2 returns nothing
+    // run 2 rechecks X-1: still mine.
+    mock.queue_search(vec![issue_meta("X-1", "2026-05-08T09:00:00.000+0000")]);
 
     let ctx = TemplateCtx::new(Arc::new(MockClients {
         atlassian: mock.clone(),
@@ -466,8 +486,9 @@ async fn assignee_tracker_uses_currentUser_jql_and_advances_cursor() {
     .await;
 
     let calls = mock.jql_calls();
-    assert_eq!(calls.len(), 2);
+    assert_eq!(calls.len(), 3);
     assert!(calls[0].0.contains("currentUser()"));
+    assert_eq!(calls[2].0, "key in (\"X-1\") AND assignee = currentUser()");
     assert!(
         calls[1].0.contains("updated >="),
         "second run carries `since` clause"
@@ -547,4 +568,168 @@ async fn assignee_tracker_partial_failure_doesnt_block_other_issues() {
     assert_eq!(outcome.summary.items_written, 1);
     assert!(!feed_dir.join("ENG-X").exists(), "ENG-X skipped");
     assert!(feed_dir.join("ENG-Y").join("issue.json").exists());
+}
+
+// ── assignee-tracker recheck ────────────────────────────────────────
+
+fn snapshot(feed_dir: &std::path::Path, key: &str) -> Value {
+    let bytes = std::fs::read(feed_dir.join(key).join("issue.json")).unwrap();
+    serde_json::from_slice(&bytes).unwrap()
+}
+
+/// Run 1 brings A, B and C as mine. Run 2 returns none of them: B is
+/// still mine and kept as it is, A was reassigned and is rewritten as not
+/// mine, C is gone and its snapshot is removed.
+#[tokio::test]
+async fn assignee_tracker_recheck_rewrites_reassigned_and_removes_gone() {
+    let tmp = tempfile::tempdir().unwrap();
+    let layout = DataLayout::new(tmp.path());
+    let feed_dir = layout
+        .ensure_feed_dir("jira/assignee-tracker", "me")
+        .unwrap();
+    let t = "2026-05-08T09:00:00.000+0000";
+    let mock = Arc::new(MockAtlassian::default());
+    mock.queue_search(vec![
+        issue_meta("ENG-A", t),
+        issue_meta("ENG-B", t),
+        issue_meta("ENG-C", t),
+    ]);
+    for k in ["ENG-A", "ENG-B", "ENG-C"] {
+        mock.queue_detail(k, issue_detail(k, t, None, None));
+    }
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        atlassian: mock.clone(),
+    }));
+    let params = TemplateParams::default();
+    run_once(&AssigneeTrackerTemplate, &ctx, &params, &feed_dir).await;
+    assert_eq!(snapshot(&feed_dir, "ENG-A")["assigned_to_me"], true);
+
+    // Run 2: the query returns nothing; the recheck finds only B mine.
+    mock.queue_search(vec![]);
+    mock.queue_search(vec![issue_meta("ENG-B", t)]);
+    mock.queue_detail(
+        "ENG-A",
+        issue_detail("ENG-A", "2026-05-09T09:00:00.000+0000", None, None),
+    );
+    mock.not_found("ENG-C");
+    let outcome = run_once(&AssigneeTrackerTemplate, &ctx, &params, &feed_dir).await;
+    assert_eq!(outcome.summary.items_written, 1);
+
+    let calls = mock.jql_calls();
+    assert_eq!(
+        calls[2].0,
+        "key in (\"ENG-A\", \"ENG-B\", \"ENG-C\") AND assignee = currentUser()"
+    );
+    let a = snapshot(&feed_dir, "ENG-A");
+    assert_eq!(a["assigned_to_me"], false);
+    assert_eq!(a["updated"], "2026-05-09T09:00:00.000+0000");
+    assert_eq!(snapshot(&feed_dir, "ENG-B")["assigned_to_me"], true);
+    assert!(!feed_dir.join("ENG-C").exists(), "gone issue removed");
+    // B was still mine: not fetched again.
+    let fulls: Vec<String> = mock.full_calls().into_iter().map(|c| c.0).collect();
+    assert_eq!(fulls, ["ENG-A", "ENG-B", "ENG-C", "ENG-A", "ENG-C"]);
+}
+
+/// 120 open "mine" snapshots the query did not return are rechecked 50,
+/// 50 and 20 keys per request. Done snapshots and ones already marked
+/// not mine are not rechecked.
+#[tokio::test]
+async fn assignee_tracker_recheck_batches_fifty_keys() {
+    let tmp = tempfile::tempdir().unwrap();
+    let layout = DataLayout::new(tmp.path());
+    let feed_dir = layout
+        .ensure_feed_dir("jira/assignee-tracker", "me")
+        .unwrap();
+    let write = |key: &str, category: &str, mine: Option<bool>| {
+        let dir = feed_dir.join(key);
+        std::fs::create_dir_all(&dir).unwrap();
+        let mut snap = json!({
+            "key": key,
+            "fields": { "status": { "name": "x", "statusCategory": { "key": category } } },
+        });
+        if let Some(m) = mine {
+            snap["assigned_to_me"] = json!(m);
+        }
+        std::fs::write(dir.join("issue.json"), snap.to_string()).unwrap();
+    };
+    let keys: Vec<String> = (0..120).map(|n| format!("ENG-{n:03}")).collect();
+    for (i, k) in keys.iter().enumerate() {
+        // A snapshot from before `assigned_to_me` was written counts as mine.
+        write(
+            k,
+            "indeterminate",
+            if i % 2 == 0 { Some(true) } else { None },
+        );
+    }
+    write("ENG-DONE", "done", Some(true));
+    write("ENG-AWAY", "new", Some(false));
+
+    let mock = Arc::new(MockAtlassian::default());
+    mock.queue_search(vec![]);
+    let t = "2026-05-08T09:00:00.000+0000";
+    for chunk in keys.chunks(50) {
+        // All still mine.
+        mock.queue_search(chunk.iter().map(|k| issue_meta(k, t)).collect());
+    }
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        atlassian: mock.clone(),
+    }));
+    run_once(
+        &AssigneeTrackerTemplate,
+        &ctx,
+        &TemplateParams::default(),
+        &feed_dir,
+    )
+    .await;
+
+    let calls = mock.jql_calls();
+    let sizes: Vec<usize> = calls[1..]
+        .iter()
+        .map(|(jql, _)| jql.matches("\"ENG-").count())
+        .collect();
+    assert_eq!(sizes, [50, 50, 20]);
+    assert!(
+        calls
+            .iter()
+            .all(|(jql, _)| !jql.contains("ENG-DONE") && !jql.contains("ENG-AWAY"))
+    );
+    assert!(calls[1..].iter().all(|(_, max)| *max == 50));
+    assert!(mock.full_calls().is_empty());
+    assert!(feed_dir.join("ENG-000").exists());
+}
+
+/// Jira rejects a `key in (...)` naming a deleted key. The recheck then
+/// looks up each key, removes the gone one, and retries on the rest.
+#[tokio::test]
+async fn assignee_tracker_recheck_survives_a_rejected_key() {
+    let tmp = tempfile::tempdir().unwrap();
+    let layout = DataLayout::new(tmp.path());
+    let feed_dir = layout
+        .ensure_feed_dir("jira/assignee-tracker", "me")
+        .unwrap();
+    let t = "2026-05-08T09:00:00.000+0000";
+    let mock = Arc::new(MockAtlassian::default());
+    mock.queue_search(vec![issue_meta("ENG-A", t), issue_meta("ENG-C", t)]);
+    mock.queue_detail("ENG-A", issue_detail("ENG-A", t, None, None));
+    mock.queue_detail("ENG-C", issue_detail("ENG-C", t, None, None));
+    let ctx = TemplateCtx::new(Arc::new(MockClients {
+        atlassian: mock.clone(),
+    }));
+    let params = TemplateParams::default();
+    run_once(&AssigneeTrackerTemplate, &ctx, &params, &feed_dir).await;
+
+    mock.queue_search(vec![]);
+    *mock.reject_jql_naming.lock().unwrap() = Some("ENG-C".into());
+    mock.not_found("ENG-C");
+    mock.queue_detail("ENG-A", issue_detail("ENG-A", t, None, None));
+    mock.queue_search(vec![issue_meta("ENG-A", t)]); // the retry: still mine
+    run_once(&AssigneeTrackerTemplate, &ctx, &params, &feed_dir).await;
+
+    let calls = mock.jql_calls();
+    assert_eq!(
+        calls[3].0,
+        "key in (\"ENG-A\") AND assignee = currentUser()"
+    );
+    assert!(!feed_dir.join("ENG-C").exists(), "gone issue removed");
+    assert_eq!(snapshot(&feed_dir, "ENG-A")["assigned_to_me"], true);
 }

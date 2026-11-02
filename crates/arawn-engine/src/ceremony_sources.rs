@@ -186,8 +186,8 @@ impl CalendarSource for ProjectionsCalendarSource {
 }
 
 /// Production `AttentionSource` backed by the `gmail_messages`,
-/// `slack_messages`, `linear_issues` and `drive_comments` projection
-/// tables.
+/// `slack_messages`, `linear_issues`, `drive_comments` and `jira_issues`
+/// projection tables.
 ///
 /// `store` resolves each row's `feed_id` to a lens name (via
 /// `Store::find_lens_for_feed`). Results are cached in
@@ -270,6 +270,25 @@ const DOC_COMMENT_ATTENTION_SQL: &str = "SELECT id, source_id, source_ts, title,
        FROM drive_comments WHERE source_ts < ?1 \
       ORDER BY source_ts DESC LIMIT ?2";
 
+/// Jira issues on the user's plate at `end`, in the same shape as Linear:
+/// from the assignee feed, status category not done, and high priority
+/// or due within [`LINEAR_DUE_DAYS`] (overdue included). A row written
+/// before these fields were kept has none of them: not urgent, no due
+/// date, so it stays out. Due date first, then priority.
+const JIRA_ATTENTION_SQL: &str = "SELECT id, source_id, source_ts, title, body_text, \
+         'jira' AS kind, feed_id, \
+         json_extract(metadata, '$.priority'), json_extract(metadata, '$.due_date') \
+       FROM jira_issues \
+      WHERE source_ts < ?1 \
+        AND json_extract(metadata, '$.assigned_to_me') = 1 \
+        AND COALESCE(json_extract(metadata, '$.status_category'), '') != 'done' \
+        AND (json_extract(metadata, '$.high_priority') = 1 \
+             OR json_extract(metadata, '$.due_date') <= ?2) \
+      ORDER BY json_extract(metadata, '$.due_date') IS NULL, \
+               json_extract(metadata, '$.due_date'), \
+               json_extract(metadata, '$.high_priority') IS NOT 1, source_ts DESC \
+      LIMIT ?3";
+
 /// Sender of Google's comment notification emails.
 const DOCS_NOTIFY_SENDER: &str = "comments-noreply@docs.google.com";
 
@@ -291,7 +310,7 @@ const WINDOW_ATTENTION_SQL: &str = "SELECT id, source_id, source_ts, title, body
              FROM slack_messages WHERE source_ts >= ?1 AND source_ts < ?2 \
        ) ORDER BY source_ts DESC LIMIT ?3";
 
-/// How far ahead a Linear due date pulls an issue into the brief.
+/// How far ahead a Linear or Jira due date pulls an issue into the brief.
 const LINEAR_DUE_DAYS: i64 = 7;
 
 struct RawSignal {
@@ -305,7 +324,7 @@ struct RawSignal {
 
 /// Run one attention query (9 columns: the 7 signal columns, then two
 /// optional note columns for the summary: priority label and due date
-/// for Linear, reason and link for doc comments, the workspace for
+/// for Linear and Jira, reason and link for doc comments, the workspace for
 /// Slack).
 fn query_signals(
     conn: &rusqlite::Connection,
@@ -380,7 +399,8 @@ fn query_signals(
 impl AttentionSource for ProjectionsAttentionSource {
     /// Linear issues on the user's plate come first (they are few and
     /// must not be crowded out), then open doc comments for the user,
-    /// then Gmail and Slack signals of the window fill the rest of `cap`.
+    /// then Jira issues on the user's plate, then Gmail and Slack signals
+    /// of the window fill the rest of `cap`.
     async fn between(
         &self,
         start: DateTime<Utc>,
@@ -395,6 +415,7 @@ impl AttentionSource for ProjectionsAttentionSource {
             "slack_messages",
             "linear_issues",
             "drive_comments",
+            "jira_issues",
         ] {
             self.projections
                 .ensure_feed_type(feed_type)
@@ -430,6 +451,14 @@ impl AttentionSource for ProjectionsAttentionSource {
             if rest > 0 {
                 raws.extend(query_signals(
                     &conn,
+                    JIRA_ATTENTION_SQL,
+                    params![end_str, due_by, rest as i64],
+                )?);
+            }
+            let rest = cap - raws.len();
+            if rest > 0 {
+                raws.extend(query_signals(
+                    &conn,
                     WINDOW_ATTENTION_SQL,
                     params![start_str, end_str, rest as i64, DOCS_NOTIFY_SENDER],
                 )?);
@@ -457,6 +486,7 @@ impl AttentionSource for ProjectionsAttentionSource {
 mod tests {
     use super::*;
 
+    use arawn_projections::atlassian::JiraIssueProjection;
     use arawn_projections::calendar::CalendarEventProjection;
     use arawn_projections::drive_comments::DriveCommentProjection;
     use arawn_projections::gmail::GmailMessageProjection;
@@ -902,6 +932,219 @@ mod tests {
             gmail_ids(src.between(start, end, 10).await.unwrap()),
             ["other"]
         );
+    }
+
+    fn jira_issue(
+        n: u32,
+        updated: DateTime<Utc>,
+        priority: &str,
+        due: Option<&str>,
+        category: Option<&str>,
+        mine: bool,
+    ) -> JiraIssueProjection {
+        JiraIssueProjection {
+            id: format!("ji-{n}"),
+            feed_id: "jira-mine".into(),
+            source_id: format!("OPS-{n}"),
+            source_ts: updated,
+            project_key: Some("OPS".into()),
+            summary: format!("Issue {n}"),
+            status: Some("In Progress".into()),
+            assignee: Some("Me".into()),
+            reporter: None,
+            priority: Some(priority.into()),
+            high_priority: matches!(priority, "Highest" | "High"),
+            due_date: due.map(String::from),
+            status_category: category.map(String::from),
+            assigned_to_me: mine,
+            labels: vec![],
+            body_text: String::new(),
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn attention_brings_my_high_or_due_soon_open_jira_issues() {
+        let (projections, store, _tmp) = make_store_pair();
+        let end = DateTime::parse_from_rfc3339("2026-10-07T07:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let start = end - Duration::hours(24);
+        let old = end - Duration::days(20);
+        let open = Some("indeterminate");
+        projections
+            .write_batch(&[
+                jira_issue(1, old, "High", None, open, true), // high: in
+                jira_issue(2, old, "Medium", Some("2026-10-10"), Some("new"), true), // due in 3d: in
+                jira_issue(3, old, "Highest", None, Some("done"), true),             // done: out
+                jira_issue(4, old, "Medium", Some("2026-10-30"), open, true), // not due soon: out
+                jira_issue(5, old, "High", None, open, false),                // not mine: out
+                jira_issue(6, old, "Low", Some("2026-10-01"), open, true),    // overdue: in
+            ])
+            .unwrap();
+        // A row written before priority, due date and category were kept.
+        let mut legacy = jira_issue(7, old, "Medium", None, None, true);
+        legacy.priority = None;
+        projections.write_batch(&[legacy]).unwrap();
+        projections
+            .write_batch(&[linear_issue(1, old, 1, None, "started", true)])
+            .unwrap();
+        projections
+            .write_batch(&[doc_comment(1, end - Duration::days(3))])
+            .unwrap();
+        projections
+            .write_batch(&[gmail_signal("g", end - Duration::hours(1))])
+            .unwrap();
+
+        let src = ProjectionsAttentionSource::new(projections, store);
+        let out = src.between(start, end, 10).await.unwrap();
+        let jira: Vec<&str> = out
+            .iter()
+            .filter(|r| r.source_kind == "jira")
+            .map(|r| r.source_id.as_str())
+            .collect();
+        // Due date first (overdue, then soon), then priority.
+        assert_eq!(jira, ["OPS-6", "OPS-2", "OPS-1"], "{out:?}");
+        let due_soon = out.iter().find(|r| r.source_id == "OPS-2").unwrap();
+        assert_eq!(due_soon.summary, "OPS-2: Issue 2 (Medium, due 2026-10-10)");
+
+        // Linear, then doc comments, then Jira, then the window rows.
+        let kinds: Vec<&str> = out.iter().map(|r| r.source_kind.as_str()).collect();
+        assert_eq!(
+            kinds,
+            ["linear", "drive_comment", "jira", "jira", "jira", "gmail"]
+        );
+    }
+
+    /// End to end from the feed's snapshots: only the assignee feed's
+    /// issues are mine, and an issue that moves to Done leaves the brief
+    /// on the next run (issue rows are upserted, not only inserted).
+    #[tokio::test(flavor = "current_thread")]
+    async fn a_jira_issue_moved_to_done_leaves_the_brief() {
+        let (projections, store, tmp) = make_store_pair();
+        let write = |feed_dir: &std::path::Path, key: &str, category: &str| {
+            let dir = feed_dir.join(key);
+            std::fs::create_dir_all(&dir).unwrap();
+            let snap = serde_json::json!({
+                "key": key,
+                "fields": {
+                    "summary": "Urgent thing",
+                    "status": {"name": "Doing", "statusCategory": {"key": category}},
+                    "priority": {"id": "2", "name": "High"},
+                    "updated": "2026-10-01T00:00:00.000Z",
+                },
+            });
+            std::fs::write(dir.join("issue.json"), snap.to_string()).unwrap();
+        };
+        let mine_dir = tmp.path().join("jira-mine");
+        let project_dir = tmp.path().join("jira-ops");
+        let project = || {
+            arawn_projections::project_feed_dir(
+                &projections,
+                "jira/assignee-tracker",
+                "jira-mine",
+                &mine_dir,
+            )
+            .unwrap();
+            arawn_projections::project_feed_dir(
+                &projections,
+                "jira/project-tracker",
+                "jira-ops",
+                &project_dir,
+            )
+            .unwrap();
+        };
+        let end = DateTime::parse_from_rfc3339("2026-10-07T07:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let start = end - Duration::hours(24);
+        let src = ProjectionsAttentionSource::new(Arc::clone(&projections), store);
+        let jira_ids = |out: Vec<SignalRow>| -> Vec<String> {
+            out.into_iter()
+                .filter(|r| r.source_kind == "jira")
+                .map(|r| r.source_id)
+                .collect()
+        };
+
+        write(&mine_dir, "OPS-1", "indeterminate");
+        write(&project_dir, "OPS-2", "indeterminate"); // someone else's
+        project();
+        assert_eq!(
+            jira_ids(src.between(start, end, 10).await.unwrap()),
+            ["OPS-1"]
+        );
+
+        write(&mine_dir, "OPS-1", "done");
+        project();
+        assert!(jira_ids(src.between(start, end, 10).await.unwrap()).is_empty());
+    }
+
+    /// End to end from the assignee feed's snapshots: an issue reassigned
+    /// away (the feed rewrites it with `assigned_to_me: false`) leaves the
+    /// brief, and so does one whose snapshot the feed removed.
+    #[tokio::test(flavor = "current_thread")]
+    async fn a_reassigned_or_gone_jira_issue_leaves_the_brief() {
+        let (projections, store, tmp) = make_store_pair();
+        let feed_dir = tmp.path().join("jira-mine");
+        let write = |key: &str, mine: Option<bool>| {
+            let dir = feed_dir.join(key);
+            std::fs::create_dir_all(&dir).unwrap();
+            let mut snap = serde_json::json!({
+                "key": key,
+                "fields": {
+                    "summary": "Urgent thing",
+                    "status": {"name": "Doing", "statusCategory": {"key": "indeterminate"}},
+                    "priority": {"id": "1", "name": "Highest"},
+                    "updated": "2026-10-01T00:00:00.000Z",
+                },
+            });
+            if let Some(m) = mine {
+                snap["assigned_to_me"] = serde_json::json!(m);
+            }
+            std::fs::write(dir.join("issue.json"), snap.to_string()).unwrap();
+        };
+        let project = || {
+            arawn_projections::project_feed_dir(
+                &projections,
+                "jira/assignee-tracker",
+                "jira-mine",
+                &feed_dir,
+            )
+            .unwrap();
+        };
+        let end = DateTime::parse_from_rfc3339("2026-10-07T07:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let start = end - Duration::hours(24);
+        let src = ProjectionsAttentionSource::new(Arc::clone(&projections), store);
+        let jira_ids = |out: Vec<SignalRow>| -> Vec<String> {
+            let mut ids: Vec<String> = out
+                .into_iter()
+                .filter(|r| r.source_kind == "jira")
+                .map(|r| r.source_id)
+                .collect();
+            ids.sort();
+            ids
+        };
+
+        write("OPS-1", Some(true));
+        write("OPS-2", None); // written before the flag: mine
+        project();
+        assert_eq!(
+            jira_ids(src.between(start, end, 10).await.unwrap()),
+            ["OPS-1", "OPS-2"]
+        );
+
+        write("OPS-1", Some(false)); // reassigned away
+        std::fs::remove_dir_all(feed_dir.join("OPS-2")).unwrap(); // gone
+        project();
+        assert!(jira_ids(src.between(start, end, 10).await.unwrap()).is_empty());
+        let rows: i64 = projections
+            .conn()
+            .lock()
+            .unwrap()
+            .query_row("SELECT COUNT(*) FROM jira_issues", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(rows, 1, "the gone issue's row is deleted");
     }
 
     /// 2026-05-17T01:30:00Z is "May 17" in UTC but "May 16 18:30" in

@@ -465,6 +465,10 @@ fn jira_issue_to_projection(lens: &str, row: &JiraIssueFixtureRow) -> JiraIssueP
         assignee: row.assignee.clone(),
         reporter: row.reporter.clone(),
         priority: row.priority.clone(),
+        high_priority: false,
+        due_date: None,
+        status_category: None,
+        assigned_to_me: false,
         labels: row.labels.clone(),
         body_text: row.body_text.clone(),
     }

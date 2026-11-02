@@ -6,7 +6,7 @@
 //! - Three [`arawn_tool::Tool`] impls: `calendar_upcoming`,
 //!   `calendar_create_event`, `calendar_find_conflicts`.
 //!
-//! See `docs/src/integrations/calendar.md` for setup.
+//! See `docs/src/content/docs/how-to/connect-google.md` for setup.
 
 mod client;
 mod integration;

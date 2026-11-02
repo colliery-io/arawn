@@ -182,7 +182,8 @@ pub async fn run_tui(
                  unavailable because the embedding model didn't load. \
                  Install the model file at \
                  ~/.arawn/models/all-MiniLM-L6-v2/model.onnx and restart \
-                 the server. See docs/src/memory.md for details."
+                 the server. See docs/src/content/docs/reference/memory-model.md \
+                 for details."
                     .to_string(),
             ));
         }

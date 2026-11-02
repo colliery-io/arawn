@@ -12,7 +12,7 @@
 //!   `search.messages`; per-channel `slack_history` covers most "what was
 //!   discussed" use cases for v1.
 //!
-//! See `docs/src/integrations/slack.md` for setup and ARAWN-A-0001 § 4
+//! See `docs/src/content/docs/how-to/connect-slack.md` for setup and ARAWN-A-0001 § 4
 //! for the design call (full OAuth, not webhook).
 
 mod client;

@@ -1107,7 +1107,7 @@ impl QueryEngine {
                     content: format!(
                         "Permission denied: tool '{name}' was denied by {reason_str}. \
                          Run /permissions in the TUI to inspect the active rule set, \
-                         or see docs/src/security.md."
+                         or see docs/src/content/docs/reference/permissions.md."
                     ),
                     is_error: true,
                 };
